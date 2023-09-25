@@ -3,16 +3,16 @@ mod Sentinel {
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use aura::core::roles::SentinelRoles;
+    use opus::core::roles::SentinelRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::ISentinel;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::YangSuspensionStatus;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::ISentinel;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::YangSuspensionStatus;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
@@ -42,21 +42,21 @@ mod Sentinel {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
         GateKilled: GateKilled,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
         #[key]
         yang: ContractAddress,
         gate: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAssetMaxUpdated {
         #[key]
         yang: ContractAddress,
@@ -64,7 +64,7 @@ mod Sentinel {
         new_max: u128
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct GateKilled {
         #[key]
         yang: ContractAddress,

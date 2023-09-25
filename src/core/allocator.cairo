@@ -2,11 +2,11 @@
 mod Allocator {
     use starknet::ContractAddress;
 
-    use aura::core::roles::AllocatorRoles;
+    use opus::core::roles::AllocatorRoles;
 
-    use aura::interfaces::IAllocator::IAllocator;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
+    use opus::interfaces::IAllocator::IAllocator;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     // Helper constant to set the starting index for iterating over the recipients
     // and percentages in the order they were added
@@ -33,12 +33,12 @@ mod Allocator {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AllocationUpdated: AllocationUpdated,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct AllocationUpdated {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>

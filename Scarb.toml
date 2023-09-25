@@ -1,5 +1,5 @@
 [package]
-name = "aura"
+name = "opus"
 version = "0.1.0"
 
 # Build each contract as a standalone JSON file
@@ -8,6 +8,9 @@ sierra = true
 # strict libfuncs check - throw a compilation error
 # when the code uses a libfunc that is not allowed
 allowed-libfuncs-deny = true
+
+[cairo]
+sierra-replace-ids = true
 
 [dependencies]
 starknet = ">=2.2.0"

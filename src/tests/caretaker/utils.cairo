@@ -6,20 +6,20 @@ mod CaretakerUtils {
     };
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::caretaker::Caretaker;
-    use aura::core::roles::{SentinelRoles, ShrineRoles};
+    use opus::core::caretaker::Caretaker;
+    use opus::core::roles::{SentinelRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::IAbbotDispatcher;
-    use aura::interfaces::ICaretaker::ICaretakerDispatcher;
-    use aura::interfaces::IGate::IGateDispatcher;
-    use aura::interfaces::ISentinel::ISentinelDispatcher;
-    use aura::interfaces::IShrine::IShrineDispatcher;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcher;
+    use opus::interfaces::ICaretaker::ICaretakerDispatcher;
+    use opus::interfaces::IGate::IGateDispatcher;
+    use opus::interfaces::ISentinel::ISentinelDispatcher;
+    use opus::interfaces::IShrine::IShrineDispatcher;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::equalizer::utils::EqualizerUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::equalizer::utils::EqualizerUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('caretaker admin').unwrap()

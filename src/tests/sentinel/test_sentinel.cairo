@@ -4,22 +4,22 @@ mod TestSentinel {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::sentinel::Sentinel;
-    use aura::core::roles::SentinelRoles;
+    use opus::core::sentinel::Sentinel;
+    use opus::core::roles::SentinelRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::types::YangSuspensionStatus;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::types::YangSuspensionStatus;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
 
-    use aura::tests::gate::utils::GateUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::gate::utils::GateUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(10000000000)]
@@ -113,6 +113,17 @@ mod TestSentinel {
                 ) == wadray::fixed_point_to_wad(Sentinel::INITIAL_DEPOSIT_AMT, 8),
             'Wrong yang total #2'
         );
+
+        let mut expected_events: Span<Sentinel::Event> = array![
+            Sentinel::Event::YangAdded(
+                Sentinel::YangAdded { yang: eth, gate: eth_gate.contract_address, }
+            ),
+            Sentinel::Event::YangAdded(
+                Sentinel::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(sentinel.contract_address, expected_events);
     }
 
     #[test]
@@ -225,6 +236,28 @@ mod TestSentinel {
         assert(
             sentinel.get_yang_asset_max(eth) == Sentinel::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max'
         );
+
+        let mut expected_events: Span<Sentinel::Event> = array![
+            Sentinel::Event::YangAssetMaxUpdated(
+                Sentinel::YangAssetMaxUpdated {
+                    yang: eth, old_max: SentinelUtils::ETH_ASSET_MAX, new_max: new_asset_max,
+                }
+            ),
+            Sentinel::Event::YangAssetMaxUpdated(
+                Sentinel::YangAssetMaxUpdated {
+                    yang: eth, old_max: new_asset_max, new_max: new_asset_max - 1,
+                }
+            ),
+            Sentinel::Event::YangAssetMaxUpdated(
+                Sentinel::YangAssetMaxUpdated {
+                    yang: eth,
+                    old_max: new_asset_max - 1,
+                    new_max: Sentinel::INITIAL_DEPOSIT_AMT - 1,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(sentinel.contract_address, expected_events);
     }
 
     #[test]
@@ -457,6 +490,14 @@ mod TestSentinel {
         // Exiting
         set_contract_address(SentinelUtils::mock_abbot());
         sentinel.exit(eth, user, common::TROVE_1, yang_amt);
+
+        let mut expected_events: Span<Sentinel::Event> = array![
+            Sentinel::Event::GateKilled(
+                Sentinel::GateKilled { yang: eth, gate: eth_gate.contract_address }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(sentinel.contract_address, expected_events);
     }
 
     #[test]

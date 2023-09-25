@@ -7,18 +7,18 @@ mod ControllerUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::controller::Controller;
-    use aura::core::roles::ShrineRoles;
+    use opus::core::controller::Controller;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::SignedRay;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedRay;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad};
 
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour

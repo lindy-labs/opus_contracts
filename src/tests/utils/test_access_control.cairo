@@ -4,9 +4,9 @@ mod tests {
     };
     use starknet::testing::{pop_log_raw, set_caller_address};
 
-    use aura::utils::access_control::AccessControl;
+    use opus::utils::access_control::AccessControl;
 
-    use aura::tests::common;
+    use opus::tests::common;
 
     // mock roles
     const R1: u128 = 1_u128;

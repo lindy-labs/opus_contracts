@@ -1,38 +1,12 @@
+use integer::u256_sqrt;
 use math::Oneable;
 
-use aura::utils::wadray;
-use aura::utils::wadray::Ray;
+use opus::utils::wadray;
+use opus::utils::wadray::Ray;
 
 fn sqrt(x: Ray) -> Ray {
-    // Early return if x is zero
-    if x.is_zero() {
-        return x;
-    }
-
-    // Initial guess as half the number
-    let mut guess = Ray { val: x.val / 2 };
-
-    // A small number for precision checking
-    // There is a negligible change in performance when using a larger allowed error
-    let EPSILON = Ray { val: 1 };
-
-    loop {
-        let previous_guess = guess;
-
-        // Babylonian Method: (guess + (x.val / guess)) / 2
-        guess = Ray { val: (guess + x / guess).val / 2 };
-
-        // Check if the guess is close enough to the previous guess
-        if previous_guess >= guess {
-            if (previous_guess - guess) <= EPSILON {
-                break guess;
-            }
-        } else {
-            if (guess - previous_guess) <= EPSILON {
-                break guess;
-            }
-        };
-    }
+    let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();
+    u256_sqrt(scaled_val).into()
 }
 
 fn pow<T, impl TMul: Mul<T>, impl TOneable: Oneable<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(

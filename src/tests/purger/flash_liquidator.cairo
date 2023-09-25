@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 
 #[starknet::interface]
 trait IFlashLiquidator<TContractState> {
@@ -17,21 +17,21 @@ mod FlashLiquidator {
     use integer::BoundedInt;
     use starknet::{get_contract_address, ContractAddress};
 
-    use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+    use opus::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IFlashBorrower::IFlashBorrower;
-    use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IFlashBorrower::IFlashBorrower;
+    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WadZeroable};
 
-    use aura::tests::absorber::utils::AbsorberUtils;
-    use aura::tests::common;
+    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::common;
 
     #[storage]
     struct Storage {

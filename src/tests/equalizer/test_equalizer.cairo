@@ -2,19 +2,20 @@ mod TestEqualizer {
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::roles::EqualizerRoles;
-    use aura::core::shrine::Shrine;
+    use opus::core::equalizer::Equalizer;
+    use opus::core::roles::EqualizerRoles;
+    use opus::core::shrine::Shrine;
 
-    use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
-    use aura::tests::equalizer::utils::EqualizerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::equalizer::utils::EqualizerUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(20000000000)]
@@ -60,21 +61,22 @@ mod TestEqualizer {
         assert(surplus > WadZeroable::zero(), 'no surplus accrued');
 
         let recipients = EqualizerUtils::initial_recipients();
-        let mut percentages = EqualizerUtils::initial_percentages();
+        let percentages = EqualizerUtils::initial_percentages();
 
         let mut tokens: Array<ContractAddress> = array![shrine.contract_address];
         let mut before_balances = common::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
         set_contract_address(ShrineUtils::admin());
-        equalizer.equalize();
+        let minted_surplus = equalizer.equalize();
 
         let mut after_balances = common::get_token_balances(tokens.span(), recipients);
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
-        let mut minted_surplus = WadZeroable::zero();
+        let mut tmp_minted_surplus = WadZeroable::zero();
+        let mut percentages_copy = percentages;
         loop {
-            match percentages.pop_front() {
+            match percentages_copy.pop_front() {
                 Option::Some(percentage) => {
                     let expected_increment = wadray::rmul_rw(*percentage, surplus);
                     // sanity check
@@ -87,23 +89,32 @@ mod TestEqualizer {
                         'wrong recipient balance'
                     );
 
-                    minted_surplus += expected_increment;
+                    tmp_minted_surplus += expected_increment;
                 },
                 Option::None => { break; }
             };
         };
+        assert(minted_surplus == tmp_minted_surplus, 'surplus mismatch');
 
         // Check remaining surplus due to precision loss
         let remaining_surplus = surplus - minted_surplus;
         assert(equalizer.get_surplus() == remaining_surplus, 'wrong remaining surplus');
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
+
+        let mut expected_events: Span<Equalizer::Event> = array![
+            Equalizer::Event::Equalize(
+                Equalizer::Equalize { recipients, percentages, amount: minted_surplus }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(equalizer.contract_address, expected_events);
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_set_allocator_pass() {
-        let (shrine, equalizer, _) = EqualizerUtils::equalizer_deploy();
+        let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
         let new_recipients = EqualizerUtils::new_recipients();
         let mut new_percentages = EqualizerUtils::new_percentages();
         let new_allocator = EqualizerUtils::allocator_deploy(new_recipients, new_percentages);
@@ -115,6 +126,17 @@ mod TestEqualizer {
         assert(
             equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated'
         );
+
+        let mut expected_events: Span<Equalizer::Event> = array![
+            Equalizer::Event::AllocatorUpdated(
+                Equalizer::AllocatorUpdated {
+                    old_address: allocator.contract_address,
+                    new_address: new_allocator.contract_address
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(equalizer.contract_address, expected_events);
     }
 
     #[test]

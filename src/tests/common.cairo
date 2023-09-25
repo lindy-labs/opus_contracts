@@ -8,21 +8,21 @@ use starknet::{
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
-use aura::core::shrine::Shrine;
+use opus::core::shrine::Shrine;
 
-use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-use aura::interfaces::IERC20::{
+use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+use opus::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
-use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-use aura::tests::erc20::ERC20;
-use aura::types::{AssetBalance, Reward, YangBalance};
-use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad, WadZeroable};
+use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+use opus::tests::erc20::ERC20;
+use opus::types::{AssetBalance, Reward, YangBalance};
+use opus::utils::wadray;
+use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
-use aura::tests::sentinel::utils::SentinelUtils;
-use aura::tests::shrine::utils::ShrineUtils;
+use opus::tests::sentinel::utils::SentinelUtils;
+use opus::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
@@ -337,7 +337,7 @@ fn assert_events_emitted<
 >(
     addr: ContractAddress, events: Span<T>
 ) {
-    // Fetch all emitted events 
+    // Fetch all emitted events
     let mut emitted_events: Array<T> = ArrayTrait::new();
     loop {
         match pop_log_raw(addr) {

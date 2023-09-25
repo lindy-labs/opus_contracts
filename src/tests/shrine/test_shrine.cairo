@@ -6,21 +6,21 @@ mod TestShrine {
     };
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::shrine::Shrine;
-    use aura::core::roles::ShrineRoles;
+    use opus::core::shrine::Shrine;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::{Trove, YangSuspensionStatus};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::{Trove, YangSuspensionStatus};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable,
         WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
 
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     //
     // Tests - Deployment and initial setup of Shrine

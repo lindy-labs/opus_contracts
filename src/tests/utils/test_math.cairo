@@ -1,11 +1,13 @@
 mod tests {
     use debug::PrintTrait;
 
-    use aura::utils::math::{pow, sqrt};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE};
+    use integer::BoundedU128;
 
-    use aura::tests::common::assert_equalish;
+    use opus::utils::math::{pow, sqrt};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE};
+
+    use opus::tests::common::assert_equalish;
 
     #[test]
     #[available_gas(20000000000)]
@@ -70,6 +72,9 @@ mod tests {
             ERROR_MARGIN,
             'wrong sqrt #8'
         );
+
+        // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
+        sqrt(BoundedU128::max().into());
     }
 
     #[test]

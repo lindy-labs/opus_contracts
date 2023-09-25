@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
-use aura::interfaces::IAbsorber::IBlesserDispatcher;
-use aura::utils::wadray::Wad;
+use opus::interfaces::IAbsorber::IBlesserDispatcher;
+use opus::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
@@ -16,7 +16,7 @@ struct YangBalance {
     amount: Wad, // Amount of yang in Wad
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, PartialEq, Serde)]
 struct AssetBalance {
     address: ContractAddress, // Address of the ERC-20 asset
     amount: u128, // Amount of the asset in the asset's decimals

@@ -4,21 +4,21 @@ mod TestCaretaker {
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::{CaretakerRoles, ShrineRoles};
+    use opus::core::roles::{CaretakerRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::caretaker::utils::CaretakerUtils;
-    use aura::tests::common;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::caretaker::utils::CaretakerUtils;
+    use opus::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
 
 
     #[test]
@@ -243,6 +243,39 @@ mod TestCaretaker {
         assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
         assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect release');
+    }
+
+    #[test]
+    #[available_gas(100000000)]
+    fn test_preview_reclaim_more_than_total_yin() {
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
+            CaretakerUtils::caretaker_deploy();
+
+        // user 1 with 10000 yin and 2 different yangs
+        let user1 = common::trove1_owner_addr();
+        let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
+        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        let trove1_id = common::open_trove_helper(
+            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+        );
+
+        set_contract_address(CaretakerUtils::admin());
+        caretaker.shut();
+
+        let reclaimable_assets: Span<AssetBalance> = caretaker
+            .preview_reclaim(trove1_forge_amt + WAD_ONE.into());
+        let caretaker_balances: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![caretaker.contract_address].span()
+        );
+        // Transform caretaker balance to a single array
+        let caretaker_balances_flattened: Span<u128> = array![
+            *caretaker_balances.at(0)[0], *caretaker_balances.at(1)[0],
+        ]
+            .span();
+        let expected_reclaimable_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, caretaker_balances_flattened
+        );
+        assert(reclaimable_assets == expected_reclaimable_assets, 'wrong reclaimable assets');
     }
 
     #[test]

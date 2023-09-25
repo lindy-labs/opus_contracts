@@ -2,16 +2,16 @@
 mod Controller {
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
 
-    use aura::core::roles::ControllerRoles;
+    use opus::core::roles::ControllerRoles;
 
-    use aura::interfaces::IController::IController;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::math;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, Ray, RAY_ONE};
-    use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use opus::interfaces::IController::IController;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::math;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, Ray, RAY_ONE};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
