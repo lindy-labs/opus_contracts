@@ -40,12 +40,12 @@ mod FlashMint {
 
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         FlashMint: FlashMint,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct FlashMint {
         #[key]
         initiator: ContractAddress,
