@@ -1067,6 +1067,13 @@ mod TestAbsorber {
                     epoch: expected_current_epoch,
                 }
             ),
+            Absorber::Event::Reap(
+                Absorber::Reap {
+                    provider: first_provider,
+                    absorbed_assets: preview_absorbed_assets,
+                    reward_assets: preview_reward_assets,
+                }
+            ),
         ]
             .span();
         common::assert_events_emitted(absorber.contract_address, expected_events);
@@ -1195,6 +1202,16 @@ mod TestAbsorber {
         );
 
         assert(!absorber.is_operational(), 'should not be operational');
+
+        let mut expected_events: Span<Absorber::Event> = array![
+            Absorber::Event::EpochChanged(
+                Absorber::EpochChanged {
+                    old_epoch: Absorber::FIRST_EPOCH, new_epoch: expected_current_epoch,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(absorber.contract_address, expected_events);
 
         // Second epoch starts here
         // Step 3
@@ -1361,6 +1378,16 @@ mod TestAbsorber {
                     AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
                         absorber, expected_epoch - 1, reward_tokens
                     );
+
+                    let mut expected_events: Span<Absorber::Event> = array![
+                        Absorber::Event::EpochChanged(
+                            Absorber::EpochChanged {
+                                old_epoch: Absorber::FIRST_EPOCH, new_epoch: expected_epoch,
+                            }
+                        ),
+                    ]
+                        .span();
+                    common::assert_events_emitted(absorber.contract_address, expected_events);
 
                     // Step 3
                     let first_provider_before_reward_bals = common::get_token_balances(
