@@ -2,17 +2,17 @@
 mod Gate {
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::IGate;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::math::pow;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::IGate;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
     // unit of an asset and then sending assets to the contract directly. This is addressed
-    // in the Sentinel, which enforces a minimum deposit before a yang and its Gate can be 
+    // in the Sentinel, which enforces a minimum deposit before a yang and its Gate can be
     // added to the Shrine.
 
     #[storage]
@@ -31,13 +31,13 @@ mod Gate {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         Enter: Enter,
         Exit: Exit,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Enter {
         #[key]
         user: ContractAddress,
@@ -47,7 +47,7 @@ mod Gate {
         yang_amt: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Exit {
         #[key]
         user: ContractAddress,
@@ -105,9 +105,9 @@ mod Gate {
 
         // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
         // If the asset's decimals is less than `WAD_DECIMALS`, the amount is scaled up accordingly.
-        // Note that if there is no yang yet, this function will still return a positive value 
+        // Note that if there is no yang yet, this function will still return a positive value
         // based on the asset amount being at parity with yang (with scaling where necessary). This is
-        // so that the yang price can be properly calculated by the oracle even if no assets have been 
+        // so that the yang price can be properly calculated by the oracle even if no assets have been
         // deposited yet.
         fn get_asset_amt_per_yang(self: @ContractState) -> Wad {
             let amt: u128 = self.convert_to_assets_helper(WAD_ONE.into());
@@ -136,7 +136,7 @@ mod Gate {
         // Core Functions - External
         //
 
-        // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
+        // Transfers the stipulated amount of assets, in the asset's decimals, from the given
         // user to the Gate and returns the corresponding yang amount in Wad.
         // `asset_amt` is denominated in the decimals of the asset.
         fn enter(
@@ -159,7 +159,7 @@ mod Gate {
             yang_amt
         }
 
-        // Transfers such amount of assets, in the asset's decimals, corresponding to the 
+        // Transfers such amount of assets, in the asset's decimals, corresponding to the
         // stipulated yang amount to the given user.
         // The return value is denominated in the decimals of the asset.
         fn exit(
@@ -206,8 +206,8 @@ mod Gate {
 
             if total_yang.is_zero() {
                 let decimals: u8 = asset.decimals();
-                // Scale `yang_amt` down by the difference to match the decimal 
-                // precision of the asset. If asset is of `Wad` precision, then 
+                // Scale `yang_amt` down by the difference to match the decimal
+                // precision of the asset. If asset is of `Wad` precision, then
                 // the same value is returned
                 yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
@@ -224,8 +224,8 @@ mod Gate {
 
             if total_yang.is_zero() {
                 let decimals: u8 = asset.decimals();
-                // Otherwise, scale `asset_amt` up by the difference to match `Wad` 
-                // precision of yang. If asset is of `Wad` precision, then the same 
+                // Otherwise, scale `asset_amt` up by the difference to match `Wad`
+                // precision of yang. If asset is of `Wad` precision, then the same
                 // value is returned
                 wadray::fixed_point_to_wad(asset_amt, decimals)
             } else {

@@ -2,10 +2,10 @@
 mod FlashBorrower {
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
-    use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+    use opus::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
 
     const VALID_USAGE: felt252 = 0;
     const ATTEMPT_TO_STEAL: felt252 = 1;
@@ -65,7 +65,7 @@ mod FlashBorrower {
             self.flashmint.read().flash_loan(initiator, token, amount, call_data_copy);
         }
 
-        // Emit event so tests can check that the function arguments are correct 
+        // Emit event so tests can check that the function arguments are correct
         self
             .emit(
                 FlashLoancall_dataReceived {

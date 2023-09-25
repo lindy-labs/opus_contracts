@@ -1,8 +1,8 @@
 use math::Oneable;
 
 
-use aura::utils::wadray;
-use aura::utils::wadray::{Ray, RAY_ONE, Wad};
+use opus::utils::wadray;
+use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;

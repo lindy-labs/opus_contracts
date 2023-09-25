@@ -3,19 +3,19 @@ mod Caretaker {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use aura::core::roles::CaretakerRoles;
+    use opus::core::roles::CaretakerRoles;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker::ICaretaker;
-    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, Wad};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::ICaretaker;
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Constants

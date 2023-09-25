@@ -1,8 +1,8 @@
 use integer::u256_sqrt;
 use math::Oneable;
 
-use aura::utils::wadray;
-use aura::utils::wadray::Ray;
+use opus::utils::wadray;
+use opus::utils::wadray::Ray;
 
 fn sqrt(x: Ray) -> Ray {
     let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();

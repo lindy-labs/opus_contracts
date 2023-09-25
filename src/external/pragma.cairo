@@ -9,17 +9,17 @@
 mod Pragma {
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
-    use aura::core::roles::PragmaRoles;
+    use opus::core::roles::PragmaRoles;
 
-    use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use aura::interfaces::IOracle::IOracle;
-    use aura::interfaces::IPragma::IPragma;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
-    use aura::utils::wadray::Wad;
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use opus::interfaces::IOracle::IOracle;
+    use opus::interfaces::IPragma::IPragma;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray;
+    use opus::utils::wadray::Wad;
 
     // Helper constant to set the starting index for iterating over the yangs
     // in the order they were added

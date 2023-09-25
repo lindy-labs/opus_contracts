@@ -5,26 +5,26 @@ mod TestAbsorber {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::absorber::Absorber;
-    use aura::core::roles::AbsorberRoles;
+    use opus::core::absorber::Absorber;
+    use opus::core::roles::AbsorberRoles;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IAbsorber::{
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IAbsorber::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IBlesserDispatcher, IBlesserDispatcherTrait
     };
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{
         BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
     };
 
-    use aura::tests::absorber::utils::AbsorberUtils;
-    use aura::tests::common;
-    use aura::tests::common::{AddressIntoSpan, RewardPartialEq};
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::common;
+    use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
+    use opus::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
 
@@ -60,29 +60,29 @@ mod TestAbsorber {
     fn test_set_reward_pass() {
         let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
-        let aura_token: ContractAddress = AbsorberUtils::aura_token_deploy();
-        let aura_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
-            absorber, aura_token, AbsorberUtils::AURA_BLESS_AMT, true
+        let opus_token: ContractAddress = AbsorberUtils::opus_token_deploy();
+        let opus_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
+            absorber, opus_token, AbsorberUtils::OPUS_BLESS_AMT, true
         );
 
-        let veaura_token: ContractAddress = AbsorberUtils::veaura_token_deploy();
-        let veaura_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
-            absorber, veaura_token, AbsorberUtils::VEAURA_BLESS_AMT, true
+        let veopus_token: ContractAddress = AbsorberUtils::veopus_token_deploy();
+        let veopus_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
+            absorber, veopus_token, AbsorberUtils::veOPUS_BLESS_AMT, true
         );
 
         let mut expected_events: Array<Absorber::Event> = ArrayTrait::new();
 
         set_contract_address(AbsorberUtils::admin());
-        absorber.set_reward(aura_token, aura_blesser, true);
+        absorber.set_reward(opus_token, opus_blesser, true);
 
         assert(absorber.get_rewards_count() == 1, 'rewards count not updated');
 
-        let mut aura_reward = Reward {
-            asset: aura_token,
-            blesser: IBlesserDispatcher { contract_address: aura_blesser },
+        let mut opus_reward = Reward {
+            asset: opus_token,
+            blesser: IBlesserDispatcher { contract_address: opus_blesser },
             is_active: true
         };
-        let mut expected_rewards: Array<Reward> = array![aura_reward];
+        let mut expected_rewards: Array<Reward> = array![opus_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
@@ -90,23 +90,23 @@ mod TestAbsorber {
             .append(
                 Absorber::Event::RewardSet(
                     Absorber::RewardSet {
-                        asset: aura_token, blesser: aura_blesser, is_active: true
+                        asset: opus_token, blesser: opus_blesser, is_active: true
                     }
                 )
             );
 
         // Add another reward
 
-        absorber.set_reward(veaura_token, veaura_blesser, true);
+        absorber.set_reward(veopus_token, veopus_blesser, true);
 
         assert(absorber.get_rewards_count() == 2, 'rewards count not updated');
 
-        let veaura_reward = Reward {
-            asset: veaura_token,
-            blesser: IBlesserDispatcher { contract_address: veaura_blesser },
+        let veopus_reward = Reward {
+            asset: veopus_token,
+            blesser: IBlesserDispatcher { contract_address: veopus_blesser },
             is_active: true
         };
-        expected_rewards.append(veaura_reward);
+        expected_rewards.append(veopus_reward);
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
@@ -114,21 +114,21 @@ mod TestAbsorber {
             .append(
                 Absorber::Event::RewardSet(
                     Absorber::RewardSet {
-                        asset: veaura_token, blesser: veaura_blesser, is_active: true
+                        asset: veopus_token, blesser: veopus_blesser, is_active: true
                     }
                 )
             );
 
         // Update existing reward
-        let new_aura_blesser: ContractAddress = contract_address_try_from_felt252(
-            'new aura blesser'
+        let new_opus_blesser: ContractAddress = contract_address_try_from_felt252(
+            'new opus blesser'
         )
             .unwrap();
-        aura_reward.is_active = false;
-        aura_reward.blesser = IBlesserDispatcher { contract_address: new_aura_blesser };
-        absorber.set_reward(aura_token, new_aura_blesser, false);
+        opus_reward.is_active = false;
+        opus_reward.blesser = IBlesserDispatcher { contract_address: new_opus_blesser };
+        absorber.set_reward(opus_token, new_opus_blesser, false);
 
-        let mut expected_rewards: Array<Reward> = array![aura_reward, veaura_reward];
+        let mut expected_rewards: Array<Reward> = array![opus_reward, veopus_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
@@ -137,7 +137,7 @@ mod TestAbsorber {
         //     .append(
         //         Absorber::Event::RewardSet(
         //             Absorber::RewardSet {
-        //                 asset: aura_token, blesser: new_aura_blesser, is_active: false
+        //                 asset: opus_token, blesser: new_opus_blesser, is_active: false
         //             }
         //         )
         //     );
@@ -1000,7 +1000,7 @@ mod TestAbsorber {
 
         assert(absorber.is_operational(), 'should be operational');
 
-        // Check that first provider receives some amount of yin from the converted 
+        // Check that first provider receives some amount of yin from the converted
         // epoch shares.
         let first_provider_after_yin_bal = shrine.get_yin(first_provider);
         assert(
@@ -1075,8 +1075,8 @@ mod TestAbsorber {
     // Test 1 wei above initial shares remaining after absorption.
     // Sequence of events:
     // 1. Provider 1 provides
-    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
-    //    exactly 1 wei greater than the minimum initial shares. 
+    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is
+    //    exactly 1 wei greater than the minimum initial shares.
     // 3. Provider 1 should have zero shares due to loss of precision
     #[test]
     #[available_gas(20000000000)]
@@ -1154,8 +1154,8 @@ mod TestAbsorber {
 
     // Sequence of events:
     // 1. Provider 1 provides
-    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
-    //    below the initial shares so total shares in new epoch starts from 0. 
+    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is
+    //    below the initial shares so total shares in new epoch starts from 0.
     //    No rewards are distributed because total shares is zeroed.
     // 3. Provider 2 provides, provider 1 receives 1 round of rewards.
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
@@ -1302,11 +1302,11 @@ mod TestAbsorber {
         );
     }
 
-    // Test amount of yin remaining after absorption is above initial shares but below 
+    // Test amount of yin remaining after absorption is above initial shares but below
     // minimum shares
     // Sequence of events:
     // 1. Provider 1 provides
-    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
+    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is
     //    above initial shares but below minimum shares
     // 3. Provider 1 withdraws, no rewards should be distributed.
     #[test]
@@ -1489,7 +1489,7 @@ mod TestAbsorber {
             absorber, second_provider, reward_tokens
         );
 
-        let aura_reward_distribution: DistributionInfo = absorber
+        let opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
 
         let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
@@ -1539,18 +1539,18 @@ mod TestAbsorber {
             error_margin,
         );
 
-        // Check reward cumulative is updated for AURA
+        // Check reward cumulative is updated for opus
         // Convert to Wad for fixed point operations
-        let expected_aura_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
-        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
+        let expected_opus_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
+        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment
             / (total_shares - Absorber::INITIAL_SHARES.into());
-        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
-            + expected_aura_reward_cumulative_increment.val;
-        let updated_aura_reward_distribution: DistributionInfo = absorber
+        let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
+            + expected_opus_reward_cumulative_increment.val;
+        let updated_opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
         assert(
-            updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
-            'wrong AURA reward cumulative #1'
+            updated_opus_reward_distribution.asset_amt_per_share == expected_opus_reward_cumulative,
+            'wrong opus reward cumulative #1'
         );
 
         // First provider receives 2 full rounds and 2 partial rounds of rewards.
@@ -1607,20 +1607,20 @@ mod TestAbsorber {
             error_margin,
         );
 
-        // Check reward cumulative is updated for AURA
+        // Check reward cumulative is updated for opus
         // Convert to Wad for fixed point operations
-        let aura_reward_distribution = updated_aura_reward_distribution;
-        let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into()
-            + aura_reward_distribution.error.into();
-        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
+        let opus_reward_distribution = updated_opus_reward_distribution;
+        let expected_opus_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into()
+            + opus_reward_distribution.error.into();
+        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment
             / (total_shares - Absorber::INITIAL_SHARES.into());
-        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
-            + expected_aura_reward_cumulative_increment.val;
-        let updated_aura_reward_distribution: DistributionInfo = absorber
+        let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
+            + expected_opus_reward_cumulative_increment.val;
+        let updated_opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
         assert(
-            updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
-            'wrong AURA reward cumulative #2'
+            updated_opus_reward_distribution.asset_amt_per_share == expected_opus_reward_cumulative,
+            'wrong opus reward cumulative #2'
         );
 
         // Second provider should receive 3 partial rounds of rewards.
@@ -1891,38 +1891,38 @@ mod TestAbsorber {
             AbsorberUtils::absorber_with_rewards_and_first_provider();
 
         let expected_epoch: u32 = Absorber::FIRST_EPOCH;
-        let aura_addr: ContractAddress = *reward_tokens.at(0);
-        let aura_blesser_addr: ContractAddress = *blessers.at(0);
-        let veaura_addr: ContractAddress = *reward_tokens.at(1);
-        let veaura_blesser_addr: ContractAddress = *blessers.at(1);
+        let opus_addr: ContractAddress = *reward_tokens.at(0);
+        let opus_blesser_addr: ContractAddress = *blessers.at(0);
+        let veopus_addr: ContractAddress = *reward_tokens.at(1);
+        let veopus_blesser_addr: ContractAddress = *blessers.at(1);
 
-        let before_aura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        let before_veaura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let before_opus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
+        let before_veopus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
 
-        // Set veAURA to inactive
+        // Set veopus to inactive
         set_contract_address(AbsorberUtils::admin());
-        absorber.set_reward(veaura_addr, veaura_blesser_addr, false);
+        absorber.set_reward(veopus_addr, veopus_blesser_addr, false);
 
         // Trigger rewards
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let after_aura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let after_opus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
         assert(
-            after_aura_distribution
-                .asset_amt_per_share > before_aura_distribution
+            after_opus_distribution
+                .asset_amt_per_share > before_opus_distribution
                 .asset_amt_per_share,
             'cumulative should increase'
         );
 
-        let after_veaura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let after_veopus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
         assert(
-            after_veaura_distribution
-                .asset_amt_per_share == before_veaura_distribution
+            after_veopus_distribution
+                .asset_amt_per_share == before_veopus_distribution
                 .asset_amt_per_share,
             'cumulative should not increase'
         );
@@ -1933,7 +1933,7 @@ mod TestAbsorber {
             Absorber::Event::Bestow(
                 Absorber::Bestow {
                     assets: array![
-                        AssetBalance { address: aura_addr, amount: AbsorberUtils::AURA_BLESS_AMT }
+                        AssetBalance { address: opus_addr, amount: AbsorberUtils::OPUS_BLESS_AMT }
                     ]
                         .span(),
                     total_recipient_shares,
@@ -1944,28 +1944,28 @@ mod TestAbsorber {
             .span();
         common::assert_events_emitted(absorber.contract_address, expected_events);
 
-        // Set AURA to inactive
+        // Set OPUS to inactive
         set_contract_address(AbsorberUtils::admin());
-        absorber.set_reward(aura_addr, aura_blesser_addr, false);
+        absorber.set_reward(opus_addr, opus_blesser_addr, false);
 
         // Trigger rewards
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let final_aura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let final_opus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
         assert(
-            final_aura_distribution
-                .asset_amt_per_share == after_aura_distribution
+            final_opus_distribution
+                .asset_amt_per_share == after_opus_distribution
                 .asset_amt_per_share,
             'cumulative should not increase'
         );
 
-        let final_veaura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let final_veopus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
         assert(
-            final_veaura_distribution
-                .asset_amt_per_share == after_veaura_distribution
+            final_veopus_distribution
+                .asset_amt_per_share == after_veopus_distribution
                 .asset_amt_per_share,
             'cumulative should not increase'
         );
@@ -1978,19 +1978,19 @@ mod TestAbsorber {
         let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
 
-        let aura_addr: ContractAddress = *reward_tokens.at(0);
-        let veaura_addr: ContractAddress = *reward_tokens.at(1);
+        let opus_addr: ContractAddress = *reward_tokens.at(0);
+        let veopus_addr: ContractAddress = *reward_tokens.at(1);
 
         // Manually deploy blesser to control minting of reward tokens to blesser
-        // so that AURA blesser has no tokens
-        let aura_blesser_addr: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
-            absorber, aura_addr, AbsorberUtils::AURA_BLESS_AMT, false
+        // so that opus blesser has no tokens
+        let opus_blesser_addr: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
+            absorber, opus_addr, AbsorberUtils::OPUS_BLESS_AMT, false
         );
-        let veaura_blesser_addr: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
-            absorber, veaura_addr, AbsorberUtils::VEAURA_BLESS_AMT, true
+        let veopus_blesser_addr: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
+            absorber, veopus_addr, AbsorberUtils::veOPUS_BLESS_AMT, true
         );
 
-        let mut blessers: Array<ContractAddress> = array![aura_blesser_addr, veaura_blesser_addr];
+        let mut blessers: Array<ContractAddress> = array![opus_blesser_addr, veopus_blesser_addr];
 
         AbsorberUtils::add_rewards_to_absorber(absorber, reward_tokens, blessers.span());
 
@@ -2008,29 +2008,29 @@ mod TestAbsorber {
         );
 
         let expected_epoch: u32 = Absorber::FIRST_EPOCH;
-        let before_aura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        let before_veaura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let before_opus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
+        let before_veopus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
 
         // Trigger rewards
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let after_aura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let after_opus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
         assert(
-            after_aura_distribution
-                .asset_amt_per_share == before_aura_distribution
+            after_opus_distribution
+                .asset_amt_per_share == before_opus_distribution
                 .asset_amt_per_share,
             'cumulative should not increase'
         );
 
-        let after_veaura_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let after_veopus_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
         assert(
-            after_veaura_distribution
-                .asset_amt_per_share > before_veaura_distribution
+            after_veopus_distribution
+                .asset_amt_per_share > before_veopus_distribution
                 .asset_amt_per_share,
             'cumulative should increase'
         );
@@ -2042,7 +2042,7 @@ mod TestAbsorber {
                 Absorber::Bestow {
                     assets: array![
                         AssetBalance {
-                            address: veaura_addr, amount: AbsorberUtils::VEAURA_BLESS_AMT
+                            address: veopus_addr, amount: AbsorberUtils::veOPUS_BLESS_AMT
                         }
                     ]
                         .span(),

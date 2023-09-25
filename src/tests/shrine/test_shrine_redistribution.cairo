@@ -2,15 +2,15 @@ mod TestShrineRedistribution {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
-    use aura::core::shrine::Shrine;
+    use opus::core::shrine::Shrine;
 
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::{ExceptionalYangRedistribution, YangRedistribution};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::{ExceptionalYangRedistribution, YangRedistribution};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     use debug::PrintTrait;
 

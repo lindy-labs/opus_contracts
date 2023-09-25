@@ -2,12 +2,12 @@
 mod Abbot {
     use starknet::{ContractAddress, get_caller_address};
 
-    use aura::interfaces::IAbbot::IAbbot;
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray::{BoundedWad, Wad};
+    use opus::interfaces::IAbbot::IAbbot;
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray::{BoundedWad, Wad};
 
     #[storage]
     struct Storage {
@@ -39,13 +39,13 @@ mod Abbot {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveOpened {
         #[key]
         user: ContractAddress,
@@ -53,7 +53,7 @@ mod Abbot {
         trove_id: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveClosed {
         #[key]
         trove_id: u64

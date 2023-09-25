@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
-use aura::interfaces::IAbsorber::IBlesserDispatcher;
-use aura::utils::wadray::Wad;
+use opus::interfaces::IAbsorber::IBlesserDispatcher;
+use opus::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {

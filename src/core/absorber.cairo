@@ -10,16 +10,16 @@ mod Absorber {
     use integer::u256_safe_divmod;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
-    use aura::core::roles::AbsorberRoles;
+    use opus::core::roles::AbsorberRoles;
 
-    use aura::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
+    use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
 
     //
     // Constants

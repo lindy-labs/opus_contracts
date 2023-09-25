@@ -1,2 +1,3 @@
-# Aura's Monorepo
-Implementation of Aura's architecture.
+# Opus
+
+Starknet contracts of [Opus](https://opus.money).

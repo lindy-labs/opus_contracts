@@ -2,7 +2,7 @@ use debug::PrintTrait;
 use integer::BoundedInt;
 use math::Oneable;
 
-use aura::utils::math::pow;
+use opus::utils::math::pow;
 
 const WAD_DECIMALS: u8 = 18;
 const WAD_SCALE: u128 = 1000000000000000000;
@@ -428,7 +428,7 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
-// Oneable 
+// Oneable
 
 impl WadOneable of Oneable<Wad> {
     #[inline(always)]

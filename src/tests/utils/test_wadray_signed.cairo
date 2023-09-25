@@ -2,10 +2,10 @@ mod tests {
     use debug::PrintTrait;
     use math::Oneable;
 
-    use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
 
     #[test]

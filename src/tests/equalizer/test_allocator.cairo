@@ -2,15 +2,16 @@ mod TestAllocator {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::AllocatorRoles;
+    use opus::core::allocator::Allocator;
+    use opus::core::roles::AllocatorRoles;
 
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use aura::utils::wadray::Ray;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use opus::utils::wadray::Ray;
 
-    use aura::tests::equalizer::utils::EqualizerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::equalizer::utils::EqualizerUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(20000000000)]
@@ -86,6 +87,14 @@ mod TestAllocator {
         assert(percentages == new_percentages, 'wrong percentages');
         assert(recipients.len() == 4, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
+
+        let mut expected_events: Span<Allocator::Event> = array![
+            Allocator::Event::AllocationUpdated(
+                Allocator::AllocationUpdated { recipients, percentages }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(allocator.contract_address, expected_events);
     }
 
     #[test]
