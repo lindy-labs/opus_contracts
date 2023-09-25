@@ -18,12 +18,12 @@ mod FlashBorrower {
 
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         FlashLoancall_dataReceived: FlashLoancall_dataReceived,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct FlashLoancall_dataReceived {
         initiator: ContractAddress,
         token: ContractAddress,

@@ -1,5 +1,6 @@
 mod TestFlashmint {
     use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
 
     use opus::core::flashmint::FlashMint;
 
@@ -10,6 +11,7 @@ mod TestFlashmint {
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WAD_ONE};
 
+    use opus::tests::common;
     use opus::tests::flashmint::flash_borrower::FlashBorrower;
     use opus::tests::flashmint::utils::FlashmintUtils;
     use opus::tests::shrine::utils::ShrineUtils;
@@ -53,13 +55,81 @@ mod TestFlashmint {
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
-        flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
+        let flash_mint_caller: ContractAddress = common::non_zero_address();
+        set_contract_address(flash_mint_caller);
+
+        let first_loan_amt: u256 = 1;
+        flashmint.flash_loan(borrower, shrine, first_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');
-        flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, calldata);
+
+        let second_loan_amt: u256 = FlashmintUtils::DEFAULT_MINT_AMOUNT;
+        flashmint.flash_loan(borrower, shrine, second_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 2');
-        flashmint.flash_loan(borrower, shrine, (1000 * WAD_ONE).into(), calldata);
+
+        let third_loan_amt: u256 = (1000 * WAD_ONE).into();
+        flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
-    // TODO: check event emissions for correct calldata
+
+        let mut expected_events: Span<FlashMint::Event> = array![
+            FlashMint::Event::FlashMint(
+                FlashMint::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: first_loan_amt
+                }
+            ),
+            FlashMint::Event::FlashMint(
+                FlashMint::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: second_loan_amt
+                }
+            ),
+            FlashMint::Event::FlashMint(
+                FlashMint::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: third_loan_amt
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(flashmint.contract_address, expected_events);
+
+        let mut expected_events: Span<FlashBorrower::Event> = array![
+            FlashBorrower::Event::FlashLoancall_dataReceived(
+                FlashBorrower::FlashLoancall_dataReceived {
+                    initiator: flash_mint_caller,
+                    token: shrine,
+                    amount: first_loan_amt,
+                    fee: 0,
+                    call_data: calldata,
+                }
+            ),
+            FlashBorrower::Event::FlashLoancall_dataReceived(
+                FlashBorrower::FlashLoancall_dataReceived {
+                    initiator: flash_mint_caller,
+                    token: shrine,
+                    amount: second_loan_amt,
+                    fee: 0,
+                    call_data: calldata,
+                }
+            ),
+            FlashBorrower::Event::FlashLoancall_dataReceived(
+                FlashBorrower::FlashLoancall_dataReceived {
+                    initiator: flash_mint_caller,
+                    token: shrine,
+                    amount: third_loan_amt,
+                    fee: 0,
+                    call_data: calldata,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(borrower, expected_events);
     }
 
     #[test]
