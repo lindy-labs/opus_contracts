@@ -417,6 +417,137 @@ mod TestShrine {
         shrine.set_threshold(ShrineUtils::invalid_yang_addr(), ShrineUtils::YANG1_THRESHOLD.into());
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update_rates_pass() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(ShrineUtils::admin());
+
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        shrine
+            .update_rates(
+                yangs,
+                array![
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                ]
+                    .span()
+            );
+
+        let expected_rate_era: u64 = 2;
+        assert(shrine.get_current_rate_era() == expected_rate_era, 'wrong rate era');
+
+        let mut expected_rates: Span<Ray> = array![
+            ShrineUtils::YANG1_BASE_RATE.into(),
+            ShrineUtils::YANG2_BASE_RATE.into(),
+            ShrineUtils::YANG3_BASE_RATE.into(),
+        ]
+            .span();
+
+        let mut yangs_copy = yangs;
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let expected_rate = *expected_rates.pop_front().unwrap();
+                    assert(
+                        shrine.get_yang_rate(*yang, expected_rate_era) == expected_rate,
+                        'wrong rate'
+                    );
+                },
+                Option::None => { break; }
+            };
+        };
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_unauthorized() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(common::badguy());
+        shrine
+            .update_rates(
+                ShrineUtils::three_yang_addrs(),
+                array![
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                ]
+                    .span()
+            );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: yangs.len != new_rates.len', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_array_length_mismatch() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(ShrineUtils::admin());
+        shrine
+            .update_rates(
+                ShrineUtils::three_yang_addrs(),
+                array![Shrine::USE_PREV_BASE_RATE.into(), Shrine::USE_PREV_BASE_RATE.into(),].span()
+            );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Too few yangs', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_too_few_yangs() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(ShrineUtils::admin());
+        shrine
+            .update_rates(
+                ShrineUtils::two_yang_addrs_reversed(),
+                array![Shrine::USE_PREV_BASE_RATE.into(), Shrine::USE_PREV_BASE_RATE.into(),].span()
+            );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_invalid_yangs() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(ShrineUtils::admin());
+        shrine
+            .update_rates(
+                array![
+                    ShrineUtils::yang1_addr(),
+                    ShrineUtils::yang2_addr(),
+                    ShrineUtils::invalid_yang_addr(),
+                ]
+                    .span(),
+                array![
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                ]
+                    .span()
+            );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Incorrect rate update', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_not_all_yangs() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        set_contract_address(ShrineUtils::admin());
+        shrine
+            .update_rates(
+                array![
+                    ShrineUtils::yang1_addr(), ShrineUtils::yang2_addr(), ShrineUtils::yang1_addr(),
+                ]
+                    .span(),
+                array![
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    Shrine::USE_PREV_BASE_RATE.into(),
+                    21000000000000000000000000_u128.into(), // 2.1% (Ray)
+                ]
+                    .span()
+            );
+    }
+
     //
     // Tests - Shrine kill
     //

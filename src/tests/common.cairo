@@ -17,7 +17,7 @@ use opus::interfaces::IERC20::{
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::erc20::ERC20;
-use opus::types::{AssetBalance, Reward};
+use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray;
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
@@ -242,6 +242,23 @@ fn assert_asset_balances_equalish(
             Option::Some(a) => {
                 let b: AssetBalance = *b.pop_front().unwrap();
                 assert(*a.address == b.address, 'wrong asset address');
+                assert_equalish(*a.amount, b.amount, error, message);
+            },
+            Option::None => { break; }
+        };
+    };
+}
+
+fn assert_yang_balances_equalish(
+    mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252
+) {
+    assert(a.len() == b.len(), message);
+
+    loop {
+        match a.pop_front() {
+            Option::Some(a) => {
+                let b: YangBalance = *b.pop_front().unwrap();
+                assert(*a.yang_id == b.yang_id, 'wrong yang ID');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None => { break; }

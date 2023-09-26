@@ -414,9 +414,9 @@ mod Shrine {
             self.yang_prices.read((yang_id, interval))
         }
 
-        fn get_yang_rate(self: @ContractState, yang: ContractAddress, idx: u64) -> Ray {
+        fn get_yang_rate(self: @ContractState, yang: ContractAddress, rate_era: u64) -> Ray {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.yang_rates.read((yang_id, idx))
+            self.yang_rates.read((yang_id, rate_era))
         }
 
         fn get_current_rate_era(self: @ContractState) -> u64 {
@@ -593,10 +593,8 @@ mod Shrine {
             let yangs_len = yangs.len();
             let num_yangs: u32 = self.yangs_count.read();
 
-            assert(
-                yangs_len == new_rates.len() && yangs_len == num_yangs,
-                'SH: yangs.len != new_rates.len'
-            );
+            assert(yangs_len == num_yangs, 'SH: Too few yangs');
+            assert(yangs_len == new_rates.len(), 'SH: yangs.len != new_rates.len');
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
             let latest_rate_era_interval: u64 = self.rates_intervals.read(latest_rate_era);
@@ -1028,15 +1026,18 @@ mod Shrine {
                     trove_id, trove_yang_balances, WadZeroable::zero()
                 );
 
+            // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
+            let yang_id_to_array_idx_offset: u32 = 1;
+
             let mut added_yangs: Array<YangBalance> = ArrayTrait::new();
             if updated_trove_yang_balances.is_some() {
                 let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
                 loop {
                     match updated_trove_yang_balances.pop_front() {
                         Option::Some(updated_yang_balance) => {
-                            let trove_yang_balance: Wad = self
-                                .deposits
-                                .read((*updated_yang_balance.yang_id, trove_id));
+                            let trove_yang_balance: Wad = *trove_yang_balances
+                                .at(*updated_yang_balance.yang_id - yang_id_to_array_idx_offset)
+                                .amount;
                             let increment: Wad = *updated_yang_balance.amount - trove_yang_balance;
                             if increment.is_non_zero() {
                                 added_yangs
@@ -2188,7 +2189,11 @@ mod Shrine {
                                     if yang_id == *original_yang_balance.yang_id {
                                         updated_trove_yang_balances
                                             .append(
-                                                YangBalance { yang_id, amount: yang_increment }
+                                                YangBalance {
+                                                    yang_id,
+                                                    amount: *original_yang_balance.amount
+                                                        + yang_increment
+                                                }
                                             );
                                     } else {
                                         updated_trove_yang_balances
