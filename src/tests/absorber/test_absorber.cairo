@@ -951,6 +951,9 @@ mod TestAbsorber {
 
         // Second epoch starts here
         // Step 3
+        let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - Absorber::INITIAL_SHARES.into();
+
         let second_provider = AbsorberUtils::provider_2();
         let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
@@ -1005,6 +1008,9 @@ mod TestAbsorber {
         let first_provider_before_absorbed_bals = common::get_token_balances(
             yangs, first_provider.into()
         );
+
+        let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - Absorber::INITIAL_SHARES.into();
 
         set_contract_address(first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
