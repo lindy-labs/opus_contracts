@@ -1,5 +1,4 @@
 mod GateUtils {
-    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedInt;
     use starknet::{
@@ -9,17 +8,17 @@ mod GateUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::gate::Gate;
-    use aura::interfaces::IERC20::{
+    use opus::core::gate::Gate;
+    use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
-    use aura::tests::common;
-    use aura::tests::erc20::ERC20;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
+    use opus::tests::erc20::ERC20;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     //
     // Constants

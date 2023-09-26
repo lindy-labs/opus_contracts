@@ -2,12 +2,12 @@
 mod Abbot {
     use starknet::{ContractAddress, get_caller_address};
 
-    use aura::interfaces::IAbbot::IAbbot;
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray::{BoundedWad, Wad};
+    use opus::interfaces::IAbbot::IAbbot;
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray::{BoundedWad, Wad};
 
     #[storage]
     struct Storage {
@@ -39,13 +39,13 @@ mod Abbot {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveOpened {
         #[key]
         user: ContractAddress,
@@ -53,7 +53,7 @@ mod Abbot {
         trove_id: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveClosed {
         #[key]
         trove_id: u64
@@ -84,7 +84,7 @@ mod Abbot {
         }
 
         fn get_user_trove_ids(self: @ContractState, user: ContractAddress) -> Span<u64> {
-            let mut trove_ids: Array<u64> = Default::default();
+            let mut trove_ids: Array<u64> = ArrayTrait::new();
             let user_troves_count: u64 = self.user_troves_count.read(user);
             let mut idx: u64 = 0;
 
@@ -132,9 +132,7 @@ mod Abbot {
                     Option::Some(yang_asset) => {
                         self.deposit_helper(new_trove_id, user, *yang_asset);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -166,9 +164,7 @@ mod Abbot {
                         }
                         self.withdraw_helper(trove_id, user, *yang, yang_amount);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

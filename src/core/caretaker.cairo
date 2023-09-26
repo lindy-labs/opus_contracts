@@ -3,19 +3,19 @@ mod Caretaker {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use aura::core::roles::CaretakerRoles;
+    use opus::core::roles::CaretakerRoles;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker::ICaretaker;
-    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, Wad};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::ICaretaker;
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Constants
@@ -41,17 +41,17 @@ mod Caretaker {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         Shut: Shut,
         Release: Release,
         Reclaim: Reclaim,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Shut {}
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Release {
         #[key]
         user: ContractAddress,
@@ -60,7 +60,7 @@ mod Caretaker {
         assets: Span<AssetBalance>
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Reclaim {
         #[key]
         user: ContractAddress,
@@ -81,8 +81,7 @@ mod Caretaker {
         sentinel: ContractAddress,
         equalizer: ContractAddress
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(CaretakerRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -109,7 +108,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut releasable_assets: Array<AssetBalance> = Default::default();
+            let mut releasable_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             loop {
@@ -126,9 +125,7 @@ mod Caretaker {
                         releasable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break releasable_assets.span();
-                    },
+                    Option::None => { break releasable_assets.span(); },
                 };
             }
         }
@@ -146,7 +143,7 @@ mod Caretaker {
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
 
-            let mut reclaimable_assets: Array<AssetBalance> = Default::default();
+            let mut reclaimable_assets: Array<AssetBalance> = ArrayTrait::new();
             let caretaker = get_contract_address();
             let mut yangs_copy = yangs;
             loop {
@@ -157,15 +154,11 @@ mod Caretaker {
                             .balance_of(caretaker)
                             .try_into()
                             .unwrap();
-                        let asset_amt: Wad = wadray::rmul_rw(
-                            pct_to_reclaim, caretaker_balance.into()
-                        );
+                        let asset_amt: Wad = wadray::rmul_rw(capped_pct, caretaker_balance.into());
                         reclaimable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
-                    Option::None => {
-                        break reclaimable_assets.span();
-                    },
+                    Option::None => { break reclaimable_assets.span(); },
                 };
             }
         }
@@ -218,9 +211,7 @@ mod Caretaker {
                         );
                         sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -259,7 +250,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut released_assets: Array<AssetBalance> = Default::default();
+            let mut released_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             // Loop over yangs deposited in trove and transfer to trove owner
@@ -280,9 +271,7 @@ mod Caretaker {
                         };
                         released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -342,9 +331,7 @@ mod Caretaker {
                             .transfer(caller, (*reclaimable_asset.amount).into());
                         assert(success, 'CA: Asset transfer failed');
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 

@@ -1,13 +1,12 @@
 #[starknet::contract]
 mod Allocator {
-    use array::ArrayTrait;
     use starknet::ContractAddress;
 
-    use aura::core::roles::AllocatorRoles;
+    use opus::core::roles::AllocatorRoles;
 
-    use aura::interfaces::IAllocator::IAllocator;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
+    use opus::interfaces::IAllocator::IAllocator;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     // Helper constant to set the starting index for iterating over the recipients
     // and percentages in the order they were added
@@ -19,8 +18,8 @@ mod Allocator {
         recipients_count: u32,
         // Starts from index 1
         // Keeps track of the address for each recipient by index
-        // Note that the index count of recipients stored in this mapping may exceed the 
-        // current `recipients_count`. This will happen if any previous allocations had 
+        // Note that the index count of recipients stored in this mapping may exceed the
+        // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
         recipients: LegacyMap::<u32, ContractAddress>,
@@ -34,12 +33,12 @@ mod Allocator {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AllocationUpdated: AllocationUpdated,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct AllocationUpdated {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
@@ -56,8 +55,7 @@ mod Allocator {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(AllocatorRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(AllocatorRoles::default_admin_role()));
 
         self.set_allocation_helper(recipients, percentages);
     }
@@ -75,8 +73,8 @@ mod Allocator {
         // Returns a tuple of ordered arrays of recipients' addresses and their respective
         // percentage share of newly minted surplus debt.
         fn get_allocation(self: @ContractState) -> (Span<ContractAddress>, Span<Ray>) {
-            let mut recipients: Array<ContractAddress> = Default::default();
-            let mut percentages: Array<Ray> = Default::default();
+            let mut recipients: Array<ContractAddress> = ArrayTrait::new();
+            let mut percentages: Array<Ray> = ArrayTrait::new();
 
             let mut idx: u32 = LOOP_START;
             let loop_end: u32 = self.recipients_count.read() + LOOP_START;
@@ -144,9 +142,7 @@ mod Allocator {
 
                         idx += 1;
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

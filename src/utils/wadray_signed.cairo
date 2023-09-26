@@ -1,8 +1,8 @@
 use math::Oneable;
 
 
-use aura::utils::wadray;
-use aura::utils::wadray::{Ray, RAY_ONE, Wad};
+use opus::utils::wadray;
+use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
@@ -48,7 +48,7 @@ impl SignedRayTryIntoRay of TryInto<SignedRay, Ray> {
         if !self.sign {
             return Option::Some(Ray { val: self.val });
         } else {
-            return Option::None(());
+            return Option::None;
         }
     }
 }
@@ -141,7 +141,7 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
         if lhs.sign != rhs.sign {
             lhs.sign
         } else {
-            (lhs.val == rhs.val) | ((lhs.val < rhs.val) ^ lhs.sign)
+            (lhs.val == rhs.val) || ((lhs.val < rhs.val) ^ lhs.sign)
         }
     }
 
@@ -150,7 +150,7 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
         if lhs.sign != rhs.sign {
             !lhs.sign
         } else {
-            (lhs.val == rhs.val) | ((lhs.val > rhs.val) ^ lhs.sign)
+            (lhs.val == rhs.val) || ((lhs.val > rhs.val) ^ lhs.sign)
         }
     }
 
@@ -159,7 +159,7 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
         if lhs.sign != rhs.sign {
             lhs.sign
         } else {
-            (lhs.val != rhs.val) & ((lhs.val < rhs.val) ^ lhs.sign)
+            (lhs.val != rhs.val) && ((lhs.val < rhs.val) ^ lhs.sign)
         }
     }
 
@@ -168,7 +168,7 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
         if lhs.sign != rhs.sign {
             !lhs.sign
         } else {
-            (lhs.val != rhs.val) & ((lhs.val > rhs.val) ^ lhs.sign)
+            (lhs.val != rhs.val) && ((lhs.val > rhs.val) ^ lhs.sign)
         }
     }
 }
@@ -200,5 +200,5 @@ fn _felt_abs(a: felt252) -> felt252 {
 
 // Returns the sign of the product in signed multiplication (or quotient in division)
 fn sign_from_mul(lhs_sign: bool, rhs_sign: bool) -> bool {
-    (!lhs_sign & rhs_sign) | (lhs_sign & !rhs_sign)
+    (!lhs_sign && rhs_sign) || (lhs_sign && !rhs_sign)
 }

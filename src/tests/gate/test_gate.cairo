@@ -1,22 +1,23 @@
 // NOTE: no need to test access control in Gate because only Sentinel, as
 //       declared in constructor args when deploying, can call the gate
 
-#[cfg(test)]
 mod TestGate {
     use debug::PrintTrait;
     use starknet::{ContractAddress, contract_address_try_from_felt252};
     use starknet::testing::set_contract_address;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_SCALE, Wad};
+    use opus::core::gate::Gate;
 
-    use aura::tests::gate::utils::GateUtils;
-    use aura::tests::gate::utils::GateUtils::WBTC_SCALE;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{WAD_SCALE, Wad};
+
+    use opus::tests::gate::utils::GateUtils;
+    use opus::tests::gate::utils::GateUtils::WBTC_SCALE;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(10000000000)]
@@ -38,7 +39,7 @@ mod TestGate {
     #[test]
     #[available_gas(10000000000)]
     fn test_wbtc_gate_deploy() {
-        // WBTC has different decimals (8) than ETH / Aura (18)
+        // WBTC has different decimals (8) than ETH / opus (18)
         let (shrine, wbtc, gate) = GateUtils::wbtc_gate_deploy();
         let gate = IGateDispatcher { contract_address: gate };
 
@@ -60,6 +61,7 @@ mod TestGate {
         GateUtils::add_eth_as_yang(shrine, eth);
 
         let user = GateUtils::eth_hoarder();
+        let trove_id = common::TROVE_1;
         GateUtils::approve_gate_for_token(gate, eth, user);
 
         let asset_amt = 20_u128 * WAD_SCALE;
@@ -68,7 +70,7 @@ mod TestGate {
         set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_yang_amt: Wad = gate.enter(user, common::TROVE_1, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
 
         let eth = IERC20Dispatcher { contract_address: eth };
 
@@ -76,6 +78,14 @@ mod TestGate {
         assert(enter_yang_amt.val == asset_amt, 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
+
+        let mut expected_events: Span<Gate::Event> = array![
+            Gate::Event::Enter(
+                Gate::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(gate.contract_address, expected_events);
     }
 
     #[test]
@@ -85,6 +95,7 @@ mod TestGate {
         GateUtils::add_wbtc_as_yang(shrine, wbtc);
 
         let user = GateUtils::wbtc_hoarder();
+        let trove_id = common::TROVE_1;
         GateUtils::approve_gate_for_token(gate, wbtc, user);
 
         let asset_amt = 3_u128 * WBTC_SCALE;
@@ -93,7 +104,7 @@ mod TestGate {
         set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_yang_amt: Wad = gate.enter(user, common::TROVE_1, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
 
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
@@ -101,6 +112,14 @@ mod TestGate {
         assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
+
+        let mut expected_events: Span<Gate::Event> = array![
+            Gate::Event::Enter(
+                Gate::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(gate.contract_address, expected_events);
     }
 
     #[test]
@@ -131,6 +150,14 @@ mod TestGate {
         assert(
             eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance'
         );
+
+        let mut expected_events: Span<Gate::Event> = array![
+            Gate::Event::Exit(
+                Gate::Exit { user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(gate.contract_address, expected_events);
     }
 
     #[test]

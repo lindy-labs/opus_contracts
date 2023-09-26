@@ -1,5 +1,4 @@
 mod EqualizerUtils {
-    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
@@ -7,17 +6,17 @@ mod EqualizerUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use aura::core::allocator::Allocator;
-    use aura::core::equalizer::Equalizer;
-    use aura::core::roles::ShrineRoles;
+    use opus::core::allocator::Allocator;
+    use opus::core::equalizer::Equalizer;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray::Ray;
+    use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::Ray;
 
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     //
     // Convenience helpers
@@ -87,9 +86,7 @@ mod EqualizerUtils {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -100,9 +97,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 

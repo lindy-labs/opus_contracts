@@ -7,35 +7,33 @@ mod PurgerUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use aura::core::absorber::Absorber;
-    use aura::core::purger::Purger;
-    use aura::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
+    use opus::core::absorber::Absorber;
+    use opus::core::purger::Purger;
+    use opus::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::math::pow;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
-    };
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::math::pow;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
-    use aura::tests::absorber::utils::AbsorberUtils;
-    use aura::tests::common;
-    use aura::tests::external::mock_pragma::{
+    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::common;
+    use opus::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
-    use aura::tests::external::utils::PragmaUtils;
-    use aura::tests::purger::flash_liquidator::{
+    use opus::tests::external::utils::PragmaUtils;
+    use opus::tests::purger::flash_liquidator::{
         FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
     };
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
 
@@ -96,11 +94,11 @@ mod PurgerUtils {
             (80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
             (96 * RAY_PERCENT).into(),
-            // theoretical upper bound beyond which a penalty is not guaranteed 
+            // theoretical upper bound beyond which a penalty is not guaranteed
             // for absorptions after deducting compensation, meaning providers
             // to the absorber will incur a loss for each absorption.
             (97 * RAY_PERCENT).into(),
-            // Note that this threshold should not be used because it makes absorber 
+            // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
             (99 * RAY_PERCENT).into()
         ]
@@ -125,11 +123,11 @@ mod PurgerUtils {
             (80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
             (96 * RAY_PERCENT).into(),
-            // theoretical upper bound beyond which a penalty is not guaranteed 
+            // theoretical upper bound beyond which a penalty is not guaranteed
             // for absorptions after deducting compensation, meaning providers
             // to the absorber will incur a loss for each absorption.
             (97 * RAY_PERCENT).into(),
-            // Note that this threshold should not be used because it makes absorber 
+            // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
             (99 * RAY_PERCENT).into()
         ]
@@ -195,14 +193,14 @@ mod PurgerUtils {
             ]
                 .span(),
             // Fifth threshold of 97% (Ray)
-            // This is the highest possible threshold because it may not be possible to charge a 
+            // This is the highest possible threshold because it may not be possible to charge a
             // penalty after deducting compensation at this LTV and beyond
             array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
                 (97 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct
             ]
                 .span(),
             // Sixth threshold of 99% (Ray)
-            // Note that this threshold should not be used because it makes absorber 
+            // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
             array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
                 (99 * RAY_PERCENT + 1).into(), exceed_hundred_pct
@@ -274,7 +272,7 @@ mod PurgerUtils {
             .span()
     }
 
-    // Generate interesting cases for absorber's yin balance based on the 
+    // Generate interesting cases for absorber's yin balance based on the
     // redistributed trove's debt to test absorption with partial redistribution
     fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         array![
@@ -482,12 +480,8 @@ mod PurgerUtils {
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
-                Option::Some(yang) => {
-                    shrine.set_threshold(*yang, threshold);
-                },
-                Option::None => {
-                    break;
-                },
+                Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
+                Option::None => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
@@ -512,10 +506,10 @@ mod PurgerUtils {
                         yang_price, (RAY_ONE.into() - pct_decrease)
                     );
                     let new_pragma_price: u128 = new_price.val / scale;
-                    // Note that `new_price` is more precise than `new_pragma_price` so 
+                    // Note that `new_price` is more precise than `new_pragma_price` so
                     // the `new_pragma_price` is a rounded down value of `new_price`.
-                    // `new_price` is used so that there is more control over the precision of 
-                    // the target LTV. 
+                    // `new_price` is used so that there is more control over the precision of
+                    // the target LTV.
                     shrine.advance(*yang, new_price);
 
                     PragmaUtils::mock_valid_price_update(
@@ -525,15 +519,13 @@ mod PurgerUtils {
                         current_ts
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    // Helper function to adjust a trove's LTV to the target by manipulating the 
+    // Helper function to adjust a trove's LTV to the target by manipulating the
     // yang prices
     fn adjust_prices_for_trove_ltv(
         shrine: IShrineDispatcher,
@@ -620,7 +612,7 @@ mod PurgerUtils {
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 
-    // Helper function to assert that an address received the expected amount of assets based 
+    // Helper function to assert that an address received the expected amount of assets based
     // on the before and after balances.
     // `before_asset_bals` and `after_asset_bals` should be retrieved using `get_token_balances`.
     fn assert_received_assets(
@@ -650,9 +642,7 @@ mod PurgerUtils {
                         after_asset_bal, expected_after_asset_bal, error_margin, message,
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

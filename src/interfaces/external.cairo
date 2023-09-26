@@ -1,4 +1,4 @@
-use aura::types::Pragma;
+use opus::types::Pragma;
 
 #[starknet::interface]
 trait IPragmaOracle<TContractState> {

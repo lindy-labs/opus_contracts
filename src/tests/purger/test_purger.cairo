@@ -1,34 +1,31 @@
-#[cfg(test)]
 mod TestPurger {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
-    use aura::core::absorber::Absorber;
-    use aura::core::purger::Purger;
-    use aura::core::roles::PurgerRoles;
+    use opus::core::absorber::Absorber;
+    use opus::core::purger::Purger;
+    use opus::core::roles::PurgerRoles;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
-        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
-    };
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
-    use aura::tests::absorber::utils::AbsorberUtils;
-    use aura::tests::common;
-    use aura::tests::common::{SpanPrintImpl};
-    use aura::tests::external::utils::PragmaUtils;
-    use aura::tests::flashmint::utils::FlashmintUtils;
-    use aura::tests::purger::flash_liquidator::{
+    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::common;
+    use opus::tests::common::{SpanPrintImpl};
+    use opus::tests::external::utils::PragmaUtils;
+    use opus::tests::flashmint::utils::FlashmintUtils;
+    use opus::tests::purger::flash_liquidator::{
         IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
     };
-    use aura::tests::purger::utils::PurgerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::purger::utils::PurgerUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
 
@@ -192,6 +189,78 @@ mod TestPurger {
     //
     // Tests - Liquidate
     //
+
+    // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
+    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
+    // `adjust_prices_for_trove_ltv` may not put the trove in the exact LTV as the threshold.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_preview_liquidate_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
+        let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_liquidation();
+
+        let trove_debt: Wad = (WAD_ONE * 1000).into();
+        let mut expected_max_close_amts: Span<Wad> = array![
+            284822000000000000000_u128.into(), // 284.822 (70% threshold)
+            386997000000000000000_u128.into(), // 386.997 (80% threshold)
+            603509000000000000000_u128.into(), // 603.509 (90% threshold)
+            908381000000000000000_u128.into(), // 908.381 (96% threshold)
+            992098000000000000000_u128.into(), // 992.098 (97% threshold)
+            trove_debt, // (99% threshold)
+        ]
+            .span();
+
+        let mut expected_penalty: Span<Ray> = array![
+            (3 * RAY_PERCENT).into(), // 3% (70% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (80% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (90% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (96% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (97% threshold)
+            10101000000000000000000000_u128.into(), // 1.0101% (99% threshold)
+        ]
+            .span();
+
+        loop {
+            match thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                        PurgerUtils::purger_deploy();
+
+                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+                    PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
+                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                        abbot, yangs, gates, trove_debt
+                    );
+
+                    let (_, _, value, before_debt) = shrine.get_trove_info(target_trove);
+                    PurgerUtils::adjust_prices_for_trove_ltv(
+                        shrine, mock_pragma, yangs, yang_pair_ids, value, before_debt, *threshold
+                    );
+
+                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                    PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+
+                    let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
+
+                    let expected_penalty = *expected_penalty.pop_front().unwrap();
+                    common::assert_equalish(
+                        penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty'
+                    );
+
+                    let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
+                    common::assert_equalish(
+                        max_close_amt,
+                        expected_max_close_amt,
+                        (WAD_ONE * 2).into(),
+                        'wrong max close amt'
+                    );
+                },
+                Option::None => { break; },
+            };
+        };
+    }
 
     #[test]
     #[available_gas(20000000000)]
@@ -436,15 +505,11 @@ mod TestPurger {
                                     shrine, yangs, abbot.get_troves_count()
                                 );
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -537,6 +602,89 @@ mod TestPurger {
     //
     // Tests - Absorb
     //
+
+    // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
+    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
+    // `adjust_prices_for_trove_ltv` may not put the trove in the exact LTV as the threshold.
+    #[test]
+    #[available_gas(20000000000000000)]
+    fn test_preview_absorb_below_trove_debt_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
+        let mut interesting_thresholds =
+            PurgerUtils::interesting_thresholds_for_absorption_below_trove_debt();
+        let mut target_ltvs: Span<Span<Ray>> =
+            PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+
+        let trove_debt: Wad = (WAD_ONE * 1000).into();
+        let expected_penalty: Ray = Purger::MAX_PENALTY.into();
+
+        let mut expected_max_close_amts: Span<Wad> = array![
+            593187000000000000000_u128.into(), // 593.187 (65% threshold, 71.18% LTV)
+            696105000000000000000_u128.into(), // 696.105 (70% threshold, 76.65% LTV)
+            842762000000000000000_u128.into(), // 842.762 (75% threshold, 82.13% LTV)
+            999945000000000000000_u128.into(), // 999.945 (78.74% threshold, 86.2203% LTV)
+        ]
+            .span();
+
+        loop {
+            match interesting_thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let mut target_ltv_arr = *target_ltvs.pop_front().unwrap();
+                    let target_ltv = *target_ltv_arr.pop_front().unwrap();
+
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                        PurgerUtils::purger_deploy();
+
+                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                        abbot, yangs, gates, trove_debt
+                    );
+
+                    let whale_trove: u64 = PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
+                    PurgerUtils::funded_absorber(
+                        shrine, abbot, absorber, yangs, gates, (trove_debt.val * 2).into()
+                    );
+                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                    let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+
+                    // Make the target trove absorbable
+                    PurgerUtils::adjust_prices_for_trove_ltv(
+                        shrine,
+                        mock_pragma,
+                        yangs,
+                        yang_pair_ids,
+                        start_value,
+                        before_debt,
+                        target_ltv
+                    );
+
+                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+
+                    PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
+
+                    let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
+
+                    common::assert_equalish(
+                        penalty,
+                        expected_penalty,
+                        (RAY_PERCENT / 10).into(), // 0.1%
+                        'wrong penalty'
+                    );
+
+                    let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
+                    common::assert_equalish(
+                        max_close_amt,
+                        expected_max_close_amt,
+                        (WAD_ONE / 10).into(),
+                        'wrong max close amt'
+                    );
+                },
+                Option::None => { break; },
+            };
+        };
+    }
 
     #[test]
     #[available_gas(20000000000)]
@@ -896,20 +1044,14 @@ mod TestPurger {
                                             shrine, yangs, abbot.get_troves_count()
                                         );
                                     },
-                                    Option::None => {
-                                        break;
-                                    },
+                                    Option::None => { break; },
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1007,8 +1149,6 @@ mod TestPurger {
                                                     'no interest accrued'
                                                 );
 
-                                                // Set threshold to 70% to test partial absorption when max close amount
-                                                // is less than trove's debt
                                                 PurgerUtils::set_thresholds(
                                                     shrine, yangs, *threshold
                                                 );
@@ -1311,9 +1451,7 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None => {
-                                                            break;
-                                                        },
+                                                        Option::None => { break; },
                                                     };
                                                 };
 
@@ -1324,21 +1462,15 @@ mod TestPurger {
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1573,21 +1705,15 @@ mod TestPurger {
                                                 shrine, yangs, abbot.get_troves_count()
                                             );
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1685,15 +1811,11 @@ mod TestPurger {
                                     shrine, yangs, abbot.get_troves_count()
                                 );
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1711,11 +1833,32 @@ mod TestPurger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
+        // This array should match `target_ltvs_by_threshold`. However, since only the first
+        // LTV in the inner span of `target_ltvs_by_threshold` has a non-zero penalty, and the
+        // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
+        // the array to be concise.
+        let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
+        let mut expected_penalties: Span<Ray> = array![
+            // First threshold of 78.75% (Ray)
+            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
+            // Second threshold of 80% (Ray)
+            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
+            // Third threshold of 90% (Ray)
+            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
+            // Fourth threshold of 96% (Ray)
+            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
+            // Fifth threshold of 97% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            // Sixth threshold of 99% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+        ]
+            .span();
+
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-
+                    let expected_penalty: Ray = *expected_penalties.pop_front().unwrap();
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -1768,8 +1911,19 @@ mod TestPurger {
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let (_, max_close_amt, _) = purger.preview_absorb(target_trove);
+                                let (penalty, max_close_amt, _) = purger
+                                    .preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
+                                if *target_ltv >= ninety_nine_pct {
+                                    assert(penalty.is_zero(), 'wrong penalty');
+                                } else {
+                                    common::assert_equalish(
+                                        penalty,
+                                        expected_penalty,
+                                        (RAY_PERCENT / 10).into(), // 0.1%
+                                        'wrong penalty'
+                                    )
+                                }
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
@@ -1785,15 +1939,11 @@ mod TestPurger {
                                     shrine, yangs, abbot.get_troves_count()
                                 );
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1904,9 +2054,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

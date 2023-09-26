@@ -4,21 +4,22 @@ mod TestCaretaker {
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::{CaretakerRoles, ShrineRoles};
+    use opus::core::caretaker::Caretaker;
+    use opus::core::roles::{CaretakerRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::caretaker::utils::CaretakerUtils;
-    use aura::tests::common;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::caretaker::utils::CaretakerUtils;
+    use opus::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
 
 
     #[test]
@@ -150,6 +151,12 @@ mod TestCaretaker {
         common::assert_equalish(
             caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance'
         );
+
+        let mut expected_events: Span<Caretaker::Event> = array![
+            Caretaker::Event::Shut(Caretaker::Shut {}),
+        ]
+            .span();
+        common::assert_events_emitted(caretaker.contract_address, expected_events);
     }
 
     #[test]
@@ -192,7 +199,7 @@ mod TestCaretaker {
         caretaker.shut();
 
         set_contract_address(user1);
-        let released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
+        let trove1_released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
 
         let user1_yang0_after_balance: u256 = y0.balance_of(user1);
         let user1_yang1_after_balance: u256 = y1.balance_of(user1);
@@ -202,7 +209,10 @@ mod TestCaretaker {
         let expected_release_y0: Wad = trove1_yang0_deposit
             - wadray::rmul_rw(backing, trove1_yang0_deposit);
         common::assert_equalish(
-            (*released_assets.at(0).amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
+            (*trove1_released_assets.at(0).amount).into(),
+            expected_release_y0,
+            eth_tolerance,
+            'y0 release'
         );
 
         // assert released amount for wbtc (need to deal w/ different decimals)
@@ -213,23 +223,23 @@ mod TestCaretaker {
         let expected_release_y1: Wad = wbtc_deposit
             - wadray::rmul_rw(backing, trove1_yang1_deposit);
         let actual_release_y1: Wad = wadray::fixed_point_to_wad(
-            *released_assets.at(1).amount, common::WBTC_DECIMALS
+            *trove1_released_assets.at(1).amount, common::WBTC_DECIMALS
         );
         common::assert_equalish(
             actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release'
         );
 
         // assert all deposits were released and assets are back in user's account
-        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
-        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
+        assert(*trove1_released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
+        assert(*trove1_released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
         assert(
             user1_yang0_after_balance == user1_yang0_before_balance
-                + (*released_assets.at(0).amount).into(),
+                + (*trove1_released_assets.at(0).amount).into(),
             'user1 yang0 after balance'
         );
         assert(
             user1_yang1_after_balance == user1_yang1_before_balance
-                + (*released_assets.at(1).amount).into(),
+                + (*trove1_released_assets.at(1).amount).into(),
             'user1 yang1 after balance'
         );
 
@@ -239,10 +249,58 @@ mod TestCaretaker {
 
         // sanity check that for user with only one yang, release reports a 0 asset amount
         set_contract_address(user2);
-        let released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
-        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
-        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
-        assert((*released_assets.at(1).amount).is_zero(), 'incorrect release');
+        let trove2_released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
+        assert(*trove2_released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
+        assert(*trove2_released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
+        assert((*trove2_released_assets.at(1).amount).is_zero(), 'incorrect release');
+
+        let mut expected_events: Span<Caretaker::Event> = array![
+            Caretaker::Event::Release(
+                Caretaker::Release {
+                    user: user1, trove_id: trove1_id, assets: trove1_released_assets,
+                }
+            ),
+            Caretaker::Event::Release(
+                Caretaker::Release {
+                    user: user2, trove_id: trove2_id, assets: trove2_released_assets,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(caretaker.contract_address, expected_events);
+    }
+
+    #[test]
+    #[available_gas(100000000)]
+    fn test_preview_reclaim_more_than_total_yin() {
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
+            CaretakerUtils::caretaker_deploy();
+
+        // user 1 with 10000 yin and 2 different yangs
+        let user1 = common::trove1_owner_addr();
+        let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
+        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        let trove1_id = common::open_trove_helper(
+            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+        );
+
+        set_contract_address(CaretakerUtils::admin());
+        caretaker.shut();
+
+        let reclaimable_assets: Span<AssetBalance> = caretaker
+            .preview_reclaim(trove1_forge_amt + WAD_ONE.into());
+        let caretaker_balances: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![caretaker.contract_address].span()
+        );
+        // Transform caretaker balance to a single array
+        let caretaker_balances_flattened: Span<u128> = array![
+            *caretaker_balances.at(0)[0], *caretaker_balances.at(1)[0],
+        ]
+            .span();
+        let expected_reclaimable_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, caretaker_balances_flattened
+        );
+        assert(reclaimable_assets == expected_reclaimable_assets, 'wrong reclaimable assets');
     }
 
     #[test]
@@ -287,7 +345,8 @@ mod TestCaretaker {
 
         // do the reclaiming
         set_contract_address(user1);
-        let reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(shrine.get_yin(user1));
+        let user1_yin: Wad = shrine.get_yin(user1);
+        let user1_reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(user1_yin);
 
         // assert none of user's yin is left
         assert(shrine.get_yin(user1).is_zero(), 'user yin balance');
@@ -307,8 +366,12 @@ mod TestCaretaker {
 
         assert(ct_yang0_diff == user1_yang0_diff, 'user1 yang0 diff');
         assert(ct_yang1_diff == user1_yang1_diff, 'user1 yang1 diff');
-        assert(ct_yang0_diff == (*reclaimed_assets.at(0).amount).into(), 'user1 reclaimed yang0');
-        assert(ct_yang1_diff == (*reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1');
+        assert(
+            ct_yang0_diff == (*user1_reclaimed_assets.at(0).amount).into(), 'user1 reclaimed yang0'
+        );
+        assert(
+            ct_yang1_diff == (*user1_reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1'
+        );
 
         //
         // scammer reclaim
@@ -322,7 +385,8 @@ mod TestCaretaker {
 
         // do the reclaiming
         set_contract_address(scammer);
-        let reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(shrine.get_yin(scammer));
+        let scammer_yin: Wad = shrine.get_yin(scammer);
+        let scammer_reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(scammer_yin);
 
         // assert all yin has been reclaimed
         assert(shrine.get_yin(scammer).is_zero(), 'scammer yin balance 2');
@@ -349,16 +413,31 @@ mod TestCaretaker {
         common::assert_equalish(ct_yang1_diff, scammer_yang1_diff, tolerance, 'scammer yang1 diff');
         common::assert_equalish(
             ct_yang0_diff,
-            (*reclaimed_assets.at(0).amount).into(),
+            (*scammer_reclaimed_assets.at(0).amount).into(),
             tolerance,
             'scammer reclaimed yang0'
         );
         common::assert_equalish(
             ct_yang1_diff,
-            (*reclaimed_assets.at(1).amount).into(),
+            (*scammer_reclaimed_assets.at(1).amount).into(),
             tolerance,
             'scammer reclaimed yang1'
         );
+
+        let mut expected_events: Span<Caretaker::Event> = array![
+            Caretaker::Event::Reclaim(
+                Caretaker::Reclaim {
+                    user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets,
+                }
+            ),
+            Caretaker::Event::Reclaim(
+                Caretaker::Reclaim {
+                    user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(caretaker.contract_address, expected_events);
     }
 
     #[test]
@@ -431,7 +510,16 @@ mod TestCaretaker {
 
         // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
-        assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2')
+        assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
+
+        let mut expected_events: Span<Caretaker::Event> = array![
+            Caretaker::Event::Shut(Caretaker::Shut {}),
+            Caretaker::Event::Release(
+                Caretaker::Release { user: user1, trove_id: trove1_id, assets: released_assets, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(caretaker.contract_address, expected_events);
     }
 
     #[test]

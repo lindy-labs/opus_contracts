@@ -1,0 +1,27 @@
+name: Caracal
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "nightly"
+
+      - name: Run Caracal
+        run: |
+          curl -LO https://github.com/crytic/caracal/releases/download/v0.2.2/caracal-v0.2.2-linux.tar.gz
+          tar -xvf caracal-v0.2.2-linux.tar.gz
+          ./caracal detect .

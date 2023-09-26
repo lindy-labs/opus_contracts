@@ -10,16 +10,16 @@ mod Absorber {
     use integer::u256_safe_divmod;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
-    use aura::core::roles::AbsorberRoles;
+    use opus::core::roles::AbsorberRoles;
 
-    use aura::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
+    use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
 
     //
     // Constants
@@ -214,8 +214,7 @@ mod Absorber {
         shrine: ContractAddress,
         sentinel: ContractAddress,
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(AbsorberRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(AbsorberRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
@@ -241,7 +240,7 @@ mod Absorber {
             let rewards_count: u8 = self.rewards_count.read();
 
             let mut reward_id: u8 = REWARDS_LOOP_START;
-            let mut rewards: Array<Reward> = Default::default();
+            let mut rewards: Array<Reward> = ArrayTrait::new();
 
             loop {
                 if reward_id == REWARDS_LOOP_START + rewards_count {
@@ -616,9 +615,7 @@ mod Absorber {
                                 current_absorption_id, total_recipient_shares, *asset_balance
                             );
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -886,7 +883,7 @@ mod Absorber {
         fn get_absorbed_assets_for_provider_helper(
             self: @ContractState, provider: ContractAddress, provision: Provision,
         ) -> Span<AssetBalance> {
-            let mut absorbed_assets: Array<AssetBalance> = Default::default();
+            let mut absorbed_assets: Array<AssetBalance> = ArrayTrait::new();
 
             let current_absorption_id: u32 = self.absorptions_count.read();
             let provided_absorption_id: u32 = self.provider_last_absorption.read(provider);
@@ -944,9 +941,7 @@ mod Absorber {
                         absorbed_assets
                             .append(AssetBalance { address: *asset, amount: absorbed_amt });
                     },
-                    Option::None => {
-                        break absorbed_assets.span();
-                    }
+                    Option::None => { break absorbed_assets.span(); }
                 };
             }
         }
@@ -963,9 +958,7 @@ mod Absorber {
                                 .transfer(to, (*asset_balance.amount).into());
                         }
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
         }
@@ -1017,7 +1010,7 @@ mod Absorber {
             let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
             let epoch: u32 = self.current_epoch.read();
-            let mut blessed_assets: Array<AssetBalance> = Default::default();
+            let mut blessed_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = 0;
 
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
@@ -1075,7 +1068,7 @@ mod Absorber {
         fn get_provider_accumulated_rewards(
             self: @ContractState, provider: ContractAddress, provision: Provision
         ) -> Span<AssetBalance> {
-            let mut accumulated_reward_assets: Array<AssetBalance> = Default::default();
+            let mut accumulated_reward_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             // Return empty arrays if the provider has no shares
@@ -1192,7 +1185,7 @@ mod Absorber {
             current_epoch: u32,
             mut accumulated_assets: Span<AssetBalance>
         ) -> Span<AssetBalance> {
-            let mut updated_assets: Array<AssetBalance> = Default::default();
+            let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
 
             loop {
                 match accumulated_assets.pop_front() {
@@ -1220,9 +1213,7 @@ mod Absorber {
                                 }
                             );
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 

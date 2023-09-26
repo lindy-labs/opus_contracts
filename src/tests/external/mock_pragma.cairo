@@ -1,4 +1,4 @@
-use aura::types::Pragma::PricesResponse;
+use opus::types::Pragma::PricesResponse;
 
 #[starknet::interface]
 trait IMockPragma<TContractState> {
@@ -10,8 +10,8 @@ trait IMockPragma<TContractState> {
 
 #[starknet::contract]
 mod MockPragma {
-    use aura::interfaces::external::IPragmaOracle;
-    use aura::types::Pragma::{DataType, PricesResponse};
+    use opus::interfaces::external::IPragmaOracle;
+    use opus::types::Pragma::{DataType, PricesResponse};
 
     use super::IMockPragma;
 
@@ -34,15 +34,9 @@ mod MockPragma {
     impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
         fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
             match data_type {
-                DataType::Spot(pair_id) => {
-                    self.price_response.read(pair_id)
-                },
-                DataType::Future(pair_id) => {
-                    self.price_response.read(pair_id)
-                },
-                DataType::Generic(pair_id) => {
-                    self.price_response.read(pair_id)
-                }
+                DataType::Spot(pair_id) => { self.price_response.read(pair_id) },
+                DataType::Future(pair_id) => { self.price_response.read(pair_id) },
+                DataType::Generic(pair_id) => { self.price_response.read(pair_id) }
             }
         }
     }

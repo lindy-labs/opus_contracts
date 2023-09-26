@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::utils::wadray::{Ray, Wad};
+use opus::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait ISentinel<TContractState> {

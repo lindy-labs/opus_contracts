@@ -2,11 +2,11 @@
 mod MockBlesser {
     use starknet::{ContractAddress, get_contract_address};
 
-    use aura::core::roles::BlesserRoles;
+    use opus::core::roles::BlesserRoles;
 
-    use aura::interfaces::IAbsorber::IBlesser;
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use opus::interfaces::IAbsorber::IBlesser;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
 
     #[storage]
     struct Storage {
@@ -23,7 +23,7 @@ mod MockBlesser {
         absorber: ContractAddress,
         bless_amt: u128
     ) {
-        AccessControl::initializer(admin);
+        AccessControl::initializer(admin, Option::None);
         AccessControl::grant_role_helper(BlesserRoles::default_admin_role(), absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });

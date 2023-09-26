@@ -1,28 +1,26 @@
 mod SentinelUtils {
-    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedU256;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
+        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::info::get_caller_address;
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::{SentinelRoles, ShrineRoles};
-    use aura::core::sentinel::Sentinel;
+    use opus::core::roles::{SentinelRoles, ShrineRoles};
+    use opus::core::sentinel::Sentinel;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, Ray};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, Ray};
 
-    use aura::tests::gate::utils::GateUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::gate::utils::GateUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
     const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
@@ -48,8 +46,8 @@ mod SentinelUtils {
     }
 
     //
-    // Test setup 
-    // 
+    // Test setup
+    //
 
     fn deploy_sentinel() -> (ISentinelDispatcher, ContractAddress) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();

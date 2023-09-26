@@ -2,20 +2,21 @@ mod TestAbbot {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
 
-    use aura::core::sentinel::Sentinel;
+    use opus::core::abbot::Abbot;
+    use opus::core::sentinel::Sentinel;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     use debug::PrintTrait;
 
@@ -42,7 +43,7 @@ mod TestAbbot {
             'wrong user trove ids'
         );
 
-        let mut yangs_total: Array<Wad> = Default::default();
+        let mut yangs_total: Array<Wad> = ArrayTrait::new();
         // Check yangs
         let mut yangs_copy = yangs;
         let mut deposited_amts_copy = deposited_amts;
@@ -67,9 +68,7 @@ mod TestAbbot {
                         'wrong trove yang balance #1'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -118,13 +117,22 @@ mod TestAbbot {
                         'wrong trove yang balance #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
         assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
+
+        let mut expected_events: Span<Abbot::Event> = array![
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: trove_id, }
+            ),
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(abbot.contract_address, expected_events);
     }
 
     #[test]
@@ -134,8 +142,8 @@ mod TestAbbot {
         let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
-        let yangs: Array<ContractAddress> = Default::default();
-        let yang_amts: Array<u128> = Default::default();
+        let yangs: Array<ContractAddress> = ArrayTrait::new();
+        let yang_amts: Array<u128> = ArrayTrait::new();
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
@@ -179,14 +187,18 @@ mod TestAbbot {
                 Option::Some(yang) => {
                     assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt.is_zero(), 'wrong trove debt');
+
+        let mut expected_events: Span<Abbot::Event> = array![
+            Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id, }),
+        ]
+            .span();
+        common::assert_events_emitted(abbot.contract_address, expected_events);
     }
 
     #[test]
@@ -231,9 +243,7 @@ mod TestAbbot {
                         'wrong yang amount #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -264,9 +274,7 @@ mod TestAbbot {
                         'wrong yang amount #3'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -517,7 +525,7 @@ mod TestAbbot {
 
         let mut expected_owner1_trove_ids: Array<u64> = array![first_trove_id, third_trove_id];
         let mut expected_owner2_trove_ids: Array<u64> = array![second_trove_id, fourth_trove_id];
-        let empty_user_trove_ids: Span<u64> = Default::default().span();
+        let empty_user_trove_ids: Span<u64> = ArrayTrait::new().span();
 
         assert(
             abbot.get_user_trove_ids(trove_owner1) == expected_owner1_trove_ids.span(),

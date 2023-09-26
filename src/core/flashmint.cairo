@@ -18,11 +18,11 @@
 mod FlashMint {
     use starknet::{ContractAddress, get_caller_address};
 
-    use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
-    use aura::interfaces::IFlashMint::IFlashMint;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray::Wad;
+    use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
+    use opus::interfaces::IFlashMint::IFlashMint;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
@@ -40,12 +40,12 @@ mod FlashMint {
 
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         FlashMint: FlashMint,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct FlashMint {
         #[key]
         initiator: ContractAddress,

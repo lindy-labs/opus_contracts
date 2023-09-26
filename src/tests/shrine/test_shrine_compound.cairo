@@ -1,22 +1,21 @@
-#[cfg(test)]
 mod TestShrineCompound {
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::shrine::Shrine;
+    use opus::core::shrine::Shrine;
 
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::Trove;
-    use aura::utils::exp::exp;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Trove;
+    use opus::utils::exp::exp;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
 
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     //
     // Tests - Trove estimate and charge
-    // 
+    //
 
     // Test for `charge` with all intervals between start and end inclusive updated.
     //
@@ -90,7 +89,7 @@ mod TestShrineCompound {
     // that does not have a price update.
     //
     // `X` in the diagram below indicates a missed interval.
-    // 
+    //
     // T+START------X-------T+END
     #[test]
     #[available_gas(20000000000)]
@@ -141,7 +140,7 @@ mod TestShrineCompound {
             skipped_interval_multiplier == RayZeroable::zero(), 'skipped multiplier is not zero'
         );
 
-        // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier` 
+        // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier`
         // updates `start_interval`.
         let end_interval: u64 = start_interval
             + (num_intervals_before_skip + num_intervals_after_skip);
@@ -243,7 +242,7 @@ mod TestShrineCompound {
 
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
 
-        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
+        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the
         // average values to be that at `T+LAST_UPDATED`.
         let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
             ShrineUtils::YANG1_BASE_RATE.into(),
@@ -278,7 +277,7 @@ mod TestShrineCompound {
     // Test for `charge` with "missed" price and multiplier updates after the start interval,
     // Start interval has a price and multiplier update.
     // End interval does not have a price or multiplier update.
-    // 
+    //
     // T+START/LAST_UPDATED-------------T+END
     #[test]
     #[available_gas(20000000000)]
@@ -328,7 +327,7 @@ mod TestShrineCompound {
 
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
 
-        // As the price and multiplier have not been updated since `T+START/LAST_UPDATED`, we expect the 
+        // As the price and multiplier have not been updated since `T+START/LAST_UPDATED`, we expect the
         // average values to be that at `T+START/LAST_UPDATED`.
         let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
             ShrineUtils::YANG1_BASE_RATE.into(),
@@ -521,7 +520,7 @@ mod TestShrineCompound {
         // Manually calculate the average since end interval does not have a cumulative value
         let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
 
-        // First, we get the cumulative price values available to us 
+        // First, we get the cumulative price values available to us
         // `T+LAST_UPDATED_AFTER_START` - `T+LAST_UPDATED_BEFORE_START`
         let (last_updated_price_before_start, last_updated_cumulative_price_before_start) = shrine
             .get_yang_price(yang1_addr, last_updated_interval_before_start);
@@ -580,7 +579,7 @@ mod TestShrineCompound {
     // Test for `charge` with "missed" price and multiplier update at the start interval.
     // Start interval does not have a price or multiplier update.
     // End interval has both price and multiplier update.
-    // 
+    //
     // T+LAST_UPDATED_BEFORE_START       T+START-------------T+END (with price update)
     //
     #[test]
@@ -680,7 +679,7 @@ mod TestShrineCompound {
         common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
-    // Tests for `charge` with three base rate updates and 
+    // Tests for `charge` with three base rate updates and
     // two yangs deposited into the trove
     #[test]
     #[available_gas(20000000000)]
@@ -696,7 +695,7 @@ mod TestShrineCompound {
         let yang1_addr: ContractAddress = *yangs.at(0);
         let yang2_addr: ContractAddress = *yangs.at(1);
 
-        let mut expected_events: Array<Shrine::Event> = Default::default();
+        let mut expected_events: Array<Shrine::Event> = ArrayTrait::new();
 
         // Setup base rates for calling `Shrine.update_rates`.
         // The base rates are set in the following format:
@@ -708,7 +707,7 @@ mod TestShrineCompound {
         //
         // Note that the arrays are created as a list of yang base rate updates
 
-        // `yang_base_rates_history_to_update` is used to perform the rate updates, while 
+        // `yang_base_rates_history_to_update` is used to perform the rate updates, while
         // `yang_base_rates_history_to_compound` is used to perform calculation of the compounded interest
         // The main difference between the two arrays are:
         // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_BASE_RATE`
@@ -794,9 +793,9 @@ mod TestShrineCompound {
             i += 1;
         };
 
-        let mut avg_multipliers: Array<Ray> = Default::default();
+        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
 
-        let mut avg_yang_prices_by_era: Array<Span<Wad>> = Default::default();
+        let mut avg_yang_prices_by_era: Array<Span<Wad>> = ArrayTrait::new();
 
         // Deposit yangs into trove and forge debt
         set_contract_address(ShrineUtils::admin());
@@ -840,7 +839,7 @@ mod TestShrineCompound {
             let era_end_interval: u64 = era_start_interval + BASE_RATE_UPDATE_SPACING;
 
             // Calculate average price of yangs over the era for calculating the compounded interest
-            let mut avg_yang_prices_for_era: Array<Wad> = Default::default();
+            let mut avg_yang_prices_for_era: Array<Wad> = ArrayTrait::new();
             let mut yangs_copy = yangs;
             loop {
                 match yangs_copy.pop_front() {
@@ -850,9 +849,7 @@ mod TestShrineCompound {
                         );
                         avg_yang_prices_for_era.append(yang_avg_price);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -875,7 +872,7 @@ mod TestShrineCompound {
 
                 // Check that base rates are updated correctly
                 let mut yangs_copy = yangs;
-                // Offset by 1 to discount the initial 
+                // Offset by 1 to discount the initial
                 let era: u32 = i.try_into().unwrap() + 1;
                 let mut expected_base_rates: Span<Ray> = *yang_base_rates_history_to_compound_copy
                     .at(era);
@@ -886,9 +883,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None => {
-                            break;
-                        },
+                        Option::None => { break; },
                     };
                 };
 

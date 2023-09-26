@@ -1,9 +1,9 @@
 use starknet::ContractAddress;
 
-use aura::types::{
+use opus::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
-use aura::utils::wadray::{Ray, Wad};
+use opus::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait IShrine<TContractState> {
@@ -17,7 +17,7 @@ trait IShrine<TContractState> {
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_total_debt(self: @TContractState) -> Wad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
-    fn get_yang_rate(self: @TContractState, yang: ContractAddress, idx: u64) -> Ray;
+    fn get_yang_rate(self: @TContractState, yang: ContractAddress, rate_era: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
     fn get_debt_ceiling(self: @TContractState) -> Wad;
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);

@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
-use aura::types::AssetBalance;
-use aura::utils::wadray::{Ray, Wad};
+use opus::types::AssetBalance;
+use opus::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait IPurger<TContractState> {

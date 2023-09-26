@@ -3,7 +3,7 @@ mod ERC20 {
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use aura::interfaces::IERC20::{IERC20, IMintable};
+    use opus::interfaces::IERC20::{IERC20, IMintable};
 
     #[storage]
     struct Storage {

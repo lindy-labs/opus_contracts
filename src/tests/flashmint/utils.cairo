@@ -1,5 +1,4 @@
 mod FlashmintUtils {
-    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
@@ -7,17 +6,17 @@ mod FlashmintUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use aura::core::flashmint::FlashMint;
-    use aura::core::roles::ShrineRoles;
+    use opus::core::flashmint::FlashMint;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WAD_ONE};
+    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WAD_ONE};
 
-    use aura::tests::flashmint::flash_borrower::FlashBorrower;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::flashmint::flash_borrower::FlashBorrower;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
     const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
@@ -39,7 +38,7 @@ mod FlashmintUtils {
             .unwrap_syscall();
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
-        // Grant flashmint contract the FLASHMINT role 
+        // Grant flashmint contract the FLASHMINT role
         set_contract_address(ShrineUtils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
         shrine_accesscontrol.grant_role(ShrineRoles::flash_mint(), flashmint_addr);
@@ -62,7 +61,7 @@ mod FlashmintUtils {
                 .span(),
         );
 
-        // Mint some yin in shrine 
+        // Mint some yin in shrine
         set_contract_address(ShrineUtils::admin());
         shrine_dispatcher.inject(ContractAddressZeroable::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)

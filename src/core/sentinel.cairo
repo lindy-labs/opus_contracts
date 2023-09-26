@@ -3,16 +3,16 @@ mod Sentinel {
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use aura::core::roles::SentinelRoles;
+    use opus::core::roles::SentinelRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::ISentinel;
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::YangSuspensionStatus;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::ISentinel;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::YangSuspensionStatus;
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
@@ -42,21 +42,21 @@ mod Sentinel {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
         GateKilled: GateKilled,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
         #[key]
         yang: ContractAddress,
         gate: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAssetMaxUpdated {
         #[key]
         yang: ContractAddress,
@@ -64,7 +64,7 @@ mod Sentinel {
         new_max: u128
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct GateKilled {
         #[key]
         yang: ContractAddress,
@@ -77,8 +77,7 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(SentinelRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
@@ -103,7 +102,7 @@ mod Sentinel {
         fn get_yang_addresses(self: @ContractState) -> Span<ContractAddress> {
             let mut idx: u64 = LOOP_START;
             let loop_end: u64 = self.yang_addresses_count.read() + LOOP_START;
-            let mut addresses: Array<ContractAddress> = Default::default();
+            let mut addresses: Array<ContractAddress> = ArrayTrait::new();
             loop {
                 if idx == loop_end {
                     break addresses.span();
@@ -288,7 +287,7 @@ mod Sentinel {
                 .shrine
                 .read()
                 .get_yang_suspension_status(yang);
-            assert(suspension_status == YangSuspensionStatus::None(()), 'SE: Yang suspended');
+            assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
             let current_total: u128 = gate.get_total_assets();
             let max_amt: u128 = self.yang_asset_max.read(yang);
             assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
