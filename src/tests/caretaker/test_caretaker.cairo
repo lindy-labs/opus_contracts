@@ -552,7 +552,9 @@ mod TestCaretaker {
 
     #[test]
     #[available_gas(100000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
     fn test_reclaim_insufficient_yin() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
             CaretakerUtils::caretaker_deploy();
