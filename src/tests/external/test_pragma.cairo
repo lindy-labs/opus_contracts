@@ -625,7 +625,7 @@ mod TestPragma {
         PragmaUtils::mock_valid_price_update(mock_pragma, dummy_token_pair_id, price, current_ts);
 
         set_contract_address(PragmaUtils::admin());
-        pragma.add_yang('DUMMY/USD', dummy_token);
+        pragma.add_yang(dummy_token_pair_id, dummy_token);
 
         let eth_token_addr = *yangs.at(0);
         let wbtc_token_addr = *yangs.at(1);
