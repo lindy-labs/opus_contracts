@@ -59,7 +59,7 @@ mod TestShrine {
             )
         ]
             .span();
-        common::assert_events_emitted(shrine_addr, expected_events);
+        common::assert_events_emitted(shrine_addr, expected_events, Option::None);
     }
 
     // Checks the following functions
@@ -85,7 +85,7 @@ mod TestShrine {
             )
         ]
             .span();
-        common::assert_events_emitted(shrine_addr, expected_events);
+        common::assert_events_emitted(shrine_addr, expected_events, Option::None);
 
         // Check debt ceiling
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -267,7 +267,7 @@ mod TestShrine {
             idx += 1;
         };
 
-        common::assert_events_emitted(shrine_addr, expected_events.span());
+        common::assert_events_emitted(shrine_addr, expected_events.span(), Option::None);
     }
 
     //
@@ -330,7 +330,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -383,7 +383,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -572,7 +572,7 @@ mod TestShrine {
 
         let expected_events: Span<Shrine::Event> = array![Shrine::Event::Killed(Shrine::Killed {}),]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -714,7 +714,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -801,7 +801,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -973,7 +973,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1065,7 +1065,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_event);
+        common::assert_events_emitted(shrine.contract_address, expected_event, Option::None);
     }
 
     #[test]
@@ -1104,7 +1104,7 @@ mod TestShrine {
             Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
@@ -1118,7 +1118,7 @@ mod TestShrine {
             Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1215,7 +1215,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1276,7 +1276,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1344,7 +1344,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1614,7 +1614,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         assert(
             yin.total_supply() == before_total_supply + inject_amt.into(), 'incorrect total supply'
@@ -1642,7 +1642,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
 
@@ -1862,7 +1862,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         shrine.update_yin_spot_price(second_yin_price);
         common::assert_equalish(
@@ -1875,7 +1875,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
@@ -1889,7 +1889,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
@@ -1903,7 +1903,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     //
@@ -1971,7 +1971,8 @@ mod TestShrine {
                     Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None,
         );
 
         // setting block time to a second before the suspension would be permanent
@@ -1992,7 +1993,8 @@ mod TestShrine {
                     Shrine::YangSuspensionUpdated { yang, suspension_ts: 0 }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None,
         );
     }
 
@@ -2037,7 +2039,8 @@ mod TestShrine {
                     Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None,
         );
 
         // check threshold (should be the same at the beginning)

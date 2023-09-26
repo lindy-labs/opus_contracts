@@ -123,7 +123,7 @@ mod TestSentinel {
             ),
         ]
             .span();
-        common::assert_events_emitted(sentinel.contract_address, expected_events);
+        common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod TestSentinel {
             ),
         ]
             .span();
-        common::assert_events_emitted(sentinel.contract_address, expected_events);
+        common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -497,7 +497,7 @@ mod TestSentinel {
             ),
         ]
             .span();
-        common::assert_events_emitted(sentinel.contract_address, expected_events);
+        common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
     }
 
     #[test]

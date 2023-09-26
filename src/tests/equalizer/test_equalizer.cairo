@@ -108,7 +108,7 @@ mod TestEqualizer {
             ),
         ]
             .span();
-        common::assert_events_emitted(equalizer.contract_address, expected_events);
+        common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -136,7 +136,7 @@ mod TestEqualizer {
             ),
         ]
             .span();
-        common::assert_events_emitted(equalizer.contract_address, expected_events);
+        common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
     }
 
     #[test]

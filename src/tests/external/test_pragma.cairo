@@ -1,4 +1,5 @@
 mod TestPragma {
+    use debug::PrintTrait;
     use integer::U256Zeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
@@ -14,11 +15,11 @@ mod TestPragma {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::Pragma::PricesResponse;
+    use opus::types::Pragma::{PricesResponse, PriceValidityThresholds, YangSettings};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray;
-    use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
+    use opus::utils::wadray::{WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     use opus::tests::common;
     use opus::tests::external::mock_pragma::{
@@ -48,8 +49,8 @@ mod TestPragma {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_setup() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
+    fn test_pragma_setup() {
+        let (_, pragma, _, mock_pragma, yangs, _) = PragmaUtils::pragma_with_yangs();
 
         // Check permissions
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
@@ -57,6 +58,47 @@ mod TestPragma {
 
         assert(pragma_ac.get_admin() == admin, 'wrong admin');
         assert(pragma_ac.get_roles(admin) == PragmaRoles::default_admin_role(), 'wrong admin role');
+
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::OracleAddressUpdated(
+                Pragma::OracleAddressUpdated {
+                    old_address: ContractAddressZeroable::zero(),
+                    new_address: mock_pragma.contract_address,
+                }
+            ),
+            Pragma::Event::UpdateFrequencyUpdated(
+                Pragma::UpdateFrequencyUpdated {
+                    old_frequency: 0, new_frequency: PragmaUtils::UPDATE_FREQUENCY,
+                }
+            ),
+            Pragma::Event::PriceValidityThresholdsUpdated(
+                Pragma::PriceValidityThresholdsUpdated {
+                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
+                    new_thresholds: PriceValidityThresholds {
+                        freshness: PragmaUtils::FRESHNESS_THRESHOLD,
+                        sources: PragmaUtils::SOURCES_THRESHOLD
+                    },
+                }
+            ),
+            Pragma::Event::YangAdded(
+                Pragma::YangAdded {
+                    index: 1,
+                    settings: YangSettings {
+                        pair_id: PragmaUtils::ETH_USD_PAIR_ID, yang: *yangs.at(0),
+                    },
+                }
+            ),
+            Pragma::Event::YangAdded(
+                Pragma::YangAdded {
+                    index: 2,
+                    settings: YangSettings {
+                        pair_id: PragmaUtils::WBTC_USD_PAIR_ID, yang: *yangs.at(1),
+                    },
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -69,6 +111,22 @@ mod TestPragma {
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_price_validity_thresholds(new_freshness, new_sources);
+
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::PriceValidityThresholdsUpdated(
+                Pragma::PriceValidityThresholdsUpdated {
+                    old_thresholds: PriceValidityThresholds {
+                        freshness: PragmaUtils::FRESHNESS_THRESHOLD,
+                        sources: PragmaUtils::SOURCES_THRESHOLD
+                    },
+                    new_thresholds: PriceValidityThresholds {
+                        freshness: new_freshness, sources: new_sources
+                    },
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -139,12 +197,22 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_oracle_address_pass() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
+        let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_address: ContractAddress = common::non_zero_address();
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_oracle(new_address);
+
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::OracleAddressUpdated(
+                Pragma::OracleAddressUpdated {
+                    old_address: mock_pragma.contract_address, new_address,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -178,6 +246,16 @@ mod TestPragma {
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_update_frequency(new_frequency);
+
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::UpdateFrequencyUpdated(
+                Pragma::UpdateFrequencyUpdated {
+                    old_frequency: PragmaUtils::UPDATE_FREQUENCY, new_frequency,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -339,6 +417,7 @@ mod TestPragma {
 
         // Perform a price update with starting exchange rate of 1 yang to 1 asset
         let first_ts = get_block_timestamp() + 1;
+        set_block_timestamp(first_ts);
         let mut raw_eth_price: u128 = PragmaUtils::ETH_INIT_PRICE;
         PragmaUtils::mock_valid_price_update(
             mock_pragma,
@@ -355,6 +434,7 @@ mod TestPragma {
             first_ts
         );
 
+        set_contract_address(common::non_zero_address());
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
@@ -401,6 +481,17 @@ mod TestPragma {
             wbtc_price == (raw_wbtc_price * rebase_multiplier * WAD_SCALE).into(),
             'wrong rebased WBTC price'
         );
+
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::PricesUpdated(
+                Pragma::PricesUpdated { timestamp: first_ts, caller: common::non_zero_address(), }
+            ),
+            Pragma::Event::PricesUpdated(
+                Pragma::PricesUpdated { timestamp: next_ts, caller: common::non_zero_address(), }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -473,6 +564,7 @@ mod TestPragma {
         };
         mock_pragma.next_get_data_median(PragmaUtils::WBTC_USD_PAIR_ID, wbtc_response);
 
+        set_contract_address(common::non_zero_address());
         pragma_oracle.update_prices();
 
         let (after_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
@@ -481,7 +573,37 @@ mod TestPragma {
         assert(before_wbtc_price == after_wbtc_price, 'price should not be updated #2');
 
         assert(!pragma.probe_task(), 'should not be ready');
-    // TODO: check that `PricesUpdated` event is not emitted
+        // TODO: check that `PricesUpdated` event is not emitted
+        let mut expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::InvalidPriceUpdate(
+                Pragma::InvalidPriceUpdate {
+                    yang: *yangs.at(0),
+                    price: (PragmaUtils::ETH_INIT_PRICE * WAD_ONE).into(),
+                    pragma_last_updated_ts: current_ts.into(),
+                    pragma_num_sources: invalid_num_sources.into(),
+                    asset_amt_per_yang: WAD_ONE.into(),
+                }
+            ),
+            Pragma::Event::InvalidPriceUpdate(
+                Pragma::InvalidPriceUpdate {
+                    yang: *yangs.at(1),
+                    price: (PragmaUtils::WBTC_INIT_PRICE * WAD_ONE).into(),
+                    pragma_last_updated_ts: current_ts.into(),
+                    pragma_num_sources: invalid_num_sources.into(),
+                    asset_amt_per_yang: WAD_ONE.into(),
+                }
+            ),
+        ]
+            .span();
+        let mut should_not_emit: Span<Pragma::Event> = array![
+            Pragma::Event::PricesUpdated(
+                Pragma::PricesUpdated { timestamp: current_ts, caller: common::non_zero_address(), }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(
+            pragma.contract_address, expected_events, Option::Some(should_not_emit)
+        );
     }
 
     // TODO: This can only be completed when we are able to test if an event is emitted
