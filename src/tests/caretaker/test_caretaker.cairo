@@ -1,4 +1,3 @@
-// TODO: reclaim not enough yin
 mod TestCaretaker {
     use debug::PrintTrait;
     use starknet::{ContractAddress};
