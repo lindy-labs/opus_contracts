@@ -141,7 +141,9 @@ mod TestAbsorber {
         //             }
         //         )
         //     );
-        common::assert_events_emitted(absorber.contract_address, expected_events.span());
+        common::assert_events_emitted(
+            absorber.contract_address, expected_events.span(), Option::None
+        );
     }
 
     #[test]
@@ -205,7 +207,7 @@ mod TestAbsorber {
             Absorber::Event::Killed(Absorber::Killed {}),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -336,7 +338,7 @@ mod TestAbsorber {
                     }
 
                     common::assert_events_emitted(
-                        absorber.contract_address, expected_events.span()
+                        absorber.contract_address, expected_events.span(), Option::None
                     );
 
                     assert(
@@ -641,7 +643,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 
     // Sequence of events
@@ -787,7 +789,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(
@@ -860,7 +862,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 
 
@@ -945,7 +947,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Second epoch starts here
         // Step 3
@@ -993,7 +995,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
@@ -1091,7 +1093,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 
     // Test 1 wei above initial shares remaining after absorption.
@@ -1171,7 +1173,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 
     // Sequence of events:
@@ -1226,7 +1228,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Second epoch starts here
         // Step 3
@@ -1402,7 +1404,9 @@ mod TestAbsorber {
                         ),
                     ]
                         .span();
-                    common::assert_events_emitted(absorber.contract_address, expected_events);
+                    common::assert_events_emitted(
+                        absorber.contract_address, expected_events, Option::None
+                    );
 
                     // Step 3
                     let first_provider_before_reward_bals = common::get_token_balances(
@@ -1732,7 +1736,9 @@ mod TestAbsorber {
             idx += 1;
         };
 
-        common::assert_events_emitted(absorber.contract_address, expected_events.span());
+        common::assert_events_emitted(
+            absorber.contract_address, expected_events.span(), Option::None
+        );
     }
 
     #[test]
@@ -1984,7 +1990,7 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Set OPUS to inactive
         set_contract_address(AbsorberUtils::admin());
@@ -2094,6 +2100,6 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events);
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
     }
 }

@@ -318,7 +318,7 @@ fn assert_events_emitted<
     impl TEvent: starknet::Event<T>,
     impl TPartialEq: PartialEq<T>,
 >(
-    addr: ContractAddress, events: Span<T>
+    addr: ContractAddress, events: Span<T>, should_not_emit: Option<Span<T>>
 ) {
     // Fetch all emitted events
     let mut emitted_events: Array<T> = ArrayTrait::new();
@@ -338,14 +338,16 @@ fn assert_events_emitted<
         };
     };
 
+    let emitted_events = emitted_events.span();
+
     // Loop over each event, and check if it was emitted
     let mut events_copy = events;
     loop {
         match events_copy.pop_front() {
             Option::Some(event) => {
-                let mut emitted_events_copy = emitted_events.span();
+                let mut emitted_events_copy = emitted_events;
                 if emitted_events_copy.contains(*event) {
-                    break;
+                    continue;
                 } else {
                     panic(array!['Event not emitted']);
                 }
@@ -353,6 +355,23 @@ fn assert_events_emitted<
             Option::None => { break; },
         };
     };
+
+    if should_not_emit.is_some() {
+        let mut should_not_emit_copy = should_not_emit.unwrap();
+        loop {
+            match should_not_emit_copy.pop_front() {
+                Option::Some(event) => {
+                    let mut emitted_events_copy = emitted_events;
+                    if emitted_events_copy.contains(*event) {
+                        panic(array!['Event should not emit']);
+                    } else {
+                        continue;
+                    }
+                },
+                Option::None => { break; },
+            };
+        };
+    }
 }
 
 fn drop_all_events(addr: ContractAddress) {

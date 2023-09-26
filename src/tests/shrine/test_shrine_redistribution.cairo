@@ -337,7 +337,7 @@ mod TestShrineRedistribution {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -517,7 +517,7 @@ mod TestShrineRedistribution {
                                 ]
                                     .span();
                                 common::assert_events_emitted(
-                                    shrine.contract_address, expected_events
+                                    shrine.contract_address, expected_events, Option::None
                                 );
                             // We are unable to test the trove value in a sensible way here because
                             // the yang price has not been updated to reflect any rebasing of the
@@ -893,7 +893,7 @@ mod TestShrineRedistribution {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
