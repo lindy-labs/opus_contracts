@@ -555,8 +555,7 @@ mod TestCaretaker {
         expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_reclaim_insufficient_yin() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _, yangs, gates) = CaretakerUtils::caretaker_deploy();
 
         // opening a trove
         let user1 = common::trove1_owner_addr();
