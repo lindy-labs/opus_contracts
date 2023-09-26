@@ -549,4 +549,48 @@ mod TestCaretaker {
         set_contract_address(CaretakerUtils::admin());
         caretaker.reclaim(WAD_ONE.into());
     }
+
+    #[test]
+    #[available_gas(100000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    fn test_reclaim_insufficient_yin() {
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
+            CaretakerUtils::caretaker_deploy();
+
+        // opening a trove
+        let user1 = common::trove1_owner_addr();
+        let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
+        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        let trove1_id = common::open_trove_helper(
+            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+        );
+
+        // Transferring some of user1's yin to someone else
+        // This is because in `shrine.melt_helper`, which is called by `shrine.eject`, which is called by `reclaim`, 
+        // the yin `amount` is deducted first from the user's balance and only then from the total.
+        // 
+        // This means that if the user attempts to deduct more yin than exists, the transaction will obviously fail
+        // since the user can't have more yin than the total supply. However, if the yin was first deducted from 
+        // `total_yin` in `shrine.melt_helper, then the transaction would still fail, but this test wouldn't 
+        // actually be testing the correct thing, which is that users shouldn't be able to deduct more yin than they personally 
+        // have.
+        //
+        // In other words, we do transfer to ensure that the test still tests the correct thing regardless of the order
+        // of operations in `shrine.melt_helper`. 
+        let user2 = common::trove2_owner_addr();
+        let transfer_amt: u256 = (4000 * WAD_ONE).into();
+        set_contract_address(user1);
+        IERC20Dispatcher { contract_address: shrine.contract_address }
+            .transfer(user2, transfer_amt);
+
+        // Activating global settlement mode
+        set_contract_address(CaretakerUtils::admin());
+        caretaker.shut();
+
+        // User1 attempts to reclaim more yin than they have 
+        set_contract_address(user1);
+        let user1_yin: Wad = shrine.get_yin(user1);
+        // This should revert
+        caretaker.reclaim(user1_yin + 1_u128.into());
+    }
 }
