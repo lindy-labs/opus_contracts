@@ -780,6 +780,9 @@ mod TestAbsorber {
                     reward_assets: preview_reward_assets
                 }
             ),
+        ]
+            .span();
+        let mut should_not_emit: Span<Absorber::Event> = array![
             Absorber::Event::Bestow(
                 Absorber::Bestow {
                     assets: expected_rewarded_assets,
@@ -789,7 +792,9 @@ mod TestAbsorber {
             ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
+        common::assert_events_emitted(
+            absorber.contract_address, expected_events, Option::Some(should_not_emit)
+        );
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(
@@ -853,16 +858,11 @@ mod TestAbsorber {
                     reward_assets: preview_reward_assets
                 }
             ),
-            Absorber::Event::Bestow(
-                Absorber::Bestow {
-                    assets: expected_rewarded_assets,
-                    total_recipient_shares: expected_recipient_shares,
-                    epoch: expected_current_epoch,
-                }
-            ),
         ]
             .span();
-        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
+        common::assert_events_emitted(
+            absorber.contract_address, expected_events, Option::Some(should_not_emit)
+        );
     }
 
 
