@@ -573,11 +573,11 @@ mod TestCaretaker {
         // 
         // This means that if the user attempts to deduct more yin than exists, the transaction will obviously fail
         // since the user can't have more yin than the total supply. However, if the yin was first deducted from 
-        // `total_yin` in `shrine.melt_helper, then the transaction would still fail, but this test wouldn't 
+        // `total_yin` in `shrine.melt_helper`, then the transaction would still fail, but this test wouldn't 
         // actually be testing the correct thing, which is that users shouldn't be able to deduct more yin than they personally 
         // have.
         //
-        // In other words, we do transfer to ensure that the test still tests the correct thing regardless of the order
+        // In other words, we do the transfer to ensure that the test still tests the correct thing regardless of the order
         // of operations in `shrine.melt_helper`. 
         let user2 = common::trove2_owner_addr();
         let transfer_amt: u256 = (4000 * WAD_ONE).into();
