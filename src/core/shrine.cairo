@@ -1294,7 +1294,10 @@ mod Shrine {
         }
 
         fn melt_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
-            self.yin.write(user, self.yin.read(user) - amount);
+            let user_balance: Wad = self.yin.read(user);
+            assert(user_balance >= amount, 'SH: Insufficient yin balance');
+
+            self.yin.write(user, user_balance - amount);
             self.total_yin.write(self.total_yin.read() - amount);
 
             self

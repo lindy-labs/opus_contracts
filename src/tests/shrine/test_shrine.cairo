@@ -1232,7 +1232,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_melt_insufficient_yin() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
