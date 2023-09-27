@@ -335,12 +335,8 @@ mod Absorber {
             let total_shares: Wad = self.total_shares.read();
             let current_provider_shares: Wad = self
                 .convert_epoch_shares(provision.epoch, current_epoch, provision.shares);
-            let include_pending_rewards: bool = if !is_operational_helper(total_shares)
-                || current_provider_shares.is_zero() {
-                false
-            } else {
-                true
-            };
+            let include_pending_rewards: bool = is_operational_helper(total_shares)
+                && current_provider_shares.is_non_zero();
             let (absorbed_assets, rewarded_assets) = self
                 .get_absorbed_and_rewarded_assets_for_provider(
                     provider, provision, include_pending_rewards
