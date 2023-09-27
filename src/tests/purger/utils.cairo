@@ -1,4 +1,5 @@
 mod PurgerUtils {
+    use cmp::min;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -552,12 +553,14 @@ mod PurgerUtils {
         common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
     }
 
+    // Returns a tuple of the expected freed percentage of trove value and the 
+    // freed asset amounts
     fn get_expected_liquidation_assets(
         trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray
-    ) -> Span<u128> {
+    ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
-        let expected_freed_pct: Ray = wadray::rdiv_ww(freed_amt, trove_value);
-        common::scale_span_by_pct(trove_asset_amts, expected_freed_pct)
+        let expected_freed_pct: Ray = min(wadray::rdiv_ww(freed_amt, trove_value), RAY_ONE.into());
+        (expected_freed_pct, common::scale_span_by_pct(trove_asset_amts, expected_freed_pct))
     }
 
     fn assert_trove_is_healthy(
