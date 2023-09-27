@@ -705,16 +705,52 @@ mod TestAbsorber {
             'wrong provider shares'
         );
 
-        let expected_current_epoch: u32 = Absorber::FIRST_EPOCH + 1;
-        assert(second_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
+        let second_epoch: u32 = Absorber::FIRST_EPOCH + 1;
+        assert(second_provider_info.epoch == second_epoch, 'wrong provider epoch');
 
         let second_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
         // Step 4
+        common::drop_all_events(absorber.contract_address);
+
         let second_update_assets: Span<u128> = AbsorberUtils::second_update_assets();
         AbsorberUtils::simulate_update_with_pct_to_drain(
             shrine, absorber, yangs, second_update_assets, RAY_SCALE.into()
         );
+
+        let third_epoch: u32 = second_epoch + 1;
+        assert(absorber.get_current_epoch() == third_epoch, 'wrong epoch');
+        assert(!absorber.is_operational(), 'should not be operational');
+
+        let expected_recipient_shares = second_epoch_total_shares - Absorber::INITIAL_SHARES.into();
+        let expected_absorption_id = 2;
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, second_update_assets
+        );
+        let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            reward_tokens, reward_amts_per_blessing
+        );
+        let mut expected_events: Span<Absorber::Event> = array![
+            Absorber::Event::Gain(
+                Absorber::Gain {
+                    assets: expected_absorbed_assets,
+                    total_recipient_shares: expected_recipient_shares,
+                    epoch: second_epoch,
+                    absorption_id: expected_absorption_id
+                }
+            ),
+            // Rewards should be distributed together with the second full
+            // absorption
+            Absorber::Event::Bestow(
+                Absorber::Bestow {
+                    assets: expected_rewarded_assets,
+                    total_recipient_shares: expected_recipient_shares,
+                    epoch: second_epoch,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Step 5
         let first_provider_before_reward_bals = common::get_token_balances(
@@ -768,10 +804,9 @@ mod TestAbsorber {
             absorber, first_provider, reward_tokens
         );
 
-        let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            reward_tokens, reward_amts_per_blessing
-        );
-        let expected_recipient_shares = second_epoch_total_shares - Absorber::INITIAL_SHARES.into();
+        let third_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        assert(third_epoch_total_shares.is_zero(), 'wrong total shares');
+        let expected_recipient_shares = third_epoch_total_shares;
         let mut expected_events: Span<Absorber::Event> = array![
             Absorber::Event::Reap(
                 Absorber::Reap {
@@ -783,11 +818,13 @@ mod TestAbsorber {
         ]
             .span();
         let mut should_not_emit: Span<Absorber::Event> = array![
+            // No rewards should be bestowed because Absorber is inoperational
+            // after second absorption.
             Absorber::Event::Bestow(
                 Absorber::Bestow {
                     assets: expected_rewarded_assets,
                     total_recipient_shares: expected_recipient_shares,
-                    epoch: 1,
+                    epoch: second_epoch,
                 }
             ),
         ]
@@ -830,7 +867,7 @@ mod TestAbsorber {
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             second_epoch_total_shares,
-            expected_current_epoch,
+            second_epoch,
             reward_tokens,
             reward_amts_per_blessing,
             expected_blessings_multiplier
@@ -856,6 +893,18 @@ mod TestAbsorber {
                     provider: second_provider,
                     absorbed_assets: preview_absorbed_assets,
                     reward_assets: preview_reward_assets
+                }
+            ),
+        ]
+            .span();
+        let mut should_not_emit: Span<Absorber::Event> = array![
+            // No rewards should be bestowed because Absorber is inoperational
+            // after second absorption.
+            Absorber::Event::Bestow(
+                Absorber::Bestow {
+                    assets: expected_rewarded_assets,
+                    total_recipient_shares: expected_recipient_shares,
+                    epoch: third_epoch,
                 }
             ),
         ]
