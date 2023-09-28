@@ -1576,7 +1576,7 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABS: provision < min', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABS: provision < minimum', 'ENTRYPOINT_FAILED'))]
     fn test_provide_less_than_initial_shares_fail() {
         let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
