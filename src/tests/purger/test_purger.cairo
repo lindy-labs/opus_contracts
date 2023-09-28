@@ -1,13 +1,15 @@
 mod TestPurger {
-    use starknet::ContractAddress;
-    use starknet::testing::set_contract_address;
+    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use opus::core::absorber::Absorber;
     use opus::core::purger::Purger;
     use opus::core::roles::PurgerRoles;
+    use opus::core::shrine::Shrine;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -2028,5 +2030,91 @@ mod TestPurger {
                 Option::None => { break; },
             };
         };
+    }
+
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_liquidate_suspended_yang() {
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+            PurgerUtils::purger_deploy_with_searcher(
+            PurgerUtils::SEARCHER_YIN.into()
+        );
+
+        // user 1 opens a trove with ETH and BTC that is close to liquidation
+        // `funded_healthy_trove` supplies 2 ETH and 0.5 BTC totalling $9000 in value, so we 
+        // create $6000 of debt to ensure the trove is closer to liquidation
+        let trove_debt: Wad = (6000 * WAD_ONE).into();
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
+
+        // Delist BTC
+        let btc: ContractAddress = *yangs[1];
+
+        // Suspend BTC
+        set_contract_address(ShrineUtils::admin());
+        let current_timestamp: u64 = get_block_timestamp();
+        shrine.update_yang_suspension(btc, current_timestamp);
+
+        assert(shrine.is_healthy(target_trove), 'should still be healthy');
+
+        // The trove has $6000 in debt and $9000 in collateral. BTC's value must decrease
+        let (threshold, ltv, value, _) = shrine.get_trove_info(target_trove);
+
+        let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into();
+        let btc_threshold: Ray = ShrineUtils::YANG2_THRESHOLD.into();
+
+        let (eth_price, _, _) = shrine.get_current_yang_price(*yangs[0]);
+        let (btc_price, _, _) = shrine.get_current_yang_price(*yangs[1]);
+
+        let eth_value: Wad = eth_price * shrine.get_deposit(*yangs[0], target_trove);
+        let btc_value: Wad = btc_price * shrine.get_deposit(*yangs[1], target_trove);
+
+        // These represent the percentages of the total value of the trove each
+        // of the yangs respectively make up
+        let eth_weight: Ray = wadray::rdiv_ww(eth_value, value);
+        let btc_weight: Ray = wadray::rdiv_ww(btc_value, value);
+
+        // We need to decrease BTC's threshold until the trove threshold equals `ltv` 
+        // we derive the decrease factor from the following equation:
+        //
+        // NOTE: decrease factor is the value which, if we multiply BTC's threshold by it, will give us
+        // the threshold BTC must have in order for the trove's threshold to equal its LTV
+        //
+        // (eth_value / total_value) * eth_threshold + (btc_value / total_value) * btc_threshold * decrease_factor = ltv
+        // eth_weight * eth_threshold + btc_weight * btc_threshold * decrease_factor = ltv
+        // btc_weight * btc_threshold * decrease_factor = ltv - eth_weight * eth_threshold
+        // decrease_factor = (ltv - eth_weight * eth_threshold) / (btc_weight * btc_threshold)
+        let btc_threshold_decrease_factor: Ray = (ltv - eth_weight * eth_threshold)
+            / (btc_weight * btc_threshold);
+        let ts_diff: u64 = Shrine::SUSPENSION_GRACE_PERIOD
+            - wadray::scale_u128_by_ray(
+                Shrine::SUSPENSION_GRACE_PERIOD.into(), btc_threshold_decrease_factor
+            )
+                .try_into()
+                .unwrap();
+
+        // Adding one to offset any precision loss
+        let new_timestamp: u64 = current_timestamp + ts_diff + 1;
+        set_block_timestamp(new_timestamp);
+        let (threshold, _, _, _) = shrine.get_trove_info(target_trove);
+
+        assert(!shrine.is_healthy(target_trove), 'should be unhealthy');
+
+        // Liquidate the trove
+        let searcher = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        purger.liquidate(target_trove, trove_debt, searcher);
+
+        let (_, _, _, debt_after_liquidation) = shrine.get_trove_info(target_trove);
+
+        assert(debt_after_liquidation < trove_debt, 'trove not correctly liquidated');
+
+        assert(
+            IERC20Dispatcher { contract_address: shrine.contract_address }
+                .balance_of(searcher)
+                .try_into()
+                .unwrap() < PurgerUtils::SEARCHER_YIN,
+            'searcher yin not used'
+        )
     }
 }

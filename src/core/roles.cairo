@@ -151,7 +151,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
+        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES + UPDATE_YANG_SUSPENSION
     }
 
     #[inline(always)]
