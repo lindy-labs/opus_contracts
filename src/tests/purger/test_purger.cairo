@@ -18,7 +18,6 @@ mod TestPurger {
 
     use opus::tests::absorber::utils::AbsorberUtils;
     use opus::tests::common;
-    use opus::tests::common::{SpanPrintImpl};
     use opus::tests::external::utils::PragmaUtils;
     use opus::tests::flashmint::utils::FlashmintUtils;
     use opus::tests::purger::flash_liquidator::{
@@ -366,7 +365,11 @@ mod TestPurger {
 
         let (expected_freed_pct, expected_freed_amts) =
             PurgerUtils::get_expected_liquidation_assets(
-            PurgerUtils::target_trove_yang_asset_amts(), before_value, max_close_amt, penalty
+            PurgerUtils::target_trove_yang_asset_amts(),
+            before_value,
+            max_close_amt,
+            penalty,
+            Option::None
         );
         let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, expected_freed_amts
@@ -557,9 +560,9 @@ mod TestPurger {
                                     PurgerUtils::target_trove_yang_asset_amts(),
                                     before_value,
                                     max_close_amt,
-                                    penalty
+                                    penalty,
+                                    Option::None,
                                 );
-                                expected_freed_pct.print();
 
                                 let mut expected_events: Span<Purger::Event> = array![
                                     Purger::Event::Purged(
@@ -808,6 +811,8 @@ mod TestPurger {
             yangs, array![absorber.contract_address].span()
         );
 
+        common::drop_all_events(purger.contract_address);
+
         set_contract_address(caller);
         let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
@@ -858,9 +863,12 @@ mod TestPurger {
         );
 
         // Check that absorber has received collateral
-        let (expected_freed_pct, expected_freed_asset_amts) =
-            PurgerUtils::get_expected_liquidation_assets(
-            target_trove_yang_asset_amts, before_value, max_close_amt, penalty
+        let (_, expected_freed_asset_amts) = PurgerUtils::get_expected_liquidation_assets(
+            target_trove_yang_asset_amts,
+            before_value,
+            max_close_amt,
+            penalty,
+            Option::Some(expected_compensation_value)
         );
 
         let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
@@ -872,6 +880,31 @@ mod TestPurger {
             expected_freed_assets,
             10_u128, // error margin
             'wrong absorber asset balance',
+        );
+
+        let purged_event: Purger::Purged = common::pop_event_with_indexed_keys(
+            purger.contract_address
+        )
+            .unwrap();
+        common::assert_asset_balances_equalish(
+            purged_event.freed_assets,
+            expected_freed_assets,
+            10_u128,
+            'wrong freed assets for event'
+        );
+        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+        assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
+        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+        assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+
+        let compensate_event: Purger::Compensate = common::pop_event_with_indexed_keys(
+            purger.contract_address
+        )
+            .unwrap();
+        assert(
+            compensate_event == Purger::Compensate { recipient: caller, compensation },
+            'wrong Compensate event'
         );
     }
 
@@ -991,6 +1024,8 @@ mod TestPurger {
                                             yangs, array![absorber.contract_address].span()
                                         );
 
+                                        common::drop_all_events(purger.contract_address);
+
                                         set_contract_address(caller);
                                         let compensation: Span<AssetBalance> = purger
                                             .absorb(target_trove);
@@ -1057,7 +1092,8 @@ mod TestPurger {
                                             *target_trove_yang_asset_amts,
                                             before_value,
                                             close_amt,
-                                            penalty
+                                            penalty,
+                                            Option::Some(expected_compensation_value),
                                         );
 
                                         let expected_freed_assets: Span<AssetBalance> =
@@ -1113,6 +1149,49 @@ mod TestPurger {
                                             expected_recipient_trove_value,
                                             (WAD_ONE / 100).into(), // error margin
                                             'wrong recipient trove value'
+                                        );
+
+                                        let purged_event: Purger::Purged =
+                                            common::pop_event_with_indexed_keys(
+                                            purger.contract_address
+                                        )
+                                            .unwrap();
+                                        common::assert_asset_balances_equalish(
+                                            purged_event.freed_assets,
+                                            expected_freed_assets,
+                                            1_u128,
+                                            'wrong freed assets for event'
+                                        );
+                                        assert(
+                                            purged_event.trove_id == target_trove,
+                                            'wrong Purged trove ID'
+                                        );
+                                        assert(
+                                            purged_event.purge_amt == close_amt, 'wrong Purged amt'
+                                        );
+                                        assert(
+                                            purged_event.percentage_freed == expected_freed_pct,
+                                            'wrong Purged freed pct'
+                                        );
+                                        assert(
+                                            purged_event.funder == absorber.contract_address,
+                                            'wrong Purged funder'
+                                        );
+                                        assert(
+                                            purged_event.recipient == absorber.contract_address,
+                                            'wrong Purged recipient'
+                                        );
+
+                                        let compensate_event: Purger::Compensate =
+                                            common::pop_event_with_indexed_keys(
+                                            purger.contract_address
+                                        )
+                                            .unwrap();
+                                        assert(
+                                            compensate_event == Purger::Compensate {
+                                                recipient: caller, compensation
+                                            },
+                                            'wrong Compensate event'
                                         );
                                     },
                                     Option::None => { break; },
@@ -1326,6 +1405,8 @@ mod TestPurger {
                                                     'not less than close amount'
                                                 );
 
+                                                common::drop_all_events(purger.contract_address);
+
                                                 set_contract_address(caller);
                                                 let compensation: Span<AssetBalance> = purger
                                                     .absorb(target_trove);
@@ -1425,7 +1506,8 @@ mod TestPurger {
                                                     *target_trove_yang_asset_amts,
                                                     before_value,
                                                     close_amt,
-                                                    penalty
+                                                    penalty,
+                                                    Option::Some(expected_compensation_value),
                                                 );
                                                 let expected_freed_assets: Span<AssetBalance> =
                                                     common::combine_assets_and_amts(
@@ -1525,6 +1607,57 @@ mod TestPurger {
                                                         Option::None => { break; },
                                                     };
                                                 };
+
+                                                let purged_event: Purger::Purged =
+                                                    common::pop_event_with_indexed_keys(
+                                                    purger.contract_address
+                                                )
+                                                    .unwrap();
+                                                common::assert_asset_balances_equalish(
+                                                    purged_event.freed_assets,
+                                                    expected_freed_assets,
+                                                    1000_u128,
+                                                    'wrong freed assets for event'
+                                                );
+                                                assert(
+                                                    purged_event.trove_id == target_trove,
+                                                    'wrong Purged trove ID'
+                                                );
+                                                assert(
+                                                    purged_event.purge_amt == close_amt,
+                                                    'wrong Purged amt'
+                                                );
+                                                common::assert_equalish(
+                                                    purged_event.percentage_freed,
+                                                    expected_freed_pct,
+                                                    1000000_u128.into(),
+                                                    'wrong Purged freed pct'
+                                                );
+                                                assert(
+                                                    purged_event
+                                                        .funder == absorber
+                                                        .contract_address,
+                                                    'wrong Purged funder'
+                                                );
+                                                assert(
+                                                    purged_event
+                                                        .recipient == absorber
+                                                        .contract_address,
+                                                    'wrong Purged recipient'
+                                                );
+
+                                                let compensate_event: Purger::Compensate =
+                                                    common::pop_event_with_indexed_keys(
+                                                    purger.contract_address
+                                                )
+                                                    .unwrap();
+                                                assert(
+                                                    compensate_event == Purger::Compensate {
+                                                        recipient: caller, compensation
+                                                    },
+                                                    'wrong Compensate event'
+                                                );
+
                                                 absorber_yin_idx += 1;
                                             };
                                         },
@@ -1662,6 +1795,8 @@ mod TestPurger {
                                             let (_, _, expected_compensation_value) = purger
                                                 .preview_absorb(target_trove);
 
+                                            common::drop_all_events(purger.contract_address);
+
                                             set_contract_address(caller);
                                             let compensation: Span<AssetBalance> = purger
                                                 .absorb(target_trove);
@@ -1766,6 +1901,21 @@ mod TestPurger {
                                                 (WAD_ONE / 100).into(), // error margin
                                                 'wrong recipient trove value'
                                             );
+
+                                            // Note that this indirectly asserts that `Purged` 
+                                            // is not emitted if it does not revert because 
+                                            // `Purged` would have been emitted before `Compensate`
+                                            let compensate_event: Purger::Compensate =
+                                                common::pop_event_with_indexed_keys(
+                                                purger.contract_address
+                                            )
+                                                .unwrap();
+                                            assert(
+                                                compensate_event == Purger::Compensate {
+                                                    recipient: caller, compensation
+                                                },
+                                                'wrong Compensate event'
+                                            );
                                         },
                                         Option::None => { break; },
                                     };
@@ -1847,17 +1997,21 @@ mod TestPurger {
                                     before_debt,
                                     *target_ltv
                                 );
-                                let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                                let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
 
                                 PurgerUtils::assert_trove_is_absorbable(
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let (_, max_close_amt, _) = purger.preview_absorb(target_trove);
+                                let (penalty, max_close_amt, expected_compensation_value) = purger
+                                    .preview_absorb(target_trove);
                                 assert(max_close_amt < before_debt, 'close amount == debt');
 
-                                set_contract_address(PurgerUtils::random_user());
-                                purger.absorb(target_trove);
+                                common::drop_all_events(purger.contract_address);
+
+                                let caller: ContractAddress = PurgerUtils::random_user();
+                                set_contract_address(caller);
+                                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
                                 // Check that LTV is close to safety margin
                                 let (_, after_ltv, _, after_debt) = shrine
@@ -1868,6 +2022,61 @@ mod TestPurger {
                                 );
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
+
+                                let (expected_freed_pct, expected_freed_amts) =
+                                    PurgerUtils::get_expected_liquidation_assets(
+                                    PurgerUtils::target_trove_yang_asset_amts(),
+                                    before_value,
+                                    max_close_amt,
+                                    penalty,
+                                    Option::Some(expected_compensation_value)
+                                );
+                                let expected_freed_assets: Span<AssetBalance> =
+                                    common::combine_assets_and_amts(
+                                    yangs, expected_freed_amts
+                                );
+
+                                let purged_event: Purger::Purged =
+                                    common::pop_event_with_indexed_keys(
+                                    purger.contract_address
+                                )
+                                    .unwrap();
+                                common::assert_asset_balances_equalish(
+                                    purged_event.freed_assets,
+                                    expected_freed_assets,
+                                    1000_u128,
+                                    'wrong freed assets for event'
+                                );
+                                assert(
+                                    purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                );
+                                assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                common::assert_equalish(
+                                    purged_event.percentage_freed,
+                                    expected_freed_pct,
+                                    1000000_u128.into(),
+                                    'wrong Purged freed pct'
+                                );
+                                assert(
+                                    purged_event.funder == absorber.contract_address,
+                                    'wrong Purged funder'
+                                );
+                                assert(
+                                    purged_event.recipient == absorber.contract_address,
+                                    'wrong Purged recipient'
+                                );
+
+                                let compensate_event: Purger::Compensate =
+                                    common::pop_event_with_indexed_keys(
+                                    purger.contract_address
+                                )
+                                    .unwrap();
+                                assert(
+                                    compensate_event == Purger::Compensate {
+                                        recipient: caller, compensation
+                                    },
+                                    'wrong Compensate event'
+                                );
                             },
                             Option::None => { break; },
                         };
@@ -1964,12 +2173,12 @@ mod TestPurger {
                                     *target_ltv
                                 );
 
-                                let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                                let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
                                 PurgerUtils::assert_trove_is_absorbable(
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let (penalty, max_close_amt, _) = purger
+                                let (penalty, max_close_amt, expected_compensation_value) = purger
                                     .preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
                                 if *target_ltv >= ninety_nine_pct {
@@ -1983,8 +2192,11 @@ mod TestPurger {
                                     )
                                 }
 
-                                set_contract_address(PurgerUtils::random_user());
-                                purger.absorb(target_trove);
+                                common::drop_all_events(purger.contract_address);
+
+                                let caller: ContractAddress = PurgerUtils::random_user();
+                                set_contract_address(caller);
+                                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
                                 // Check that LTV is close to safety margin
                                 let (_, after_ltv, after_value, after_debt) = shrine
@@ -1992,6 +2204,62 @@ mod TestPurger {
                                 assert(after_ltv.is_zero(), 'wrong debt after liquidation');
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
+
+                                let target_trove_yang_asset_amts: Span<u128> =
+                                    PurgerUtils::target_trove_yang_asset_amts();
+                                let (_, expected_freed_asset_amts) =
+                                    PurgerUtils::get_expected_liquidation_assets(
+                                    target_trove_yang_asset_amts,
+                                    before_value,
+                                    max_close_amt,
+                                    penalty,
+                                    Option::Some(expected_compensation_value)
+                                );
+
+                                let expected_freed_assets: Span<AssetBalance> =
+                                    common::combine_assets_and_amts(
+                                    yangs, expected_freed_asset_amts,
+                                );
+
+                                let purged_event: Purger::Purged =
+                                    common::pop_event_with_indexed_keys(
+                                    purger.contract_address
+                                )
+                                    .unwrap();
+                                assert(
+                                    purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                );
+                                assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                assert(
+                                    purged_event.percentage_freed == RAY_ONE.into(),
+                                    'wrong Purged freed pct'
+                                );
+                                assert(
+                                    purged_event.funder == absorber.contract_address,
+                                    'wrong Purged funder'
+                                );
+                                assert(
+                                    purged_event.recipient == absorber.contract_address,
+                                    'wrong Purged recipient'
+                                );
+                                common::assert_asset_balances_equalish(
+                                    purged_event.freed_assets,
+                                    expected_freed_assets,
+                                    100000_u128,
+                                    'wrong freed assets for event'
+                                );
+
+                                let compensate_event: Purger::Compensate =
+                                    common::pop_event_with_indexed_keys(
+                                    purger.contract_address
+                                )
+                                    .unwrap();
+                                assert(
+                                    compensate_event == Purger::Compensate {
+                                        recipient: caller, compensation
+                                    },
+                                    'wrong Compensate event'
+                                );
                             },
                             Option::None => { break; },
                         };
