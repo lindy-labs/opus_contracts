@@ -642,14 +642,13 @@ mod ShrineUtils {
     // We do not check for strict equality because there may be loss of precision when 
     // exceptionally redistributed yang are pulled into troves.
     fn assert_total_yang_invariant(
-        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
-        let mut yangs_copy = yangs;
         let mut yang_id: u32 = 1;
         loop {
-            match yangs_copy.pop_front() {
+            match yangs.pop_front() {
                 Option::Some(yang) => {
                     let initial_amt: Wad = shrine.get_initial_yang_amt(*yang);
 
@@ -679,9 +678,13 @@ mod ShrineUtils {
                         trove_id += 1;
                     };
 
-                    assert(
-                        troves_cumulative_amt + initial_amt <= shrine.get_yang_total(*yang),
-                        'yang invariant failed'
+                    let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
+                    let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
+                    assert(derived_yang_amt <= actual_yang_amt, 'yang invariant failed #1');
+
+                    let error_margin: Wad = 100_u128.into();
+                    common::assert_equalish(
+                        derived_yang_amt, actual_yang_amt, error_margin, 'yang invariant failed #2'
                     );
 
                     yang_id += 1;
@@ -696,7 +699,7 @@ mod ShrineUtils {
     // We do not check for strict equality because there may be loss of precision when 
     // redistributed debt are pulled into troves.
     fn assert_total_debt_invariant(
-        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
@@ -721,10 +724,9 @@ mod ShrineUtils {
 
         let redistributions_count: u32 = shrine.get_redistributions_count();
 
-        let mut yangs_copy = yangs;
         let mut errors = WadZeroable::zero();
         loop {
-            match yangs_copy.pop_front() {
+            match yangs.pop_front() {
                 Option::Some(yang) => {
                     let mut redistribution_id: u32 = redistributions_count;
                     loop {
@@ -752,11 +754,16 @@ mod ShrineUtils {
         };
 
         total += errors;
-        assert(total <= shrine.get_total_debt(), 'debt invariant failed');
+
+        let actual_debt: Wad = shrine.get_total_debt();
+        assert(total <= actual_debt, 'debt invariant failed #1');
+
+        let error_margin: Wad = 10_u128.into();
+        common::assert_equalish(total, actual_debt, error_margin, 'debt invariant failed #2');
     }
 
     fn assert_shrine_invariants(
-        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
+        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
         assert_total_debt_invariant(shrine, yangs, troves_count);

@@ -1456,7 +1456,7 @@ mod TestPurger {
                                                 };
 
                                                 ShrineUtils::assert_shrine_invariants(
-                                                    shrine, yangs, abbot.get_troves_count()
+                                                    shrine, yangs, abbot.get_troves_count(),
                                                 );
 
                                                 absorber_yin_idx += 1;
@@ -1702,7 +1702,7 @@ mod TestPurger {
                                             );
 
                                             ShrineUtils::assert_shrine_invariants(
-                                                shrine, yangs, abbot.get_troves_count()
+                                                shrine, yangs, abbot.get_troves_count(),
                                             );
                                         },
                                         Option::None => { break; },
