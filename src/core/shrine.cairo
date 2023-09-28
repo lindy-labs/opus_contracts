@@ -1315,7 +1315,10 @@ mod Shrine {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Fails if amount > amount of yang deposited in the given trove
-            let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) - amount;
+            let trove_balance: Wad = self.deposits.read((yang_id, trove_id));
+            assert(trove_balance >= amount, 'SH: Insufficient yang balance');
+
+            let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
 
             self.charge(trove_id);
@@ -2334,7 +2337,10 @@ mod Shrine {
             let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
             // Transferring the Yin
-            self.yin.write(sender, self.yin.read(sender) - amount_wad);
+            let sender_balance: Wad = self.yin.read(sender);
+            assert(sender_balance >= amount_wad, 'SH: Insufficient yin balance');
+
+            self.yin.write(sender, sender_balance - amount_wad);
             self.yin.write(recipient, self.yin.read(recipient) + amount_wad);
 
             self.emit(Transfer { from: sender, to: recipient, value: amount });
@@ -2359,6 +2365,7 @@ mod Shrine {
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
             if current_allowance != BoundedU256::max() {
+                assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
         }
