@@ -40,8 +40,8 @@ mod AbsorberUtils {
 
     const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
 
-    const opus_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-    const VEopus_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
+    const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
+    const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
 
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
@@ -127,11 +127,11 @@ mod AbsorberUtils {
     }
 
     fn opus_token_deploy() -> ContractAddress {
-        common::deploy_token('opus', 'opus', 18, 0_u256, admin())
+        common::deploy_token('Opus', 'OPUS', 18, 0_u256, admin())
     }
 
     fn veopus_token_deploy() -> ContractAddress {
-        common::deploy_token('veopus', 'veopus', 18, 0_u256, admin())
+        common::deploy_token('veOpus', 'veOPUS', 18, 0_u256, admin())
     }
 
     // Convenience fixture for reward token addresses constants
@@ -144,7 +144,7 @@ mod AbsorberUtils {
 
     // Convenience fixture for reward amounts
     fn reward_amts_per_blessing() -> Span<u128> {
-        let mut bless_amts: Array<u128> = array![opus_BLESS_AMT, VEopus_BLESS_AMT,];
+        let mut bless_amts: Array<u128> = array![OPUS_BLESS_AMT, veOPUS_BLESS_AMT,];
         bless_amts.span()
     }
 

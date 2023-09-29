@@ -155,7 +155,7 @@ mod TestCaretaker {
             Caretaker::Event::Shut(Caretaker::Shut {}),
         ]
             .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events);
+        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -266,7 +266,7 @@ mod TestCaretaker {
             ),
         ]
             .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events);
+        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod TestCaretaker {
             ),
         ]
             .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events);
+        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -518,7 +518,7 @@ mod TestCaretaker {
             ),
         ]
             .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events);
+        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
     }
 
     #[test]

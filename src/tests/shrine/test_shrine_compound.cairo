@@ -82,7 +82,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Slight variation of `test_charge_scenario_1` where there is an interval between start and end
@@ -181,7 +181,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Wrapper to get around gas issue
@@ -270,7 +270,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Wrapper to get around gas issue
@@ -355,7 +355,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Wrapper to get around gas issue
@@ -446,7 +446,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Wrapper to get around gas issue
@@ -572,7 +572,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Wrapper to get around gas issue
@@ -676,7 +676,7 @@ mod TestShrineCompound {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     // Tests for `charge` with three base rate updates and
@@ -940,6 +940,8 @@ mod TestShrineCompound {
                     }
                 )
             );
-        common::assert_events_emitted(shrine.contract_address, expected_events.span());
+        common::assert_events_emitted(
+            shrine.contract_address, expected_events.span(), Option::None
+        );
     }
 }

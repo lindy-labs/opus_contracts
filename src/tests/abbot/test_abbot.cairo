@@ -132,7 +132,7 @@ mod TestAbbot {
             ),
         ]
             .span();
-        common::assert_events_emitted(abbot.contract_address, expected_events);
+        common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod TestAbbot {
             Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id, }),
         ]
             .span();
-        common::assert_events_emitted(abbot.contract_address, expected_events);
+        common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
     }
 
     #[test]
