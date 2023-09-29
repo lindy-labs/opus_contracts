@@ -2047,10 +2047,8 @@ mod TestPurger {
         let trove_debt: Wad = (6000 * WAD_ONE).into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
-        // Delist BTC
-        let btc: ContractAddress = *yangs[1];
-
         // Suspend BTC
+        let btc: ContractAddress = *yangs[1];
         set_contract_address(ShrineUtils::admin());
         let current_timestamp: u64 = get_block_timestamp();
         shrine.update_yang_suspension(btc, current_timestamp);
@@ -2105,7 +2103,8 @@ mod TestPurger {
         set_contract_address(searcher);
         purger.liquidate(target_trove, trove_debt, searcher);
 
-        let (_, _, _, debt_after_liquidation) = shrine.get_trove_info(target_trove);
+        let (threshold_after_liquidation, ltv_after_liquidation, _, debt_after_liquidation) = shrine
+            .get_trove_info(target_trove);
 
         assert(debt_after_liquidation < trove_debt, 'trove not correctly liquidated');
 
@@ -2115,6 +2114,10 @@ mod TestPurger {
                 .try_into()
                 .unwrap() < PurgerUtils::SEARCHER_YIN,
             'searcher yin not used'
-        )
+        );
+
+        PurgerUtils::assert_ltv_at_safety_margin(
+            threshold_after_liquidation, ltv_after_liquidation
+        );
     }
 }
