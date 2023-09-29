@@ -573,7 +573,6 @@ mod TestPragma {
         assert(before_wbtc_price == after_wbtc_price, 'price should not be updated #2');
 
         assert(!pragma.probe_task(), 'should not be ready');
-        // TODO: check that `PricesUpdated` event is not emitted
         let mut expected_events: Span<Pragma::Event> = array![
             Pragma::Event::InvalidPriceUpdate(
                 Pragma::InvalidPriceUpdate {
