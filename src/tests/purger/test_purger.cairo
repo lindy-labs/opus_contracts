@@ -5,6 +5,7 @@ mod TestPurger {
     use opus::core::absorber::Absorber;
     use opus::core::purger::Purger;
     use opus::core::roles::PurgerRoles;
+    use opus::core::shrine::Shrine;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
@@ -1027,6 +1028,7 @@ mod TestPurger {
                                         );
 
                                         common::drop_all_events(purger.contract_address);
+                                        common::drop_all_events(shrine.contract_address);
 
                                         set_contract_address(caller);
                                         let compensation: Span<AssetBalance> = purger
@@ -1153,6 +1155,8 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
 
+                                        // Check Purger events
+
                                         let purged_event: Purger::Purged =
                                             common::pop_event_with_indexed_keys(
                                             purger.contract_address
@@ -1194,6 +1198,22 @@ mod TestPurger {
                                                 recipient: caller, compensation
                                             },
                                             'wrong Compensate event'
+                                        );
+
+                                        // Check Shrine event
+                                        let expected_redistribution_id = 1;
+                                        let mut expected_events: Span<Shrine::Event> = array![
+                                            Shrine::Event::TroveRedistributed(
+                                                Shrine::TroveRedistributed {
+                                                    redistribution_id: expected_redistribution_id,
+                                                    trove_id: target_trove,
+                                                    debt: redistributed_amt,
+                                                }
+                                            ),
+                                        ]
+                                            .span();
+                                        common::assert_events_emitted(
+                                            shrine.contract_address, expected_events, Option::None
                                         );
                                     },
                                     Option::None => { break; },
@@ -1408,6 +1428,7 @@ mod TestPurger {
                                                 );
 
                                                 common::drop_all_events(purger.contract_address);
+                                                common::drop_all_events(shrine.contract_address);
 
                                                 set_contract_address(caller);
                                                 let compensation: Span<AssetBalance> = purger
@@ -1610,6 +1631,8 @@ mod TestPurger {
                                                     };
                                                 };
 
+                                                // Check Purger events
+
                                                 let purged_event: Purger::Purged =
                                                     common::pop_event_with_indexed_keys(
                                                     purger.contract_address
@@ -1658,6 +1681,25 @@ mod TestPurger {
                                                         recipient: caller, compensation
                                                     },
                                                     'wrong Compensate event'
+                                                );
+
+                                                // Check Shrine event
+                                                let expected_redistribution_id = 1;
+                                                let mut expected_events: Span<Shrine::Event> =
+                                                    array![
+                                                    Shrine::Event::TroveRedistributed(
+                                                        Shrine::TroveRedistributed {
+                                                            redistribution_id: expected_redistribution_id,
+                                                            trove_id: target_trove,
+                                                            debt: expected_redistributed_amt,
+                                                        }
+                                                    ),
+                                                ]
+                                                    .span();
+                                                common::assert_events_emitted(
+                                                    shrine.contract_address,
+                                                    expected_events,
+                                                    Option::None
                                                 );
 
                                                 absorber_yin_idx += 1;
@@ -1904,6 +1946,8 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
 
+                                            // Check Purger events
+
                                             // Note that this indirectly asserts that `Purged` 
                                             // is not emitted if it does not revert because 
                                             // `Purged` would have been emitted before `Compensate`
@@ -1917,6 +1961,24 @@ mod TestPurger {
                                                     recipient: caller, compensation
                                                 },
                                                 'wrong Compensate event'
+                                            );
+
+                                            // Check Shrine event
+                                            let expected_redistribution_id = 1;
+                                            let mut expected_events: Span<Shrine::Event> = array![
+                                                Shrine::Event::TroveRedistributed(
+                                                    Shrine::TroveRedistributed {
+                                                        redistribution_id: expected_redistribution_id,
+                                                        trove_id: target_trove,
+                                                        debt: before_target_trove_debt,
+                                                    }
+                                                ),
+                                            ]
+                                                .span();
+                                            common::assert_events_emitted(
+                                                shrine.contract_address,
+                                                expected_events,
+                                                Option::None
                                             );
                                         },
                                         Option::None => { break; },
