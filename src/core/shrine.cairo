@@ -854,7 +854,7 @@ mod Shrine {
             pct_value_to_redistribute: Ray
         ) {
             AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
-
+            assert(pct_value_to_redistribute <= RAY_ONE.into(), 'SH: pct_val_to_redistribute > 1');
             let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
