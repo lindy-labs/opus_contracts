@@ -1057,7 +1057,7 @@ mod TestShrine {
         let trove_id: u64 = common::TROVE_1;
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
-        let mut expected_event: Span<Shrine::Event> = array![
+        let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::ForgeFeePaid(
                 Shrine::ForgeFeePaid {
                     trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
@@ -1065,7 +1065,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_event, Option::None);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1232,7 +1232,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_melt_insufficient_yin() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -1972,7 +1972,7 @@ mod TestShrine {
                 ),
             ]
                 .span(),
-            Option::None,
+            Option::None
         );
 
         // setting block time to a second before the suspension would be permanent
