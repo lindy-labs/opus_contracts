@@ -2103,6 +2103,7 @@ mod TestPurger {
         set_contract_address(searcher);
         purger.liquidate(target_trove, trove_debt, searcher);
 
+        // Sanity checks
         let (threshold_after_liquidation, ltv_after_liquidation, _, debt_after_liquidation) = shrine
             .get_trove_info(target_trove);
 
@@ -2119,5 +2120,94 @@ mod TestPurger {
         PurgerUtils::assert_ltv_at_safety_margin(
             threshold_after_liquidation, ltv_after_liquidation
         );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_liquidate_suspended_yang_threshold_near_zero() {
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+            PurgerUtils::purger_deploy_with_searcher(
+            PurgerUtils::SEARCHER_YIN.into()
+        );
+
+        // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
+        let mut trove_debt_param: Span<Wad> = array![(6000 * WAD_ONE).into(), (50 * WAD_ONE).into()]
+            .span();
+
+        let eth: ContractAddress = *yangs[0];
+        let eth_gate: IGateDispatcher = *gates[0];
+
+        loop {
+            match trove_debt_param.pop_front() {
+                Option::Some(trove_debt) => {
+                    let target_trove: u64 = common::open_trove_helper(
+                        abbot,
+                        PurgerUtils::target_trove_owner(),
+                        array![eth].span(),
+                        array![(5 * WAD_ONE).into()].span(),
+                        array![eth_gate].span(),
+                        *trove_debt
+                    );
+
+                    // Suspend ETH
+                    set_contract_address(ShrineUtils::admin());
+                    let current_timestamp: u64 = get_block_timestamp();
+                    shrine.update_yang_suspension(eth, current_timestamp);
+
+                    // Advance the time stamp such that the ETH threshold falls to 0.5%
+                    let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into();
+
+                    // 0.25% / eth_threshold
+                    let desired_threshold: Ray = (RAY_PERCENT / 4).into();
+                    let decrease_factor: Ray = desired_threshold / eth_threshold;
+                    let ts_diff: u64 = Shrine::SUSPENSION_GRACE_PERIOD
+                        - wadray::scale_u128_by_ray(
+                            Shrine::SUSPENSION_GRACE_PERIOD.into(), decrease_factor
+                        )
+                            .try_into()
+                            .unwrap();
+
+                    set_block_timestamp(current_timestamp + ts_diff);
+
+                    // Check that the threshold has decreased to the desired value
+                    common::assert_equalish(
+                        shrine.get_yang_threshold(eth),
+                        desired_threshold,
+                        1000.into(),
+                        'wrong eth threshold'
+                    );
+
+                    // Liquidate the trove 
+                    let searcher = PurgerUtils::searcher();
+                    set_contract_address(searcher);
+                    purger.liquidate(target_trove, trove_debt, searcher);
+
+                    // Sanity checks
+                    let (
+                        threshold_after_liquidation,
+                        ltv_after_liquidation,
+                        _,
+                        debt_after_liquidation
+                    ) =
+                        shrine
+                        .get_trove_info(target_trove);
+
+                    assert(debt_after_liquidation < trove_debt, 'trove not correctly liquidated');
+
+                    assert(
+                        IERC20Dispatcher { contract_address: shrine.contract_address }
+                            .balance_of(searcher)
+                            .try_into()
+                            .unwrap() < PurgerUtils::SEARCHER_YIN,
+                        'searcher yin not used'
+                    );
+
+                    PurgerUtils::assert_ltv_at_safety_margin(
+                        threshold_after_liquidation, ltv_after_liquidation
+                    );
+                },
+                Option::None => { break; }
+            };
+        };
     }
 }
