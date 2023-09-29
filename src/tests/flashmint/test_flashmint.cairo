@@ -162,7 +162,9 @@ mod TestFlashmint {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
         flashmint
