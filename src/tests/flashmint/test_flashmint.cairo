@@ -97,7 +97,7 @@ mod TestFlashmint {
             ),
         ]
             .span();
-        common::assert_events_emitted(flashmint.contract_address, expected_events);
+        common::assert_events_emitted(flashmint.contract_address, expected_events, Option::None);
 
         let mut expected_events: Span<FlashBorrower::Event> = array![
             FlashBorrower::Event::FlashLoancall_dataReceived(
@@ -129,7 +129,7 @@ mod TestFlashmint {
             ),
         ]
             .span();
-        common::assert_events_emitted(borrower, expected_events);
+        common::assert_events_emitted(borrower, expected_events, Option::None);
     }
 
     #[test]
@@ -162,7 +162,9 @@ mod TestFlashmint {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
         flashmint

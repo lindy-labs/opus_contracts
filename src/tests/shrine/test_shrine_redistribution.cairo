@@ -344,9 +344,10 @@ mod TestShrineRedistribution {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
 
         ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -550,7 +551,7 @@ mod TestShrineRedistribution {
                                 ]
                                     .span();
                                 common::assert_events_emitted(
-                                    shrine.contract_address, expected_events
+                                    shrine.contract_address, expected_events, Option::None
                                 );
 
                                 ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
@@ -979,9 +980,10 @@ mod TestShrineRedistribution {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
 
         ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]

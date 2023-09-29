@@ -55,7 +55,7 @@ mod TestController {
             ),
         ]
             .span();
-        common::assert_events_emitted(controller.contract_address, expected_events);
+        common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod TestController {
             ),
         ]
             .span();
-        common::assert_events_emitted(controller.contract_address, expected_events);
+        common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
     }
 
     // Testing unauthorized calls of setters
