@@ -674,7 +674,8 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
 
         let trove_id = common::TROVE_1;
-        let yang = ShrineUtils::yang1_addr();
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang = *yangs.at(0);
 
         assert(
             shrine.get_yang_total(yang) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
@@ -696,6 +697,8 @@ mod TestShrine {
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::TroveUpdated(
@@ -760,7 +763,8 @@ mod TestShrine {
         ShrineUtils::trove1_withdraw(shrine, withdraw_amt);
 
         let trove_id: u64 = common::TROVE_1;
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
         let remaining_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
         assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
         assert(shrine.get_deposit(yang1_addr, trove_id) == remaining_amt, 'incorrect yang deposit');
@@ -781,6 +785,8 @@ mod TestShrine {
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::TroveUpdated(
@@ -926,6 +932,9 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr: ContractAddress = *yangs.at(0);
+
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
 
         let trove_id: u64 = common::TROVE_1;
@@ -937,7 +946,7 @@ mod TestShrine {
         let (_, ltv, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt == forge_amt, 'incorrect trove debt');
 
-        let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_value: Wad = yang1_price * ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
         assert(ltv == expected_ltv, 'incorrect ltv');
@@ -951,6 +960,8 @@ mod TestShrine {
         let trove1_owner_addr: ContractAddress = common::trove1_owner_addr();
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: forge_amt }),
@@ -1158,6 +1169,9 @@ mod TestShrine {
         let deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
 
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr: ContractAddress = *yangs.at(0);
+
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
@@ -1183,7 +1197,7 @@ mod TestShrine {
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         assert(after_yin_bal == before_yin_bal - melt_amt.into(), 'incorrect yin balance');
 
-        let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
         assert(after_ltv == expected_ltv, 'incorrect LTV');
 
@@ -1193,6 +1207,8 @@ mod TestShrine {
         assert(
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: after_trove_debt }),
