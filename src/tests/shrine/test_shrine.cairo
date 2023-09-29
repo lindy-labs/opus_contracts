@@ -1936,17 +1936,28 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
-    fn test_set_yang_suspension_status_non_existing_yang() {
+    fn test_suspend_yang_non_existing_yang() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
         set_contract_address(ShrineUtils::admin());
-        shrine.update_yang_suspension(ShrineUtils::invalid_yang_addr(), 0);
+        shrine.suspend_yang(ShrineUtils::invalid_yang_addr());
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_yang_suspension_set_and_unset() {
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_unsuspend_yang_non_existing_yang() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        set_contract_address(ShrineUtils::admin());
+        shrine.unsuspend_yang(ShrineUtils::invalid_yang_addr());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_suspend_and_unsuspend() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -1957,7 +1968,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         // initiate yang's suspension, starting now
-        shrine.update_yang_suspension(yang, start_ts);
+        shrine.suspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -1966,12 +1977,7 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
-                ),
-            ]
-                .span(),
+            array![Shrine::Event::YangSuspended(Shrine::YangSuspended { yang }),].span(),
             Option::None
         );
 
@@ -1979,7 +1985,7 @@ mod TestShrine {
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // reset the suspension by setting yang's ts to 0
-        shrine.update_yang_suspension(yang, 0);
+        shrine.unsuspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -1988,12 +1994,7 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: 0 }
-                ),
-            ]
-                .span(),
+            array![Shrine::Event::YangUnsuspended(Shrine::YangUnsuspended { yang }),].span(),
             Option::None,
         );
     }
@@ -2001,14 +2002,30 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_suspension_status_not_authorized() {
+    fn test_suspend_yang_not_authorized() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
         let yang = ShrineUtils::yang1_addr();
         set_contract_address(common::badguy());
 
-        shrine.update_yang_suspension(yang, 42);
+        shrine.suspend_yang(yang);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_unsuspend_yang_not_authorized() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+
+        // We directly unsuspend the yang instead of suspending it first, because
+        // an unauthorized call to `suspend_yang` has the same error message, which
+        // can be ambiguous when trying to understand which part of the test failed. 
+        set_contract_address(common::badguy());
+        shrine.unsuspend_yang(yang);
     }
 
     #[test]
@@ -2025,7 +2042,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         // initiate yang's suspension, starting now
-        shrine.update_yang_suspension(yang, start_ts);
+        shrine.suspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -2034,12 +2051,7 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
-                ),
-            ]
-                .span(),
+            array![Shrine::Event::YangSuspended(Shrine::YangSuspended { yang }),].span(),
             Option::None,
         );
 
@@ -2104,7 +2116,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Permanent suspension', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Suspension is permanent', 'ENTRYPOINT_FAILED'))]
     fn test_yang_suspension_cannot_reset_after_permanent() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
@@ -2115,30 +2127,70 @@ mod TestShrine {
 
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
+
         // mark permanent
-        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
+        shrine.suspend_yang(yang);
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
+
         // sanity check
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Permanent, 'delisted');
 
         // trying to reset yang suspension status, should fail
-        shrine.update_yang_suspension(yang, 0);
+        shrine.unsuspend_yang(yang);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Invalid timestamp', 'ENTRYPOINT_FAILED'))]
-    fn test_yang_set_suspension_ts_to_future() {
+    #[should_panic(expected: ('SH: Already suspended', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_already_suspended_temporary() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
-        let yang = ShrineUtils::yang1_addr();
-        let ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
 
-        set_block_timestamp(ts);
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
 
-        shrine.update_yang_suspension(yang, ts + 1);
+        // suspend yang
+        shrine.suspend_yang(yang);
+
+        // sanity check
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary, 'should be temporary');
+
+        // trying to suspend an already suspended yang, should fail
+        shrine.suspend_yang(yang);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Already suspended', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_already_suspended_permanent() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // suspend yang
+        shrine.suspend_yang(yang);
+
+        // make permanent
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
+
+        // sanity check
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent, 'should be permanent');
+
+        // trying to suspend an already suspended yang, should fail
+        shrine.suspend_yang(yang);
     }
 
     // In this test, we have two troves. Both are initially healthy. And then suddenly the
