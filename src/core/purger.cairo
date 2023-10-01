@@ -15,7 +15,7 @@ mod Purger {
     use opus::utils::reentrancy_guard::ReentrancyGuard;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_PERCENT, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
