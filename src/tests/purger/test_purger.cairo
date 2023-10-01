@@ -2123,7 +2123,7 @@ mod TestPurger {
     }
 
     #[test]
-    #[available_gas(20000000000)]
+    #[available_gas(2000000000000)]
     fn test_liquidate_suspended_yang_threshold_near_zero() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
@@ -2134,77 +2134,109 @@ mod TestPurger {
         let mut trove_debt_param: Span<Wad> = array![(6000 * WAD_ONE).into(), (50 * WAD_ONE).into()]
             .span();
 
+        // We also parametrize the test with the desired threshold after liquidation
+        let desired_threshold_param: Span<Ray> = array![
+            (RAY_PERCENT / 4).into(), // This is "basically" zero, but not exactly. We do this 
+            // to avoid permanently suspending the ETH yang,
+            // thereby avoiding the need to redeploy all the contracts
+            // for each parametrization
+            100_u128.into()
+        ]
+            .span();
+
         let eth: ContractAddress = *yangs[0];
         let eth_gate: IGateDispatcher = *gates[0];
 
         loop {
             match trove_debt_param.pop_front() {
                 Option::Some(trove_debt) => {
-                    let target_trove: u64 = common::open_trove_helper(
-                        abbot,
-                        PurgerUtils::target_trove_owner(),
-                        array![eth].span(),
-                        array![(5 * WAD_ONE).into()].span(),
-                        array![eth_gate].span(),
-                        *trove_debt
-                    );
+                    let mut desired_threshold_param_copy = desired_threshold_param;
+                    loop {
+                        match desired_threshold_param_copy.pop_front() {
+                            Option::Some(desired_threshold) => {
+                                let target_user: ContractAddress =
+                                    PurgerUtils::target_trove_owner();
 
-                    // Suspend ETH
-                    set_contract_address(ShrineUtils::admin());
-                    let current_timestamp: u64 = get_block_timestamp();
-                    shrine.update_yang_suspension(eth, current_timestamp);
+                                common::fund_user(
+                                    target_user,
+                                    array![eth].span(),
+                                    array![(10 * WAD_ONE).into()].span()
+                                );
+                                let target_trove: u64 = common::open_trove_helper(
+                                    abbot,
+                                    PurgerUtils::target_trove_owner(),
+                                    array![eth].span(),
+                                    array![(5 * WAD_ONE).into()].span(),
+                                    array![eth_gate].span(),
+                                    *trove_debt
+                                );
 
-                    // Advance the time stamp such that the ETH threshold falls to 0.5%
-                    let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into();
+                                // Suspend ETH
+                                let current_timestamp = get_block_timestamp();
 
-                    // 0.25% / eth_threshold
-                    let desired_threshold: Ray = (RAY_PERCENT / 4).into();
-                    let decrease_factor: Ray = desired_threshold / eth_threshold;
-                    let ts_diff: u64 = Shrine::SUSPENSION_GRACE_PERIOD
-                        - wadray::scale_u128_by_ray(
-                            Shrine::SUSPENSION_GRACE_PERIOD.into(), decrease_factor
-                        )
-                            .try_into()
-                            .unwrap();
+                                set_contract_address(ShrineUtils::admin());
+                                shrine.update_yang_suspension(eth, current_timestamp);
 
-                    set_block_timestamp(current_timestamp + ts_diff);
+                                // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
+                                let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into();
 
-                    // Check that the threshold has decreased to the desired value
-                    common::assert_equalish(
-                        shrine.get_yang_threshold(eth),
-                        desired_threshold,
-                        1000.into(),
-                        'wrong eth threshold'
-                    );
+                                let decrease_factor: Ray = *desired_threshold / eth_threshold;
+                                let ts_diff: u64 = Shrine::SUSPENSION_GRACE_PERIOD
+                                    - wadray::scale_u128_by_ray(
+                                        Shrine::SUSPENSION_GRACE_PERIOD.into(), decrease_factor
+                                    )
+                                        .try_into()
+                                        .unwrap();
 
-                    // Liquidate the trove 
-                    let searcher = PurgerUtils::searcher();
-                    set_contract_address(searcher);
-                    purger.liquidate(target_trove, trove_debt, searcher);
+                                set_block_timestamp(current_timestamp + ts_diff);
 
-                    // Sanity checks
-                    let (
-                        threshold_after_liquidation,
-                        ltv_after_liquidation,
-                        _,
-                        debt_after_liquidation
-                    ) =
-                        shrine
-                        .get_trove_info(target_trove);
+                                // Check that the threshold has decreased to the desired value
+                                let (_, threshold_after_liquidation) = shrine
+                                    .get_yang_threshold(eth);
+                                common::assert_equalish::<
+                                    Ray
+                                >(
+                                    threshold_after_liquidation,
+                                    *desired_threshold,
+                                    1000_u128.into(),
+                                    'wrong eth threshold'
+                                );
 
-                    assert(debt_after_liquidation < trove_debt, 'trove not correctly liquidated');
+                                // Liquidate the trove 
+                                let searcher = PurgerUtils::searcher();
+                                set_contract_address(searcher);
+                                purger.liquidate(target_trove, *trove_debt, searcher);
 
-                    assert(
-                        IERC20Dispatcher { contract_address: shrine.contract_address }
-                            .balance_of(searcher)
-                            .try_into()
-                            .unwrap() < PurgerUtils::SEARCHER_YIN,
-                        'searcher yin not used'
-                    );
+                                // Sanity checks
+                                let (
+                                    threshold_after_liquidation,
+                                    ltv_after_liquidation,
+                                    _,
+                                    debt_after_liquidation
+                                ) =
+                                    shrine
+                                    .get_trove_info(target_trove);
 
-                    PurgerUtils::assert_ltv_at_safety_margin(
-                        threshold_after_liquidation, ltv_after_liquidation
-                    );
+                                assert(
+                                    debt_after_liquidation < *trove_debt,
+                                    'trove not correctly liquidated'
+                                );
+
+                                assert(
+                                    IERC20Dispatcher { contract_address: shrine.contract_address }
+                                        .balance_of(searcher)
+                                        .try_into()
+                                        .unwrap() < PurgerUtils::SEARCHER_YIN,
+                                    'searcher yin not used'
+                                );
+
+                                // Unsuspend eth to reset the test
+                                set_contract_address(ShrineUtils::admin());
+                                shrine.update_yang_suspension(eth, 0);
+                            },
+                            Option::None => { break; }
+                        }
+                    };
                 },
                 Option::None => { break; }
             };
