@@ -15,7 +15,7 @@ mod Purger {
     use opus::utils::reentrancy_guard::ReentrancyGuard;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_PERCENT, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
@@ -192,6 +192,7 @@ mod Purger {
             let (trove_penalty, max_close_amt) = preview_liquidate_internal(
                 trove_threshold, trove_ltv, trove_value, trove_debt
             );
+
             assert(max_close_amt.is_non_zero(), 'PU: Not liquidatable');
 
             // Cap the liquidation amount to the trove's maximum close amount
@@ -527,6 +528,11 @@ mod Purger {
         // Handling the case where `ltv > 1` to avoid underflow
         if ltv >= RAY_ONE.into() {
             return Option::Some(RayZeroable::zero());
+        }
+
+        // Handling the case where `threshold <= dust_amount` to avoid overflow/division by zero
+        if threshold <= 10000000_u128.into() {
+            return Option::Some(MAX_PENALTY.into());
         }
 
         let penalty = min(

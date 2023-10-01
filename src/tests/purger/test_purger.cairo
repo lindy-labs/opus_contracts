@@ -2131,21 +2131,25 @@ mod TestPurger {
         );
 
         // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
-        let mut trove_debt_param: Span<Wad> = array![(6000 * WAD_ONE).into(), (50 * WAD_ONE).into()]
+        let mut trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (5 * WAD_ONE).into()]
             .span();
 
         // We also parametrize the test with the desired threshold after liquidation
         let desired_threshold_param: Span<Ray> = array![
-            (RAY_PERCENT / 4).into(), // This is "basically" zero, but not exactly. We do this 
-            // to avoid permanently suspending the ETH yang,
-            // thereby avoiding the need to redeploy all the contracts
-            // for each parametrization
-            100_u128.into()
+            (RAY_PERCENT / 4).into(),
+            // This is the smallest possible desired threshold that
+            // doesn't result in advancing the time enough to make 
+            // the suspension permanent
+            (RAY_ONE + 1).into() / (RAY_ONE * Shrine::SUSPENSION_GRACE_PERIOD.into()).into()
         ]
             .span();
 
         let eth: ContractAddress = *yangs[0];
         let eth_gate: IGateDispatcher = *gates[0];
+
+        let target_user: ContractAddress = PurgerUtils::target_trove_owner();
+
+        common::fund_user(target_user, array![eth].span(), array![(10 * WAD_ONE).into()].span());
 
         loop {
             match trove_debt_param.pop_front() {
@@ -2154,19 +2158,11 @@ mod TestPurger {
                     loop {
                         match desired_threshold_param_copy.pop_front() {
                             Option::Some(desired_threshold) => {
-                                let target_user: ContractAddress =
-                                    PurgerUtils::target_trove_owner();
-
-                                common::fund_user(
-                                    target_user,
-                                    array![eth].span(),
-                                    array![(10 * WAD_ONE).into()].span()
-                                );
                                 let target_trove: u64 = common::open_trove_helper(
                                     abbot,
                                     PurgerUtils::target_trove_owner(),
                                     array![eth].span(),
-                                    array![(5 * WAD_ONE).into()].span(),
+                                    array![(WAD_ONE / 2).into()].span(),
                                     array![eth_gate].span(),
                                     *trove_debt
                                 );
@@ -2193,12 +2189,14 @@ mod TestPurger {
                                 // Check that the threshold has decreased to the desired value
                                 let (_, threshold_after_liquidation) = shrine
                                     .get_yang_threshold(eth);
-                                common::assert_equalish::<
-                                    Ray
-                                >(
+
+                                common::assert_equalish(
                                     threshold_after_liquidation,
                                     *desired_threshold,
-                                    1000_u128.into(),
+                                    // 0.0000001 = 10^-7 (ray). Precision
+                                    // is limited by the precision of timestamps,
+                                    // which is only in seconds
+                                    100000000000000000000_u128.into(),
                                     'wrong eth threshold'
                                 );
 

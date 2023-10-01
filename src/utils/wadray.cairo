@@ -102,6 +102,11 @@ fn scale_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
     rmul_internal(lhs, rhs.val)
 }
 
+#[inline(always)]
+fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
+    rdiv_internal(lhs, rhs.val)
+}
+
 //
 // Internal helpers
 //
