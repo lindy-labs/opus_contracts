@@ -2140,7 +2140,8 @@ mod TestPurger {
             // This is the smallest possible desired threshold that
             // doesn't result in advancing the time enough to make 
             // the suspension permanent
-            (RAY_ONE + 1).into() / (RAY_ONE * Shrine::SUSPENSION_GRACE_PERIOD.into()).into()
+            (RAY_ONE + 1).into() / (RAY_ONE * Shrine::SUSPENSION_GRACE_PERIOD.into()).into(),
+            RayZeroable::zero(),
         ]
             .span();
 
@@ -2158,6 +2159,14 @@ mod TestPurger {
                     loop {
                         match desired_threshold_param_copy.pop_front() {
                             Option::Some(desired_threshold) => {
+                                // We skip the parametrization where the desired threshold is 
+                                // zero until we've reached the very last test scenario in order to
+                                // avoid breaking the testing environment by permanently suspending
+                                // the ETH yang. 
+                                if *desired_threshold.is_zero() && trove_debt_param.len() > 0 {
+                                    continue;
+                                }
+
                                 let target_trove: u64 = common::open_trove_helper(
                                     abbot,
                                     PurgerUtils::target_trove_owner(),
