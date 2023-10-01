@@ -2163,7 +2163,7 @@ mod TestPurger {
                                 // zero until we've reached the very last test scenario in order to
                                 // avoid breaking the testing environment by permanently suspending
                                 // the ETH yang. 
-                                if *desired_threshold.is_zero() && trove_debt_param.len() > 0 {
+                                if (*desired_threshold).is_zero() && trove_debt_param.len() > 0 {
                                     continue;
                                 }
 
@@ -2239,7 +2239,12 @@ mod TestPurger {
 
                                 // Unsuspend eth to reset the test
                                 set_contract_address(ShrineUtils::admin());
-                                shrine.update_yang_suspension(eth, 0);
+
+                                // We skip this when the yang is permanently
+                                // suspended in the final test case
+                                if (*desired_threshold).is_non_zero() {
+                                    shrine.update_yang_suspension(eth, 0);
+                                }
                             },
                             Option::None => { break; }
                         }
