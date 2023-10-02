@@ -2131,7 +2131,7 @@ mod TestPurger {
         );
 
         // We run the same tests using both searcher liquidations and absorptions as the liquidation methods. 
-        let mut liquidate_via_absorption_param: Span<bool> = array![true].span();
+        let mut liquidate_via_absorption_param: Span<bool> = array![false, true].span();
 
         // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
         let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (5 * WAD_ONE).into()]
