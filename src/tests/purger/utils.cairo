@@ -21,7 +21,7 @@ mod PurgerUtils {
     use opus::types::AssetBalance;
     use opus::utils::math::pow;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     use opus::tests::absorber::utils::AbsorberUtils;
     use opus::tests::common;
@@ -90,6 +90,8 @@ mod PurgerUtils {
 
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         array![
+            RayZeroable::zero(),
+            RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
             (80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
@@ -100,7 +102,7 @@ mod PurgerUtils {
             (97 * RAY_PERCENT).into(),
             // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
-            (99 * RAY_PERCENT).into()
+            (99 * RAY_PERCENT).into(),
         ]
             .span()
     }
@@ -108,6 +110,8 @@ mod PurgerUtils {
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         array![
+            RayZeroable::zero(),
+            RAY_PERCENT.into(),
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
             (75 * RAY_PERCENT).into(),

@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod Purger {
+    use debug::PrintTrait;
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
@@ -15,7 +16,7 @@ mod Purger {
     use opus::utils::reentrancy_guard::ReentrancyGuard;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
@@ -42,6 +43,10 @@ mod Purger {
 
     // Cap on compensation value: 50 (Wad)
     const COMPENSATION_CAP: u128 = 50000000000000000000;
+
+    // Minimum threshold for the penalty calculation, under which the
+    // minimum penalty is automatically returned to avoid division by zero/overflow
+    const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
 
     #[storage]
     struct Storage {
@@ -444,6 +449,12 @@ mod Purger {
                 return Option::Some(penalty);
             }
 
+            // If the threshold is below a certain threshold, we automatically
+            // return the minimum penalty to avoid division by zero/overflow.
+            if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                return Option::Some(MIN_PENALTY.into());
+            }
+
             let penalty = min(
                 MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), max_possible_penalty
             );
@@ -530,9 +541,10 @@ mod Purger {
             return Option::Some(RayZeroable::zero());
         }
 
-        // Handling the case where `threshold <= dust_amount` to avoid overflow/division by zero
-        if threshold <= 10000000_u128.into() {
-            return Option::Some(MAX_PENALTY.into());
+        // If the threshold is below a certain threshold, we automatically
+        // return the minimum penalty to avoid division by zero/overflow.
+        if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+            return Option::Some(MIN_PENALTY.into());
         }
 
         let penalty = min(

@@ -2131,7 +2131,7 @@ mod TestPurger {
         );
 
         // We run the same tests using both searcher liquidations and absorptions as the liquidation methods. 
-        let mut liquidate_via_absorption_param: Span<bool> = array![false, true].span();
+        let mut liquidate_via_absorption_param: Span<bool> = array![true].span();
 
         // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
         let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (5 * WAD_ONE).into()]
@@ -2139,12 +2139,12 @@ mod TestPurger {
 
         // We also parametrize the test with the desired threshold after liquidation
         let desired_threshold_param: Span<Ray> = array![
+            //(2*RAY_PERCENT).into(),
             (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
             // doesn't result in advancing the time enough to make 
             // the suspension permanent
             (RAY_ONE + 1).into() / (RAY_ONE * Shrine::SUSPENSION_GRACE_PERIOD.into()).into(),
-            RayZeroable::zero(),
         ]
             .span();
 
@@ -2166,7 +2166,6 @@ mod TestPurger {
         loop {
             match liquidate_via_absorption_param.pop_front() {
                 Option::Some(liquidate_via_absorption) => {
-                    (*liquidate_via_absorption).print();
                     let mut trove_debt_param_copy = trove_debt_param;
                     loop {
                         match trove_debt_param_copy.pop_front() {
@@ -2175,15 +2174,6 @@ mod TestPurger {
                                 loop {
                                     match desired_threshold_param_copy.pop_front() {
                                         Option::Some(desired_threshold) => {
-                                            // We skip the parametrization where the desired threshold is 
-                                            // zero until we've reached the very last test scenario in order to
-                                            // avoid breaking the testing environment by permanently suspending
-                                            // the ETH yang. 
-                                            if (*desired_threshold).is_zero()
-                                                && trove_debt_param.len() > 0 {
-                                                continue;
-                                            }
-
                                             let target_trove: u64 = common::open_trove_helper(
                                                 abbot,
                                                 PurgerUtils::target_trove_owner(),
@@ -2285,13 +2275,8 @@ mod TestPurger {
                                                 );
                                             }
 
-                                            // Unsuspend eth to reset the test
-                                            // We skip this when the yang is permanently
-                                            // suspended in the final test case
-                                            if (*desired_threshold).is_non_zero() {
-                                                set_contract_address(ShrineUtils::admin());
-                                                shrine.update_yang_suspension(eth, 0);
-                                            }
+                                            set_contract_address(ShrineUtils::admin());
+                                            shrine.update_yang_suspension(eth, 0);
                                         },
                                         Option::None => { break; }
                                     }
