@@ -38,7 +38,8 @@ mod TestPragma {
     // Address constants
     //
 
-    #[inline(always)]
+    // TODO: this is not inlined as it would result in `Unknown ap change` error
+    //       for `test_update_prices_invalid_gate`
     fn pepe_token_addr() -> ContractAddress {
         contract_address_try_from_felt252('PEPE').unwrap()
     }
@@ -292,6 +293,38 @@ mod TestPragma {
 
         set_contract_address(common::badguy());
         pragma.set_update_frequency(new_frequency);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_add_yang_pass() {
+        let (shrine, pragma, _, mock_pragma) = PragmaUtils::pragma_deploy();
+
+        // PEPE token is not added to sentinel
+        let pepe_token: ContractAddress = pepe_token_addr();
+        let pepe_token_pair_id: u256 = PEPE_USD_PAIR_ID;
+        let pepe_token_init_price: u128 = 999;
+
+        let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
+
+        // Seed first price update for PEPE token so that `Pragma.add_yang` passes
+        let price: u128 = pepe_token_init_price * pragma_price_scale;
+        let current_ts: u64 = get_block_timestamp();
+        PragmaUtils::mock_valid_price_update(mock_pragma, pepe_token_pair_id, price, current_ts);
+
+        set_contract_address(PragmaUtils::admin());
+        pragma.add_yang(pepe_token_pair_id, pepe_token);
+
+        let expected_events: Span<Pragma::Event> = array![
+            Pragma::Event::YangAdded(
+                Pragma::YangAdded {
+                    index: 1,
+                    settings: YangSettings { pair_id: pepe_token_pair_id, yang: pepe_token, },
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -611,20 +644,20 @@ mod TestPragma {
         let (shrine, pragma, _, mock_pragma, yangs, _) = PragmaUtils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
-        // Dummy token is not added to sentinel
-        let dummy_token: ContractAddress = PragmaUtils::dummy_token();
-        let dummy_token_pair_id: u256 = 'DUMMY/USD';
-        let dummy_token_init_price: u128 = 999;
+        // PEPE token is not added to sentinel
+        let pepe_token: ContractAddress = pepe_token_addr();
+        let pepe_token_pair_id: u256 = PEPE_USD_PAIR_ID;
+        let pepe_token_init_price: u128 = 999;
 
         let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
 
-        // Seed first price update for dummy token so that `Pragma.add_yang` passes
-        let price: u128 = dummy_token_init_price * pragma_price_scale;
+        // Seed first price update for PEPE token so that `Pragma.add_yang` passes
+        let price: u128 = pepe_token_init_price * pragma_price_scale;
         let current_ts: u64 = get_block_timestamp();
-        PragmaUtils::mock_valid_price_update(mock_pragma, dummy_token_pair_id, price, current_ts);
+        PragmaUtils::mock_valid_price_update(mock_pragma, pepe_token_pair_id, price, current_ts);
 
         set_contract_address(PragmaUtils::admin());
-        pragma.add_yang(dummy_token_pair_id, dummy_token);
+        pragma.add_yang(pepe_token_pair_id, pepe_token);
 
         let eth_token_addr = *yangs.at(0);
         let wbtc_token_addr = *yangs.at(1);
@@ -635,10 +668,10 @@ mod TestPragma {
         let next_ts: u64 = current_ts + Shrine::TIME_INTERVAL;
         set_block_timestamp(next_ts);
 
-        let dummy_token_raw_price: u128 = dummy_token_init_price + 1;
-        let dummy_token_price: u128 = dummy_token_raw_price * pragma_price_scale;
+        let pepe_token_raw_price: u128 = pepe_token_init_price + 1;
+        let pepe_token_price: u128 = pepe_token_raw_price * pragma_price_scale;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, dummy_token_pair_id, dummy_token_price, next_ts
+            mock_pragma, pepe_token_pair_id, pepe_token_price, next_ts
         );
 
         let price: u128 = (PragmaUtils::ETH_INIT_PRICE + 1) * pragma_price_scale;
@@ -664,8 +697,8 @@ mod TestPragma {
         let mut expected_events: Span<Pragma::Event> = array![
             Pragma::Event::InvalidPriceUpdate(
                 Pragma::InvalidPriceUpdate {
-                    yang: dummy_token,
-                    price: (dummy_token_raw_price * WAD_ONE).into(),
+                    yang: pepe_token,
+                    price: (pepe_token_raw_price * WAD_ONE).into(),
                     pragma_last_updated_ts: next_ts.into(),
                     pragma_num_sources: PragmaUtils::DEFAULT_NUM_SOURCES.into(),
                     asset_amt_per_yang: WadZeroable::zero(),

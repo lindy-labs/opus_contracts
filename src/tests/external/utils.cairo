@@ -54,12 +54,6 @@ mod PragmaUtils {
         contract_address_try_from_felt252('pragma owner').unwrap()
     }
 
-    // TODO: this is not inlined as it would result in `Unknown ap change` error
-    //       for `test_update_prices_invalid_gate`
-    fn dummy_token() -> ContractAddress {
-        contract_address_try_from_felt252('dummy token').unwrap()
-    }
-
     //
     // Helpers
     //
