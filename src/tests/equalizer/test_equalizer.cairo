@@ -102,6 +102,9 @@ mod TestEqualizer {
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
+
         let mut expected_events: Span<Equalizer::Event> = array![
             Equalizer::Event::Equalize(
                 Equalizer::Equalize { recipients, percentages, amount: minted_surplus }

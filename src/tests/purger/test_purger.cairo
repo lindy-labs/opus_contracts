@@ -404,6 +404,8 @@ mod TestPurger {
         ]
             .span();
         common::assert_events_emitted(purger.contract_address, expected_events, Option::None);
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -458,6 +460,8 @@ mod TestPurger {
         assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
 
         PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
@@ -466,7 +470,7 @@ mod TestPurger {
     // 2. trove's debt is reduced by the close amount
     // 3. If it is not a full liquidation, then the post-liquidation LTV is at the target safety margin
     #[test]
-    #[available_gas(20000000000)]
+    #[available_gas(20000000000000)]
     fn test_liquidate_parametrized() {
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
@@ -580,6 +584,10 @@ mod TestPurger {
                                     .span();
                                 common::assert_events_emitted(
                                     purger.contract_address, expected_events, Option::None
+                                );
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
                                 );
                             },
                             Option::None => { break; },
@@ -909,6 +917,8 @@ mod TestPurger {
             compensate_event == Purger::Compensate { recipient: caller, compensation },
             'wrong Compensate event'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -1214,6 +1224,10 @@ mod TestPurger {
                                             .span();
                                         common::assert_events_emitted(
                                             shrine.contract_address, expected_events, Option::None
+                                        );
+
+                                        ShrineUtils::assert_shrine_invariants(
+                                            shrine, yangs, abbot.get_troves_count()
                                         );
                                     },
                                     Option::None => { break; },
@@ -1702,6 +1716,10 @@ mod TestPurger {
                                                     Option::None
                                                 );
 
+                                                ShrineUtils::assert_shrine_invariants(
+                                                    shrine, yangs, abbot.get_troves_count(),
+                                                );
+
                                                 absorber_yin_idx += 1;
                                             };
                                         },
@@ -1721,7 +1739,7 @@ mod TestPurger {
     // Note that the absorber also zero shares in this test because no provider has
     // provided yin yet.
     #[test]
-    #[available_gas(20000000000)]
+    #[available_gas(20000000000000)]
     fn test_absorb_full_redistribution_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             PurgerUtils::interesting_yang_amts_for_redistributed_trove();
@@ -1980,6 +1998,10 @@ mod TestPurger {
                                                 expected_events,
                                                 Option::None
                                             );
+
+                                            ShrineUtils::assert_shrine_invariants(
+                                                shrine, yangs, abbot.get_troves_count(),
+                                            );
                                         },
                                         Option::None => { break; },
                                     };
@@ -2141,6 +2163,10 @@ mod TestPurger {
                                     },
                                     'wrong Compensate event'
                                 );
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
+                                );
                             },
                             Option::None => { break; },
                         };
@@ -2155,7 +2181,7 @@ mod TestPurger {
     // and the LTV at liquidation, and checks that the trove's debt is absorbed in full for thresholds
     // from 78.74% onwards.
     #[test]
-    #[available_gas(20000000000)]
+    #[available_gas(20000000000000)]
     fn test_absorb_trove_debt_parametrized() {
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
@@ -2323,6 +2349,10 @@ mod TestPurger {
                                         recipient: caller, compensation
                                     },
                                     'wrong Compensate event'
+                                );
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
                                 );
                             },
                             Option::None => { break; },
