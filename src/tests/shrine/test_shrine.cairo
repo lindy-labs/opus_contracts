@@ -1,6 +1,7 @@
 mod TestShrine {
     use debug::PrintTrait;
     use integer::BoundedU256;
+    use starknet::get_block_timestamp;
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
@@ -1977,7 +1978,12 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![Shrine::Event::YangSuspended(Shrine::YangSuspended { yang }),].span(),
+            array![
+                Shrine::Event::YangSuspended(
+                    Shrine::YangSuspended { yang, timestamp: get_block_timestamp() }
+                ),
+            ]
+                .span(),
             Option::None
         );
 
@@ -1994,7 +2000,12 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![Shrine::Event::YangUnsuspended(Shrine::YangUnsuspended { yang }),].span(),
+            array![
+                Shrine::Event::YangUnsuspended(
+                    Shrine::YangUnsuspended { yang, timestamp: get_block_timestamp() }
+                ),
+            ]
+                .span(),
             Option::None,
         );
     }
@@ -2051,7 +2062,12 @@ mod TestShrine {
         // check event emission
         common::assert_events_emitted(
             shrine_addr,
-            array![Shrine::Event::YangSuspended(Shrine::YangSuspended { yang }),].span(),
+            array![
+                Shrine::Event::YangSuspended(
+                    Shrine::YangSuspended { yang, timestamp: get_block_timestamp() }
+                ),
+            ]
+                .span(),
             Option::None,
         );
 

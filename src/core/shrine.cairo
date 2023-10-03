@@ -295,13 +295,15 @@ mod Shrine {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangSuspended {
         #[key]
-        yang: ContractAddress
+        yang: ContractAddress,
+        timestamp: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangUnsuspended {
         #[key]
-        yang: ContractAddress
+        yang: ContractAddress,
+        timestamp: u64
     }
 
 
@@ -581,8 +583,10 @@ mod Shrine {
                 self.get_yang_suspension_status(yang) == YangSuspensionStatus::None,
                 'SH: Already suspended'
             );
-            self.yang_suspension.write(self.get_valid_yang_id(yang), get_block_timestamp());
-            self.emit(YangSuspended { yang });
+
+            let timestamp: u64 = get_block_timestamp();
+            self.yang_suspension.write(self.get_valid_yang_id(yang), timestamp);
+            self.emit(YangSuspended { yang, timestamp });
         }
 
         fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
@@ -592,8 +596,9 @@ mod Shrine {
                 self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
                 'SH: Suspension is permanent'
             );
+
             self.yang_suspension.write(self.get_valid_yang_id(yang), 0);
-            self.emit(YangUnsuspended { yang });
+            self.emit(YangUnsuspended { yang, timestamp: get_block_timestamp() });
         }
 
         // Update the base rates of all yangs
