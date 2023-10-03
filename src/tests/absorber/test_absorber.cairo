@@ -1916,7 +1916,7 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABS: provision < minimum', 'ENTRYPOINT_FAILED'))]
     fn test_provide_less_than_initial_shares_fail() {
         let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
@@ -1936,7 +1936,9 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
     fn test_provide_insufficient_yin_fail() {
         let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
@@ -1957,7 +1959,9 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
     fn test_provide_insufficient_allowance_fail() {
         let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 

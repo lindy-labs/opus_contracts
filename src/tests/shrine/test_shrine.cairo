@@ -863,7 +863,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yang balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_insufficient_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -880,7 +880,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yang balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_zero_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -1281,7 +1281,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_fail_insufficient() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1299,7 +1299,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_fail_zero_bal() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1349,7 +1349,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1364,7 +1364,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_insufficient_allowance_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1393,7 +1393,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_insufficient_balance_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 

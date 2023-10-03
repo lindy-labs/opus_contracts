@@ -1757,7 +1757,7 @@ mod TestShrineRedistribution {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: pct_val_to_redistribute > 1', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_redistribution_gt_one_ray_pct_value_to_redistribute_fail() {
         let shrine: IShrineDispatcher = redistribution_setup();
 

@@ -709,6 +709,7 @@ mod Absorber {
                 // By subtracting the initial shares from the first provider's shares, we ensure that
                 // there is a non-removable amount of shares. This subtraction also prevents a user
                 // from providing an amount less than the minimum shares.
+                assert(yin_amt.val >= INITIAL_SHARES, 'ABS: provision < minimum');
                 return ((yin_amt.val - INITIAL_SHARES).into(), yin_amt);
             }
 
