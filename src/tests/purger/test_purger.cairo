@@ -2134,12 +2134,12 @@ mod TestPurger {
         let mut liquidate_via_absorption_param: Span<bool> = array![false, true].span();
 
         // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
-        let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (5 * WAD_ONE).into()]
+        let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (20 * WAD_ONE).into()]
             .span();
 
         // We also parametrize the test with the desired threshold after liquidation
         let desired_threshold_param: Span<Ray> = array![
-            //(2*RAY_PERCENT).into(),
+            RAY_PERCENT.into(),
             (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
             // doesn't result in advancing the time enough to make 
