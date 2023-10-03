@@ -227,12 +227,12 @@ mod Sentinel {
 
         fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
             AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
-            self.shrine.read().update_yang_suspension(yang, get_block_timestamp());
+            self.shrine.read().suspend_yang(yang);
         }
 
         fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
             AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
-            self.shrine.read().update_yang_suspension(yang, 0);
+            self.shrine.read().unsuspend_yang(yang);
         }
 
         //

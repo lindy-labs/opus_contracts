@@ -48,7 +48,8 @@ trait IShrine<TContractState> {
         initial_yang_amt: Wad
     );
     fn set_threshold(ref self: TContractState, yang: ContractAddress, new_threshold: Ray);
-    fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
+    fn suspend_yang(ref self: TContractState, yang: ContractAddress);
+    fn unsuspend_yang(ref self: TContractState, yang: ContractAddress);
     fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TContractState, multiplier: Ray);
