@@ -203,11 +203,15 @@ mod ShrineRoles {
 }
 
 mod StabilizerRoles {
-    const INITIALIZE: u128 = 1;
-    const KILL: u128 = 2;
+    const ADD_STRATEGY: u128 = 1;
+    const EXECUTE_STRATEGY: u128 = 2;
+    const EXTRACT: u128 = 4;
+    const INITIALIZE: u128 = 8;
+    const KILL: u128 = 16;
+    const UNWIND_STRATEGY: u128 = 32;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        INITIALIZE + KILL
+        ADD_STRATEGY + EXECUTE_STRATEGY + EXTRACT + INITIALIZE + KILL + UNWIND_STRATEGY
     }
 }

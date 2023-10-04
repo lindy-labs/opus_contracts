@@ -15,12 +15,14 @@ mod Stabilizer {
     };
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     #[storage]
     struct Storage {
         shrine: IShrineDispatcher,
+        sentinel: ISentinelDispatcher,
         abbot: IAbbotDispatcher,
         asset: IERC20Dispatcher,
         trove_id: u64,
@@ -35,12 +37,14 @@ mod Stabilizer {
         ref self: ContractState,
         admin: ContractAddress,
         shrine: ContractAddress,
+        sentinel: ContractAddress,
         abbot: ContractAddress,
         asset: ContractAddress
     ) {
         AccessControl::initializer(admin, Option::Some(StabilizerRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
     // TODO: Initialize ERC-20 with stabilizer as the only minter
@@ -49,17 +53,15 @@ mod Stabilizer {
 
     #[external(v0)]
     impl IStabilizerImpl of IStabilizer<ContractState> {
-        fn initialize(
-            ref self: ContractState,
-            sentinel: ContractAddress,
-            gate: ContractAddress,
-            asset_max: u128
-        ) {
+        fn initialize(ref self: ContractState, gate: ContractAddress, asset_max: u128) {
+            AccessControl::assert_has_role(StabilizerRoles::INITIALIZE);
+
             let stabilizer: ContractAddress = get_contract_address();
 
             // Contract needs to be granted permission to call `sentinel.add_yang` beforehand
-            let sentinel = ISentinelDispatcher { contract_address: sentinel };
-            sentinel
+            self
+                .sentinel
+                .read()
                 .add_yang(
                     stabilizer,
                     asset_max,
@@ -97,6 +99,8 @@ mod Stabilizer {
         fn swap_asset_for_yin(ref self: ContractState, asset_amt: u128) {
             assert(self.trove_id.read().is_non_zero(), 'ST: Not initialized');
 
+            self.assert_can_forge();
+
             let user: ContractAddress = get_caller_address();
             let stabilizer: ContractAddress = get_contract_address();
 
@@ -106,14 +110,22 @@ mod Stabilizer {
 
             // TODO: Mint equivalent `asset_amt` in dummy tokens to stabilizer
 
-            let abbot: IAbbotDispatcher = self.abbot.read();
+            let shrine: IShrineDispatcher = self.shrine.read();
             let trove_id: u64 = self.trove_id.read();
-            abbot.deposit(trove_id, AssetBalance { address: stabilizer, amount: asset_amt });
-            let yin_amt: Wad = asset_amt.into();
-            abbot.forge(trove_id, yin_amt, WadZeroable::zero());
 
-            let yin = IERC20Dispatcher { contract_address: self.shrine.read().contract_address };
-            yin.transfer(user, yin_amt.into());
+            // reentrancy guard is used as a precaution
+            ReentrancyGuard::start();
+
+            let yang_amt: Wad = self
+                .sentinel
+                .read()
+                .enter(stabilizer, stabilizer, trove_id, asset_amt);
+            shrine.deposit(stabilizer, trove_id, yang_amt);
+
+            ReentrancyGuard::end();
+
+            let yin_amt = yang_amt;
+            shrine.forge(user, trove_id, yin_amt, WadZeroable::zero());
         }
 
         //
@@ -121,6 +133,8 @@ mod Stabilizer {
         //
 
         fn add_strategy(ref self: ContractState, strategy: ContractAddress) {
+            AccessControl::assert_has_role(StabilizerRoles::ADD_STRATEGY);
+
             assert(strategy.is_non_zero(), 'ST: Zero address');
             assert(self.strategy_id.read(strategy).is_zero(), 'ST: Strategy already added');
 
@@ -133,6 +147,8 @@ mod Stabilizer {
         }
 
         fn execute_strategy(ref self: ContractState, strategy: ContractAddress, amount: u128) {
+            AccessControl::assert_has_role(StabilizerRoles::EXECUTE_STRATEGY);
+
             let strategy_id: u8 = self.strategy_id.read(strategy);
             assert(strategy_id.is_non_zero(), 'ST: Strategy not added');
 
@@ -143,6 +159,8 @@ mod Stabilizer {
         }
 
         fn unwind_strategy(ref self: ContractState, strategy: ContractAddress, amount: u128) {
+            AccessControl::assert_has_role(StabilizerRoles::UNWIND_STRATEGY);
+
             let strategy_id: u8 = self.strategy_id.read(strategy);
             assert(strategy_id.is_non_zero(), 'ST: Strategy not added');
 
@@ -185,10 +203,30 @@ mod Stabilizer {
             let asset: IERC20Dispatcher = self.asset.read();
             asset.transfer(user, asset_amt.into());
         }
+
+        // After `Caretaker.shut` is triggered, there will be some amount of dummy tokens
+        // remaining in the trove. For example, if 70% of the Shrine's collateral is transferred to the 
+        // Caretaker to back circulating yin, then the Stabilizer's trove will have 30% of dummy tokens 
+        // remaining in its trove that corresponds to 30% of the asset's value in the Stabilizer after
+        // all strategies have been unwound. This function sends the amount of assets corresponding to this
+        // remainder dummy tokens to a prescribed address.
+        fn extract(ref self: ContractState, recipient: ContractAddress) {
+            AccessControl::assert_has_role(StabilizerRoles::EXTRACT);
+
+            // TODO: Get the deposited amount of dummy token in the trove, and calculate
+            //       the corresponding amount of assets (deposited_amount / total_supply) * stabilizer_asset_balance
+            let amount: u128 = 0;
+
+            self.asset.read().transfer(recipient, amount.into());
+        }
     }
 
     #[generate_trait]
-    impl StabilizerHelpers of StabilizerHelpersTrait {}
+    impl StabilizerHelpers of StabilizerHelpersTrait {
+        #[inline(always)]
+        fn assert_can_forge(self: @ContractState) { // Check that CASH can be minted
+        }
+    }
 // TODO: Include ERC-20 functions
 // TODO: Include access control functions
 }

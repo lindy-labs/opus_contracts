@@ -2,9 +2,7 @@ use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IStabilizer<TContractState> {
-    fn initialize(
-        ref self: TContractState, sentinel: ContractAddress, gate: ContractAddress, asset_max: u128
-    );
+    fn initialize(ref self: TContractState, gate: ContractAddress, asset_max: u128);
     fn swap_asset_for_yin(ref self: TContractState, asset_amt: u128);
     // strategy
     fn add_strategy(ref self: TContractState, strategy: ContractAddress);
@@ -13,6 +11,7 @@ trait IStabilizer<TContractState> {
     // shutdown
     fn kill(ref self: TContractState);
     fn claim(ref self: TContractState, amount: u128);
+    fn extract(ref self: TContractState, recipient: ContractAddress);
 }
 
 
