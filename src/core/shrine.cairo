@@ -1136,7 +1136,12 @@ mod Shrine {
         // Helper function for applying the recovery mode threshold decrease to a threshold,
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
+        // Note that recovery mode does not alter the threshold if it is 100%.
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
+            if threshold == RAY_ONE.into() {
+                return threshold;
+            }
+
             let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
             if shrine_ltv >= recovery_mode_threshold {
                 return max(
