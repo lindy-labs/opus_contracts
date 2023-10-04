@@ -112,8 +112,6 @@ mod PurgerUtils {
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         array![
-            RayZeroable::zero(),
-            RAY_PERCENT.into(),
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
             (75 * RAY_PERCENT).into(),
