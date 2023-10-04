@@ -1,4 +1,5 @@
 mod PurgerUtils {
+    use cmp::min;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -21,7 +22,7 @@ mod PurgerUtils {
     use opus::types::AssetBalance;
     use opus::utils::math::pow;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
+    use opus::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
     use opus::tests::absorber::utils::AbsorberUtils;
     use opus::tests::common;
@@ -552,12 +553,40 @@ mod PurgerUtils {
         common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
     }
 
+    // Returns a tuple of the expected freed percentage of trove value and the 
+    // freed asset amounts
     fn get_expected_liquidation_assets(
-        trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray
-    ) -> Span<u128> {
+        trove_asset_amts: Span<u128>,
+        trove_value: Wad,
+        close_amt: Wad,
+        penalty: Ray,
+        compensation_value: Option<Wad>
+    ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
-        let expected_freed_pct: Ray = wadray::rdiv_ww(freed_amt, trove_value);
-        common::scale_span_by_pct(trove_asset_amts, expected_freed_pct)
+        let value_offset: Wad = if compensation_value.is_some() {
+            compensation_value.unwrap()
+        } else {
+            WadZeroable::zero()
+        };
+        let value_after_compensation: Wad = trove_value - value_offset;
+        let expected_freed_pct_of_value_before_compensation: Ray =
+            if freed_amt < value_after_compensation {
+            wadray::rdiv_ww(freed_amt, trove_value)
+        } else {
+            wadray::rdiv_ww(value_after_compensation, trove_value)
+        };
+        let expected_freed_pct_of_value_after_compensation: Ray =
+            if freed_amt < value_after_compensation {
+            wadray::rdiv_ww(freed_amt, value_after_compensation)
+        } else {
+            expected_freed_pct_of_value_before_compensation
+        };
+        (
+            expected_freed_pct_of_value_after_compensation,
+            common::scale_span_by_pct(
+                trove_asset_amts, expected_freed_pct_of_value_before_compensation
+            )
+        )
     }
 
     fn assert_trove_is_healthy(

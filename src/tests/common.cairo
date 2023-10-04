@@ -328,6 +328,21 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 // Helpers for events
 //
 
+// Helper function to pop an event with indexed keys
+// From https://github.com/OpenZeppelin/cairo-contracts/blob/258daba0f4e85fcc8bc1f142ce1b2bdf328453b3/src/tests/utils.cairo#L24
+fn pop_event_with_indexed_keys<T, impl TDrop: Drop<T>, impl TEvent: starknet::Event<T>>(
+    addr: ContractAddress
+) -> Option<T> {
+    let (mut keys, mut data) = pop_log_raw(addr)?;
+
+    // Remove the event ID from the keys.
+    keys.pop_front();
+
+    let event = starknet::Event::deserialize(ref keys, ref data);
+    assert(data.is_empty(), 'Event has extra data');
+    event
+}
+
 fn assert_events_emitted<
     T,
     impl TCopy: Copy<T>,
