@@ -203,18 +203,22 @@ mod TestPurger {
 
         let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_liquidation();
 
-        let trove_debt: Wad = (WAD_ONE * 1000).into();
+        let default_trove_debt: Wad = (WAD_ONE * 1000).into();
         let mut expected_max_close_amts: Span<Wad> = array![
+            1_u128.into(), // 1 wei (0% threshold)
+            13904898408200000000_u128.into(), // 9 (1% threshold)
             284822000000000000000_u128.into(), // 284.822 (70% threshold)
             386997000000000000000_u128.into(), // 386.997 (80% threshold)
             603509000000000000000_u128.into(), // 603.509 (90% threshold)
             908381000000000000000_u128.into(), // 908.381 (96% threshold)
             992098000000000000000_u128.into(), // 992.098 (97% threshold)
-            trove_debt, // (99% threshold)
+            default_trove_debt, // (99% threshold)
         ]
             .span();
 
         let mut expected_penalty: Span<Ray> = array![
+            (3 * RAY_PERCENT).into(), // 3% (0% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (1% threshold)
             (3 * RAY_PERCENT).into(), // 3% (70% threshold)
             (3 * RAY_PERCENT).into(), // 3% (80% threshold)
             (3 * RAY_PERCENT).into(), // 3% (90% threshold)
@@ -230,17 +234,58 @@ mod TestPurger {
                     let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         PurgerUtils::purger_deploy();
 
-                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
                     PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
+                    // We set the trove's debt such that we get the desired ltv for the trove from 
+                    // the get-go in order to avoid overflow issues in adjust_prices_for_trove_ltv.
+                    //
+                    // NOTE: This 2% cut off is completely arbitrary and meant only for excluding 
+                    // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%. 
+                    // If more low thresholds were added that were above 2% but below the 
+                    // starting LTV of the trove, then this cutoff would need to be adjusted. 
+                    let trove_debt = if *threshold > (RAY_PERCENT * 2).into() {
+                        default_trove_debt
+                    } else {
+                        // Otherwise, we set the debt for the trove such that we get 
+                        // the desired ltv for the trove from the get-go in order
+                        // to avoid overflow issues in adjust_prices_for_trove_ltv
+                        //
+                        // This is because adjust_prices_for_trove_ltv is designed for 
+                        // raising the trove's LTV to the given *higher* LTV,
+                        // not lowering it. 
+                        let target_trove_yang_amts: Span<Wad> = array![
+                            PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
+                            (PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into()
+                        ]
+                            .span();
+
+                        let trove_value: Wad = PurgerUtils::get_sum_of_value(
+                            shrine, yangs, target_trove_yang_amts
+                        );
+                        trove_value.print();
+                        (wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()).print();
+                        wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()
+                    };
 
                     let target_trove: u64 = PurgerUtils::funded_healthy_trove(
                         abbot, yangs, gates, trove_debt
                     );
 
+                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
                     let (_, _, value, before_debt) = shrine.get_trove_info(target_trove);
-                    PurgerUtils::adjust_prices_for_trove_ltv(
-                        shrine, mock_pragma, yangs, yang_pair_ids, value, before_debt, *threshold
-                    );
+
+                    if *threshold > (RAY_PERCENT * 2).into() {
+                        PurgerUtils::adjust_prices_for_trove_ltv(
+                            shrine,
+                            mock_pragma,
+                            yangs,
+                            yang_pair_ids,
+                            value,
+                            before_debt,
+                            *threshold
+                        );
+                    }
 
                     let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
@@ -248,11 +293,14 @@ mod TestPurger {
                     let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
 
                     let expected_penalty = *expected_penalty.pop_front().unwrap();
+                    // TODO: Reduce error margin to RAY_PERCENT / 10 
                     common::assert_equalish(
                         penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty'
                     );
 
                     let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
+                    max_close_amt.print();
+                    expected_max_close_amt.print();
                     common::assert_equalish(
                         max_close_amt,
                         expected_max_close_amt,
