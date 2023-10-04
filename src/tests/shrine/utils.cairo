@@ -326,7 +326,10 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, WadZeroable::zero());
+        shrine
+            .forge(
+                common::trove1_owner_addr(), common::TROVE_1, amt, Option::Some(WadZeroable::zero())
+            );
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -609,7 +612,7 @@ mod ShrineUtils {
                 common::trove1_owner_addr(),
                 common::WHALE_TROVE,
                 WHALE_TROVE_FORGE_AMT.into(),
-                0_u128.into()
+                Option::Some(0_u128.into())
             );
         set_contract_address(ContractAddressZeroable::zero());
     }

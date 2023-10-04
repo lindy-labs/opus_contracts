@@ -796,18 +796,28 @@ mod Shrine {
             user: ContractAddress,
             trove_id: u64,
             amount: Wad,
-            max_forge_fee_pct: Wad
+            max_forge_fee_pct: Option<Wad>
         ) {
             AccessControl::assert_has_role(ShrineRoles::FORGE);
             self.assert_live();
 
             self.charge(trove_id);
 
-            let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
+            let mut debt_amount = amount;
 
-            let forge_fee = amount * forge_fee_pct;
-            let debt_amount = amount + forge_fee;
+            if max_forge_fee_pct.is_some() {
+                let forge_fee_pct: Wad = self.get_forge_fee_pct();
+                assert(
+                    forge_fee_pct <= max_forge_fee_pct.unwrap(), 'SH: forge_fee% > max_forge_fee%'
+                );
+                let forge_fee = amount * forge_fee_pct;
+
+                if forge_fee.is_non_zero() {
+                    self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
+                }
+
+                debt_amount += forge_fee;
+            }
 
             let mut new_system_debt = self.total_debt.read() + debt_amount;
             assert(new_system_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
@@ -822,9 +832,6 @@ mod Shrine {
             self.forge_helper(user, amount);
 
             // Events
-            if forge_fee.is_non_zero() {
-                self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
-            }
             self.emit(DebtTotalUpdated { total: new_system_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }

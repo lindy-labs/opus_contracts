@@ -37,7 +37,10 @@ mod TestShrineRedistribution {
         shrine.deposit(yang2_addr, common::TROVE_1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+                trove1_owner,
+                common::TROVE_1,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                Option::Some(0_u128.into())
             );
     }
 
@@ -48,7 +51,10 @@ mod TestShrineRedistribution {
         let trove2_owner = common::trove2_owner_addr();
         shrine.deposit(yang1_addr, common::TROVE_2, TROVE2_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, common::TROVE_2, TROVE2_YANG2_DEPOSIT.into());
-        shrine.forge(trove2_owner, common::TROVE_2, TROVE2_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove2_owner, common::TROVE_2, TROVE2_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
     }
 
     fn setup_trove3(shrine: IShrineDispatcher) {
@@ -58,7 +64,10 @@ mod TestShrineRedistribution {
         let trove3_owner = ShrineUtils::common::trove3_owner_addr();
         shrine.deposit(yang1_addr, common::TROVE_3, TROVE3_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, common::TROVE_3, TROVE3_YANG2_DEPOSIT.into());
-        shrine.forge(trove3_owner, common::TROVE_3, TROVE3_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove3_owner, common::TROVE_3, TROVE3_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
     }
 
     // Helper function to set up three troves
@@ -588,7 +597,13 @@ mod TestShrineRedistribution {
         let trove2_yang2_amt: Wad = 1000_u128.into(); // 1_000 (Wad)
         shrine.deposit(yang1_addr, redistributed_trove, trove2_yang1_amt);
         shrine.deposit(yang2_addr, redistributed_trove, trove2_yang2_amt);
-        shrine.forge(trove2_owner, redistributed_trove, TROVE2_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove2_owner,
+                redistributed_trove,
+                TROVE2_FORGE_AMT.into(),
+                Option::Some(0_u128.into())
+            );
 
         // Get information before redistribution
         let (_, _, trove2_value, trove2_debt) = shrine.get_trove_info(redistributed_trove);
@@ -675,18 +690,24 @@ mod TestShrineRedistribution {
                 trove1_owner,
                 redistributed_trove,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                0_u128.into()
+                Option::Some(0_u128.into())
             );
 
         let trove2_owner = common::trove2_owner_addr();
         let recipient_trove1: u64 = common::TROVE_2;
         shrine.deposit(yang2_addr, recipient_trove1, TROVE2_YANG2_DEPOSIT.into());
-        shrine.forge(trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
 
         let trove3_owner = common::trove3_owner_addr();
         let recipient_trove2: u64 = common::TROVE_3;
         shrine.deposit(yang2_addr, recipient_trove2, TROVE3_YANG2_DEPOSIT.into());
-        shrine.forge(trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
 
         let (_, _, before_recipient_trove1_value, before_recipient_trove1_debt) = shrine
             .get_trove_info(recipient_trove1);
@@ -1010,20 +1031,26 @@ mod TestShrineRedistribution {
                 trove1_owner,
                 redistributed_trove,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                0_u128.into()
+                Option::Some(0_u128.into())
             );
 
         let trove2_owner = common::trove2_owner_addr();
         let recipient_trove1: u64 = common::TROVE_2;
         shrine.deposit(yang2_addr, recipient_trove1, TROVE2_YANG2_DEPOSIT.into());
         shrine.deposit(yang3_addr, recipient_trove1, TROVE2_YANG3_DEPOSIT.into());
-        shrine.forge(trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
 
         let trove3_owner = common::trove3_owner_addr();
         let recipient_trove2: u64 = common::TROVE_3;
         shrine.deposit(yang2_addr, recipient_trove2, TROVE3_YANG2_DEPOSIT.into());
         shrine.deposit(yang3_addr, recipient_trove2, TROVE3_YANG3_DEPOSIT.into());
-        shrine.forge(trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
 
         let (_, _, before_recipient_trove1_value, before_recipient_trove1_debt) = shrine
             .get_trove_info(recipient_trove1);
@@ -1440,17 +1467,32 @@ mod TestShrineRedistribution {
         shrine.deposit(yang2_addr, redistributed_trove1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
         shrine.deposit(yang3_addr, redistributed_trove1, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
         let redistributed_trove1_debt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, redistributed_trove1, redistributed_trove1_debt, 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner,
+                redistributed_trove1,
+                redistributed_trove1_debt,
+                Option::Some(0_u128.into())
+            );
 
         let trove2_owner = common::trove2_owner_addr();
         let recipient_trove: u64 = common::TROVE_2;
         shrine.deposit(yang2_addr, recipient_trove, TROVE2_YANG2_DEPOSIT.into());
-        shrine.forge(trove2_owner, recipient_trove, TROVE2_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove2_owner, recipient_trove, TROVE2_FORGE_AMT.into(), Option::Some(0_u128.into())
+            );
 
         let trove3_owner = common::trove3_owner_addr();
         let redistributed_trove2: u64 = common::TROVE_3;
         shrine.deposit(yang2_addr, redistributed_trove2, TROVE3_YANG2_DEPOSIT.into());
-        shrine.forge(trove3_owner, redistributed_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove3_owner,
+                redistributed_trove2,
+                TROVE3_FORGE_AMT.into(),
+                Option::Some(0_u128.into())
+            );
 
         let start_total_debt: Wad = shrine.get_total_debt();
 

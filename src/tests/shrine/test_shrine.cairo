@@ -1001,7 +1001,7 @@ mod TestShrine {
                 ShrineUtils::common::trove3_owner_addr(),
                 common::TROVE_3,
                 1_u128.into(),
-                WadZeroable::zero()
+                Option::Some(WadZeroable::zero())
             );
     }
 
@@ -1018,7 +1018,10 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, WadZeroable::zero()
+                common::trove1_owner_addr(),
+                common::TROVE_1,
+                unsafe_forge_amt,
+                Option::Some(WadZeroable::zero())
             );
     }
 
@@ -1037,7 +1040,13 @@ mod TestShrine {
         shrine.deposit(ShrineUtils::yang1_addr(), common::TROVE_1, additional_yang1_amt);
 
         let unsafe_amt: Wad = (ShrineUtils::TROVE1_FORGE_AMT * 10).into();
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, WadZeroable::zero());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                common::TROVE_1,
+                unsafe_amt,
+                Option::Some(WadZeroable::zero())
+            );
     }
 
     #[test]
@@ -1054,7 +1063,7 @@ mod TestShrine {
                 common::trove1_owner_addr(),
                 common::TROVE_1,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                WadZeroable::zero(),
+                Option::Some(WadZeroable::zero()),
             );
     }
 
@@ -1106,7 +1115,7 @@ mod TestShrine {
             'incorrect max forge amt'
         );
 
-        shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
+        shrine.forge(trove1_owner, trove_id, forge_amt, Option::Some(fee_pct));
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
         let fee = debt - forge_amt;
@@ -1120,7 +1129,7 @@ mod TestShrine {
 
         shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
-        shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
+        shrine.forge(trove1_owner, trove_id, forge_amt, Option::Some(fee_pct));
 
         let (_, _, _, new_debt) = shrine.get_trove_info(common::TROVE_1);
         let fee = new_debt - debt - forge_amt;
@@ -1155,7 +1164,10 @@ mod TestShrine {
         // Should revert since the forge fee exceeds the maximum set by the frontend
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct
+                trove1_owner,
+                common::TROVE_1,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                Option::Some(stale_fee_pct)
             );
     }
 
@@ -1393,7 +1405,7 @@ mod TestShrine {
                 trove1_owner,
                 common::TROVE_1,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                WadZeroable::zero()
+                Option::Some(WadZeroable::zero())
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -1422,7 +1434,7 @@ mod TestShrine {
                 trove1_owner,
                 common::TROVE_1,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                WadZeroable::zero()
+                Option::Some(WadZeroable::zero())
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -1450,7 +1462,7 @@ mod TestShrine {
                 trove1_owner,
                 common::TROVE_1,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                WadZeroable::zero()
+                Option::Some(WadZeroable::zero())
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);

@@ -137,7 +137,10 @@ mod Abbot {
             };
 
             // forge Yin
-            self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
+            self
+                .shrine
+                .read()
+                .forge(user, new_trove_id, forge_amount, Option::Some(max_forge_fee_pct));
 
             self.emit(TroveOpened { user, trove_id: new_trove_id });
 
@@ -202,7 +205,7 @@ mod Abbot {
         fn forge(ref self: ContractState, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
             let user = get_caller_address();
             self.assert_trove_owner(user, trove_id);
-            self.shrine.read().forge(user, trove_id, amount, max_forge_fee_pct);
+            self.shrine.read().forge(user, trove_id, amount, Option::Some(max_forge_fee_pct));
         }
 
         // destroy Yin from a trove

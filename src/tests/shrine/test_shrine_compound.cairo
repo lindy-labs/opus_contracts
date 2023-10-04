@@ -391,7 +391,13 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                trove_id,
+                WadZeroable::zero(),
+                Option::Some(0_u128.into())
+            );
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<Shrine::Event> = array![
@@ -482,7 +488,13 @@ mod TestShrineCompound {
         assert(expected_debt == debt, 'wrong compounded debt');
 
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                trove_id,
+                WadZeroable::zero(),
+                Option::Some(0_u128.into())
+            );
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<Shrine::Event> = array![
@@ -608,7 +620,13 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                trove_id,
+                WadZeroable::zero(),
+                Option::Some(0_u128.into())
+            );
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<Shrine::Event> = array![
@@ -855,7 +873,7 @@ mod TestShrineCompound {
         let yang2_deposit_amt: Wad = ShrineUtils::TROVE1_YANG2_DEPOSIT.into();
         shrine.deposit(yang2_addr, trove_id, yang2_deposit_amt);
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, trove_id, forge_amt, 0_u128.into());
+        shrine.forge(trove1_owner, trove_id, forge_amt, Option::Some(0_u128.into()));
 
         let mut yangs_deposited: Array<Wad> = array![
             yang1_deposit_amt, yang2_deposit_amt, WadZeroable::zero()

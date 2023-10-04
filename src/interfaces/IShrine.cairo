@@ -64,7 +64,7 @@ trait IShrine<TContractState> {
         user: ContractAddress,
         trove_id: u64,
         amount: Wad,
-        max_forge_fee_pct: Wad
+        max_forge_fee_pct: Option<Wad>
     );
     fn melt(ref self: TContractState, user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
