@@ -125,7 +125,7 @@ mod Stabilizer {
             ReentrancyGuard::end();
 
             let yin_amt = yang_amt;
-            shrine.forge(user, trove_id, yin_amt, WadZeroable::zero());
+            shrine.forge(user, trove_id, yin_amt, Option::None);
         }
 
         //
@@ -224,7 +224,7 @@ mod Stabilizer {
     #[generate_trait]
     impl StabilizerHelpers of StabilizerHelpersTrait {
         #[inline(always)]
-        fn assert_can_forge(self: @ContractState) { // Check that CASH can be minted
+        fn assert_can_forge(self: @ContractState) { // TODO: Check conditions for minting CASH
         }
     }
 // TODO: Include ERC-20 functions
