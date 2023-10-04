@@ -614,7 +614,7 @@ mod Shrine {
             let yangs_len = yangs.len();
             let num_yangs: u32 = self.yangs_count.read();
 
-            assert(yangs_len == num_yangs, 'SH: Too few yangs');
+            assert(yangs_len == num_yangs, 'SH: Incorrect yangs count');
             assert(yangs_len == new_rates.len(), 'SH: yangs.len != new_rates.len');
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
@@ -631,6 +631,8 @@ mod Shrine {
                 self.rates_latest_era.write(rate_era);
                 self.rates_intervals.write(rate_era, current_interval);
             }
+
+            let mut cumulative_yang_ids: u32 = 0;
 
             // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
             // yang's rate isn't being updated, and so we get the previous value.
@@ -655,28 +657,26 @@ mod Shrine {
                             assert_rate_is_valid(*rate);
                             self.yang_rates.write((current_yang_id, rate_era), *rate);
                         }
+
+                        cumulative_yang_ids += current_yang_id;
                     },
                     Option::None => { break; }
                 };
             };
 
-            // Verify that all rates were updated correctly
+            // Verify that all yangs had a rate update.
             // This is necessary because we don't enforce that the `yangs` array really contains
             // every single yang, only that its length is the same as the number of yangs.
             // For all we know, `yangs` could contain one yang address 10 times.
             // Even though this is an admin/governance function, such a mistake could break
             // interest rate calculations, which is why it's important that we verify that all yangs'
-            // rates were correctly updated.
-            let mut idx: u32 = num_yangs;
-            loop {
-                if idx == 0 {
-                    break ();
-                }
-                assert(
-                    self.yang_rates.read((idx, rate_era)).is_non_zero(), 'SH: Incorrect rate update'
-                );
-                idx -= 1;
-            };
+            // rates were updated.
+
+            // Gauss summation: 1 + 2 + ... + [n = n(n + 1)] / 2
+            let expected_cumulative_yang_ids: u32 = (num_yangs * (num_yangs + 1)) / 2;
+            assert(
+                cumulative_yang_ids == expected_cumulative_yang_ids, 'SH: Not all yangs updated'
+            );
 
             self.emit(YangRatesUpdated { rate_era, current_interval, yangs, new_rates });
         }
@@ -2260,9 +2260,9 @@ mod Shrine {
         starknet::get_block_timestamp() / TIME_INTERVAL
     }
 
-    // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
+    // Asserts that `current_new_rate` is in the range [0, MAX_YANG_RATE]
     fn assert_rate_is_valid(rate: Ray) {
-        assert(0 < rate.val && rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
+        assert(rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
     }
 
     // Helper function to round up the debt to be redistributed for a yang if the remaining debt

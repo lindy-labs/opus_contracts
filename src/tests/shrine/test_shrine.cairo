@@ -494,7 +494,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Too few yangs', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Incorrect yangs count', 'ENTRYPOINT_FAILED'))]
     fn test_update_rates_too_few_yangs() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -530,7 +530,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Incorrect rate update', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Not all yangs updated', 'ENTRYPOINT_FAILED'))]
     fn test_update_rates_not_all_yangs() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());

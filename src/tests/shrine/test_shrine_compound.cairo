@@ -17,6 +17,57 @@ mod TestShrineCompound {
     // Tests - Trove estimate and charge
     //
 
+    // Test zero base rate
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_compound_and_charge_zero_base_rate() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
+
+        set_contract_address(ShrineUtils::admin());
+        shrine
+            .update_rates(
+                yangs, array![RayZeroable::zero(), RayZeroable::zero(), RayZeroable::zero()].span()
+            );
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let start_debt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        ShrineUtils::trove1_forge(shrine, start_debt);
+
+        common::advance_intervals(100);
+
+        let trove_id: u64 = common::TROVE_1;
+
+        let (_, _, _, end_debt) = shrine.get_trove_info(trove_id);
+        assert(start_debt == end_debt, 'wrong compounded debt');
+
+        common::drop_all_events(shrine.contract_address);
+
+        // Trigger charge and check no interest is accrued
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
+        assert(shrine.get_total_debt() == start_debt, 'debt updated');
+
+        let end_interval = ShrineUtils::current_interval();
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::TroveUpdated(
+                Shrine::TroveUpdated {
+                    trove_id,
+                    trove: Trove { charge_from: end_interval, debt: start_debt, last_rate_era: 2 },
+                }
+            ),
+        ]
+            .span();
+        let mut should_not_emit: Span<Shrine::Event> = array![
+            Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: start_debt }),
+        ]
+            .span();
+        common::assert_events_emitted(
+            shrine.contract_address, expected_events, Option::Some(should_not_emit)
+        );
+    }
+
     // Test for `charge` with all intervals between start and end inclusive updated.
     //
     // T+START--------------T+END
