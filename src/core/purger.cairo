@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod Purger {
+    use debug::PrintTrait;
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
@@ -190,6 +191,7 @@ mod Purger {
             ref self: ContractState, trove_id: u64, amt: Wad, recipient: ContractAddress
         ) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
+
             let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
                 .get_trove_info(trove_id);
 
@@ -448,9 +450,15 @@ mod Purger {
                 return Option::Some(penalty);
             }
 
-            // If the threshold is below a certain threshold, we automatically
-            // return the minimum penalty to avoid division by zero/overflow.
+            // If the threshold is below the given minimum, we automatically
+            // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+            // whichever is smaller.
             if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                // This check is to avoid overflow in the event that the 
+                // trove's LTV is also extremely low.
+                if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                    return Option::Some(min(MIN_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));
+                }
                 return Option::Some(MIN_PENALTY.into());
             }
 
@@ -540,9 +548,15 @@ mod Purger {
             return Option::Some(RayZeroable::zero());
         }
 
-        // If the threshold is below a certain threshold, we automatically
-        // return the minimum penalty to avoid division by zero/overflow.
+        // If the threshold is below the given minimum, we automatically
+        // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+        // whichever is smaller.
         if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+            // This check is to avoid overflow in the event that the 
+            // trove's LTV is also extremely low.
+            if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                return Option::Some(min(MIN_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));
+            }
             return Option::Some(MIN_PENALTY.into());
         }
 

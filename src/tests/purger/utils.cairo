@@ -21,7 +21,9 @@ mod PurgerUtils {
     use opus::types::AssetBalance;
     use opus::utils::math::pow;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
+    use opus::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
+    };
 
     use opus::tests::absorber::utils::AbsorberUtils;
     use opus::tests::common;
@@ -83,8 +85,8 @@ mod PurgerUtils {
     }
 
     fn whale_trove_yang_asset_amts() -> Span<u128> {
-        array![50 * WAD_ONE, // 50 (Wad) - ETH
-         5000000000 // 50 (10 ** 8) - BTC
+        array![700 * WAD_ONE, // 700 (Wad) - ETH
+         70000000000 // 700 (10 ** 8) - BTC
         ].span()
     }
 
@@ -474,7 +476,7 @@ mod PurgerUtils {
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
-        let yin_amt: Wad = TARGET_TROVE_YIN.into();
+        let yin_amt: Wad = WAD_ONE.into();
         common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
@@ -542,6 +544,7 @@ mod PurgerUtils {
     ) {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+
         decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
     }
 
@@ -649,5 +652,22 @@ mod PurgerUtils {
                 Option::None => { break; },
             };
         };
+    }
+
+    // Helper function to calculate the sum of the value of the given yangs
+    fn get_sum_of_value(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
+    ) -> Wad {
+        let mut sum: Wad = WadZeroable::zero();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    sum = sum + yang_price * *amounts.pop_front().unwrap();
+                },
+                Option::None => { break; },
+            };
+        };
+        sum
     }
 }
