@@ -139,7 +139,8 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                SentinelUtils::dummy_yang_gate_addr()
+                SentinelUtils::dummy_yang_gate_addr(),
+                Option::None
             );
     }
 
@@ -156,7 +157,8 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                SentinelUtils::dummy_yang_gate_addr()
+                SentinelUtils::dummy_yang_gate_addr(),
+                Option::None
             );
     }
 
@@ -173,7 +175,8 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                ContractAddressZeroable::zero()
+                ContractAddressZeroable::zero(),
+                Option::None
             );
     }
 
@@ -191,7 +194,8 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                eth_gate.contract_address
+                eth_gate.contract_address,
+                Option::None
             );
     }
 
@@ -210,7 +214,8 @@ mod TestSentinel {
                 ShrineUtils::YANG2_THRESHOLD.into(),
                 ShrineUtils::YANG2_START_PRICE.into(),
                 ShrineUtils::YANG2_BASE_RATE.into(),
-                eth_gate.contract_address
+                eth_gate.contract_address,
+                Option::None
             );
     }
 

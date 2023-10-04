@@ -124,7 +124,8 @@ mod SentinelUtils {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                eth_gate
+                eth_gate,
+                Option::None
             );
         set_contract_address(ContractAddressZeroable::zero());
 
@@ -154,7 +155,8 @@ mod SentinelUtils {
                 ShrineUtils::YANG2_THRESHOLD.into(),
                 ShrineUtils::YANG2_START_PRICE.into(),
                 ShrineUtils::YANG2_BASE_RATE.into(),
-                wbtc_gate
+                wbtc_gate,
+                Option::None
             );
         set_contract_address(ContractAddressZeroable::zero());
 

@@ -165,7 +165,8 @@ mod Sentinel {
             yang_threshold: Ray,
             yang_price: Wad,
             yang_rate: Ray,
-            gate: ContractAddress
+            gate: ContractAddress,
+            initial_yang_amt: Option<u128>
         ) {
             AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
@@ -187,15 +188,23 @@ mod Sentinel {
             // Require an initial deposit when adding a yang to prevent first depositor from front-running
             let yang_erc20 = IERC20Dispatcher { contract_address: yang };
             // scale `asset_amt` up by the difference to match `Wad` precision of yang
+
+            let unscaled_initial_yang_amt: u128 = if initial_yang_amt.is_some() {
+                initial_yang_amt.unwrap()
+            } else {
+                INITIAL_DEPOSIT_AMT
+            };
             let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
-                INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
+                unscaled_initial_yang_amt, yang_erc20.decimals()
             );
-            let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
+            let initial_deposit_amt: u256 = unscaled_initial_yang_amt.into();
 
             let caller: ContractAddress = get_caller_address();
-            let success: bool = yang_erc20
-                .transfer_from(caller, gate.contract_address, initial_deposit_amt);
-            assert(success, 'SE: Yang transfer failed');
+            if initial_deposit_amt.is_non_zero() {
+                let success: bool = yang_erc20
+                    .transfer_from(caller, gate.contract_address, initial_deposit_amt);
+                assert(success, 'SE: Yang transfer failed');
+            }
 
             let shrine: IShrineDispatcher = self.shrine.read();
             shrine.add_yang(yang, yang_threshold, yang_price, yang_rate, initial_yang_amt);
