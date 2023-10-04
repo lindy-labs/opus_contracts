@@ -201,3 +201,13 @@ mod ShrineRoles {
             + WITHDRAW
     }
 }
+
+mod StabilizerRoles {
+    const INITIALIZE: u128 = 1;
+    const KILL: u128 = 2;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        INITIALIZE + KILL
+    }
+}
