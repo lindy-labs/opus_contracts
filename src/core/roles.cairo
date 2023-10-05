@@ -208,7 +208,7 @@ mod StabilizerRoles {
     const EXTRACT: u128 = 4;
     const INITIALIZE: u128 = 8;
     const KILL: u128 = 16;
-    const SET_CEILING: u128 = 32;
+    const SET_PERCENTAGE_CAP: u128 = 32;
     const SET_RECEIVER: u128 = 64;
     const SET_STRATEGY_CEILING: u128 = 128;
     const UNWIND_STRATEGY: u128 = 256;
@@ -225,7 +225,7 @@ mod StabilizerRoles {
             + EXTRACT
             + INITIALIZE
             + KILL
-            + SET_CEILING
+            + SET_PERCENTAGE_CAP
             + SET_RECEIVER
             + SET_STRATEGY_CEILING
             + UNWIND_STRATEGY
