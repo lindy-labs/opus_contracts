@@ -16,7 +16,7 @@ trait IStabilizer<TContractState> {
     // setters
     fn initialize(
         ref self: TContractState, abbot: ContractAddress, gate: ContractAddress, asset_max: u128
-    );
+    ) -> u64;
     fn set_percentage_cap(ref self: TContractState, cap: Ray);
     fn set_receiver(ref self: TContractState, receiver: ContractAddress);
     // core functions
@@ -35,9 +35,7 @@ trait IStabilizer<TContractState> {
 
 #[starknet::interface]
 trait IStrategyManager<TContractState> {
-    // getters
-    fn get_deployed_amount(self: @TContractState) -> u128;
     // core functions
-    fn execute(ref self: TContractState, amount: u128);
-    fn unwind(ref self: TContractState, amount: u128);
+    fn execute(ref self: TContractState, execute_amt: u128);
+    fn unwind(ref self: TContractState, deployed_amt: u128, unwind_amt: u128);
 }

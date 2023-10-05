@@ -122,6 +122,11 @@ mod Pragma {
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct Strategy {
+    // the strategy manager instance executing the strategy
     manager: IStrategyManagerDispatcher,
+    // the maximum amount of assets from the Stabilizer that can be deployed
+    // to this strategy
     ceiling: u128,
+    // the amount of assets from the Stabilizer deployed to date
+    deployed_amount: u128
 }

@@ -33,16 +33,30 @@ mod Stabilizer {
     // debt ceiling can be made via `Sentinel.set_yang_asset_max`.
     #[storage]
     struct Storage {
+        // The Shrine associated with this Stabilizer
         shrine: IShrineDispatcher,
+        // The Sentinel associated with the Shrine and this Stabilizer
         sentinel: ISentinelDispatcher,
+        // The asset that can be swapped for yin via this Stabilizer
         asset: IERC20Dispatcher,
+        // The trove ID representing this Stabilizer in Shrine
         trove_id: u64,
+        // The maximum amount of yin that can be minted via this Stabilizer
+        // as a percentage of the total yin supply
         percentage_cap: Ray,
+        // Keeps track of whether the Stabilizer is live or killed
         is_live: bool,
-        // strategies
+        // Strategies
+        // Number of strategies added
         strategies_count: u8,
+        // Mapping of a strategy manager's address to its ID
         strategy_id: LegacyMap::<ContractAddress, u8>,
+        // Mapping of a strategy ID to a Strategy struct of:
+        // 1. the strategy manager dispatcher
+        // 2. the ceiling for the strategy
         strategies: LegacyMap::<u8, Strategy>,
+        // The address to receive any excess asset from all strategies
+        // after unwinding
         receiver: ContractAddress,
         // ERC-20
         name: felt252,
@@ -213,9 +227,13 @@ mod Stabilizer {
         // Setters
         //
 
+        // This function adds the dummy token of this Stabilizer as a yang in Shrine via the Sentinel.
+        // Subsequently, it opens a trove with the Abbot to "reserve" a trove ID.
+        // Note that this function requires the caller to have approved the Stabilizer to transfer
+        // such amount of assets equivalent to 1 Wad of dummy tokens.
         fn initialize(
             ref self: ContractState, abbot: ContractAddress, gate: ContractAddress, asset_max: u128
-        ) {
+        ) -> u64 {
             AccessControl::assert_has_role(StabilizerRoles::INITIALIZE);
 
             let stabilizer: ContractAddress = get_contract_address();
@@ -240,11 +258,14 @@ mod Stabilizer {
             // Set max approval of dummy token in stabilizer for gate
             self.approve_helper(stabilizer, gate, BoundedU256::max());
 
-            // Transfer 1 Wad of asset to stabilizer
+            // Transfer asset equivalent to 1 Wad of dummy tokens to stabilizer
+            let asset_amt: u128 = wadray::wad_to_fixed_point(
+                WAD_ONE.into(), self.asset.read().decimals()
+            );
             let success: bool = self
                 .asset
                 .read()
-                .transfer_from(get_caller_address(), stabilizer, WAD_ONE.into());
+                .transfer_from(get_caller_address(), stabilizer, asset_amt.into());
 
             // Open trove with Abbot
             let trove_id: u64 = IAbbotDispatcher { contract_address: abbot }
@@ -257,6 +278,8 @@ mod Stabilizer {
             self.trove_id.write(trove_id);
 
             self.emit(Initialized { trove_id });
+
+            trove_id
         }
 
         fn set_percentage_cap(ref self: ContractState, cap: Ray) {
@@ -334,6 +357,7 @@ mod Stabilizer {
                     Strategy {
                         manager: IStrategyManagerDispatcher { contract_address: strategy_manager },
                         ceiling,
+                        deployed_amount: 0
                     },
                 );
 
@@ -361,10 +385,14 @@ mod Stabilizer {
             let balance: u128 = asset.balance_of(stabilizer).try_into().unwrap();
             let amount: u128 = min(amount, balance);
 
-            let updated_deployed_amount = strategy.manager.get_deployed_amount() + amount;
+            let updated_deployed_amount = strategy.deployed_amount + amount;
             assert(updated_deployed_amount <= strategy.ceiling, 'ST: Strategy ceiling exceeded');
 
-            asset.transfer(strategy.manager.contract_address, amount.into());
+            strategy.deployed_amount = updated_deployed_amount;
+            self.strategies.write(strategy_id, strategy);
+
+            let success: bool = asset.transfer(strategy.manager.contract_address, amount.into());
+            assert(success, 'ST: Asset transfer failed');
             strategy.manager.execute(amount);
 
             self.emit(ExecuteStrategy { strategy_id, amount });
@@ -373,11 +401,7 @@ mod Stabilizer {
         fn unwind_strategy(ref self: ContractState, strategy_id: u8, amount: u128) {
             AccessControl::assert_has_role(StabilizerRoles::UNWIND_STRATEGY);
 
-            let strategy: Strategy = self.strategies.read(strategy_id);
-
-            strategy.manager.unwind(amount);
-
-            self.emit(UnwindStrategy { strategy_id, amount });
+            self.unwind_strategy_helper(strategy_id, amount);
         }
 
         //
@@ -398,8 +422,7 @@ mod Stabilizer {
                     break;
                 }
 
-                let strategy: Strategy = self.strategies.read(strategy_id);
-                strategy.manager.unwind(BoundedU128::max());
+                self.unwind_strategy_helper(strategy_id, BoundedU128::max());
             };
 
             self.emit(Killed {});
@@ -477,6 +500,18 @@ mod Stabilizer {
             self.percentage_cap.write(cap);
 
             self.emit(PercentageCapUpdated { cap });
+        }
+
+        fn unwind_strategy_helper(ref self: ContractState, strategy_id: u8, unwind_amt: u128) {
+            let mut strategy: Strategy = self.strategies.read(strategy_id);
+            let deployed_amt: u128 = strategy.deployed_amount;
+            let capped_unwind_amt: u128 = min(strategy.deployed_amount, unwind_amt);
+            strategy.deployed_amount -= capped_unwind_amt;
+            self.strategies.write(strategy_id, strategy);
+
+            strategy.manager.unwind(deployed_amt, capped_unwind_amt);
+
+            self.emit(UnwindStrategy { strategy_id, amount: capped_unwind_amt });
         }
     }
 
