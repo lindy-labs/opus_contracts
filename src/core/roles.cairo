@@ -218,14 +218,15 @@ mod TransmuterRoles {
     const EXTRACT: u128 = 4;
     const INITIALIZE: u128 = 8;
     const KILL: u128 = 16;
-    const SET_CEILING: u128 = 32;
-    const SET_PERCENTAGE_CAP: u128 = 64;
-    const SET_RECEIVER: u128 = 128;
-    const SET_REVERSE_FEE: u128 = 256;
-    const SET_STRATEGY_CEILING: u128 = 512;
-    const SWEEP: u128 = 1024;
-    const TOGGLE_REVERSIBILITY: u128 = 2048;
-    const UNWIND_STRATEGY: u128 = 4096;
+    const SET_CARETAKER: u128 = 32;
+    const SET_CEILING: u128 = 64;
+    const SET_PERCENTAGE_CAP: u128 = 128;
+    const SET_RECEIVER: u128 = 256;
+    const SET_REVERSE_FEE: u128 = 512;
+    const SET_STRATEGY_CEILING: u128 = 1024;
+    const SWEEP: u128 = 2048;
+    const TOGGLE_REVERSIBILITY: u128 = 4096;
+    const UNWIND_STRATEGY: u128 = 8192;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -239,6 +240,7 @@ mod TransmuterRoles {
             + EXTRACT
             + INITIALIZE
             + KILL
+            + SET_CARETAKER
             + SET_CEILING
             + SET_PERCENTAGE_CAP
             + SET_RECEIVER

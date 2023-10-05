@@ -30,6 +30,7 @@ mod Transmuter {
 
     // Upper bound of the fee as a percentage that can be charged when swapping
     // yin for the asset when `reverse` is enabled: 1% (Ray)
+    // This is not set at deployment so it defaults to 0%.
     const REVERSE_FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
 
     // Note that the debt ceiling for a Transmuter is enforced via the `yang_asset_max`
@@ -95,6 +96,7 @@ mod Transmuter {
         ReversibilityToggled: ReversibilityToggled,
         ReverseFeeUpdated: ReverseFeeUpdated,
         Sweep: Sweep,
+        CaretakerUpdated: CaretakerUpdated,
         ReceiverUpdated: ReceiverUpdated,
         StrategyAdded: StrategyAdded,
         StrategyCeilingUpdated: StrategyCeilingUpdated,
@@ -158,6 +160,12 @@ mod Transmuter {
         #[key]
         recipient: ContractAddress,
         asset_amt: u128
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct CaretakerUpdated {
+        old_caretaker: ContractAddress,
+        new_caretaker: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -237,9 +245,9 @@ mod Transmuter {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
-        self.caretaker.write(ICaretakerDispatcher { contract_address: caretaker });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
 
+        self.set_caretaker_helper(caretaker);
         self.set_receiver_helper(receiver);
         self.set_percentage_cap_helper(percentage_cap);
 
@@ -253,6 +261,10 @@ mod Transmuter {
         //
         fn get_asset(self: @ContractState) -> ContractAddress {
             self.asset.read().contract_address
+        }
+
+        fn get_caretaker(self: @ContractState) -> ContractAddress {
+            self.caretaker.read().contract_address
         }
 
         fn get_trove_id(self: @ContractState) -> u64 {
@@ -351,6 +363,12 @@ mod Transmuter {
             self.emit(Initialized { trove_id, ceiling });
 
             trove_id
+        }
+
+        fn set_caretaker(ref self: ContractState, caretaker: ContractAddress) {
+            AccessControl::assert_has_role(TransmuterRoles::SET_CARETAKER);
+
+            self.set_caretaker_helper(caretaker);
         }
 
         // Convenience wrapper over `Sentinel.set_yang_asset_max` to perform the necessary conversion
@@ -608,6 +626,12 @@ mod Transmuter {
 
         // Note that `amount` refers to the dummy token balance that a user would receive
         // via `Caretaker.reclaim`.
+        //
+        // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
+        // because we do not make any assumptions as to the amount of assets held by the 
+        // Transmuter. It may be lower than 1 : 1 due to slippage when unwinding strategies,
+        // or it may exceed 1 : 1 if there are excess income and fees that have not been
+        // swept to the receiver.
         fn claim(ref self: ContractState, amount: Wad) {
             assert(self.is_live.read(), 'TR: Transmuter is live');
 
@@ -673,8 +697,16 @@ mod Transmuter {
             assert(self.reversibility.read(), 'TR: Reverse is paused');
         }
 
+        fn set_caretaker_helper(ref self: ContractState, caretaker: ContractAddress) {
+            assert(caretaker.is_non_zero(), 'TR: Zero address');
+            let old_caretaker: ContractAddress = self.caretaker.read().contract_address;
+            self.caretaker.write(ICaretakerDispatcher { contract_address: caretaker });
+
+            self.emit(CaretakerUpdated { old_caretaker, new_caretaker: caretaker });
+        }
+
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {
-            assert(receiver.is_non_zero(), 'SM: Zero address');
+            assert(receiver.is_non_zero(), 'TR: Zero address');
             let old_receiver: ContractAddress = self.receiver.read();
             self.receiver.write(receiver);
 
@@ -682,7 +714,7 @@ mod Transmuter {
         }
 
         fn set_percentage_cap_helper(ref self: ContractState, cap: Ray) {
-            assert(cap <= PERCENTAGE_CAP_UPPER_BOUND.into(), 'SM: Exceeds upper bound of 10%');
+            assert(cap <= PERCENTAGE_CAP_UPPER_BOUND.into(), 'TR: Exceeds upper bound of 10%');
             self.percentage_cap.write(cap);
 
             self.emit(PercentageCapUpdated { cap });
