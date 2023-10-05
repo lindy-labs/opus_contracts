@@ -85,7 +85,7 @@ mod TestGate {
             ),
         ]
             .span();
-        common::assert_events_emitted(gate.contract_address, expected_events);
+        common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -119,7 +119,7 @@ mod TestGate {
             ),
         ]
             .span();
-        common::assert_events_emitted(gate.contract_address, expected_events);
+        common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -157,7 +157,7 @@ mod TestGate {
             ),
         ]
             .span();
-        common::assert_events_emitted(gate.contract_address, expected_events);
+        common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
     }
 
     #[test]

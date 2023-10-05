@@ -67,19 +67,19 @@ mod Purger {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,
         Compensate: Compensate,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PenaltyScalarUpdated {
         new_scalar: Ray
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Purged {
         #[key]
         trove_id: u64,
@@ -92,7 +92,7 @@ mod Purger {
         freed_assets: Span<AssetBalance>
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Compensate {
         #[key]
         recipient: ContractAddress,

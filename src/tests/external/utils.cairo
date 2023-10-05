@@ -37,10 +37,10 @@ mod PragmaUtils {
 
     const DEFAULT_NUM_SOURCES: u256 = 5;
 
-    const ETH_USD_PAIR_ID: u256 = 19514442401534788; // str_to_felt("ETH/USD")
+    const ETH_USD_PAIR_ID: u256 = 'ETH/USD';
     const ETH_INIT_PRICE: u128 = 1888; // raw integer value without fixed point decimals
 
-    const WBTC_USD_PAIR_ID: u256 = 18669995996566340; // str_to_felt("BTC/USD")
+    const WBTC_USD_PAIR_ID: u256 = 'BTC/USD';
     const WBTC_INIT_PRICE: u128 = 20000; // raw integer value without fixed point decimals
 
     const PRAGMA_DECIMALS: u8 = 8;

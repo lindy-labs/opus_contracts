@@ -62,13 +62,27 @@ mod TestFlashmint {
         flashmint.flash_loan(borrower, shrine, first_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');
 
+        ShrineUtils::assert_total_debt_invariant(
+            ShrineUtils::shrine(shrine), ShrineUtils::three_yang_addrs(), 1
+        );
+
+        set_contract_address(flash_mint_caller);
         let second_loan_amt: u256 = FlashmintUtils::DEFAULT_MINT_AMOUNT;
         flashmint.flash_loan(borrower, shrine, second_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 2');
 
+        ShrineUtils::assert_total_debt_invariant(
+            ShrineUtils::shrine(shrine), ShrineUtils::three_yang_addrs(), 1
+        );
+
+        set_contract_address(flash_mint_caller);
         let third_loan_amt: u256 = (1000 * WAD_ONE).into();
         flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
+
+        ShrineUtils::assert_total_debt_invariant(
+            ShrineUtils::shrine(shrine), ShrineUtils::three_yang_addrs(), 1
+        );
 
         let mut expected_events: Span<FlashMint::Event> = array![
             FlashMint::Event::FlashMint(
@@ -97,7 +111,7 @@ mod TestFlashmint {
             ),
         ]
             .span();
-        common::assert_events_emitted(flashmint.contract_address, expected_events);
+        common::assert_events_emitted(flashmint.contract_address, expected_events, Option::None);
 
         let mut expected_events: Span<FlashBorrower::Event> = array![
             FlashBorrower::Event::FlashLoancall_dataReceived(
@@ -129,7 +143,7 @@ mod TestFlashmint {
             ),
         ]
             .span();
-        common::assert_events_emitted(borrower, expected_events);
+        common::assert_events_emitted(borrower, expected_events, Option::None);
     }
 
     #[test]

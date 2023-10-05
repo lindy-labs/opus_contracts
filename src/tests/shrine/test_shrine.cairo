@@ -1,6 +1,7 @@
 mod TestShrine {
     use debug::PrintTrait;
     use integer::BoundedU256;
+    use starknet::get_block_timestamp;
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
@@ -59,7 +60,7 @@ mod TestShrine {
             )
         ]
             .span();
-        common::assert_events_emitted(shrine_addr, expected_events);
+        common::assert_events_emitted(shrine_addr, expected_events, Option::None);
     }
 
     // Checks the following functions
@@ -85,7 +86,7 @@ mod TestShrine {
             )
         ]
             .span();
-        common::assert_events_emitted(shrine_addr, expected_events);
+        common::assert_events_emitted(shrine_addr, expected_events, Option::None);
 
         // Check debt ceiling
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -267,7 +268,7 @@ mod TestShrine {
             idx += 1;
         };
 
-        common::assert_events_emitted(shrine_addr, expected_events.span());
+        common::assert_events_emitted(shrine_addr, expected_events.span(), Option::None);
     }
 
     //
@@ -330,7 +331,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -383,7 +384,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -572,7 +573,7 @@ mod TestShrine {
 
         let expected_events: Span<Shrine::Event> = array![Shrine::Event::Killed(Shrine::Killed {}),]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -674,7 +675,8 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
 
         let trove_id = common::TROVE_1;
-        let yang = ShrineUtils::yang1_addr();
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang = *yangs.at(0);
 
         assert(
             shrine.get_yang_total(yang) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
@@ -697,6 +699,8 @@ mod TestShrine {
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, 1);
+
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::TroveUpdated(
                 Shrine::TroveUpdated {
@@ -714,7 +718,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -760,7 +764,8 @@ mod TestShrine {
         ShrineUtils::trove1_withdraw(shrine, withdraw_amt);
 
         let trove_id: u64 = common::TROVE_1;
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
         let remaining_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
         assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
         assert(shrine.get_deposit(yang1_addr, trove_id) == remaining_amt, 'incorrect yang deposit');
@@ -782,6 +787,8 @@ mod TestShrine {
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, 1);
+
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::TroveUpdated(
                 Shrine::TroveUpdated {
@@ -801,7 +808,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -863,7 +870,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yang balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_insufficient_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -880,7 +887,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yang balance', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_zero_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -926,6 +933,9 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr: ContractAddress = *yangs.at(0);
+
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
 
         let trove_id: u64 = common::TROVE_1;
@@ -937,7 +947,7 @@ mod TestShrine {
         let (_, ltv, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt == forge_amt, 'incorrect trove debt');
 
-        let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_value: Wad = yang1_price * ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
         assert(ltv == expected_ltv, 'incorrect ltv');
@@ -951,6 +961,8 @@ mod TestShrine {
         let trove1_owner_addr: ContractAddress = common::trove1_owner_addr();
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: forge_amt }),
@@ -973,7 +985,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1057,7 +1069,7 @@ mod TestShrine {
         let trove_id: u64 = common::TROVE_1;
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
-        let mut expected_event: Span<Shrine::Event> = array![
+        let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::ForgeFeePaid(
                 Shrine::ForgeFeePaid {
                     trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
@@ -1065,7 +1077,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_event);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1104,7 +1116,7 @@ mod TestShrine {
             Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
@@ -1118,7 +1130,7 @@ mod TestShrine {
             Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1158,6 +1170,9 @@ mod TestShrine {
         let deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
 
+        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr: ContractAddress = *yangs.at(0);
+
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
@@ -1183,7 +1198,7 @@ mod TestShrine {
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         assert(after_yin_bal == before_yin_bal - melt_amt.into(), 'incorrect yin balance');
 
-        let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
         assert(after_ltv == expected_ltv, 'incorrect LTV');
 
@@ -1193,6 +1208,8 @@ mod TestShrine {
         assert(
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: after_trove_debt }),
@@ -1215,7 +1232,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -1276,12 +1293,12 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_fail_insufficient() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1299,7 +1316,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_fail_zero_bal() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1344,12 +1361,12 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1364,7 +1381,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_insufficient_allowance_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1393,7 +1410,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED'))]
     fn test_yin_transfer_from_insufficient_balance_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -1614,7 +1631,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         assert(
             yin.total_supply() == before_total_supply + inject_amt.into(), 'incorrect total supply'
@@ -1642,7 +1659,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
 
@@ -1862,7 +1879,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         shrine.update_yin_spot_price(second_yin_price);
         common::assert_equalish(
@@ -1875,7 +1892,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
@@ -1889,7 +1906,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
@@ -1903,7 +1920,7 @@ mod TestShrine {
             ),
         ]
             .span();
-        common::assert_events_emitted(shrine.contract_address, expected_events);
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     //
@@ -1936,17 +1953,28 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
-    fn test_set_yang_suspension_status_non_existing_yang() {
+    fn test_suspend_yang_non_existing_yang() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
         set_contract_address(ShrineUtils::admin());
-        shrine.update_yang_suspension(ShrineUtils::invalid_yang_addr(), 0);
+        shrine.suspend_yang(ShrineUtils::invalid_yang_addr());
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_yang_suspension_set_and_unset() {
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_unsuspend_yang_non_existing_yang() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        set_contract_address(ShrineUtils::admin());
+        shrine.unsuspend_yang(ShrineUtils::invalid_yang_addr());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_suspend_and_unsuspend() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -1957,7 +1985,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         // initiate yang's suspension, starting now
-        shrine.update_yang_suspension(yang, start_ts);
+        shrine.suspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -1967,18 +1995,19 @@ mod TestShrine {
         common::assert_events_emitted(
             shrine_addr,
             array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
+                Shrine::Event::YangSuspended(
+                    Shrine::YangSuspended { yang, timestamp: get_block_timestamp() }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None
         );
 
         // setting block time to a second before the suspension would be permanent
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // reset the suspension by setting yang's ts to 0
-        shrine.update_yang_suspension(yang, 0);
+        shrine.unsuspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -1988,25 +2017,42 @@ mod TestShrine {
         common::assert_events_emitted(
             shrine_addr,
             array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: 0 }
+                Shrine::Event::YangUnsuspended(
+                    Shrine::YangUnsuspended { yang, timestamp: get_block_timestamp() }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None,
         );
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_suspension_status_not_authorized() {
+    fn test_suspend_yang_not_authorized() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
         let yang = ShrineUtils::yang1_addr();
         set_contract_address(common::badguy());
 
-        shrine.update_yang_suspension(yang, 42);
+        shrine.suspend_yang(yang);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_unsuspend_yang_not_authorized() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+
+        // We directly unsuspend the yang instead of suspending it first, because
+        // an unauthorized call to `suspend_yang` has the same error message, which
+        // can be ambiguous when trying to understand which part of the test failed. 
+        set_contract_address(common::badguy());
+        shrine.unsuspend_yang(yang);
     }
 
     #[test]
@@ -2023,7 +2069,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         // initiate yang's suspension, starting now
-        shrine.update_yang_suspension(yang, start_ts);
+        shrine.suspend_yang(yang);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -2033,11 +2079,12 @@ mod TestShrine {
         common::assert_events_emitted(
             shrine_addr,
             array![
-                Shrine::Event::YangSuspensionUpdated(
-                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
+                Shrine::Event::YangSuspended(
+                    Shrine::YangSuspended { yang, timestamp: get_block_timestamp() }
                 ),
             ]
-                .span()
+                .span(),
+            Option::None,
         );
 
         // check threshold (should be the same at the beginning)
@@ -2101,7 +2148,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Permanent suspension', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Suspension is permanent', 'ENTRYPOINT_FAILED'))]
     fn test_yang_suspension_cannot_reset_after_permanent() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
@@ -2112,30 +2159,70 @@ mod TestShrine {
 
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
+
         // mark permanent
-        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
+        shrine.suspend_yang(yang);
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
+
         // sanity check
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Permanent, 'delisted');
 
         // trying to reset yang suspension status, should fail
-        shrine.update_yang_suspension(yang, 0);
+        shrine.unsuspend_yang(yang);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Invalid timestamp', 'ENTRYPOINT_FAILED'))]
-    fn test_yang_set_suspension_ts_to_future() {
+    #[should_panic(expected: ('SH: Already suspended', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_already_suspended_temporary() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
-        let yang = ShrineUtils::yang1_addr();
-        let ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
 
-        set_block_timestamp(ts);
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
 
-        shrine.update_yang_suspension(yang, ts + 1);
+        // suspend yang
+        shrine.suspend_yang(yang);
+
+        // sanity check
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary, 'should be temporary');
+
+        // trying to suspend an already suspended yang, should fail
+        shrine.suspend_yang(yang);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Already suspended', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_already_suspended_permanent() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // suspend yang
+        shrine.suspend_yang(yang);
+
+        // make permanent
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
+
+        // sanity check
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent, 'should be permanent');
+
+        // trying to suspend an already suspended yang, should fail
+        shrine.suspend_yang(yang);
     }
 
     // In this test, we have two troves. Both are initially healthy. And then suddenly the

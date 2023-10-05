@@ -70,7 +70,7 @@ mod Pragma {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         InvalidPriceUpdate: InvalidPriceUpdate,
         OracleAddressUpdated: OracleAddressUpdated,
@@ -80,7 +80,7 @@ mod Pragma {
         YangAdded: YangAdded,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct InvalidPriceUpdate {
         #[key]
         yang: ContractAddress,
@@ -90,31 +90,31 @@ mod Pragma {
         asset_amt_per_yang: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct OracleAddressUpdated {
         old_address: ContractAddress,
         new_address: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PricesUpdated {
         timestamp: u64,
         caller: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PriceValidityThresholdsUpdated {
         old_thresholds: PriceValidityThresholds,
         new_thresholds: PriceValidityThresholds
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct UpdateFrequencyUpdated {
         old_frequency: u64,
         new_frequency: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
         index: u32,
         settings: YangSettings

@@ -94,7 +94,7 @@ mod TestAllocator {
             ),
         ]
             .span();
-        common::assert_events_emitted(allocator.contract_address, expected_events);
+        common::assert_events_emitted(allocator.contract_address, expected_events, Option::None);
     }
 
     #[test]

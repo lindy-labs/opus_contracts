@@ -95,7 +95,7 @@ mod Pragma {
         num_sources_aggregated: u256,
     }
 
-    #[derive(Copy, Drop, Serde, starknet::Store)]
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     struct PriceValidityThresholds {
         // the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which
@@ -106,7 +106,7 @@ mod Pragma {
         sources: u64
     }
 
-    #[derive(Copy, Drop, Serde, starknet::Store)]
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     struct YangSettings {
         // a Pragma value identifying a certain feed, e.g. `ETH/USD`
         pair_id: u256,

@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod Shrine {
+    use core::starknet::event::EventEmitter;
     use cmp::{max, min};
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use starknet::{get_block_timestamp, get_caller_address};
@@ -186,7 +187,8 @@ mod Shrine {
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
         DebtCeilingUpdated: DebtCeilingUpdated,
-        YangSuspensionUpdated: YangSuspensionUpdated,
+        YangSuspended: YangSuspended,
+        YangUnsuspended: YangUnsuspended,
         Killed: Killed,
         Transfer: Transfer,
         Approval: Approval,
@@ -292,11 +294,19 @@ mod Shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangSuspensionUpdated {
+    struct YangSuspended {
         #[key]
         yang: ContractAddress,
-        suspension_ts: u64
+        timestamp: u64
     }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct YangUnsuspended {
+        #[key]
+        yang: ContractAddress,
+        timestamp: u64
+    }
+
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
@@ -567,18 +577,29 @@ mod Shrine {
             self.set_threshold_helper(yang, new_threshold);
         }
 
-        // Set the timestamp when a Yang's suspension period started
-        // Setting to 0 means the Yang is not suspended (i.e. it's deemed safe)
-        fn update_yang_suspension(ref self: ContractState, yang: ContractAddress, ts: u64) {
+        fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
             AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
-            assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
+
+            assert(
+                self.get_yang_suspension_status(yang) == YangSuspensionStatus::None,
+                'SH: Already suspended'
+            );
+
+            let timestamp: u64 = get_block_timestamp();
+            self.yang_suspension.write(self.get_valid_yang_id(yang), timestamp);
+            self.emit(YangSuspended { yang, timestamp });
+        }
+
+        fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
+            AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+
             assert(
                 self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
-                'SH: Permanent suspension'
+                'SH: Suspension is permanent'
             );
-            let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.yang_suspension.write(yang_id, ts);
-            self.emit(YangSuspensionUpdated { yang, suspension_ts: ts });
+
+            self.yang_suspension.write(self.get_valid_yang_id(yang), 0);
+            self.emit(YangUnsuspended { yang, timestamp: get_block_timestamp() });
         }
 
         // Update the base rates of all yangs
@@ -855,7 +876,7 @@ mod Shrine {
             pct_value_to_redistribute: Ray
         ) {
             AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
-
+            assert(pct_value_to_redistribute <= RAY_ONE.into(), 'SH: pct_val_to_redistribute > 1');
             let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
@@ -1314,7 +1335,10 @@ mod Shrine {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Fails if amount > amount of yang deposited in the given trove
-            let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) - amount;
+            let trove_balance: Wad = self.deposits.read((yang_id, trove_id));
+            assert(trove_balance >= amount, 'SH: Insufficient yang balance');
+
+            let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
 
             self.charge(trove_id);
@@ -2333,7 +2357,10 @@ mod Shrine {
             let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
             // Transferring the Yin
-            self.yin.write(sender, self.yin.read(sender) - amount_wad);
+            let sender_balance: Wad = self.yin.read(sender);
+            assert(sender_balance >= amount_wad, 'SH: Insufficient yin balance');
+
+            self.yin.write(sender, sender_balance - amount_wad);
             self.yin.write(recipient, self.yin.read(recipient) + amount_wad);
 
             self.emit(Transfer { from: sender, to: recipient, value: amount });
@@ -2358,6 +2385,7 @@ mod Shrine {
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
             if current_allowance != BoundedU256::max() {
+                assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
         }

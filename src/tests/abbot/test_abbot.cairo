@@ -132,7 +132,9 @@ mod TestAbbot {
             ),
         ]
             .span();
-        common::assert_events_emitted(abbot.contract_address, expected_events);
+        common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -195,10 +197,12 @@ mod TestAbbot {
         assert(debt.is_zero(), 'wrong trove debt');
 
         let mut expected_events: Span<Abbot::Event> = array![
-            Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id, }),
+            Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id }),
         ]
             .span();
-        common::assert_events_emitted(abbot.contract_address, expected_events);
+        common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -277,6 +281,8 @@ mod TestAbbot {
                 Option::None => { break; },
             };
         };
+
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -376,6 +382,8 @@ mod TestAbbot {
                 .into(),
             'wrong yang amount'
         );
+
+        ShrineUtils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -424,7 +432,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_forge_pass() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, forge_amt) =
+        let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, forge_amt) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
         let additional_forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
@@ -436,6 +444,8 @@ mod TestAbbot {
         assert(
             shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -497,6 +507,8 @@ mod TestAbbot {
 
         let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
         assert(final_trove_debt.is_zero(), 'wrong trove debt');
+
+        ShrineUtils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]

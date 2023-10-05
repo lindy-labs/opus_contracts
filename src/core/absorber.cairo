@@ -126,7 +126,7 @@ mod Absorber {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,
@@ -139,7 +139,7 @@ mod Absorber {
         Killed: Killed,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct RewardSet {
         #[key]
         asset: ContractAddress,
@@ -148,13 +148,13 @@ mod Absorber {
         is_active: bool
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct EpochChanged {
         old_epoch: u32,
         new_epoch: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Provide {
         #[key]
         provider: ContractAddress,
@@ -162,7 +162,7 @@ mod Absorber {
         yin: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct RequestSubmitted {
         #[key]
         provider: ContractAddress,
@@ -170,7 +170,7 @@ mod Absorber {
         timelock: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Remove {
         #[key]
         provider: ContractAddress,
@@ -178,7 +178,7 @@ mod Absorber {
         yin: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Reap {
         #[key]
         provider: ContractAddress,
@@ -186,7 +186,7 @@ mod Absorber {
         reward_assets: Span<AssetBalance>
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Gain {
         assets: Span<AssetBalance>,
         total_recipient_shares: Wad,
@@ -194,14 +194,14 @@ mod Absorber {
         absorption_id: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Bestow {
         assets: Span<AssetBalance>,
         total_recipient_shares: Wad,
         epoch: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
 
     //
@@ -324,39 +324,27 @@ mod Absorber {
         }
 
 
-        // Function for calculating the absorbed assets and rewards owed to a provider
-        // without modifying state.
+        // Returns the absorbed assets and rewards that a provider will receive based on 
+        // the current on-chain conditions
         fn preview_reap(
             self: @ContractState, provider: ContractAddress
         ) -> (Span<AssetBalance>, Span<AssetBalance>) {
             let provision: Provision = self.provisions.read(provider);
             let current_epoch: u32 = self.current_epoch.read();
-            let (absorbed_assets, rewarded_assets) = self
-                .get_absorbed_and_rewarded_assets_for_provider(provider, provision);
 
-            // Add pending rewards
             let total_shares: Wad = self.total_shares.read();
             let current_provider_shares: Wad = self
                 .convert_epoch_shares(provision.epoch, current_epoch, provision.shares);
-
-            // Early return if we do not expect rewards to be distributed when the user calls `reap`
-            if !is_operational_helper(total_shares) || current_provider_shares.is_zero() {
-                return (absorbed_assets, rewarded_assets);
-            }
-
-            let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
-            let updated_rewarded_assets: Span<AssetBalance> = self
-                .get_provider_pending_rewards(
-                    provider,
-                    current_provider_shares,
-                    total_recipient_shares,
-                    current_epoch,
-                    rewarded_assets
+            let include_pending_rewards: bool = is_operational_helper(total_shares)
+                && current_provider_shares.is_non_zero();
+            let (absorbed_assets, rewarded_assets) = self
+                .get_absorbed_and_rewarded_assets_for_provider(
+                    provider, provision, include_pending_rewards
                 );
 
             // NOTE: both absorbed assets and rewarded assets will be empty arrays
             // if `provision.shares` is zero.
-            (absorbed_assets, updated_rewarded_assets)
+            (absorbed_assets, rewarded_assets)
         }
 
 
@@ -721,6 +709,7 @@ mod Absorber {
                 // By subtracting the initial shares from the first provider's shares, we ensure that
                 // there is a non-removable amount of shares. This subtraction also prevents a user
                 // from providing an amount less than the minimum shares.
+                assert(yin_amt.val >= INITIAL_SHARES, 'ABS: provision < minimum');
                 return ((yin_amt.val - INITIAL_SHARES).into(), yin_amt);
             }
 
@@ -828,15 +817,18 @@ mod Absorber {
         //
 
         // Wrapper function over `get_absorbed_assets_for_provider_helper` and
-        // `get_provider_accumulated_rewards` for re-use by `preview_reap` and
+        // `get_provider_rewards` for re-use by `preview_reap` and
         // `reap_helper`
         fn get_absorbed_and_rewarded_assets_for_provider(
-            self: @ContractState, provider: ContractAddress, provision: Provision
+            self: @ContractState,
+            provider: ContractAddress,
+            provision: Provision,
+            include_pending_rewards: bool
         ) -> (Span<AssetBalance>, Span<AssetBalance>) {
             let absorbed_assets: Span<AssetBalance> = self
                 .get_absorbed_assets_for_provider_helper(provider, provision);
             let rewarded_assets: Span<AssetBalance> = self
-                .get_provider_accumulated_rewards(provider, provision);
+                .get_provider_rewards(provider, provision, include_pending_rewards);
 
             (absorbed_assets, rewarded_assets)
         }
@@ -850,7 +842,7 @@ mod Absorber {
             // NOTE: both absorbed assets and rewarded assets will be empty arrays
             // if `provision.shares` is zero.
             let (absorbed_assets, rewarded_assets) = self
-                .get_absorbed_and_rewarded_assets_for_provider(provider, provision);
+                .get_absorbed_and_rewarded_assets_for_provider(provider, provision, false);
 
             // Get and update provider's absorption ID
             self.provider_last_absorption.write(provider, self.absorptions_count.read());
@@ -1026,9 +1018,11 @@ mod Absorber {
                 }
 
                 let blessed_amt = reward.blesser.bless();
-                blessed_assets.append(AssetBalance { address: reward.asset, amount: blessed_amt });
 
                 if blessed_amt.is_non_zero() {
+                    blessed_assets
+                        .append(AssetBalance { address: reward.asset, amount: blessed_amt });
+
                     let epoch_reward_info: DistributionInfo = self
                         .cumulative_reward_amt_by_epoch
                         .read((reward.asset, epoch));
@@ -1063,24 +1057,29 @@ mod Absorber {
             }
         }
 
-        // Helper function to loop over all rewards and calculate the accumulated amounts for a provider.
-        // Returns an array of `AssetBalance` struct for accumulated rewards.
-        fn get_provider_accumulated_rewards(
-            self: @ContractState, provider: ContractAddress, provision: Provision
+        // Helper function to loop over all rewards and calculate the amounts for a provider.
+        // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus 
+        // pending rewards, depending on the `include_pending_rewards` flag.
+        fn get_provider_rewards(
+            self: @ContractState,
+            provider: ContractAddress,
+            provision: Provision,
+            include_pending_rewards: bool
         ) -> Span<AssetBalance> {
-            let mut accumulated_reward_assets: Array<AssetBalance> = ArrayTrait::new();
+            let mut reward_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             // Return empty arrays if the provider has no shares
             if provision.shares.is_zero() {
-                return accumulated_reward_assets.span();
+                return reward_assets.span();
             }
 
             let outer_loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
-            let inner_loop_end: u32 = self.current_epoch.read() + 1;
+            let current_epoch: u32 = self.current_epoch.read();
+            let inner_loop_end: u32 = current_epoch + 1;
             loop {
                 if current_rewards_id == outer_loop_end {
-                    break accumulated_reward_assets.span();
+                    break reward_assets.span();
                 }
 
                 let reward: Reward = self.rewards.read(current_rewards_id);
@@ -1100,14 +1099,27 @@ mod Absorber {
                         .cumulative_reward_amt_by_epoch
                         .read((reward.asset, epoch));
 
+                    let asset_amt_per_share: u128 = if include_pending_rewards
+                        && epoch == current_epoch {
+                        let total_recipient_shares: Wad = self.total_shares.read()
+                            - INITIAL_SHARES.into();
+                        let pending_amt: u128 = reward.blesser.preview_bless();
+                        let pending_amt_per_share: u128 = wadray::wdiv_internal(
+                            pending_amt + epoch_reward_info.error, total_recipient_shares.val
+                        );
+                        epoch_reward_info.asset_amt_per_share + pending_amt_per_share
+                    } else {
+                        epoch_reward_info.asset_amt_per_share
+                    };
+
                     // Calculate the difference with the provider's cumulative value if it is the
                     // same epoch as the provider's Provision epoch.
                     // This is because the provider's cumulative value may not have been fully updated for that epoch.
                     let rate: u128 = if epoch == provision.epoch {
-                        epoch_reward_info.asset_amt_per_share
+                        asset_amt_per_share
                             - self.provider_last_reward_cumulative.read((provider, reward.asset))
                     } else {
-                        epoch_reward_info.asset_amt_per_share
+                        asset_amt_per_share
                     };
                     reward_amt += wadray::wmul_internal(rate, epoch_shares.val);
 
@@ -1116,8 +1128,7 @@ mod Absorber {
                     epoch += 1;
                 };
 
-                accumulated_reward_assets
-                    .append(AssetBalance { address: reward.asset, amount: reward_amt });
+                reward_assets.append(AssetBalance { address: reward.asset, amount: reward_amt });
 
                 current_rewards_id += 1;
             }
@@ -1170,54 +1181,6 @@ mod Absorber {
                     .write((reward.asset, epoch + 1), next_epoch_reward_info);
                 current_rewards_id += 1;
             };
-        }
-
-        // Helper function to iterate over all rewards and calculate the pending reward amounts
-        // for a provider.
-        // Takes in a Span of accumulated amounts, and writes the sum of the accumulated amount and
-        // the pending amount to a new Span.
-        // To get all rewards, `current_rewards_id` should start at `1`.
-        fn get_provider_pending_rewards(
-            self: @ContractState,
-            provider: ContractAddress,
-            current_provider_shares: Wad,
-            total_recipient_shares: Wad,
-            current_epoch: u32,
-            mut accumulated_assets: Span<AssetBalance>
-        ) -> Span<AssetBalance> {
-            let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
-
-            loop {
-                match accumulated_assets.pop_front() {
-                    Option::Some(accumulated_asset) => {
-                        let reward: Reward = self
-                            .rewards
-                            .read(self.reward_id.read(*accumulated_asset.address));
-                        let pending_amt: u128 = reward.blesser.preview_bless();
-                        let reward_info: DistributionInfo = self
-                            .cumulative_reward_amt_by_epoch
-                            .read((reward.asset, current_epoch));
-
-                        let pending_amt_per_share: u128 = wadray::wdiv_internal(
-                            pending_amt + reward_info.error, total_recipient_shares.val
-                        );
-                        let provider_pending_amt: u128 = wadray::wmul_internal(
-                            pending_amt_per_share, current_provider_shares.val
-                        );
-
-                        updated_assets
-                            .append(
-                                AssetBalance {
-                                    address: *accumulated_asset.address,
-                                    amount: *accumulated_asset.amount + provider_pending_amt,
-                                }
-                            );
-                    },
-                    Option::None => { break; },
-                };
-            };
-
-            updated_assets.span()
         }
     }
 
