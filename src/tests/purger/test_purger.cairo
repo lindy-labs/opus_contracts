@@ -606,7 +606,7 @@ mod TestPurger {
                                 // Accrue some interest
                                 common::advance_intervals(500);
 
-                                let (_, _, value, before_debt) = shrine
+                                let (_, _, before_value, before_debt) = shrine
                                     .get_trove_info(target_trove);
 
                                 if *target_ltv > (2 * RAY_PERCENT).into() {
@@ -615,7 +615,7 @@ mod TestPurger {
                                         mock_pragma,
                                         yangs,
                                         yang_pair_ids,
-                                        value,
+                                        before_value,
                                         before_debt,
                                         *target_ltv
                                     );
@@ -2584,7 +2584,7 @@ mod TestPurger {
         let btc: ContractAddress = *yangs[1];
         set_contract_address(ShrineUtils::admin());
         let current_timestamp: u64 = get_block_timestamp();
-        shrine.update_yang_suspension(btc, current_timestamp);
+        shrine.suspend_yang(btc);
 
         assert(shrine.is_healthy(target_trove), 'should still be healthy');
 
