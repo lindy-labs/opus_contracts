@@ -12,6 +12,7 @@ mod core {
     mod sentinel;
     mod shrine;
     mod stabilizer;
+    mod strategy_manager;
 }
 
 mod external {

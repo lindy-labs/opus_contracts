@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
+use opus::interfaces::IStabilizer::IStrategyManagerDispatcher;
 use opus::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
@@ -113,4 +114,14 @@ mod Pragma {
         // address of the Yang (token) corresponding to the pair ID
         yang: starknet::ContractAddress
     }
+}
+
+//
+// Stabilizer
+//
+
+#[derive(Copy, Drop, Serde, starknet::Store)]
+struct Strategy {
+    manager: IStrategyManagerDispatcher,
+    ceiling: u128,
 }

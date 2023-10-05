@@ -11,9 +11,9 @@ mod Stabilizer {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::IStabilizer::{
-        IStabilizer, IStabilizerStrategyDispatcher, IStabilizerStrategyDispatcherTrait
+        IStabilizer, IStrategyManagerDispatcher, IStrategyManagerDispatcherTrait
     };
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Strategy};
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::reentrancy_guard::ReentrancyGuard;
     use opus::utils::wadray;
@@ -25,10 +25,12 @@ mod Stabilizer {
         sentinel: ISentinelDispatcher,
         abbot: IAbbotDispatcher,
         asset: IERC20Dispatcher,
+        ceiling: u128,
         trove_id: u64,
         strategies_count: u8,
         strategy_id: LegacyMap::<ContractAddress, u8>,
-        strategies: LegacyMap::<u8, IStabilizerStrategyDispatcher>,
+        strategies: LegacyMap::<u8, Strategy>,
+        receiver: ContractAddress,
         is_live: bool,
     }
 
@@ -39,7 +41,9 @@ mod Stabilizer {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         abbot: ContractAddress,
-        asset: ContractAddress
+        asset: ContractAddress,
+        receiver: ContractAddress,
+        ceiling: u128
     ) {
         AccessControl::initializer(admin, Option::Some(StabilizerRoles::default_admin_role()));
 
@@ -47,12 +51,38 @@ mod Stabilizer {
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
+
+        self.set_receiver_helper(receiver);
+        self.set_ceiling_helper(ceiling);
     // TODO: Initialize ERC-20 with stabilizer as the only minter
 
     }
 
     #[external(v0)]
     impl IStabilizerImpl of IStabilizer<ContractState> {
+        //
+        // Getters
+        //
+        fn get_asset(self: @ContractState) -> ContractAddress {
+            self.asset.read().contract_address
+        }
+
+        fn get_strategies_count(self: @ContractState) -> u8 {
+            self.strategies_count.read()
+        }
+
+        fn get_strategy(self: @ContractState, strategy_id: u8) -> Strategy {
+            self.strategies.read(strategy_id)
+        }
+
+        fn get_receiver(self: @ContractState) -> ContractAddress {
+            self.receiver.read()
+        }
+
+        //
+        // Setters
+        //
+
         fn initialize(ref self: ContractState, gate: ContractAddress, asset_max: u128) {
             AccessControl::assert_has_role(StabilizerRoles::INITIALIZE);
 
@@ -96,6 +126,23 @@ mod Stabilizer {
             self.trove_id.write(trove_id);
         }
 
+        fn set_ceiling(ref self: ContractState, ceiling: u128) {
+            AccessControl::assert_has_role(StabilizerRoles::SET_CEILING);
+
+            self.set_ceiling_helper(ceiling);
+        }
+
+        fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
+            AccessControl::assert_has_role(StabilizerRoles::SET_RECEIVER);
+
+            self.set_receiver_helper(receiver);
+        }
+
+        // 
+        // Core functions
+        //
+
+        // Dummy tokens are minted 1 : 1 for asset, scaled to Wad precision.
         fn swap_asset_for_yin(ref self: ContractState, asset_amt: u128) {
             assert(self.trove_id.read().is_non_zero(), 'ST: Not initialized');
 
@@ -132,39 +179,59 @@ mod Stabilizer {
         // Strategy functions
         //
 
-        fn add_strategy(ref self: ContractState, strategy: ContractAddress) {
+        fn add_strategy(ref self: ContractState, strategy_manager: ContractAddress, ceiling: u128) {
             AccessControl::assert_has_role(StabilizerRoles::ADD_STRATEGY);
 
-            assert(strategy.is_non_zero(), 'ST: Zero address');
-            assert(self.strategy_id.read(strategy).is_zero(), 'ST: Strategy already added');
+            assert(strategy_manager.is_non_zero(), 'ST: Zero address');
+            assert(self.strategy_id.read(strategy_manager).is_zero(), 'ST: Strategy already added');
 
             let strategy_id: u8 = self.strategies_count.read() + 1;
             self.strategies_count.write(strategy_id);
-            self.strategy_id.write(strategy, strategy_id);
+            self.strategy_id.write(strategy_manager, strategy_id);
             self
                 .strategies
-                .write(strategy_id, IStabilizerStrategyDispatcher { contract_address: strategy });
+                .write(
+                    strategy_id,
+                    Strategy {
+                        manager: IStrategyManagerDispatcher { contract_address: strategy_manager },
+                        ceiling,
+                    }
+                );
         }
 
-        fn execute_strategy(ref self: ContractState, strategy: ContractAddress, amount: u128) {
+        fn set_strategy_ceiling(ref self: ContractState, strategy_id: u8, ceiling: u128) {
+            AccessControl::assert_has_role(StabilizerRoles::SET_STRATEGY_CEILING);
+
+            let mut strategy: Strategy = self.strategies.read(strategy_id);
+            let old_ceiling: u128 = strategy.ceiling;
+            strategy.ceiling = ceiling;
+            self.strategies.write(strategy_id, strategy);
+        // TODO: emit event
+        }
+
+        fn execute_strategy(ref self: ContractState, strategy_id: u8, amount: u128) {
             AccessControl::assert_has_role(StabilizerRoles::EXECUTE_STRATEGY);
 
-            let strategy_id: u8 = self.strategy_id.read(strategy);
-            assert(strategy_id.is_non_zero(), 'ST: Strategy not added');
+            let mut strategy: Strategy = self.strategies.read(strategy_id);
 
             let stabilizer: ContractAddress = get_contract_address();
-            let balance: u128 = self.asset.read().balance_of(stabilizer).try_into().unwrap();
+            let asset: IERC20Dispatcher = self.asset.read();
+            let balance: u128 = asset.balance_of(stabilizer).try_into().unwrap();
             let amount: u128 = min(amount, balance);
-            IStabilizerStrategyDispatcher { contract_address: strategy }.execute(amount);
+
+            let updated_deployed_amount = strategy.manager.get_deployed_amount() + amount;
+            assert(updated_deployed_amount <= strategy.ceiling, 'ST: Strategy ceiling exceeded');
+
+            asset.transfer(strategy.manager.contract_address, amount.into());
+            strategy.manager.execute(amount);
         }
 
-        fn unwind_strategy(ref self: ContractState, strategy: ContractAddress, amount: u128) {
+        fn unwind_strategy(ref self: ContractState, strategy_id: u8, amount: u128) {
             AccessControl::assert_has_role(StabilizerRoles::UNWIND_STRATEGY);
 
-            let strategy_id: u8 = self.strategy_id.read(strategy);
-            assert(strategy_id.is_non_zero(), 'ST: Strategy not added');
+            let strategy: Strategy = self.strategies.read(strategy_id);
 
-            IStabilizerStrategyDispatcher { contract_address: strategy }.unwind(amount);
+            strategy.manager.unwind(amount);
         }
 
         //
@@ -185,8 +252,8 @@ mod Stabilizer {
                     break;
                 }
 
-                let strategy: IStabilizerStrategyDispatcher = self.strategies.read(strategy_id);
-                strategy.unwind(BoundedU128::max());
+                let strategy: Strategy = self.strategies.read(strategy_id);
+                strategy.manager.unwind(BoundedU128::max());
             };
         }
 
@@ -211,6 +278,8 @@ mod Stabilizer {
         // all strategies have been unwound. This function sends the amount of assets corresponding to this
         // remainder dummy tokens to a prescribed address.
         fn extract(ref self: ContractState, recipient: ContractAddress) {
+            assert(self.is_live.read(), 'ST: Stabilizer is live');
+
             AccessControl::assert_has_role(StabilizerRoles::EXTRACT);
 
             // TODO: Get the deposited amount of dummy token in the trove, and calculate
@@ -224,7 +293,22 @@ mod Stabilizer {
     #[generate_trait]
     impl StabilizerHelpers of StabilizerHelpersTrait {
         #[inline(always)]
-        fn assert_can_forge(self: @ContractState) { // TODO: Check conditions for minting CASH
+        fn assert_can_forge(
+            self: @ContractState
+        ) { // TODO: Assert total supply of dummy tokens is less than ceiling
+        }
+
+        fn set_ceiling_helper(ref self: ContractState, ceiling: u128) {
+            let old_ceiling: u128 = self.ceiling.read();
+            self.ceiling.write(ceiling);
+        // TODO emit event
+        }
+
+        fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {
+            assert(receiver.is_non_zero(), 'SM: Zero address');
+            let old_receiver: ContractAddress = self.receiver.read();
+            self.receiver.write(receiver);
+        // TODO emit event
         }
     }
 // TODO: Include ERC-20 functions

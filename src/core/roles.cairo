@@ -208,10 +208,22 @@ mod StabilizerRoles {
     const EXTRACT: u128 = 4;
     const INITIALIZE: u128 = 8;
     const KILL: u128 = 16;
-    const UNWIND_STRATEGY: u128 = 32;
+    const SET_CEILING: u128 = 32;
+    const SET_RECEIVER: u128 = 64;
+    const SET_STRATEGY_CEILING: u128 = 128;
+    const UNWIND_STRATEGY: u128 = 256;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_STRATEGY + EXECUTE_STRATEGY + EXTRACT + INITIALIZE + KILL + UNWIND_STRATEGY
+        ADD_STRATEGY
+            + EXECUTE_STRATEGY
+            + EXTRACT
+            + INITIALIZE
+            + KILL
+            + SET_CEILING
+            + SET_RECEIVER
+            + SET_STRATEGY_CEILING
+            + UNWIND_STRATEGY
     }
 }
+
