@@ -45,23 +45,9 @@ mod StrategyManager {
             //       transfer the DAI to Transmuter and excess to the receiver.
 
             let manager: ContractAddress = get_contract_address();
-            let updated_amt: u128 = asset.balance_of(manager).try_into().unwrap();
 
-            // Transfer any excess asset (actual amount after unwinding - original amount) 
-            // to receiver
-            let unwind_amt_for_transmuter: u128 = if updated_amt > unwind_amt {
-                let receiver: ContractAddress = transmuter.get_receiver();
-
-                let excess_asset_amt: u128 = updated_amt - unwind_amt;
-                asset.transfer(receiver, excess_asset_amt.into());
-
-                updated_amt - excess_asset_amt
-            } else {
-                updated_amt
-            };
-
-            // Transfer remainder back to Transmuter
-            asset.transfer(transmuter.contract_address, unwind_amt_for_transmuter.into());
+            // Transfer all assets back to Transmuter
+            asset.transfer(transmuter.contract_address, asset.balance_of(manager));
         }
     }
 

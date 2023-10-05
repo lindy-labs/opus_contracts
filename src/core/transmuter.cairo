@@ -8,6 +8,7 @@ mod Transmuter {
     use opus::core::roles::TransmuterRoles;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -27,6 +28,10 @@ mod Transmuter {
     // percentage of total yin supply: 10% (Ray)
     const PERCENTAGE_CAP_UPPER_BOUND: u128 = 100000000000000000000000000;
 
+    // Upper bound of the fee as a percentage that can be charged when swapping
+    // yin for the asset when `reverse` is enabled: 1% (Ray)
+    const REVERSE_FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
+
     // Note that the debt ceiling for a Transmuter is enforced via the `yang_asset_max`
     // for the Transmuter's dummy token in Sentinel. Therefore, any changes to the 
     // debt ceiling can be made via `Sentinel.set_yang_asset_max`.
@@ -38,6 +43,8 @@ mod Transmuter {
         sentinel: ISentinelDispatcher,
         // The Abbot associated with the Shrine and Sentinel
         abbot: IAbbotDispatcher,
+        // The Caretaker associated with the Shrine
+        caretaker: ICaretakerDispatcher,
         // The asset that can be swapped for yin via this Transmuter
         asset: IERC20Dispatcher,
         // The trove ID representing this Transmuter in Shrine
@@ -48,6 +55,8 @@ mod Transmuter {
         // Keeps track of whether the Transmuter currently allows for users
         // to burn yin and receive the asset
         reversibility: bool,
+        // Fee to be charged for each `reverse` transaction
+        reverse_fee: Ray,
         // Keeps track of whether the Transmuter is live or killed
         is_live: bool,
         // Strategies
@@ -84,6 +93,8 @@ mod Transmuter {
         Transmute: Transmute,
         Reverse: Reverse,
         ReversibilityToggled: ReversibilityToggled,
+        ReverseFeeUpdated: ReverseFeeUpdated,
+        Sweep: Sweep,
         ReceiverUpdated: ReceiverUpdated,
         StrategyAdded: StrategyAdded,
         StrategyCeilingUpdated: StrategyCeilingUpdated,
@@ -127,12 +138,26 @@ mod Transmuter {
         #[key]
         user: ContractAddress,
         asset_amt: u128,
-        yin_amt: Wad
+        yin_amt: Wad,
+        fee: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ReversibilityToggled {
         reversibility: bool
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct ReverseFeeUpdated {
+        old_fee: Ray,
+        new_fee: Ray
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Sweep {
+        #[key]
+        recipient: ContractAddress,
+        asset_amt: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -200,6 +225,7 @@ mod Transmuter {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         abbot: ContractAddress,
+        caretaker: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress,
         percentage_cap: Ray,
@@ -211,6 +237,7 @@ mod Transmuter {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
+        self.caretaker.write(ICaretakerDispatcher { contract_address: caretaker });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
 
         self.set_receiver_helper(receiver);
@@ -257,6 +284,10 @@ mod Transmuter {
 
         fn get_reversibility(self: @ContractState) -> bool {
             self.reversibility.read()
+        }
+
+        fn get_reverse_fee(self: @ContractState) -> Ray {
+            self.reverse_fee.read()
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -362,6 +393,16 @@ mod Transmuter {
             self.emit(ReversibilityToggled { reversibility });
         }
 
+        fn set_reverse_fee(ref self: ContractState, fee: Ray) {
+            AccessControl::assert_has_role(TransmuterRoles::SET_REVERSE_FEE);
+
+            assert(fee <= REVERSE_FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+            let old_fee: Ray = self.reverse_fee.read();
+            self.reverse_fee.write(fee);
+
+            self.emit(ReverseFeeUpdated { old_fee, new_fee: fee });
+        }
+
         // 
         // Core functions
         //
@@ -427,10 +468,50 @@ mod Transmuter {
 
             // Transfer asset to user
             let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt, asset.decimals());
-            let success: bool = asset.transfer(user, asset_amt.into());
+            let fee: u128 = self.get_reverse_fee_helper(asset_amt);
+
+            let user_asset_amt: u128 = asset_amt - fee;
+            let success: bool = asset.transfer(user, user_asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
-            self.emit(Reverse { user, asset_amt, yin_amt });
+            self.emit(Reverse { user, asset_amt, yin_amt, fee });
+        }
+
+        // Transfers any asset amount in excess of the total dummy token supply (scaled to Wad)
+        // to the receiver. This includes any incomee received from strategies, swap fees and donations.
+        // 
+        // Note that this also prevents asset donations to the Transmuter from bricking funds. 
+        // For example, assume 1m Wad of assets were deposited to the Transmuter, and the Transmuter 
+        // then receives 1m Wad of assets by donation, and the total dummy token supply is fully 
+        // redeemed via `reverse` and burnt, then there would still be assets held by the 
+        // Transmuter but cannot be accessed.
+        fn sweep(ref self: ContractState) {
+            AccessControl::assert_has_role(TransmuterRoles::SWEEP);
+
+            let transmuter: ContractAddress = get_contract_address();
+            let asset: IERC20Dispatcher = self.asset.read();
+            let asset_decimals: u8 = asset.decimals();
+
+            let asset_balance: u128 = asset.balance_of(transmuter).try_into().unwrap();
+            let scaled_asset_balance: Wad = wadray::fixed_point_to_wad(
+                asset_balance, asset_decimals
+            );
+            let dummy_total_supply: Wad = self.total_supply.read().try_into().unwrap();
+
+            // Note that we do not scale total supply down to assets because there may be
+            // loss of precision
+            if scaled_asset_balance <= dummy_total_supply {
+                return;
+            }
+
+            let excess_scaled_assets: Wad = scaled_asset_balance - dummy_total_supply;
+            let excess_asset_amt: u128 = wadray::wad_to_fixed_point(
+                excess_scaled_assets, asset_decimals
+            );
+            let recipient: ContractAddress = self.receiver.read();
+            asset.transfer(recipient, excess_asset_amt.into());
+
+            self.emit(Sweep { recipient, asset_amt: excess_asset_amt });
         }
 
         //
@@ -551,17 +632,20 @@ mod Transmuter {
         fn extract(ref self: ContractState, recipient: ContractAddress) {
             assert(self.is_live.read(), 'TR: Transmuter is live');
 
-            AccessControl::assert_has_role(TransmuterRoles::EXTRACT);
-
             let transmuter: ContractAddress = get_contract_address();
-            let shrine: IShrineDispatcher = self.shrine.read();
-            let asset: IERC20Dispatcher = self.asset.read();
+            let caretaker: ICaretakerDispatcher = self.caretaker.read();
 
-            let deposited_amt: Wad = shrine.get_deposit(transmuter, self.trove_id.read());
+            let dummy_balance: u256 = self.balances.read(transmuter);
+
+            caretaker.release(self.trove_id.read());
+            let updated_dummy_balance: u256 = self.balances.read(transmuter);
+            let released_dummy_amt: u256 = updated_dummy_balance - dummy_balance;
+            self.burn(transmuter, released_dummy_amt);
+
+            let asset: IERC20Dispatcher = self.asset.read();
             let total_supply: Wad = self.total_supply.read().try_into().unwrap();
-            let asset_balance: u256 = asset.balance_of(transmuter);
-            let extract_amt: Wad = (deposited_amt / total_supply)
-                * asset_balance.try_into().unwrap();
+            let extract_amt: Wad = (released_dummy_amt.try_into().unwrap() / total_supply)
+                * asset.balance_of(transmuter).try_into().unwrap();
 
             self.asset.read().transfer(recipient, extract_amt.into());
         }
@@ -602,6 +686,15 @@ mod Transmuter {
             self.percentage_cap.write(cap);
 
             self.emit(PercentageCapUpdated { cap });
+        }
+
+        fn get_reverse_fee_helper(self: @ContractState, asset_amt: u128) -> u128 {
+            let fee: Ray = self.reverse_fee.read();
+            if fee.is_zero() {
+                return 0;
+            }
+
+            wadray::rmul_wr(asset_amt.into(), fee).val
         }
 
         fn unwind_strategy_helper(ref self: ContractState, strategy_id: u8, unwind_amt: u128) {

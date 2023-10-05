@@ -221,9 +221,11 @@ mod TransmuterRoles {
     const SET_CEILING: u128 = 32;
     const SET_PERCENTAGE_CAP: u128 = 64;
     const SET_RECEIVER: u128 = 128;
-    const SET_STRATEGY_CEILING: u128 = 256;
-    const TOGGLE_REVERSIBILITY: u128 = 512;
-    const UNWIND_STRATEGY: u128 = 1024;
+    const SET_REVERSE_FEE: u128 = 256;
+    const SET_STRATEGY_CEILING: u128 = 512;
+    const SWEEP: u128 = 1024;
+    const TOGGLE_REVERSIBILITY: u128 = 2048;
+    const UNWIND_STRATEGY: u128 = 4096;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -240,7 +242,9 @@ mod TransmuterRoles {
             + SET_CEILING
             + SET_PERCENTAGE_CAP
             + SET_RECEIVER
+            + SET_REVERSE_FEE
             + SET_STRATEGY_CEILING
+            + SWEEP
             + TOGGLE_REVERSIBILITY
             + UNWIND_STRATEGY
     }

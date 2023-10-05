@@ -14,6 +14,7 @@ trait ITransmuter<TContractState> {
     fn get_strategy(self: @TContractState, strategy_id: u8) -> Strategy;
     fn get_receiver(self: @TContractState) -> ContractAddress;
     fn get_reversibility(self: @TContractState) -> bool;
+    fn get_reverse_fee(self: @TContractState) -> Ray;
     fn get_live(self: @TContractState) -> bool;
     // setters
     fn initialize(ref self: TContractState, gate: ContractAddress, ceiling: u128) -> u64;
@@ -21,9 +22,11 @@ trait ITransmuter<TContractState> {
     fn set_percentage_cap(ref self: TContractState, cap: Ray);
     fn set_receiver(ref self: TContractState, receiver: ContractAddress);
     fn toggle_reversibility(ref self: TContractState);
+    fn set_reverse_fee(ref self: TContractState, fee: Ray);
     // core functions
     fn transmute(ref self: TContractState, asset_amt: u128);
     fn reverse(ref self: TContractState, yin_amt: Wad);
+    fn sweep(ref self: TContractState);
     // strategy
     fn add_strategy(ref self: TContractState, strategy_manager: ContractAddress, ceiling: u128);
     fn set_strategy_ceiling(ref self: TContractState, strategy_id: u8, ceiling: u128);
