@@ -672,7 +672,7 @@ mod Shrine {
             // interest rate calculations, which is why it's important that we verify that all yangs'
             // rates were updated.
 
-            // Gauss summation: 1 + 2 + ... + [n = n(n + 1)] / 2
+            // Gauss summation: 1 + 2 + ... + n = [n(n + 1)] / 2
             let expected_cumulative_yang_ids: u32 = (num_yangs * (num_yangs + 1)) / 2;
             assert(
                 cumulative_yang_ids == expected_cumulative_yang_ids, 'SH: Not all yangs updated'
@@ -1145,6 +1145,7 @@ mod Shrine {
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         // Note that recovery mode does not alter the threshold if it is 100%.
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
+            // Troves with 100% threshold should not be liquidated even in recovery mode
             if threshold == RAY_ONE.into() {
                 return threshold;
             }
