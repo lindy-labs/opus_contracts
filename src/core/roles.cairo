@@ -214,6 +214,11 @@ mod StabilizerRoles {
     const UNWIND_STRATEGY: u128 = 256;
 
     #[inline(always)]
+    fn caretaker() -> u128 {
+        KILL
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_STRATEGY
             + EXECUTE_STRATEGY

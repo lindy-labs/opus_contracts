@@ -11,6 +11,7 @@ mod Caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IStabilizer::{IStabilizerDispatcher, IStabilizerDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::reentrancy_guard::ReentrancyGuard;
@@ -34,6 +35,10 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Number of stabilizers
+        stabilizers_count: u8,
+        // Mapping from stabilizer ID to the Stabilizer instance
+        stabilizers: LegacyMap<u8, IStabilizerDispatcher>
     }
 
     //
@@ -164,6 +169,19 @@ mod Caretaker {
         }
 
         //
+        // Setters
+        //
+
+        // TODO: do we need to prevent duplicates?
+        fn add_stabilizer(ref self: ContractState, stabilizer: ContractAddress) {
+            let stabilizer_id: u8 = self.stabilizers_count.read() + 1;
+            self.stabilizers_count.write(stabilizer_id);
+            self
+                .stabilizers
+                .write(stabilizer_id, IStabilizerDispatcher { contract_address: stabilizer });
+        }
+
+        //
         // Core functions
         //
 
@@ -217,6 +235,18 @@ mod Caretaker {
 
             // Kill modules
             shrine.kill();
+
+            let mut stabilizers_id: u8 = self.stabilizers_count.read();
+            let loop_end: u8 = 0;
+            loop {
+                if stabilizers_id == loop_end {
+                    break;
+                }
+
+                self.stabilizers.read(stabilizers_id).kill();
+
+                stabilizers_id -= 1;
+            };
 
             // Note that Absorber is not killed. When the final debt surplus is minted, the
             // absorber may be an allocated recipient. If the Absorber has been completely
