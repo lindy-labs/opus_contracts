@@ -79,6 +79,7 @@ mod Transmuter {
     enum Event {
         Initialized: Initialized,
         Killed: Killed,
+        CeilingUpdated: CeilingUpdated,
         PercentageCapUpdated: PercentageCapUpdated,
         Transmute: Transmute,
         Reverse: Reverse,
@@ -95,11 +96,18 @@ mod Transmuter {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Initialized {
-        trove_id: u64
+        trove_id: u64,
+        ceiling: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct CeilingUpdated {
+        old_ceiling: u128,
+        new_ceiling: u128
+    }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PercentageCapUpdated {
@@ -224,6 +232,13 @@ mod Transmuter {
             self.trove_id.read()
         }
 
+        // Convenience wrapper over `Sentinel.get_yang_asset_max` to perform the necessary conversion
+        // between the asset decimals and the dummy token of Wad precision in Shrine
+        fn get_ceiling(self: @ContractState) -> u128 {
+            let dummy_amt: u128 = self.sentinel.read().get_yang_asset_max(get_contract_address());
+            wadray::wad_to_fixed_point(dummy_amt.into(), self.asset.read().decimals())
+        }
+
         fn get_percentage_cap(self: @ContractState) -> Ray {
             self.percentage_cap.read()
         }
@@ -256,7 +271,7 @@ mod Transmuter {
         // Subsequently, it opens a trove with the Abbot to "reserve" a trove ID.
         // Note that this function requires the caller to have approved the Transmuter to transfer
         // such amount of assets equivalent to 1 Wad of dummy tokens.
-        fn initialize(ref self: ContractState, gate: ContractAddress, asset_max: u128) -> u64 {
+        fn initialize(ref self: ContractState, gate: ContractAddress, ceiling: u128) -> u64 {
             AccessControl::assert_has_role(TransmuterRoles::INITIALIZE);
 
             let transmuter: ContractAddress = get_contract_address();
@@ -267,7 +282,7 @@ mod Transmuter {
                 .read()
                 .add_yang(
                     transmuter,
-                    asset_max,
+                    ceiling,
                     RAY_ONE.into(), // fixed at 100% threshold
                     WAD_ONE.into(), // fixed at 1 USD price
                     RayZeroable::zero(), // fixed at 0% base rate
@@ -302,9 +317,29 @@ mod Transmuter {
 
             self.trove_id.write(trove_id);
 
-            self.emit(Initialized { trove_id });
+            self.emit(Initialized { trove_id, ceiling });
 
             trove_id
+        }
+
+        // Convenience wrapper over `Sentinel.set_yang_asset_max` to perform the necessary conversion
+        // between the asset decimals and the dummy token of Wad precision in Shrine
+        fn set_ceiling(ref self: ContractState, ceiling: u128) {
+            AccessControl::assert_has_role(TransmuterRoles::SET_CEILING);
+
+            let sentinel: ISentinelDispatcher = self.sentinel.read();
+            let stabilizer: ContractAddress = get_contract_address();
+            let old_dummy_amt: u128 = sentinel.get_yang_asset_max(stabilizer);
+
+            let asset_decimals: u8 = self.asset.read().decimals();
+            let old_ceiling: u128 = wadray::wad_to_fixed_point(
+                old_dummy_amt.into(), asset_decimals
+            );
+
+            let new_dummy_amt: Wad = wadray::fixed_point_to_wad(ceiling, asset_decimals);
+            sentinel.set_yang_asset_max(stabilizer, new_dummy_amt.val);
+
+            self.emit(CeilingUpdated { old_ceiling, new_ceiling: ceiling });
         }
 
         fn set_percentage_cap(ref self: ContractState, cap: Ray) {
@@ -333,6 +368,9 @@ mod Transmuter {
 
         // Swaps the stablecoin asset for yin at a ratio of 1 : 1, scaled to Wad precision.
         // Dummy tokens are minted 1 : 1 for asset, scaled to Wad precision.
+        // Reverts if:
+        // 1. User has insufficent assets; or
+        // 2. The maximum amount of assets, represented by the dummy token, is exceeded in Sentinel
         fn transmute(ref self: ContractState, asset_amt: u128) {
             let trove_id: u64 = self.trove_id.read();
             assert(trove_id.is_non_zero(), 'TR: Not initialized');

@@ -110,6 +110,11 @@ mod SentinelRoles {
     }
 
     #[inline(always)]
+    fn transmuter() -> u128 {
+        ADD_YANG + SET_YANG_ASSET_MAX
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX + UPDATE_YANG_SUSPENSION
     }
@@ -213,11 +218,12 @@ mod TransmuterRoles {
     const EXTRACT: u128 = 4;
     const INITIALIZE: u128 = 8;
     const KILL: u128 = 16;
-    const SET_PERCENTAGE_CAP: u128 = 32;
-    const SET_RECEIVER: u128 = 64;
-    const SET_STRATEGY_CEILING: u128 = 128;
-    const TOGGLE_REVERSIBILITY: u128 = 256;
-    const UNWIND_STRATEGY: u128 = 512;
+    const SET_CEILING: u128 = 32;
+    const SET_PERCENTAGE_CAP: u128 = 64;
+    const SET_RECEIVER: u128 = 128;
+    const SET_STRATEGY_CEILING: u128 = 256;
+    const TOGGLE_REVERSIBILITY: u128 = 512;
+    const UNWIND_STRATEGY: u128 = 1024;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -231,6 +237,7 @@ mod TransmuterRoles {
             + EXTRACT
             + INITIALIZE
             + KILL
+            + SET_CEILING
             + SET_PERCENTAGE_CAP
             + SET_RECEIVER
             + SET_STRATEGY_CEILING
