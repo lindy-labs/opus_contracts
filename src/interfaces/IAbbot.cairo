@@ -18,8 +18,8 @@ trait IAbbot<TContractState> {
         max_forge_fee_pct: Wad
     ) -> u64;
     fn close_trove(ref self: TContractState, trove_id: u64);
-    fn deposit(ref self: TContractState, trove_id: u64, yang_asset: AssetBalance);
-    fn withdraw(ref self: TContractState, trove_id: u64, yang_asset: AssetBalance);
+    fn deposit(ref self: TContractState, trove_id: u64, yang_asset: AssetBalance) -> Wad;
+    fn withdraw(ref self: TContractState, trove_id: u64, yang_asset: AssetBalance) -> u128;
     fn forge(ref self: TContractState, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(ref self: TContractState, trove_id: u64, amount: Wad);
 }

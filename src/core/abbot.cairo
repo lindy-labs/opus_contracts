@@ -175,7 +175,7 @@ mod Abbot {
         }
 
         // add Yang (an asset) to a trove
-        fn deposit(ref self: ContractState, trove_id: u64, yang_asset: AssetBalance) {
+        fn deposit(ref self: ContractState, trove_id: u64, yang_asset: AssetBalance) -> Wad {
             // There is no need to check the yang address is non-zero because the
             // Sentinel does not allow a zero address yang to be added.
 
@@ -183,11 +183,11 @@ mod Abbot {
             assert(trove_id <= self.troves_count.read(), 'ABB: Non-existent trove');
             // note that caller does not need to be the trove's owner to deposit
 
-            self.deposit_helper(trove_id, get_caller_address(), yang_asset);
+            self.deposit_helper(trove_id, get_caller_address(), yang_asset)
         }
 
         // remove Yang (an asset) from a trove
-        fn withdraw(ref self: ContractState, trove_id: u64, yang_asset: AssetBalance) {
+        fn withdraw(ref self: ContractState, trove_id: u64, yang_asset: AssetBalance) -> u128 {
             // There is no need to check the yang address is non-zero because the
             // Sentinel does not allow a zero address yang to be added.
 
@@ -198,7 +198,7 @@ mod Abbot {
                 .sentinel
                 .read()
                 .convert_to_yang(yang_asset.address, yang_asset.amount);
-            self.withdraw_helper(trove_id, user, yang_asset.address, yang_amt);
+            self.withdraw_helper(trove_id, user, yang_asset.address, yang_amt)
         }
 
         // create Yin in a trove
@@ -229,7 +229,7 @@ mod Abbot {
         #[inline(always)]
         fn deposit_helper(
             ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance
-        ) {
+        ) -> Wad {
             // reentrancy guard is used as a precaution
             ReentrancyGuard::start();
 
@@ -240,6 +240,8 @@ mod Abbot {
             self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
 
             ReentrancyGuard::end();
+
+            yang_amt
         }
 
         #[inline(always)]
@@ -249,14 +251,16 @@ mod Abbot {
             user: ContractAddress,
             yang: ContractAddress,
             yang_amt: Wad
-        ) {
+        ) -> u128 {
             // reentrancy guard is used as a precaution
             ReentrancyGuard::start();
 
-            self.sentinel.read().exit(yang, user, trove_id, yang_amt);
+            let withdraw_amt: u128 = self.sentinel.read().exit(yang, user, trove_id, yang_amt);
             self.shrine.read().withdraw(yang, trove_id, yang_amt);
 
             ReentrancyGuard::end();
+
+            withdraw_amt
         }
     }
 }

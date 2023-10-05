@@ -9,7 +9,7 @@ trait ICaretaker<TContractState> {
     fn preview_release(self: @TContractState, trove_id: u64) -> Span<AssetBalance>;
     fn preview_reclaim(self: @TContractState, yin: Wad) -> Span<AssetBalance>;
     // setters
-    fn add_stabilizer(ref self: TContractState, stabilizer: ContractAddress);
+    fn add_transmuter(ref self: TContractState, transmuter: ContractAddress);
     // external
     fn shut(ref self: TContractState);
     fn release(ref self: TContractState, trove_id: u64) -> Span<AssetBalance>;

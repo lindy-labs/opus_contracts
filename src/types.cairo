@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
-use opus::interfaces::IStabilizer::IStrategyManagerDispatcher;
+use opus::interfaces::ITransmuter::IStrategyManagerDispatcher;
 use opus::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
@@ -117,16 +117,16 @@ mod Pragma {
 }
 
 //
-// Stabilizer
+// Transmuter
 //
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct Strategy {
     // the strategy manager instance executing the strategy
     manager: IStrategyManagerDispatcher,
-    // the maximum amount of assets from the Stabilizer that can be deployed
+    // the maximum amount of assets from the Transmuter that can be deployed
     // to this strategy
     ceiling: u128,
-    // the amount of assets from the Stabilizer deployed to date
+    // the amount of assets from the Transmuter deployed to date
     deployed_amount: u128
 }

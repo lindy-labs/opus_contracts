@@ -11,8 +11,8 @@ mod core {
     mod roles;
     mod sentinel;
     mod shrine;
-    mod stabilizer;
     mod strategy_manager;
+    mod transmuter;
 }
 
 mod external {
@@ -36,7 +36,7 @@ mod interfaces {
     mod IPurger;
     mod ISentinel;
     mod IShrine;
-    mod IStabilizer;
+    mod ITransmuter;
 }
 
 mod types;

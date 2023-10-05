@@ -11,7 +11,7 @@ mod Caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::IStabilizer::{IStabilizerDispatcher, IStabilizerDispatcherTrait};
+    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::reentrancy_guard::ReentrancyGuard;
@@ -35,10 +35,10 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
-        // Number of stabilizers
-        stabilizers_count: u8,
-        // Mapping from stabilizer ID to the Stabilizer instance
-        stabilizers: LegacyMap<u8, IStabilizerDispatcher>
+        // Number of deployed transmuters
+        transmuters_count: u8,
+        // Mapping from transmuter ID to the Transmuter instance
+        transmuters: LegacyMap<u8, ITransmuterDispatcher>
     }
 
     //
@@ -173,12 +173,12 @@ mod Caretaker {
         //
 
         // TODO: do we need to prevent duplicates?
-        fn add_stabilizer(ref self: ContractState, stabilizer: ContractAddress) {
-            let stabilizer_id: u8 = self.stabilizers_count.read() + 1;
-            self.stabilizers_count.write(stabilizer_id);
+        fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
+            let transmuter_id: u8 = self.transmuters_count.read() + 1;
+            self.transmuters_count.write(transmuter_id);
             self
-                .stabilizers
-                .write(stabilizer_id, IStabilizerDispatcher { contract_address: stabilizer });
+                .transmuters
+                .write(transmuter_id, ITransmuterDispatcher { contract_address: transmuter });
         }
 
         //
@@ -236,16 +236,16 @@ mod Caretaker {
             // Kill modules
             shrine.kill();
 
-            let mut stabilizers_id: u8 = self.stabilizers_count.read();
+            let mut transmuters_id: u8 = self.transmuters_count.read();
             let loop_end: u8 = 0;
             loop {
-                if stabilizers_id == loop_end {
+                if transmuters_id == loop_end {
                     break;
                 }
 
-                self.stabilizers.read(stabilizers_id).kill();
+                self.transmuters.read(transmuters_id).kill();
 
-                stabilizers_id -= 1;
+                transmuters_id -= 1;
             };
 
             // Note that Absorber is not killed. When the final debt surplus is minted, the

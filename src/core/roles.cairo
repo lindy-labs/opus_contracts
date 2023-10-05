@@ -179,6 +179,11 @@ mod ShrineRoles {
         ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
+    #[inline(always)]
+    fn transmuter() -> u128 {
+        FORGE + MELT
+    }
+
     #[cfg(test)]
     #[inline(always)]
     fn all_roles() -> u128 {
@@ -202,7 +207,7 @@ mod ShrineRoles {
     }
 }
 
-mod StabilizerRoles {
+mod TransmuterRoles {
     const ADD_STRATEGY: u128 = 1;
     const EXECUTE_STRATEGY: u128 = 2;
     const EXTRACT: u128 = 4;
@@ -211,7 +216,8 @@ mod StabilizerRoles {
     const SET_PERCENTAGE_CAP: u128 = 32;
     const SET_RECEIVER: u128 = 64;
     const SET_STRATEGY_CEILING: u128 = 128;
-    const UNWIND_STRATEGY: u128 = 256;
+    const TOGGLE_REVERSIBILITY: u128 = 256;
+    const UNWIND_STRATEGY: u128 = 512;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -228,6 +234,7 @@ mod StabilizerRoles {
             + SET_PERCENTAGE_CAP
             + SET_RECEIVER
             + SET_STRATEGY_CEILING
+            + TOGGLE_REVERSIBILITY
             + UNWIND_STRATEGY
     }
 }
