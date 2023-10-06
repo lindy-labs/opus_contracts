@@ -1,19 +1,16 @@
 #[starknet::contract]
 mod Transmuter {
-    use cmp::min;
-    use integer::{BoundedU128, BoundedU256};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use starknet::contract_address::ContractAddressZeroable;
 
     use opus::core::roles::TransmuterRoles;
 
-    use opus::interfaces::IERC20::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
 
     //
     // Constants
@@ -298,20 +295,20 @@ mod Transmuter {
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
         // because we do not make any assumptions as to the amount of assets held by the 
         // Transmuter.
-        fn claim(ref self: ContractState, yin_amt: Wad) {
+        fn reclaim(ref self: ContractState, yin: Wad) {
             assert(self.is_live.read(), 'TR: Transmuter is live');
 
             let transmuter: ContractAddress = get_contract_address();
-            let user: ContractAddress = get_caller_address();
+            let caller: ContractAddress = get_caller_address();
 
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_balance: u256 = asset.balance_of(transmuter);
 
-            let asset_amt: Wad = (yin_amt / self.total_transmuted.read())
+            let asset_amt: Wad = (yin / self.total_transmuted.read())
                 * asset_balance.try_into().unwrap();
 
-            self.shrine.read().eject(user, yin_amt);
-            asset.transfer(user, asset_amt.into());
+            self.shrine.read().eject(caller, yin);
+            asset.transfer(caller, asset_amt.into());
         }
     }
 

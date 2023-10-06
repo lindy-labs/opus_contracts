@@ -24,6 +24,6 @@ trait ITransmuter<TContractState> {
     fn sweep(ref self: TContractState);
     // shutdown
     fn kill(ref self: TContractState);
-    fn claim(ref self: TContractState, yin_amt: Wad);
+    fn reclaim(ref self: TContractState, yin: Wad);
 }
 
