@@ -227,6 +227,8 @@ mod Transmuter {
         // 1. User has insufficent assets; or
         // 2. Ceiling will be exceeded
         fn transmute(ref self: ContractState, asset_amt: u128) {
+            self.assert_live();
+
             let asset: IERC20Dispatcher = self.asset.read();
             let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, asset.decimals());
             self.assert_can_transmute(yin_amt);
@@ -249,7 +251,9 @@ mod Transmuter {
         // 1. User has insufficient yin; or
         // 2. Transmuter has insufficent assets corresponding to the burnt yin
         fn reverse(ref self: ContractState, yin_amt: Wad) {
-            self.assert_reversibility();
+            self.assert_live();
+
+            assert(self.reversibility.read(), 'TR: Reverse is paused');
 
             // Burn yin from user
             let user: ContractAddress = get_caller_address();
@@ -272,6 +276,8 @@ mod Transmuter {
 
         // Transfers all assets in the transmuter to the receiver
         fn sweep(ref self: ContractState) {
+            self.assert_live();
+
             AccessControl::assert_has_role(TransmuterRoles::SWEEP);
 
             let asset: IERC20Dispatcher = self.asset.read();
@@ -296,7 +302,7 @@ mod Transmuter {
         // because we do not make any assumptions as to the amount of assets held by the 
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
-            assert(self.is_live.read(), 'TR: Transmuter is live');
+            assert(!self.is_live.read(), 'TR: Transmuter is live');
 
             let transmuter: ContractAddress = get_contract_address();
             let caller: ContractAddress = get_caller_address();
@@ -307,6 +313,7 @@ mod Transmuter {
             let asset_amt: Wad = (yin / self.total_transmuted.read())
                 * asset_balance.try_into().unwrap();
 
+            self.total_transmuted.write(self.total_transmuted.read() - yin);
             self.shrine.read().eject(caller, yin);
             asset.transfer(caller, asset_amt.into());
         }
@@ -314,6 +321,11 @@ mod Transmuter {
 
     #[generate_trait]
     impl TransmuterHelpers of TransmuterHelpersTrait {
+        #[inline(always)]
+        fn assert_live(self: @ContractState) {
+            assert(self.is_live.read(), 'TR: Transmuter is not live');
+        }
+
         #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
@@ -326,11 +338,6 @@ mod Transmuter {
             let is_lt_cap: bool = minted + amt_to_mint <= cap;
 
             assert(yin_price_ge_peg && is_lt_cap, 'TR: Transmute is paused');
-        }
-
-        #[inline(always)]
-        fn assert_reversibility(self: @ContractState) {
-            assert(self.reversibility.read(), 'TR: Reverse is paused');
         }
 
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {
