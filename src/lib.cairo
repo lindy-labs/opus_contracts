@@ -11,7 +11,6 @@ mod core {
     mod roles;
     mod sentinel;
     mod shrine;
-    mod strategy_manager;
     mod transmuter;
 }
 

@@ -213,20 +213,16 @@ mod ShrineRoles {
 }
 
 mod TransmuterRoles {
-    const ADD_STRATEGY: u128 = 1;
-    const EXECUTE_STRATEGY: u128 = 2;
-    const EXTRACT: u128 = 4;
-    const INITIALIZE: u128 = 8;
-    const KILL: u128 = 16;
-    const SET_CARETAKER: u128 = 32;
-    const SET_CEILING: u128 = 64;
-    const SET_PERCENTAGE_CAP: u128 = 128;
-    const SET_RECEIVER: u128 = 256;
-    const SET_REVERSE_FEE: u128 = 512;
-    const SET_STRATEGY_CEILING: u128 = 1024;
-    const SWEEP: u128 = 2048;
-    const TOGGLE_REVERSIBILITY: u128 = 4096;
-    const UNWIND_STRATEGY: u128 = 8192;
+    const EXTRACT: u128 = 1;
+    const INITIALIZE: u128 = 2;
+    const KILL: u128 = 4;
+    const SET_CARETAKER: u128 = 8;
+    const SET_CEILING: u128 = 16;
+    const SET_PERCENTAGE_CAP: u128 = 32;
+    const SET_RECEIVER: u128 = 64;
+    const SET_REVERSE_FEE: u128 = 128;
+    const SWEEP: u128 = 256;
+    const TOGGLE_REVERSIBILITY: u128 = 512;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -235,9 +231,7 @@ mod TransmuterRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_STRATEGY
-            + EXECUTE_STRATEGY
-            + EXTRACT
+        EXTRACT
             + INITIALIZE
             + KILL
             + SET_CARETAKER
@@ -245,10 +239,8 @@ mod TransmuterRoles {
             + SET_PERCENTAGE_CAP
             + SET_RECEIVER
             + SET_REVERSE_FEE
-            + SET_STRATEGY_CEILING
             + SWEEP
             + TOGGLE_REVERSIBILITY
-            + UNWIND_STRATEGY
     }
 }
 

@@ -12,10 +12,8 @@ mod Transmuter {
     use opus::interfaces::IERC20::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{
-        ITransmuter, IStrategyManagerDispatcher, IStrategyManagerDispatcherTrait
-    };
-    use opus::types::{AssetBalance, Strategy};
+    use opus::interfaces::ITransmuter::ITransmuter;
+    use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
@@ -60,17 +58,7 @@ mod Transmuter {
         reverse_fee: Ray,
         // Keeps track of whether the Transmuter is live or killed
         is_live: bool,
-        // Strategies
-        // Number of strategies added
-        strategies_count: u8,
-        // Mapping of a strategy manager's address to its ID
-        strategy_id: LegacyMap::<ContractAddress, u8>,
-        // Mapping of a strategy ID to a Strategy struct of:
-        // 1. the strategy manager dispatcher
-        // 2. the ceiling for the strategy
-        strategies: LegacyMap::<u8, Strategy>,
-        // The address to receive any excess asset from all strategies
-        // after unwinding
+        // The address to receive any excess assets
         receiver: ContractAddress,
         // ERC-20
         name: felt252,
@@ -98,10 +86,6 @@ mod Transmuter {
         Sweep: Sweep,
         CaretakerUpdated: CaretakerUpdated,
         ReceiverUpdated: ReceiverUpdated,
-        StrategyAdded: StrategyAdded,
-        StrategyCeilingUpdated: StrategyCeilingUpdated,
-        ExecuteStrategy: ExecuteStrategy,
-        UnwindStrategy: UnwindStrategy,
         // ERC-20 events
         Transfer: Transfer,
         Approval: Approval,
@@ -172,36 +156,6 @@ mod Transmuter {
     struct ReceiverUpdated {
         old_receiver: ContractAddress,
         new_receiver: ContractAddress
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct StrategyAdded {
-        #[key]
-        strategy_id: u8,
-        manager: ContractAddress,
-        ceiling: u128
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct StrategyCeilingUpdated {
-        #[key]
-        strategy_id: u8,
-        old_ceiling: u128,
-        new_ceiling: u128
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ExecuteStrategy {
-        #[key]
-        strategy_id: u8,
-        amount: u128
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct UnwindStrategy {
-        #[key]
-        strategy_id: u8,
-        amount: u128
     }
 
     // ERC-20 events
@@ -280,14 +234,6 @@ mod Transmuter {
 
         fn get_percentage_cap(self: @ContractState) -> Ray {
             self.percentage_cap.read()
-        }
-
-        fn get_strategies_count(self: @ContractState) -> u8 {
-            self.strategies_count.read()
-        }
-
-        fn get_strategy(self: @ContractState, strategy_id: u8) -> Strategy {
-            self.strategies.read(strategy_id)
         }
 
         fn get_receiver(self: @ContractState) -> ContractAddress {
@@ -495,132 +441,25 @@ mod Transmuter {
             self.emit(Reverse { user, asset_amt, yin_amt, fee });
         }
 
-        // Transfers any asset amount in excess of the total dummy token supply (scaled to Wad)
-        // to the receiver. This includes any incomee received from strategies, swap fees and donations.
-        // 
-        // Note that this also prevents asset donations to the Transmuter from bricking funds. 
-        // For example, assume 1m Wad of assets were deposited to the Transmuter, and the Transmuter 
-        // then receives 1m Wad of assets by donation, and the total dummy token supply is fully 
-        // redeemed via `reverse` and burnt, then there would still be assets held by the 
-        // Transmuter but cannot be accessed.
+        // Transfers all assets in the transmuter to the receiver
         fn sweep(ref self: ContractState) {
             AccessControl::assert_has_role(TransmuterRoles::SWEEP);
 
-            let transmuter: ContractAddress = get_contract_address();
             let asset: IERC20Dispatcher = self.asset.read();
-            let asset_decimals: u8 = asset.decimals();
-
-            let asset_balance: u128 = asset.balance_of(transmuter).try_into().unwrap();
-            let scaled_asset_balance: Wad = wadray::fixed_point_to_wad(
-                asset_balance, asset_decimals
-            );
-            let dummy_total_supply: Wad = self.total_supply.read().try_into().unwrap();
-
-            // Note that we do not scale total supply down to assets because there may be
-            // loss of precision
-            if scaled_asset_balance <= dummy_total_supply {
-                return;
-            }
-
-            let excess_scaled_assets: Wad = scaled_asset_balance - dummy_total_supply;
-            let excess_asset_amt: u128 = wadray::wad_to_fixed_point(
-                excess_scaled_assets, asset_decimals
-            );
+            let asset_balance: u256 = asset.balance_of(get_contract_address());
             let recipient: ContractAddress = self.receiver.read();
-            asset.transfer(recipient, excess_asset_amt.into());
+            asset.transfer(recipient, asset_balance);
 
-            self.emit(Sweep { recipient, asset_amt: excess_asset_amt });
-        }
-
-        //
-        // Strategy functions
-        //
-
-        fn add_strategy(ref self: ContractState, strategy_manager: ContractAddress, ceiling: u128) {
-            AccessControl::assert_has_role(TransmuterRoles::ADD_STRATEGY);
-
-            assert(strategy_manager.is_non_zero(), 'TR: Zero address');
-            assert(self.strategy_id.read(strategy_manager).is_zero(), 'TR: Strategy already added');
-
-            let strategy_id: u8 = self.strategies_count.read() + 1;
-            self.strategies_count.write(strategy_id);
-            self.strategy_id.write(strategy_manager, strategy_id);
-
-            self
-                .strategies
-                .write(
-                    strategy_id,
-                    Strategy {
-                        manager: IStrategyManagerDispatcher { contract_address: strategy_manager },
-                        ceiling,
-                        deployed_amount: 0
-                    },
-                );
-
-            self.emit(StrategyAdded { strategy_id, manager: strategy_manager, ceiling });
-        }
-
-        fn set_strategy_ceiling(ref self: ContractState, strategy_id: u8, ceiling: u128) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_STRATEGY_CEILING);
-
-            let mut strategy: Strategy = self.strategies.read(strategy_id);
-            let old_ceiling: u128 = strategy.ceiling;
-            strategy.ceiling = ceiling;
-            self.strategies.write(strategy_id, strategy);
-
-            self.emit(StrategyCeilingUpdated { strategy_id, old_ceiling, new_ceiling: ceiling });
-        }
-
-        fn execute_strategy(ref self: ContractState, strategy_id: u8, amount: u128) {
-            AccessControl::assert_has_role(TransmuterRoles::EXECUTE_STRATEGY);
-
-            let mut strategy: Strategy = self.strategies.read(strategy_id);
-
-            let transmuter: ContractAddress = get_contract_address();
-            let asset: IERC20Dispatcher = self.asset.read();
-            let balance: u128 = asset.balance_of(transmuter).try_into().unwrap();
-            let amount: u128 = min(amount, balance);
-
-            let updated_deployed_amount = strategy.deployed_amount + amount;
-            assert(updated_deployed_amount <= strategy.ceiling, 'TR: Strategy ceiling exceeded');
-
-            strategy.deployed_amount = updated_deployed_amount;
-            self.strategies.write(strategy_id, strategy);
-
-            let success: bool = asset.transfer(strategy.manager.contract_address, amount.into());
-            assert(success, 'TR: Asset transfer failed');
-            strategy.manager.execute(amount);
-
-            self.emit(ExecuteStrategy { strategy_id, amount });
-        }
-
-        fn unwind_strategy(ref self: ContractState, strategy_id: u8, amount: u128) {
-            AccessControl::assert_has_role(TransmuterRoles::UNWIND_STRATEGY);
-
-            self.unwind_strategy_helper(strategy_id, amount);
+            self.emit(Sweep { recipient, asset_amt: asset_balance.try_into().unwrap() });
         }
 
         //
         // Shutdown
         //
 
-        // Loops through all strategies and unwinds each strategy
         fn kill(ref self: ContractState) {
             AccessControl::assert_has_role(TransmuterRoles::KILL);
             self.is_live.write(false);
-
-            let strategies_count: u8 = self.strategies_count.read();
-            let loop_end: u8 = 0;
-
-            let mut strategy_id: u8 = strategies_count;
-            loop {
-                if strategy_id == loop_end {
-                    break;
-                }
-
-                self.unwind_strategy_helper(strategy_id, BoundedU128::max());
-            };
-
             self.emit(Killed {});
         }
 
@@ -629,9 +468,7 @@ mod Transmuter {
         //
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
         // because we do not make any assumptions as to the amount of assets held by the 
-        // Transmuter. It may be lower than 1 : 1 due to slippage when unwinding strategies,
-        // or it may exceed 1 : 1 if there are excess income and fees that have not been
-        // swept to the receiver.
+        // Transmuter.
         fn claim(ref self: ContractState, amount: Wad) {
             assert(self.is_live.read(), 'TR: Transmuter is live');
 
@@ -650,10 +487,11 @@ mod Transmuter {
         // After `Caretaker.shut` is triggered, there will be some amount of dummy tokens
         // remaining in the trove. For example, if 70% of the Shrine's collateral is transferred to the 
         // Caretaker to back circulating yin, then the Transmuter's trove will have 30% of dummy tokens 
-        // remaining in its trove that corresponds to 30% of the asset's value in the Transmuter after
-        // all strategies have been unwound. This function sends the amount of assets corresponding to this
-        // remainder dummy tokens to a prescribed address.
+        // remaining in its trove. This function sends the amount of assets corresponding to this
+        // remainder dummy tokens at the time this function is called to a prescribed address.
         fn extract(ref self: ContractState, recipient: ContractAddress) {
+            AccessControl::assert_has_role(TransmuterRoles::EXTRACT);
+
             assert(self.is_live.read(), 'TR: Transmuter is live');
 
             let transmuter: ContractAddress = get_contract_address();
@@ -727,18 +565,6 @@ mod Transmuter {
             }
 
             wadray::rmul_wr(asset_amt.into(), fee).val
-        }
-
-        fn unwind_strategy_helper(ref self: ContractState, strategy_id: u8, unwind_amt: u128) {
-            let mut strategy: Strategy = self.strategies.read(strategy_id);
-            let deployed_amt: u128 = strategy.deployed_amount;
-            let capped_unwind_amt: u128 = min(strategy.deployed_amount, unwind_amt);
-            strategy.deployed_amount -= capped_unwind_amt;
-            self.strategies.write(strategy_id, strategy);
-
-            strategy.manager.unwind(deployed_amt, capped_unwind_amt);
-
-            self.emit(UnwindStrategy { strategy_id, amount: capped_unwind_amt });
         }
     }
 
