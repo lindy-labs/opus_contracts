@@ -46,6 +46,8 @@ mod Transmuter {
         reverse_fee: Ray,
         // Keeps track of whether the Transmuter is live or killed
         is_live: bool,
+        // Keeps track of whether `reclaim` has started after Transmuter is killed
+        is_reclaimable: bool,
         // The address to receive any excess assets
         receiver: ContractAddress,
     }
@@ -176,6 +178,10 @@ mod Transmuter {
             self.is_live.read()
         }
 
+        fn get_reclaimable(self: @ContractState) -> bool {
+            self.is_reclaimable.read()
+        }
+
         //
         // Setters
         //
@@ -216,6 +222,16 @@ mod Transmuter {
             self.reverse_fee.write(fee);
 
             self.emit(ReverseFeeUpdated { old_fee, new_fee: fee });
+        }
+
+        // One way function to enable `reclaim` after Transmuter is killed.
+        // This should be called after the assets backing the total transmuted amount
+        //  has been transferred back to the  Transmuter after shutdown.
+        fn enable_reclaim(ref self: ContractState) {
+            AccessControl::assert_has_role(TransmuterRoles::ENABLE_RECLAIM);
+
+            assert(!self.is_live.read(), 'TR: Transmuter is live');
+            self.is_reclaimable.write(true);
         }
 
         // 
@@ -305,7 +321,7 @@ mod Transmuter {
         // because we do not make any assumptions as to the amount of assets held by the 
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
-            assert(!self.is_live.read(), 'TR: Transmuter is live');
+            assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
 
             let transmuter: ContractAddress = get_contract_address();
             let caller: ContractAddress = get_caller_address();
