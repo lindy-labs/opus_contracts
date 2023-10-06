@@ -137,8 +137,9 @@ mod Equalizer {
 
             // Safety check to assert yin is less than or equal to total debt after minting surplus
             // It may not be equal due to rounding errors
-            let updated_total_yin: Wad = shrine.get_total_yin();
-            assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
+            let updated_troves_yin: Wad = shrine.get_total_yin_supply()
+                - shrine.get_total_yin_injected();
+            assert(updated_troves_yin <= total_debt, 'EQ: Yin exceeds debt');
 
             self.emit(Equalize { recipients, percentages, amount: minted_surplus });
 
@@ -155,7 +156,8 @@ mod Equalizer {
     #[inline(always)]
     fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
         let total_debt: Wad = shrine.get_total_debt();
-        let surplus: Wad = total_debt - shrine.get_total_yin();
+        let surplus: Wad = total_debt
+            - (shrine.get_total_yin_supply() - shrine.get_total_yin_injected());
         (total_debt, surplus)
     }
 

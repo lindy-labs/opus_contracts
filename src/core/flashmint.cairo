@@ -71,7 +71,7 @@ mod FlashMint {
 
             // Can only flash mint our own synthetic
             if token == shrine.contract_address {
-                let supply: Wad = shrine.get_total_yin();
+                let supply: Wad = shrine.get_total_yin_supply();
                 return (supply * FLASH_MINT_AMOUNT_PCT.into()).val.into();
             }
 

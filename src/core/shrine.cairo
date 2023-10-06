@@ -100,8 +100,10 @@ mod Shrine {
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued
         total_debt: Wad,
-        // Total amount of synthetic forged
-        total_yin: Wad,
+        // Total amount of synthetic injected
+        total_yin_injected: Wad,
+        // Total amount of synthetic forged and injected
+        total_yin_supply: Wad,
         // Keeps track of the price history of each Yang
         // Stores both the actual price and the cumulative price of
         // the yang at each time interval, both as Wads.
@@ -385,8 +387,12 @@ mod Shrine {
             self.yin.read(user)
         }
 
-        fn get_total_yin(self: @ContractState) -> Wad {
-            self.total_yin.read()
+        fn get_total_yin_injected(self: @ContractState) -> Wad {
+            self.total_yin_injected.read()
+        }
+
+        fn get_total_yin_supply(self: @ContractState) -> Wad {
+            self.total_yin_supply.read()
         }
 
         // Get yin spot price
@@ -921,12 +927,14 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
+            self.total_yin_injected.write(self.total_yin_injected.read() + amount);
             self.forge_helper(receiver, amount);
         }
 
         // Repay a specified amount of synthetic without deattributing the debt from a Trove
         fn eject(ref self: ContractState, burner: ContractAddress, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::EJECT);
+            self.total_yin_injected.write(self.total_yin_injected.read() - amount);
             self.melt_helper(burner, amount);
         }
 
@@ -1304,7 +1312,7 @@ mod Shrine {
 
         fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
-            self.total_yin.write(self.total_yin.read() + amount);
+            self.total_yin_supply.write(self.total_yin_supply.read() + amount);
 
             self
                 .emit(
@@ -1319,7 +1327,7 @@ mod Shrine {
             assert(user_balance >= amount, 'SH: Insufficient yin balance');
 
             self.yin.write(user, user_balance - amount);
-            self.total_yin.write(self.total_yin.read() - amount);
+            self.total_yin_supply.write(self.total_yin_supply.read() - amount);
 
             self
                 .emit(
@@ -2305,11 +2313,11 @@ mod Shrine {
         }
 
         fn total_supply(self: @ContractState) -> u256 {
-            self.total_yin.read().val.into()
+            self.total_yin_supply.read().into()
         }
 
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
-            self.yin.read(account).val.into()
+            self.yin.read(account).into()
         }
 
         fn allowance(

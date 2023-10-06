@@ -11,6 +11,7 @@ mod Caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::reentrancy_guard::ReentrancyGuard;
@@ -34,6 +35,10 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Number of deployed transmuters
+        transmuters_count: u8,
+        // Mapping from transmuter ID to the Transmuter instance
+        transmuters: LegacyMap<u8, ITransmuterDispatcher>
     }
 
     //
@@ -138,7 +143,9 @@ mod Caretaker {
 
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
-            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
+            let total_troves_yin: Wad = shrine.get_total_yin_supply()
+                - shrine.get_total_yin_injected();
+            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, total_troves_yin);
             let capped_pct: Ray = min(pct_to_reclaim, RAY_ONE.into());
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
@@ -161,6 +168,19 @@ mod Caretaker {
                     Option::None => { break reclaimable_assets.span(); },
                 };
             }
+        }
+
+        //
+        // Setters
+        //
+
+        // TODO: do we need to prevent duplicates?
+        fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
+            let transmuter_id: u8 = self.transmuters_count.read() + 1;
+            self.transmuters_count.write(transmuter_id);
+            self
+                .transmuters
+                .write(transmuter_id, ITransmuterDispatcher { contract_address: transmuter });
         }
 
         //
@@ -188,7 +208,9 @@ mod Caretaker {
             // Calculate the percentage of collateral needed to back yin 1 : 1
             // based on the last value of all collateral in Shrine
             let (_, total_value) = shrine.get_shrine_threshold_and_value();
-            let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), total_value);
+            let total_troves_yin: Wad = shrine.get_total_yin_supply()
+                - shrine.get_total_yin_injected();
+            let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
@@ -217,6 +239,18 @@ mod Caretaker {
 
             // Kill modules
             shrine.kill();
+
+            let mut transmuters_id: u8 = self.transmuters_count.read();
+            let loop_end: u8 = 0;
+            loop {
+                if transmuters_id == loop_end {
+                    break;
+                }
+
+                self.transmuters.read(transmuters_id).kill();
+
+                transmuters_id -= 1;
+            };
 
             // Note that Absorber is not killed. When the final debt surplus is minted, the
             // absorber may be an allocated recipient. If the Absorber has been completely

@@ -41,7 +41,7 @@ mod TestEqualizer {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
-        let before_total_yin = shrine.get_total_yin();
+        let before_total_yin = shrine.get_total_yin_supply();
 
         // Advance by 365 days * 24 hours * 2 intervals per hour = 17520 intervals so that some
         // interest accrues
@@ -100,7 +100,9 @@ mod TestEqualizer {
         let remaining_surplus = surplus - minted_surplus;
         assert(equalizer.get_surplus() == remaining_surplus, 'wrong remaining surplus');
 
-        assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
+        assert(
+            shrine.get_total_yin_supply() == before_total_yin + minted_surplus, 'wrong total yin'
+        );
 
         let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
         ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);

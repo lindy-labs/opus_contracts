@@ -1613,7 +1613,7 @@ mod TestShrine {
 
         let before_total_supply: u256 = yin.total_supply();
         let before_user_bal: u256 = yin.balance_of(trove1_owner);
-        let before_total_yin: Wad = shrine.get_total_yin();
+        let before_total_yin: Wad = shrine.get_total_yin_supply();
         let before_user_yin: Wad = shrine.get_yin(trove1_owner);
 
         set_contract_address(ShrineUtils::admin());
@@ -1640,13 +1640,15 @@ mod TestShrine {
             yin.balance_of(trove1_owner) == before_user_bal + inject_amt.val.into(),
             'incorrect user balance'
         );
-        assert(shrine.get_total_yin() == before_total_yin + inject_amt, 'incorrect total yin');
+        assert(
+            shrine.get_total_yin_supply() == before_total_yin + inject_amt, 'incorrect total yin'
+        );
         assert(shrine.get_yin(trove1_owner) == before_user_yin + inject_amt, 'incorrect user yin');
 
         shrine.eject(trove1_owner, inject_amt);
         assert(yin.total_supply() == before_total_supply, 'incorrect total supply');
         assert(yin.balance_of(trove1_owner) == before_user_bal, 'incorrect user balance');
-        assert(shrine.get_total_yin() == before_total_yin, 'incorrect total yin');
+        assert(shrine.get_total_yin_supply() == before_total_yin, 'incorrect total yin');
         assert(shrine.get_yin(trove1_owner) == before_user_yin, 'incorrect user yin');
 
         let mut expected_events: Span<Shrine::Event> = array![

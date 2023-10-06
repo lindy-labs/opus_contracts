@@ -9,7 +9,8 @@ use opus::utils::wadray::{Ray, Wad};
 trait IShrine<TContractState> {
     // getters
     fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
-    fn get_total_yin(self: @TContractState) -> Wad;
+    fn get_total_yin_injected(self: @TContractState) -> Wad;
+    fn get_total_yin_supply(self: @TContractState) -> Wad;
     fn get_yin_spot_price(self: @TContractState) -> Wad;
     fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;

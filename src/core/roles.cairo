@@ -179,6 +179,11 @@ mod ShrineRoles {
         ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
+    #[inline(always)]
+    fn transmuter() -> u128 {
+        EJECT + INJECT
+    }
+
     #[cfg(test)]
     #[inline(always)]
     fn all_roles() -> u128 {
@@ -211,6 +216,11 @@ mod TransmuterRoles {
     const SET_REVERSE_FEE: u128 = 32;
     const SWEEP: u128 = 64;
     const TOGGLE_REVERSIBILITY: u128 = 128;
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        KILL
+    }
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
