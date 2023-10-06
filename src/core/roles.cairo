@@ -201,3 +201,26 @@ mod ShrineRoles {
             + WITHDRAW
     }
 }
+
+mod TransmuterRoles {
+    const KILL: u128 = 1;
+    const SET_CARETAKER: u128 = 2;
+    const SET_CEILING: u128 = 4;
+    const SET_PERCENTAGE_CAP: u128 = 8;
+    const SET_RECEIVER: u128 = 16;
+    const SET_REVERSE_FEE: u128 = 32;
+    const SWEEP: u128 = 64;
+    const TOGGLE_REVERSIBILITY: u128 = 128;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL
+            + SET_CARETAKER
+            + SET_CEILING
+            + SET_PERCENTAGE_CAP
+            + SET_RECEIVER
+            + SET_REVERSE_FEE
+            + SWEEP
+            + TOGGLE_REVERSIBILITY
+    }
+}
