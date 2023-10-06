@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod Transmuter {
+    use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     use opus::core::roles::TransmuterRoles;
@@ -274,18 +275,20 @@ mod Transmuter {
             self.emit(Reverse { user, asset_amt: user_asset_amt, yin_amt, fee });
         }
 
-        // Transfers all assets in the transmuter to the receiver
-        fn sweep(ref self: ContractState) {
+        // Transfers assets in the transmuter to the receiver
+        fn sweep(ref self: ContractState, asset_amt: u128) {
             self.assert_live();
 
             AccessControl::assert_has_role(TransmuterRoles::SWEEP);
 
             let asset: IERC20Dispatcher = self.asset.read();
-            let asset_balance: u256 = asset.balance_of(get_contract_address());
-            let recipient: ContractAddress = self.receiver.read();
-            asset.transfer(recipient, asset_balance);
+            let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
+            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
 
-            self.emit(Sweep { recipient, asset_amt: asset_balance.try_into().unwrap() });
+            let recipient: ContractAddress = self.receiver.read();
+            asset.transfer(recipient, capped_asset_amt.into());
+
+            self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
         }
 
         //

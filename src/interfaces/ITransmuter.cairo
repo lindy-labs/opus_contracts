@@ -21,7 +21,7 @@ trait ITransmuter<TContractState> {
     // core functions
     fn transmute(ref self: TContractState, asset_amt: u128);
     fn reverse(ref self: TContractState, yin_amt: Wad);
-    fn sweep(ref self: TContractState);
+    fn sweep(ref self: TContractState, asset_amt: u128);
     // shutdown
     fn kill(ref self: TContractState);
     fn reclaim(ref self: TContractState, yin: Wad);
