@@ -298,8 +298,7 @@ mod TestPurger {
                         let trove_value: Wad = PurgerUtils::get_sum_of_value(
                             shrine, yangs, target_trove_yang_amts
                         );
-                        trove_value.print();
-                        (wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()).print();
+
                         wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()
                     };
 
@@ -335,8 +334,7 @@ mod TestPurger {
                     );
 
                     let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
-                    max_close_amt.print();
-                    expected_max_close_amt.print();
+
                     common::assert_equalish(
                         max_close_amt,
                         expected_max_close_amt,
@@ -659,6 +657,16 @@ mod TestPurger {
                                     Option::None,
                                 );
 
+                                'threshold'.print();
+                                (*threshold).print();
+                                'target_ltv'.print();
+                                (*target_ltv).print();
+                                'max_close_amt'.print();
+                                max_close_amt.print();
+                                'percentage_freed'.print();
+                                expected_freed_pct.print();
+                                'freed_assets'.print();
+                                //freed_assets.print();
                                 let mut expected_events: Span<Purger::Event> = array![
                                     Purger::Event::Purged(
                                         Purger::Purged {
