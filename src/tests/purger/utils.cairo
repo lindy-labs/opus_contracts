@@ -568,6 +568,7 @@ mod PurgerUtils {
         compensation_value: Option<Wad>
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
+
         let value_offset: Wad = if compensation_value.is_some() {
             compensation_value.unwrap()
         } else {

@@ -604,7 +604,7 @@ mod TestPurger {
                                 // Accrue some interest
                                 common::advance_intervals(500);
 
-                                let (_, _, before_value, before_debt) = shrine
+                                let (_, _, mut before_value, before_debt) = shrine
                                     .get_trove_info(target_trove);
 
                                 if *target_ltv > (2 * RAY_PERCENT).into() {
@@ -617,6 +617,14 @@ mod TestPurger {
                                         before_debt,
                                         *target_ltv
                                     );
+
+                                    // If the prices have been adjusted, we need to 
+                                    // get the new value of the trove in order for 
+                                    // following calculations to be correct
+                                    let (_, _, before_value_temp, _) = shrine
+                                        .get_trove_info(target_trove);
+
+                                    before_value = before_value_temp;
                                 }
 
                                 let (penalty, max_close_amt) = purger
@@ -657,16 +665,6 @@ mod TestPurger {
                                     Option::None,
                                 );
 
-                                'threshold'.print();
-                                (*threshold).print();
-                                'target_ltv'.print();
-                                (*target_ltv).print();
-                                'max_close_amt'.print();
-                                max_close_amt.print();
-                                'percentage_freed'.print();
-                                expected_freed_pct.print();
-                                'freed_assets'.print();
-                                //freed_assets.print();
                                 let mut expected_events: Span<Purger::Event> = array![
                                     Purger::Event::Purged(
                                         Purger::Purged {
@@ -680,6 +678,7 @@ mod TestPurger {
                                     ),
                                 ]
                                     .span();
+
                                 common::assert_events_emitted(
                                     purger.contract_address, expected_events, Option::None
                                 );

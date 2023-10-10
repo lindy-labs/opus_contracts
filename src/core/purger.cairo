@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Purger {
-    use debug::PrintTrait;
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
