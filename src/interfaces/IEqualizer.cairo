@@ -11,6 +11,4 @@ trait IEqualizer<TContractState> {
     fn incur(ref self: TContractState, yin_amt: Wad);
     fn equalize(ref self: TContractState) -> Wad;
     fn normalize(ref self: TContractState, yin_amt: Wad);
-    // view
-    fn get_surplus(self: @TContractState) -> Wad;
 }
