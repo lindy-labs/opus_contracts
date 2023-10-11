@@ -51,11 +51,17 @@ mod ControllerRoles {
 }
 
 mod EqualizerRoles {
-    const SET_ALLOCATOR: u128 = 1;
+    const INCUR: u128 = 1;
+    const SET_ALLOCATOR: u128 = 2;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        SET_ALLOCATOR
+        INCUR + SET_ALLOCATOR
+    }
+
+    #[inline(always)]
+    fn bond() -> u128 {
+        INCUR
     }
 }
 
@@ -140,6 +146,11 @@ mod ShrineRoles {
     }
 
     #[inline(always)]
+    fn bond() -> u128 {
+        EJECT + INJECT
+    }
+
+    #[inline(always)]
     fn caretaker() -> u128 {
         EJECT + KILL + SEIZE
     }
@@ -156,7 +167,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        INJECT
+        EJECT + INJECT
     }
 
     #[inline(always)]
@@ -199,5 +210,38 @@ mod ShrineRoles {
             + UPDATE_YANG_SUSPENSION
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
+    }
+}
+
+mod BondRoles {
+    const ADD_ASSET: u128 = 1;
+    const BORROW: u128 = 2;
+    const CLOSE: u128 = 4;
+    const KILL: u128 = 8;
+    const LIQUIDATE: u128 = 16;
+    const SET_CEILING: u128 = 32;
+    const SET_EQUALIZER: u128 = 64;
+    const SET_LIQUIDATOR: u128 = 128;
+    const SET_PRICE: u128 = 256;
+    const SET_RATE: u128 = 512;
+    const SET_THRESHOLD: u128 = 1024;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_ASSET
+            + BORROW
+            + CLOSE
+            + KILL
+            + LIQUIDATE
+            + SET_CEILING
+            + SET_EQUALIZER
+            + SET_LIQUIDATOR
+            + SET_PRICE
+            + SET_THRESHOLD
+    }
+
+    #[inline(always)]
+    fn borrower() -> u128 {
+        BORROW + CLOSE
     }
 }

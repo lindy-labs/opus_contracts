@@ -1,6 +1,7 @@
 #[starknet::contract]
 mod Equalizer {
-    use starknet::ContractAddress;
+    use cmp::min;
+    use starknet::{ContractAddress, get_caller_address};
 
     use opus::core::roles::EqualizerRoles;
 
@@ -18,6 +19,8 @@ mod Equalizer {
         allocator: IAllocatorDispatcher,
         // the Shrine that this Equalizer mints surplus debt for
         shrine: IShrineDispatcher,
+        // amount of deficit debt at the current on-chain conditions
+        deficit: Wad
     }
 
     //
@@ -29,6 +32,8 @@ mod Equalizer {
     enum Event {
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
+        Incur: Incur,
+        Normalize: Normalize
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -42,6 +47,18 @@ mod Equalizer {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>,
         amount: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Incur {
+        #[key]
+        defaulter: ContractAddress,
+        deficit: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Normalize {
+        yin_amt: Wad
     }
 
     //
@@ -142,7 +159,34 @@ mod Equalizer {
 
             self.emit(Equalize { recipients, percentages, amount: minted_surplus });
 
+            // TODO: loop over equalizer's balance and transfer to recipients
+
             minted_surplus
+        }
+
+        // Incur a debt deficit
+        fn incur(ref self: ContractState, yin_amt: Wad) {
+            AccessControl::assert_has_role(EqualizerRoles::INCUR);
+
+            self.deficit.write(self.deficit.read() + yin_amt);
+
+            self.emit(Incur { defaulter: get_caller_address(), deficit: yin_amt });
+        }
+
+        // Burn yin from the caller's balance to wipe off any debt deficit.
+        // Anyone can call this function.
+        fn normalize(ref self: ContractState, yin_amt: Wad) {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let caller: ContractAddress = get_caller_address();
+
+            let balance: Wad = shrine.get_yin(caller);
+            let deficit: Wad = self.deficit.read();
+            let offset: Wad = min(balance, deficit);
+
+            if offset.is_non_zero() {
+                shrine.eject(caller, offset);
+                self.emit(Normalize { yin_amt: offset });
+            }
         }
     }
 

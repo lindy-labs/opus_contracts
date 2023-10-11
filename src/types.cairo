@@ -10,6 +10,13 @@ enum YangSuspensionStatus {
     Permanent: ()
 }
 
+#[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
+enum BondStatus {
+    Active: (),
+    Inactive: (),
+    Killed: ()
+}
+
 #[derive(Copy, Drop, Serde)]
 struct YangBalance {
     yang_id: u32, //  ID of yang in Shrine

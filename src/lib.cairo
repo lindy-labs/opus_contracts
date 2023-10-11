@@ -1,6 +1,7 @@
 mod core {
     mod abbot;
     mod absorber;
+    mod bond;
     mod allocator;
     mod caretaker;
     mod controller;
@@ -22,6 +23,7 @@ mod interfaces {
     mod IAbbot;
     mod IAbsorber;
     mod IAllocator;
+    mod IBond;
     mod ICaretaker;
     mod IController;
     mod IEqualizer;

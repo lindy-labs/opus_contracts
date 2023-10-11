@@ -8,7 +8,9 @@ trait IEqualizer<TContractState> {
     fn get_allocator(self: @TContractState) -> ContractAddress;
     // external
     fn set_allocator(ref self: TContractState, allocator: ContractAddress);
+    fn incur(ref self: TContractState, yin_amt: Wad);
     fn equalize(ref self: TContractState) -> Wad;
+    fn normalize(ref self: TContractState, yin_amt: Wad);
     // view
     fn get_surplus(self: @TContractState) -> Wad;
 }

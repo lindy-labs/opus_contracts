@@ -34,6 +34,10 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Amount of yin backed by this Caretaker's assets after shutdown
+        backed_yin: Wad,
+        // Amount of yin already claimed via this Caretaker after shutdown
+        claimed_yin: Wad,
     }
 
     //
@@ -138,7 +142,9 @@ mod Caretaker {
 
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
-            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
+            let backed_yin: Wad = self.backed_yin.read();
+            let claimed_yin: Wad = self.claimed_yin.read();
+            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, backed_yin - claimed_yin);
             let capped_pct: Ray = min(pct_to_reclaim, RAY_ONE.into());
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
@@ -186,9 +192,13 @@ mod Caretaker {
             self.equalizer.read().equalize();
 
             // Calculate the percentage of collateral needed to back yin 1 : 1
-            // based on the last value of all collateral in Shrine
+            // based on the last value of all collateral in Shrine.
+            // Note that the total debt is used as an approximation of the total yin forged 
+            // by troves.
             let (_, total_value) = shrine.get_shrine_threshold_and_value();
-            let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), total_value);
+            let total_troves_yin: Wad = shrine.get_total_debt();
+            let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
+            self.backed_yin.write(total_troves_yin);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
