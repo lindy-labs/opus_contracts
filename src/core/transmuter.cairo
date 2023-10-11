@@ -143,6 +143,9 @@ mod Transmuter {
 
         self.set_receiver_helper(receiver);
         self.set_percentage_cap_helper(percentage_cap);
+
+        // Reversibility is enabled at deployment
+        self.reversibility.write(true);
     }
 
     #[external(v0)]
@@ -317,24 +320,31 @@ mod Transmuter {
             self.emit(Killed {});
         }
 
+        fn preview_reclaim(self: @ContractState, yin: Wad) -> u128 {
+            assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
+
+            let asset_balance: Wad = self
+                .asset
+                .read()
+                .balance_of(get_contract_address())
+                .try_into()
+                .unwrap();
+
+            ((yin / self.total_transmuted.read()) * asset_balance).val
+        }
+
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
         // because we do not make any assumptions as to the amount of assets held by the 
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
             assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
 
-            let transmuter: ContractAddress = get_contract_address();
-            let caller: ContractAddress = get_caller_address();
-
-            let asset: IERC20Dispatcher = self.asset.read();
-            let asset_balance: u256 = asset.balance_of(transmuter);
-
-            let asset_amt: Wad = (yin / self.total_transmuted.read())
-                * asset_balance.try_into().unwrap();
+            let asset_amt: u128 = self.preview_reclaim(yin);
 
             self.total_transmuted.write(self.total_transmuted.read() - yin);
+            let caller: ContractAddress = get_caller_address();
             self.shrine.read().eject(caller, yin);
-            asset.transfer(caller, asset_amt.into());
+            self.asset.read().transfer(caller, asset_amt.into());
         }
     }
 

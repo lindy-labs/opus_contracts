@@ -26,6 +26,7 @@ trait ITransmuter<TContractState> {
     fn sweep(ref self: TContractState, asset_amt: u128);
     // shutdown
     fn kill(ref self: TContractState);
+    fn preview_reclaim(self: @TContractState, yin: Wad) -> u128;
     fn reclaim(ref self: TContractState, yin: Wad);
 }
 

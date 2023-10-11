@@ -40,9 +40,9 @@ mod Caretaker {
         // Amount of yin already claimed via this Caretaker after shutdown
         claimed_yin: Wad,
         // Number of deployed transmuters
-        transmuters_count: u8,
+        transmuters_count: u64,
         // Mapping from transmuter ID to the Transmuter instance
-        transmuters: LegacyMap<u8, ITransmuterDispatcher>
+        transmuters: LegacyMap<u64, ITransmuterDispatcher>
     }
 
     //
@@ -180,7 +180,7 @@ mod Caretaker {
 
         // TODO: do we need to prevent duplicates?
         fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            let transmuter_id: u8 = self.transmuters_count.read() + 1;
+            let transmuter_id: u64 = self.transmuters_count.read() + 1;
             self.transmuters_count.write(transmuter_id);
             self
                 .transmuters
@@ -246,8 +246,8 @@ mod Caretaker {
             // Kill modules
             shrine.kill();
 
-            let mut transmuters_id: u8 = self.transmuters_count.read();
-            let loop_end: u8 = 0;
+            let mut transmuters_id: u64 = self.transmuters_count.read();
+            let loop_end: u64 = 0;
             loop {
                 if transmuters_id == loop_end {
                     break;
