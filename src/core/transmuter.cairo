@@ -350,9 +350,7 @@ mod Transmuter {
             let shrine: IShrineDispatcher = self.shrine.read();
             let yin_price_ge_peg: bool = shrine.get_yin_spot_price() >= WAD_ONE.into();
 
-            let cap: Wad = wadray::rmul_wr(
-                shrine.get_total_yin_supply(), self.percentage_cap.read()
-            );
+            let cap: Wad = wadray::rmul_wr(shrine.get_total_yin(), self.percentage_cap.read());
             let minted: Wad = self.total_transmuted.read();
             let is_lt_cap: bool = minted + amt_to_mint <= cap;
 

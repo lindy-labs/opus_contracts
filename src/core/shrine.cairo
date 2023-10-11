@@ -100,10 +100,11 @@ mod Shrine {
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued
         total_debt: Wad,
-        // Total amount of synthetic injected
-        total_yin_injected: Wad,
         // Total amount of synthetic forged and injected
-        total_yin_supply: Wad,
+        total_yin: Wad,
+        // Total amount of surplus debt (i.e. debt created without creation of yin)
+        // based on current on-chain conditions
+        surplus_debt: Wad,
         // Keeps track of the price history of each Yang
         // Stores both the actual price and the cumulative price of
         // the yang at each time interval, both as Wads.
@@ -387,12 +388,8 @@ mod Shrine {
             self.yin.read(user)
         }
 
-        fn get_total_yin_injected(self: @ContractState) -> Wad {
-            self.total_yin_injected.read()
-        }
-
-        fn get_total_yin_supply(self: @ContractState) -> Wad {
-            self.total_yin_supply.read()
+        fn get_total_yin(self: @ContractState) -> Wad {
+            self.total_yin.read()
         }
 
         // Get yin spot price
@@ -421,6 +418,10 @@ mod Shrine {
 
         fn get_total_debt(self: @ContractState) -> Wad {
             self.total_debt.read()
+        }
+
+        fn get_surplus_debt(self: @ContractState) -> Wad {
+            self.surplus_debt.read()
         }
 
         fn get_yang_price(
@@ -740,6 +741,14 @@ mod Shrine {
             self.emit(DebtCeilingUpdated { ceiling });
         }
 
+        fn reduce_surplus_debt(ref self: ContractState, amount: Wad) {
+            AccessControl::assert_has_role(ShrineRoles::REDUCE_SURPLUS_DEBT);
+
+            let current_surplus: Wad = self.surplus_debt.read();
+            assert(amount <= current_surplus, 'SH: Exceeds surplus debt');
+            self.surplus_debt.write(current_surplus - amount);
+        }
+
         // Updates spot price of yin
         //
         // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
@@ -818,6 +827,9 @@ mod Shrine {
             let mut new_system_debt = self.total_debt.read() + debt_amount;
             assert(new_system_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
             self.total_debt.write(new_system_debt);
+
+            // Add forge fee to surplus debt
+            self.surplus_debt.write(self.surplus_debt.read() + forge_fee);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -927,14 +939,12 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
-            self.total_yin_injected.write(self.total_yin_injected.read() + amount);
             self.forge_helper(receiver, amount);
         }
 
         // Repay a specified amount of synthetic without deattributing the debt from a Trove
         fn eject(ref self: ContractState, burner: ContractAddress, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::EJECT);
-            self.total_yin_injected.write(self.total_yin_injected.read() - amount);
             self.melt_helper(burner, amount);
         }
 
@@ -1312,7 +1322,7 @@ mod Shrine {
 
         fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
-            self.total_yin_supply.write(self.total_yin_supply.read() + amount);
+            self.total_yin.write(self.total_yin.read() + amount);
 
             self
                 .emit(
@@ -1327,7 +1337,7 @@ mod Shrine {
             assert(user_balance >= amount, 'SH: Insufficient yin balance');
 
             self.yin.write(user, user_balance - amount);
-            self.total_yin_supply.write(self.total_yin_supply.read() - amount);
+            self.total_yin.write(self.total_yin.read() - amount);
 
             self
                 .emit(
@@ -1410,9 +1420,12 @@ mod Shrine {
             // Get new system debt
             // This adds the interest charged on the trove's debt to the total debt.
             // This should not include redistributed debt, as that is already included in the total.
-            let new_system_debt: Wad = self.total_debt.read()
-                + (compounded_trove_debt - trove.debt);
+            let charged: Wad = compounded_trove_debt - trove.debt;
+            let new_system_debt: Wad = self.total_debt.read() + charged;
             self.total_debt.write(new_system_debt);
+
+            // Add interest to surplus debt
+            self.surplus_debt.write(self.surplus_debt.read() + charged);
 
             // Emit only if there is a change in the trove's debt
             if compounded_trove_debt != trove.debt {
@@ -2313,7 +2326,7 @@ mod Shrine {
         }
 
         fn total_supply(self: @ContractState) -> u256 {
-            self.total_yin_supply.read().into()
+            self.total_yin.read().into()
         }
 
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {

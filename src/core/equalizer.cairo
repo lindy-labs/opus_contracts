@@ -75,12 +75,6 @@ mod Equalizer {
             self.allocator.read().contract_address
         }
 
-        // Returns the amount of surplus debt that can be minted
-        fn get_surplus(self: @ContractState) -> Wad {
-            let (_, surplus) = get_debt_and_surplus(self.shrine.read());
-            surplus
-        }
-
         //
         // Setters
         //
@@ -108,7 +102,8 @@ mod Equalizer {
         // Returns the total amount of surplus debt minted.
         fn equalize(ref self: ContractState) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let (total_debt, surplus) = get_debt_and_surplus(shrine);
+
+            let surplus: Wad = shrine.get_surplus_debt();
 
             if surplus.is_zero() {
                 return WadZeroable::zero();
@@ -135,30 +130,12 @@ mod Equalizer {
                 };
             };
 
-            // Safety check to assert yin is less than or equal to total debt after minting surplus
-            // It may not be equal due to rounding errors
-            let updated_troves_yin: Wad = shrine.get_total_yin_supply()
-                - shrine.get_total_yin_injected();
-            assert(updated_troves_yin <= total_debt, 'EQ: Yin exceeds debt');
+            shrine.reduce_surplus_debt(minted_surplus);
 
             self.emit(Equalize { recipients, percentages, amount: minted_surplus });
 
             minted_surplus
         }
-    }
-
-    //
-    // Internal functions for Equalizer that do not access Equalizer's storage
-    //
-
-    // Helper function to return a tuple of the Shrine's total debt and the surplus
-    // calculated based on the Shrine's total debt and the total minted yin.
-    #[inline(always)]
-    fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
-        let total_debt: Wad = shrine.get_total_debt();
-        let surplus: Wad = total_debt
-            - (shrine.get_total_yin_supply() - shrine.get_total_yin_injected());
-        (total_debt, surplus)
     }
 
     //
