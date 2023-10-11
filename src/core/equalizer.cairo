@@ -1,12 +1,13 @@
 #[starknet::contract]
 mod Equalizer {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     use opus::core::roles::EqualizerRoles;
 
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::wadray;
@@ -149,9 +150,35 @@ mod Equalizer {
 
             shrine.reduce_surplus_debt(minted_surplus);
 
-            self.emit(Equalize { recipients, percentages, amount: minted_surplus });
+            // Loop over equalizer's balance and transfer to recipients
+            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+            let balance: Wad = shrine.get_yin(get_contract_address());
+            let mut existing_surplus_distributed: Wad = WadZeroable::zero();
 
-            // TODO: loop over equalizer's balance and transfer to recipients
+            let mut recipients_copy = recipients;
+            let mut percentages_copy = percentages;
+            loop {
+                match recipients_copy.pop_front() {
+                    Option::Some(recipient) => {
+                        let amount: Wad = wadray::rmul_wr(
+                            balance, *(percentages_copy.pop_front().unwrap())
+                        );
+
+                        yin.transfer(*recipient, amount.into());
+                        existing_surplus_distributed += amount;
+                    },
+                    Option::None => { break; }
+                };
+            };
+
+            self
+                .emit(
+                    Equalize {
+                        recipients,
+                        percentages,
+                        amount: minted_surplus + existing_surplus_distributed
+                    }
+                );
 
             minted_surplus
         }
