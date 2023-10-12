@@ -2727,7 +2727,7 @@ mod TestPurger {
                                             let current_timestamp = get_block_timestamp();
 
                                             set_contract_address(ShrineUtils::admin());
-                                            shrine.update_yang_suspension(eth, current_timestamp);
+                                            shrine.suspend_yang(eth);
 
                                             // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
                                             let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD
@@ -2816,7 +2816,7 @@ mod TestPurger {
                                             }
 
                                             set_contract_address(ShrineUtils::admin());
-                                            shrine.update_yang_suspension(eth, 0);
+                                            shrine.unsuspend_yang(eth);
                                         },
                                         Option::None => { break; }
                                     }
