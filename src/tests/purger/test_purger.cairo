@@ -2661,4 +2661,132 @@ mod TestPurger {
             threshold_after_liquidation, ltv_after_liquidation
         );
     }
+
+    #[derive(Copy, Drop, PartialEq)]
+    enum AbsorbType {
+        Full: (),
+        Partial: (),
+        None: (),
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_absorb_low_thresholds() {
+        let searcher_start_yin: Wad = (PurgerUtils::SEARCHER_YIN * 3).into();
+        // Execution time is greatly reduced
+        // by only deploying the contracts once for all parametrizations
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+            PurgerUtils::purger_deploy_with_searcher(
+            searcher_start_yin
+        );
+
+        let yin_erc20: IERC20Dispatcher = IERC20Dispatcher {
+            contract_address: shrine.contract_address
+        };
+
+        let searcher = PurgerUtils::searcher();
+
+        // Parameters
+        let mut thresholds_param: Span<Ray> = array![RayZeroable::zero(), RAY_PERCENT.into()]
+            .span();
+
+        let mut absorb_type_param: Span<AbsorbType> = array![
+            AbsorbType::None, AbsorbType::Full, AbsorbType::Partial
+        ]
+            .span();
+
+        loop {
+            match thresholds_param.pop_front() {
+                Option::Some(threshold) => {
+                    let mut target_ltvs_param: Span<Ray> = array![
+                        *threshold + 1_u128.into(), *threshold + (RAY_ONE / 2).into()
+                    ]
+                        .span();
+
+                    match target_ltvs_param.pop_front() {
+                        Option::Some(target_ltv) => {
+                            match absorb_type_param.pop_front() {
+                                Option::Some(absorb_type) => {
+                                    // We start by clearing/"resetting" the absorber 
+                                    if yin_erc20
+                                        .balance_of(absorber.contract_address)
+                                        .is_non_zero() {
+                                        set_block_timestamp(
+                                            get_block_timestamp() + Absorber::REQUEST_COOLDOWN
+                                        );
+
+                                        // Update yang prices to save gas on fetching them in Shrine functions
+                                        set_contract_address(ShrineUtils::admin());
+                                        let (yang_price, _, _) = shrine
+                                            .get_current_yang_price(*yangs[0]);
+                                        shrine.advance(*yangs[0], yang_price);
+                                        let (yang_price, _, _) = shrine
+                                            .get_current_yang_price(*yangs[1]);
+                                        shrine.advance(*yangs[1], yang_price);
+
+                                        // Make a removal request and then remove the searcher's position
+                                        set_contract_address(searcher);
+                                        absorber.request();
+                                        set_block_timestamp(
+                                            get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK
+                                        );
+
+                                        let searcher_provided_yin: Wad = absorber
+                                            .get_provider_yin(searcher);
+
+                                        if searcher_provided_yin.is_non_zero() {
+                                            absorber.remove(searcher_provided_yin);
+                                        }
+                                    }
+
+                                    // Creating the trove to be liquidated
+                                    let target_trove_yang_amts: Span<Wad> = array![
+                                        PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
+                                        (PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT
+                                            * pow(10_u128, 10))
+                                            .into()
+                                    ]
+                                        .span();
+
+                                    let trove_value: Wad = PurgerUtils::get_sum_of_value(
+                                        shrine, yangs, target_trove_yang_amts
+                                    );
+
+                                    let trove_debt: Wad = wadray::rmul_wr(trove_value, *threshold)
+                                        + 1_u128.into();
+                                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                                        abbot, yangs, gates, trove_debt
+                                    );
+
+                                    // Now, the searcher deposits some yin into the absorber
+                                    // The amount depends on whether we want a full or partial absorption, or 
+                                    // a full redistribution
+                                    set_contract_address(searcher);
+
+                                    match *absorb_type {
+                                        AbsorbType::Full => { absorber.provide(trove_debt); },
+                                        AbsorbType::Partial => {
+                                            // We add 1 wei in the event that `trove_debt` is extremely small, 
+                                            // to avoid the provision amount from being zero.
+                                            absorber
+                                                .provide(
+                                                    trove_debt / 2_u128.into() + 1_u128.into()
+                                                );
+                                        },
+                                        AbsorbType::None => {},
+                                    };
+
+                                    // Setting the threshold to the desired value
+                                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+                                },
+                                Option::None => { break; }
+                            }
+                        },
+                        Option::None => { break; }
+                    };
+                },
+                Option::None => { break; }
+            };
+        };
+    }
 }
