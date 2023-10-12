@@ -1,4 +1,6 @@
 mod TestPurger {
+    use cmp::max;
+    use integer::BoundedU256;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -2685,12 +2687,15 @@ mod TestPurger {
         };
 
         let searcher = PurgerUtils::searcher();
+        // Approve absorber for maximum yin 
+        set_contract_address(searcher);
+        yin_erc20.approve(absorber.contract_address, BoundedU256::max());
 
         // Parameters
         let mut thresholds_param: Span<Ray> = array![RayZeroable::zero(), RAY_PERCENT.into()]
             .span();
 
-        let mut absorb_type_param: Span<AbsorbType> = array![
+        let absorb_type_param: Span<AbsorbType> = array![
             AbsorbType::None, AbsorbType::Full, AbsorbType::Partial
         ]
             .span();
@@ -2699,90 +2704,152 @@ mod TestPurger {
             match thresholds_param.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs_param: Span<Ray> = array![
-                        *threshold + 1_u128.into(), *threshold + (RAY_ONE / 2).into()
+                        *threshold + 1_u128.into(), *threshold + (RAY_ONE / 2).into(),
                     ]
                         .span();
 
-                    match target_ltvs_param.pop_front() {
-                        Option::Some(target_ltv) => {
-                            match absorb_type_param.pop_front() {
-                                Option::Some(absorb_type) => {
-                                    // We start by clearing/"resetting" the absorber 
-                                    if yin_erc20
-                                        .balance_of(absorber.contract_address)
-                                        .is_non_zero() {
-                                        set_block_timestamp(
-                                            get_block_timestamp() + Absorber::REQUEST_COOLDOWN
-                                        );
+                    loop {
+                        match target_ltvs_param.pop_front() {
+                            Option::Some(target_ltv) => {
+                                let mut absorb_type_param_copy = absorb_type_param;
+                                loop {
+                                    match absorb_type_param_copy.pop_front() {
+                                        Option::Some(absorb_type) => {
+                                            'params'.print();
+                                            'threshold'.print();
+                                            (*threshold).print();
+                                            'target_ltv'.print();
+                                            (*target_ltv).print();
+                                            'absorb_type'.print();
+                                            match *absorb_type {
+                                                AbsorbType::Full => { 'full'.print(); },
+                                                AbsorbType::Partial => { 'partial'.print(); },
+                                                AbsorbType::None => { 'none'.print(); },
+                                            };
 
-                                        // Update yang prices to save gas on fetching them in Shrine functions
-                                        set_contract_address(ShrineUtils::admin());
-                                        let (yang_price, _, _) = shrine
-                                            .get_current_yang_price(*yangs[0]);
-                                        shrine.advance(*yangs[0], yang_price);
-                                        let (yang_price, _, _) = shrine
-                                            .get_current_yang_price(*yangs[1]);
-                                        shrine.advance(*yangs[1], yang_price);
+                                            'SPACE'.print();
+                                            'SPACE'.print();
+                                            'SPACE'.print();
+                                            'SPACE'.print();
 
-                                        // Make a removal request and then remove the searcher's position
-                                        set_contract_address(searcher);
-                                        absorber.request();
-                                        set_block_timestamp(
-                                            get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK
-                                        );
+                                            // Calculating the `trove_debt` necessary to achieve
+                                            // the `target_ltv`
+                                            let target_trove_yang_amts: Span<Wad> = array![
+                                                PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
+                                                (PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT
+                                                    * pow(10_u128, 10))
+                                                    .into()
+                                            ]
+                                                .span();
+                                            let trove_value: Wad = PurgerUtils::get_sum_of_value(
+                                                shrine, yangs, target_trove_yang_amts
+                                            );
+                                            // Add 1 wei in case of rounding down
+                                            let trove_debt: Wad = wadray::rmul_wr(
+                                                trove_value, *target_ltv
+                                            )
+                                                + 1_u128.into();
 
-                                        let searcher_provided_yin: Wad = absorber
-                                            .get_provider_yin(searcher);
+                                            // We skip test cases of partial liquidations where 
+                                            // the trove debt is less than the minimum shares in absorber.
+                                            // While it can be done, it is complicated to set up the absorber in such a 
+                                            // way that the remaining yin is less than the minimum shares.
+                                            if *absorb_type == AbsorbType::Partial
+                                                && trove_debt <= Absorber::MINIMUM_SHARES.into() {
+                                                continue;
+                                            }
+                                            // Resetting the thresholds to reasonable values
+                                            PurgerUtils::set_thresholds(
+                                                shrine, yangs, (80 * RAY_PERCENT).into()
+                                            );
 
-                                        if searcher_provided_yin.is_non_zero() {
-                                            absorber.remove(searcher_provided_yin);
-                                        }
-                                    }
-
-                                    // Creating the trove to be liquidated
-                                    let target_trove_yang_amts: Span<Wad> = array![
-                                        PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                                        (PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT
-                                            * pow(10_u128, 10))
-                                            .into()
-                                    ]
-                                        .span();
-
-                                    let trove_value: Wad = PurgerUtils::get_sum_of_value(
-                                        shrine, yangs, target_trove_yang_amts
-                                    );
-
-                                    let trove_debt: Wad = wadray::rmul_wr(trove_value, *threshold)
-                                        + 1_u128.into();
-                                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-                                        abbot, yangs, gates, trove_debt
-                                    );
-
-                                    // Now, the searcher deposits some yin into the absorber
-                                    // The amount depends on whether we want a full or partial absorption, or 
-                                    // a full redistribution
-                                    set_contract_address(searcher);
-
-                                    match *absorb_type {
-                                        AbsorbType::Full => { absorber.provide(trove_debt); },
-                                        AbsorbType::Partial => {
-                                            // We add 1 wei in the event that `trove_debt` is extremely small, 
-                                            // to avoid the provision amount from being zero.
-                                            absorber
-                                                .provide(
-                                                    trove_debt / 2_u128.into() + 1_u128.into()
+                                            // Clearing/"resetting" the absorber 
+                                            // if it needs to be reset 
+                                            if yin_erc20
+                                                .balance_of(absorber.contract_address)
+                                                .is_non_zero() {
+                                                set_block_timestamp(
+                                                    get_block_timestamp()
+                                                        + Absorber::REQUEST_COOLDOWN
                                                 );
-                                        },
-                                        AbsorbType::None => {},
-                                    };
 
-                                    // Setting the threshold to the desired value
-                                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
-                                },
-                                Option::None => { break; }
-                            }
-                        },
-                        Option::None => { break; }
+                                                // Update yang prices to save gas on fetching them in Shrine functions
+                                                set_contract_address(ShrineUtils::admin());
+                                                let (yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[0]);
+                                                shrine.advance(*yangs[0], yang_price);
+                                                let (yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[1]);
+                                                shrine.advance(*yangs[1], yang_price);
+
+                                                // Make a removal request and then remove the searcher's position
+                                                set_contract_address(searcher);
+                                                absorber.request();
+                                                set_block_timestamp(
+                                                    get_block_timestamp()
+                                                        + Absorber::REQUEST_BASE_TIMELOCK
+                                                );
+
+                                                let searcher_provided_yin: Wad = absorber
+                                                    .get_provider_yin(searcher);
+
+                                                if searcher_provided_yin.is_non_zero() {
+                                                    absorber.remove(searcher_provided_yin);
+                                                }
+                                            }
+
+                                            // Creating the trove to be liquidated
+                                            let target_trove: u64 =
+                                                PurgerUtils::funded_healthy_trove(
+                                                abbot, yangs, gates, trove_debt
+                                            );
+
+                                            // Now, the searcher deposits some yin into the absorber
+                                            // The amount depends on whether we want a full or partial absorption, or 
+                                            // a full redistribution
+
+                                            set_contract_address(searcher);
+
+                                            match *absorb_type {
+                                                AbsorbType::Full => {
+                                                    // We provide *at least* the minimum shares
+                                                    absorber
+                                                        .provide(
+                                                            max(
+                                                                trove_debt,
+                                                                Absorber::MINIMUM_SHARES.into()
+                                                            )
+                                                        );
+                                                },
+                                                AbsorbType::Partial => {
+                                                    // We add 1 wei in the event that `trove_debt` is extremely small, 
+                                                    // to avoid the provision amount from being zero.
+
+                                                    absorber
+                                                        .provide(
+                                                            max(
+                                                                trove_debt / 2_u128.into()
+                                                                    + 1_u128.into(),
+                                                                Absorber::MINIMUM_SHARES.into()
+                                                            )
+                                                        );
+                                                },
+                                                AbsorbType::None => {},
+                                            };
+
+                                            // Setting the threshold to the desired value
+                                            // the target trove is now absorbable
+                                            PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                                            set_contract_address(searcher);
+                                            purger.absorb(target_trove);
+                                        },
+                                        Option::None => { break; }
+                                    };
+                                };
+                            },
+                            Option::None => { break; }
+                        };
                     };
                 },
                 Option::None => { break; }
