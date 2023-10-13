@@ -2715,23 +2715,6 @@ mod TestPurger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
-                                            'params'.print();
-                                            'threshold'.print();
-                                            (*threshold).print();
-                                            'target_ltv'.print();
-                                            (*target_ltv).print();
-                                            'absorb_type'.print();
-                                            match *absorb_type {
-                                                AbsorbType::Full => { 'full'.print(); },
-                                                AbsorbType::Partial => { 'partial'.print(); },
-                                                AbsorbType::None => { 'none'.print(); },
-                                            };
-
-                                            'SPACE'.print();
-                                            'SPACE'.print();
-                                            'SPACE'.print();
-                                            'SPACE'.print();
-
                                             // Calculating the `trove_debt` necessary to achieve
                                             // the `target_ltv`
                                             let target_trove_yang_amts: Span<Wad> = array![
@@ -2828,7 +2811,7 @@ mod TestPurger {
                                                     absorber
                                                         .provide(
                                                             max(
-                                                                trove_debt / 2_u128.into()
+                                                                (trove_debt.val / 2).into()
                                                                     + 1_u128.into(),
                                                                 Absorber::MINIMUM_SHARES.into()
                                                             )
