@@ -1,5 +1,5 @@
 mod TestPurger {
-    use cmp::max;
+    use cmp::{max, min};
     use integer::BoundedU256;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -2687,6 +2687,7 @@ mod TestPurger {
         };
 
         let searcher = PurgerUtils::searcher();
+
         // Approve absorber for maximum yin 
         set_contract_address(searcher);
         yin_erc20.approve(absorber.contract_address, BoundedU256::max());
@@ -2718,15 +2719,21 @@ mod TestPurger {
                                             // Calculating the `trove_debt` necessary to achieve
                                             // the `target_ltv`
                                             let target_trove_yang_amts: Span<Wad> = array![
-                                                PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                                                (PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT
-                                                    * pow(10_u128, 10))
-                                                    .into()
+                                                (*gates[0])
+                                                    .convert_to_yang(
+                                                        PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT
+                                                    ),
+                                                (*gates[1])
+                                                    .convert_to_yang(
+                                                        PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT
+                                                    ),
                                             ]
                                                 .span();
+
                                             let trove_value: Wad = PurgerUtils::get_sum_of_value(
                                                 shrine, yangs, target_trove_yang_amts
                                             );
+
                                             // Add 1 wei in case of rounding down
                                             let trove_debt: Wad = wadray::rmul_wr(
                                                 trove_value, *target_ltv
@@ -2825,7 +2832,40 @@ mod TestPurger {
                                             PurgerUtils::set_thresholds(shrine, yangs, *threshold);
 
                                             set_contract_address(searcher);
-                                            purger.absorb(target_trove);
+                                            let compensation: Span<AssetBalance> = purger
+                                                .absorb(target_trove);
+
+                                            // Checking that the compensation is correct
+                                            let actual_eth_comp: AssetBalance = *compensation[0];
+                                            let actual_wbtc_comp: AssetBalance = *compensation[1];
+
+                                            let expected_compensation_pct: Ray = wadray::rdiv_ww(
+                                                Purger::COMPENSATION_CAP.into(), trove_value
+                                            );
+
+                                            let expected_eth_comp: u128 = wadray::scale_u128_by_ray(
+                                                PurgerUtils::TARGET_TROVE_ETH_DEPOSIT_AMT,
+                                                expected_compensation_pct
+                                            );
+
+                                            let expected_wbtc_comp: u128 =
+                                                wadray::scale_u128_by_ray(
+                                                PurgerUtils::TARGET_TROVE_WBTC_DEPOSIT_AMT,
+                                                expected_compensation_pct
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_eth_comp,
+                                                actual_eth_comp.amount,
+                                                1_u128,
+                                                'wrong eth compensation'
+                                            );
+                                            common::assert_equalish(
+                                                expected_wbtc_comp,
+                                                actual_wbtc_comp.amount,
+                                                1_u128,
+                                                'wrong wbtc compensation'
+                                            );
                                         },
                                         Option::None => { break; }
                                     };

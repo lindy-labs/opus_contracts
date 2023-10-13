@@ -243,6 +243,7 @@ mod Purger {
 
             let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
                 .get_trove_info(trove_id);
+
             let (
                 trove_penalty,
                 max_purge_amt,
