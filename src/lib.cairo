@@ -12,6 +12,7 @@ mod core {
     mod sentinel;
     mod shrine;
     mod transmuter;
+    mod transmuter_registry;
 }
 
 mod external {

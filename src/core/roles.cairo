@@ -237,3 +237,20 @@ mod TransmuterRoles {
             + TOGGLE_REVERSIBILITY
     }
 }
+
+mod TransmuterRegistryRoles {
+    const ADD_TRANSMUTER: u128 = 1;
+    const KILL: u128 = 2;
+    const REMOVE_TRANSMUTER: u128 = 4;
+    const SET_RECEIVER: u128 = 8;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_TRANSMUTER + KILL + REMOVE_TRANSMUTER + SET_RECEIVER
+    }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        KILL
+    }
+}

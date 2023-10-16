@@ -30,3 +30,15 @@ trait ITransmuter<TContractState> {
     fn reclaim(ref self: TContractState, yin: Wad);
 }
 
+#[starknet::interface]
+trait ITransmuterRegistry<TContractState> {
+    // getters
+    fn get_transmuters_count(self: @TContractState) -> u32;
+    fn get_transmuters(self: @TContractState) -> Span<ContractAddress>;
+    // setters
+    fn add_transmuter(ref self: TContractState, transmuter: ContractAddress);
+    fn remove_transmuter(ref self: TContractState, transmuter: ContractAddress);
+    // convenience wrappers
+    fn set_receiver(ref self: TContractState, receiver: ContractAddress);
+    fn kill(ref self: TContractState);
+}

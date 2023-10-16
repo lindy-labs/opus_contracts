@@ -11,7 +11,9 @@ mod Caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
+    use opus::interfaces::ITransmuter::{
+        ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait
+    };
     use opus::types::AssetBalance;
     use opus::utils::access_control::{AccessControl, IAccessControl};
     use opus::utils::reentrancy_guard::ReentrancyGuard;
@@ -35,14 +37,12 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Transmuter registry associated with the Shrine for this Caretaker
+        transmuter_registry: ITransmuterRegistryDispatcher,
         // Amount of yin backed by this Caretaker's assets after shutdown
         backed_yin: Wad,
         // Amount of yin already claimed via this Caretaker after shutdown
         claimed_yin: Wad,
-        // Number of deployed transmuters
-        transmuters_count: u64,
-        // Mapping from transmuter ID to the Transmuter instance
-        transmuters: LegacyMap<u64, ITransmuterDispatcher>
     }
 
     //
@@ -88,7 +88,8 @@ mod Caretaker {
         shrine: ContractAddress,
         abbot: ContractAddress,
         sentinel: ContractAddress,
-        equalizer: ContractAddress
+        equalizer: ContractAddress,
+        transmuter_registry: ContractAddress
     ) {
         AccessControl::initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
 
@@ -96,6 +97,9 @@ mod Caretaker {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
+        self
+            .transmuter_registry
+            .write(ITransmuterRegistryDispatcher { contract_address: transmuter_registry });
     }
 
     //
@@ -175,19 +179,6 @@ mod Caretaker {
         }
 
         //
-        // Setters
-        //
-
-        // TODO: do we need to prevent duplicates?
-        fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            let transmuter_id: u64 = self.transmuters_count.read() + 1;
-            self.transmuters_count.write(transmuter_id);
-            self
-                .transmuters
-                .write(transmuter_id, ITransmuterDispatcher { contract_address: transmuter });
-        }
-
-        //
         // Core functions
         //
 
@@ -245,18 +236,7 @@ mod Caretaker {
 
             // Kill modules
             shrine.kill();
-
-            let mut transmuters_id: u64 = self.transmuters_count.read();
-            let loop_end: u64 = 0;
-            loop {
-                if transmuters_id == loop_end {
-                    break;
-                }
-
-                self.transmuters.read(transmuters_id).kill();
-
-                transmuters_id -= 1;
-            };
+            self.transmuter_registry.read().kill();
 
             // Note that Absorber is not killed. When the final debt surplus is minted, the
             // absorber may be an allocated recipient. If the Absorber has been completely
