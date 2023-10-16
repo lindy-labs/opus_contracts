@@ -21,10 +21,11 @@ mod Transmuter {
     // percentage of total yin supply: 10% (Ray)
     const PERCENTAGE_CAP_UPPER_BOUND: u128 = 100000000000000000000000000;
 
-    // Upper bound of the fee as a percentage that can be charged when swapping
-    // yin for the asset when `reverse` is enabled: 1% (Ray)
+    // Upper bound of the fee as a percentage that can be charged for both: 1% (Ray)
+    // 1. swapping yin for the asset when `reverse` is enabled; and
+    // 2. swapping assett for yin,
     // This is not set at deployment so it defaults to 0%.
-    const REVERSE_FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
+    const FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
 
     #[storage]
     struct Storage {
@@ -44,6 +45,8 @@ mod Transmuter {
         reversibility: bool,
         // Fee to be charged for each `reverse` transaction
         reverse_fee: Ray,
+        // Fee to be charged for each `transmute` transaction
+        transmute_fee: Ray,
         // Keeps track of whether the Transmuter is live or killed
         is_live: bool,
         // Keeps track of whether `reclaim` has started after Transmuter is killed
@@ -65,6 +68,7 @@ mod Transmuter {
         Transmute: Transmute,
         Reverse: Reverse,
         ReversibilityToggled: ReversibilityToggled,
+        TransmuteFeeUpdated: TransmuteFeeUpdated,
         ReverseFeeUpdated: ReverseFeeUpdated,
         Sweep: Sweep,
         ReceiverUpdated: ReceiverUpdated,
@@ -105,6 +109,13 @@ mod Transmuter {
     struct ReversibilityToggled {
         reversibility: bool
     }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct TransmuteFeeUpdated {
+        old_fee: Ray,
+        new_fee: Ray
+    }
+
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ReverseFeeUpdated {
@@ -173,6 +184,10 @@ mod Transmuter {
             self.reversibility.read()
         }
 
+        fn get_transmute_fee(self: @ContractState) -> Ray {
+            self.transmute_fee.read()
+        }
+
         fn get_reverse_fee(self: @ContractState) -> Ray {
             self.reverse_fee.read()
         }
@@ -217,10 +232,20 @@ mod Transmuter {
             self.emit(ReversibilityToggled { reversibility });
         }
 
-        fn set_reverse_fee(ref self: ContractState, fee: Ray) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_REVERSE_FEE);
+        fn set_transmute_fee(ref self: ContractState, fee: Ray) {
+            AccessControl::assert_has_role(TransmuterRoles::SET_FEES);
 
-            assert(fee <= REVERSE_FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+            assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+            let old_fee: Ray = self.transmute_fee.read();
+            self.transmute_fee.write(fee);
+
+            self.emit(TransmuteFeeUpdated { old_fee, new_fee: fee });
+        }
+
+        fn set_reverse_fee(ref self: ContractState, fee: Ray) {
+            AccessControl::assert_has_role(TransmuterRoles::SET_FEES);
+
+            assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
             let old_fee: Ray = self.reverse_fee.read();
             self.reverse_fee.write(fee);
 
@@ -238,11 +263,37 @@ mod Transmuter {
         }
 
         // 
-        // Core functions
+        // Core functions - View
         //
 
-        // Swaps the stablecoin asset for yin at a ratio of 1 : 1, scaled to Wad precision.
-        // Dummy tokens are minted 1 : 1 for asset, scaled to Wad precision.
+        // Returns the amount of yin that a user will receive for the given asset amount
+        // based on current on-chain conditions
+        fn preview_transmute(self: @ContractState, asset_amt: u128) -> Wad {
+            self.assert_live();
+
+            let asset: IERC20Dispatcher = self.asset.read();
+            let fee: u128 = wadray::rmul_wr(asset_amt.into(), self.reverse_fee.read()).val;
+            let asset_amt_to_transmute: u128 = asset_amt - fee;
+            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt_to_transmute, asset.decimals());
+            self.assert_can_transmute(yin_amt);
+
+            yin_amt
+        }
+
+        // Returns the amount of stablecoin asset that a user will receive for the given yin amount
+        // based on current on-chain conditions.
+        // Note that it does not guarantee the Transmuter has sufficient asset for reverse.
+        fn preview_reverse(self: @ContractState, yin_amt: Wad) -> u128 {
+            let (asset_amt, _) = self.preview_reverse_helper(yin_amt);
+            asset_amt
+        }
+
+        //
+        // Core functions - External
+        //
+
+        // Deducts the transmute fee, if any, from the asset amount to be transmuted,
+        // and converts the remainder to yin at a ratio of 1 : 1, scaled to Wad precision.
         // Reverts if:
         // 1. User has insufficent assets; or
         // 2. Ceiling will be exceeded
@@ -250,8 +301,7 @@ mod Transmuter {
             self.assert_live();
 
             let asset: IERC20Dispatcher = self.asset.read();
-            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, asset.decimals());
-            self.assert_can_transmute(yin_amt);
+            let yin_amt: Wad = self.preview_transmute(asset_amt);
 
             let user: ContractAddress = get_caller_address();
 
@@ -275,23 +325,21 @@ mod Transmuter {
 
             assert(self.reversibility.read(), 'TR: Reverse is paused');
 
+            let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
+
+            // Decrement total transmuted amount by yin amount
+            self.total_transmuted.write(self.total_transmuted.read() - yin_amt);
+
             // Burn yin from user
             let user: ContractAddress = get_caller_address();
             self.shrine.read().eject(user, yin_amt);
 
             // Transfer asset to user
-            let asset: IERC20Dispatcher = self.asset.read();
-            let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt, asset.decimals());
-            let fee: u128 = self.get_reverse_fee_helper(asset_amt);
-
-            self.total_transmuted.write(self.total_transmuted.read() - yin_amt);
-            self.shrine.read().eject(user, yin_amt);
-
-            let user_asset_amt: u128 = asset_amt - fee;
-            let success: bool = asset.transfer(user, user_asset_amt.into());
+            // Since the fee is excluded, it is automatically retained in the Transmuter's balance.
+            let success: bool = self.asset.read().transfer(user, asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
-            self.emit(Reverse { user, asset_amt: user_asset_amt, yin_amt, fee });
+            self.emit(Reverse { user, asset_amt, yin_amt, fee });
         }
 
         // Transfers assets in the transmuter to the receiver
@@ -382,13 +430,16 @@ mod Transmuter {
             self.emit(PercentageCapUpdated { cap });
         }
 
-        fn get_reverse_fee_helper(self: @ContractState, asset_amt: u128) -> u128 {
-            let fee: Ray = self.reverse_fee.read();
-            if fee.is_zero() {
-                return 0;
-            }
+        fn preview_reverse_helper(self: @ContractState, yin_amt: Wad) -> (u128, u128) {
+            self.assert_live();
 
-            wadray::rmul_wr(asset_amt.into(), fee).val
+            assert(self.reversibility.read(), 'TR: Reverse is paused');
+
+            let asset: IERC20Dispatcher = self.asset.read();
+            let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt, asset.decimals());
+            let fee: u128 = wadray::rmul_wr(asset_amt.into(), self.reverse_fee.read()).val;
+
+            (asset_amt, fee)
         }
     }
 
