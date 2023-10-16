@@ -32,6 +32,7 @@ mod Equalizer {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AllocatorUpdated: AllocatorUpdated,
+        Allocate: Allocate,
         Equalize: Equalize,
         Incur: Incur,
         Normalize: Normalize
@@ -45,9 +46,7 @@ mod Equalizer {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Equalize {
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>,
-        amount: Wad
+        yin_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -60,6 +59,13 @@ mod Equalizer {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Normalize {
         yin_amt: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Allocate {
+        recipients: Span<ContractAddress>,
+        percentages: Span<Ray>,
+        amount: Wad
     }
 
     //
@@ -111,13 +117,8 @@ mod Equalizer {
         // Core functions - External
         //
 
-        // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
-        // according to their respective percentage share.
-        // Assumes the allocation from the Allocator has already been checked:
-        // - both arrays of recipient addresses and percentages are of equal length;
-        // - there is at least one recipient;
-        // - the percentages add up to one Ray.
-        // Returns the total amount of surplus debt minted.
+        // Mint surplus debt to the Equalizer.
+        // Returns the amount of surplus debt minted.
         fn equalize(ref self: ContractState) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
 
@@ -127,33 +128,29 @@ mod Equalizer {
                 return WadZeroable::zero();
             }
 
+            shrine.inject(get_contract_address(), surplus);
+            shrine.reduce_surplus_debt(surplus);
+
+            self.emit(Equalize { yin_amt: surplus });
+
+            surplus
+        }
+
+        // Allocate the yin balance of the Equalizer to the recipients in the allocation 
+        // retrieved from the Allocator according to their respective percentage share.
+        // Assumes the allocation from the Allocator has already been checked:
+        // - both arrays of recipient addresses and percentages are of equal length;
+        // - there is at least one recipient;
+        // - the percentages add up to one Ray.
+        fn allocate(ref self: ContractState) {
+            let shrine: IShrineDispatcher = self.shrine.read();
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
-
-            let mut minted_surplus: Wad = WadZeroable::zero();
-
-            let mut recipients_copy = recipients;
-            let mut percentages_copy = percentages;
-            loop {
-                match recipients_copy.pop_front() {
-                    Option::Some(recipient) => {
-                        let amount: Wad = wadray::rmul_wr(
-                            surplus, *(percentages_copy.pop_front().unwrap())
-                        );
-
-                        shrine.inject(*recipient, amount);
-                        minted_surplus += amount;
-                    },
-                    Option::None => { break; }
-                };
-            };
-
-            shrine.reduce_surplus_debt(minted_surplus);
 
             // Loop over equalizer's balance and transfer to recipients
             let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
             let balance: Wad = shrine.get_yin(get_contract_address());
-            let mut existing_surplus_distributed: Wad = WadZeroable::zero();
+            let mut amount_allocated: Wad = WadZeroable::zero();
 
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
@@ -165,22 +162,13 @@ mod Equalizer {
                         );
 
                         yin.transfer(*recipient, amount.into());
-                        existing_surplus_distributed += amount;
+                        amount_allocated += amount;
                     },
                     Option::None => { break; }
                 };
             };
 
-            self
-                .emit(
-                    Equalize {
-                        recipients,
-                        percentages,
-                        amount: minted_surplus + existing_surplus_distributed
-                    }
-                );
-
-            minted_surplus
+            self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }
 
         // Incur a debt deficit

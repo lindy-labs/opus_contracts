@@ -183,12 +183,6 @@ mod Caretaker {
             assert(shrine.get_live(), 'CA: System is not live');
 
             // Mint surplus debt
-            // Note that the total system debt may stil be higher than total yin after this
-            // final minting of surplus debt due to loss of precision. However, any such
-            // excess system debt is inconsequential because only the total yin supply will
-            // be backed by collateral, and it would not be possible to mint this excess
-            // system debt from this point onwards. Therefore, this excess system debt would
-            // not affect the accounting for `release` and `reclaim` in this contract.
             self.equalizer.read().equalize();
 
             // Calculate the percentage of collateral needed to back yin 1 : 1
