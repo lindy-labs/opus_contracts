@@ -6,6 +6,7 @@ mod Caretaker {
     use opus::core::roles::CaretakerRoles;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IBond::{IBondRegistryDispatcher, IBondRegistryDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -34,6 +35,8 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Bond registry associated with the Shrine for this Caretaker
+        bond_registry: IBondRegistryDispatcher,
         // Amount of yin backed by this Caretaker's assets after shutdown
         backed_yin: Wad,
         // Amount of yin already claimed via this Caretaker after shutdown
@@ -83,7 +86,8 @@ mod Caretaker {
         shrine: ContractAddress,
         abbot: ContractAddress,
         sentinel: ContractAddress,
-        equalizer: ContractAddress
+        equalizer: ContractAddress,
+        bond_registry: ContractAddress,
     ) {
         AccessControl::initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
 
@@ -91,6 +95,7 @@ mod Caretaker {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
+        self.bond_registry.write(IBondRegistryDispatcher { contract_address: bond_registry });
     }
 
     //
@@ -221,6 +226,7 @@ mod Caretaker {
 
             // Kill modules
             shrine.kill();
+            self.bond_registry.read().kill();
 
             // Note that Absorber is not killed. When the final debt surplus is minted, the
             // absorber may be an allocated recipient. If the Absorber has been completely

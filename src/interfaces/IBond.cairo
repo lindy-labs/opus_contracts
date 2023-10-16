@@ -38,3 +38,15 @@ trait IBond<TContractState> {
     fn reclaim(ref self: TContractState, amount: Wad);
 }
 
+#[starknet::interface]
+trait IBondRegistry<TContractState> {
+    // getters
+    fn get_bonds_count(self: @TContractState) -> u32;
+    fn get_bonds(self: @TContractState) -> Span<ContractAddress>;
+    // setters
+    fn add_bond(ref self: TContractState, bond: ContractAddress);
+    fn remove_bond(ref self: TContractState, bond: ContractAddress);
+    // convenience wrappers
+    fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
+    fn kill(ref self: TContractState);
+}

@@ -2,6 +2,7 @@ mod core {
     mod abbot;
     mod absorber;
     mod bond;
+    mod bond_registry;
     mod allocator;
     mod caretaker;
     mod controller;

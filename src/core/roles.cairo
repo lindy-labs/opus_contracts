@@ -245,4 +245,26 @@ mod BondRoles {
     fn borrower() -> u128 {
         BORROW + CLOSE
     }
+
+    #[inline(always)]
+    fn bond_registry() -> u128 {
+        KILL + SET_EQUALIZER
+    }
+}
+
+mod BondRegistryRoles {
+    const ADD_BOND: u128 = 1;
+    const KILL: u128 = 2;
+    const REMOVE_BOND: u128 = 4;
+    const SET_EQUALIZER: u128 = 8;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_BOND + KILL + REMOVE_BOND + SET_EQUALIZER
+    }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        KILL
+    }
 }
