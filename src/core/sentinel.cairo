@@ -10,9 +10,23 @@ mod Sentinel {
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Constants
+    //
 
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
@@ -20,8 +34,15 @@ mod Sentinel {
 
     const INITIAL_DEPOSIT_AMT: u128 = 1000;
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // mapping between a yang address and our deployed Gate
         yang_to_gate: LegacyMap::<ContractAddress, IGateDispatcher>,
         // length of the yang_addresses array
@@ -44,6 +65,7 @@ mod Sentinel {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
         GateKilled: GateKilled,
@@ -77,7 +99,7 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        AccessControl::initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
@@ -167,7 +189,7 @@ mod Sentinel {
             yang_rate: Ray,
             gate: ContractAddress
         ) {
-            AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
+            self.access_control.assert_has_role(SentinelRoles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
             assert(gate.is_non_zero(), 'SE: Gate cannot be zero address');
             assert(
@@ -206,7 +228,7 @@ mod Sentinel {
         }
 
         fn set_yang_asset_max(ref self: ContractState, yang: ContractAddress, new_asset_max: u128) {
-            AccessControl::assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
+            self.access_control.assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
@@ -218,7 +240,7 @@ mod Sentinel {
         }
 
         fn kill_gate(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::KILL_GATE);
+            self.access_control.assert_has_role(SentinelRoles::KILL_GATE);
 
             self.yang_is_live.write(yang, false);
 
@@ -226,12 +248,12 @@ mod Sentinel {
         }
 
         fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
             self.shrine.read().suspend_yang(yang);
         }
 
         fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
             self.shrine.read().unsuspend_yang(yang);
         }
 
@@ -246,7 +268,7 @@ mod Sentinel {
             trove_id: u64,
             asset_amt: u128
         ) -> Wad {
-            AccessControl::assert_has_role(SentinelRoles::ENTER);
+            self.access_control.assert_has_role(SentinelRoles::ENTER);
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
 
@@ -261,7 +283,7 @@ mod Sentinel {
             trove_id: u64,
             yang_amt: Wad
         ) -> u128 {
-            AccessControl::assert_has_role(SentinelRoles::EXIT);
+            self.access_control.assert_has_role(SentinelRoles::EXIT);
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
 
@@ -291,49 +313,6 @@ mod Sentinel {
             let current_total: u128 = gate.get_total_assets();
             let max_amt: u128 = self.yang_asset_max.read(yang);
             assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

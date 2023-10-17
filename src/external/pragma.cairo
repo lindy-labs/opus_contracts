@@ -17,9 +17,23 @@ mod Pragma {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::Wad;
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Constants
+    //
 
     // Helper constant to set the starting index for iterating over the yangs
     // in the order they were added
@@ -37,8 +51,15 @@ mod Pragma {
     const UPPER_UPDATE_FREQUENCY_BOUND: u64 =
         consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // interface to the Pragma oracle contract
         oracle: IPragmaOracleDispatcher,
         // Shrine associated with this module
@@ -72,6 +93,7 @@ mod Pragma {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         InvalidPriceUpdate: InvalidPriceUpdate,
         OracleAddressUpdated: OracleAddressUpdated,
         PricesUpdated: PricesUpdated,
@@ -135,7 +157,7 @@ mod Pragma {
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
-        AccessControl::initializer(admin, Option::Some(PragmaRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(PragmaRoles::default_admin_role()));
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
@@ -170,7 +192,7 @@ mod Pragma {
         //
 
         fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
-            AccessControl::assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
+            self.access_control.assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
             assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
 
             let old_oracle: IPragmaOracleDispatcher = self.oracle.read();
@@ -185,7 +207,7 @@ mod Pragma {
         }
 
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
-            AccessControl::assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
+            self.access_control.assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
                 LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
                 'PGM: Freshness out of bounds'
@@ -203,7 +225,7 @@ mod Pragma {
         }
 
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
-            AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
+            self.access_control.assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
             assert(
                 LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
                     && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
@@ -216,7 +238,7 @@ mod Pragma {
         }
 
         fn add_yang(ref self: ContractState, pair_id: u256, yang: ContractAddress) {
-            AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
+            self.access_control.assert_has_role(PragmaRoles::ADD_YANG);
             assert(pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
             self.assert_new_yang(pair_id, yang);
@@ -269,8 +291,7 @@ mod Pragma {
             // force an update to happen immediatelly
             let mut can_update: bool = self.probe_task();
             if !can_update {
-                can_update =
-                    AccessControl::has_role(PragmaRoles::UPDATE_PRICES, get_caller_address());
+                can_update = self.has_role(PragmaRoles::UPDATE_PRICES, get_caller_address());
             }
             assert(can_update, 'PGM: Too soon to update prices');
 
@@ -395,49 +416,6 @@ mod Pragma {
             let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
             has_enough_sources && is_fresh
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

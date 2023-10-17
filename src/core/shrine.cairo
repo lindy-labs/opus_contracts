@@ -13,12 +13,22 @@ mod Shrine {
     use opus::types::{
         ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
     use opus::utils::exp::{exp, neg_exp};
     use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
     // Constants
@@ -75,8 +85,15 @@ mod Shrine {
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
         troves: LegacyMap::<u64, Trove>,
@@ -173,6 +190,7 @@ mod Shrine {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         DebtTotalUpdated: DebtTotalUpdated,
@@ -338,7 +356,7 @@ mod Shrine {
     fn constructor(
         ref self: ContractState, admin: ContractAddress, name: felt252, symbol: felt252
     ) {
-        AccessControl::initializer(admin, Option::Some(ShrineRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(ShrineRoles::default_admin_role()));
 
         self.is_live.write(true);
 
@@ -523,7 +541,7 @@ mod Shrine {
             initial_rate: Ray,
             initial_yang_amt: Wad
         ) {
-            AccessControl::assert_has_role(ShrineRoles::ADD_YANG);
+            self.access_control.assert_has_role(ShrineRoles::ADD_YANG);
 
             assert(self.yang_ids.read(yang) == 0, 'SH: Yang already exists');
 
@@ -571,13 +589,13 @@ mod Shrine {
         }
 
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
-            AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
+            self.access_control.assert_has_role(ShrineRoles::SET_THRESHOLD);
 
             self.set_threshold_helper(yang, new_threshold);
         }
 
         fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
 
             assert(
                 self.get_yang_suspension_status(yang) == YangSuspensionStatus::None,
@@ -590,7 +608,7 @@ mod Shrine {
         }
 
         fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
 
             assert(
                 self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
@@ -609,7 +627,7 @@ mod Shrine {
         fn update_rates(
             ref self: ContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>
         ) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
+            self.access_control.assert_has_role(ShrineRoles::UPDATE_RATES);
 
             let yangs_len = yangs.len();
             let num_yangs: u32 = self.yangs_count.read();
@@ -683,7 +701,7 @@ mod Shrine {
 
         // Set the price of the specified Yang for the current interval interval
         fn advance(ref self: ContractState, yang: ContractAddress, price: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::ADVANCE);
+            self.access_control.assert_has_role(ShrineRoles::ADVANCE);
 
             assert(price.is_non_zero(), 'SH: Price cannot be 0');
 
@@ -709,7 +727,7 @@ mod Shrine {
 
         // Sets the multiplier for the current interval
         fn set_multiplier(ref self: ContractState, multiplier: Ray) {
-            AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
+            self.access_control.assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
             assert(multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
             assert(multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
@@ -727,7 +745,7 @@ mod Shrine {
         }
 
         fn set_debt_ceiling(ref self: ContractState, ceiling: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
+            self.access_control.assert_has_role(ShrineRoles::SET_DEBT_CEILING);
             self.debt_ceiling.write(ceiling);
 
             //Event emission
@@ -740,13 +758,13 @@ mod Shrine {
         // Therefore, it's expected that the spot price is denominated in yin, in order to
         // get the true deviation of the spot price from the peg/target price.
         fn update_yin_spot_price(ref self: ContractState, new_price: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
+            self.access_control.assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
             self.emit(YinPriceUpdated { old_price: self.yin_spot_price.read(), new_price });
             self.yin_spot_price.write(new_price);
         }
 
         fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(ShrineRoles::KILL);
+            self.access_control.assert_has_role(ShrineRoles::KILL);
             self.is_live.write(false);
 
             // Event emission
@@ -759,7 +777,7 @@ mod Shrine {
 
         // Deposit a specified amount of a Yang into a Trove
         fn deposit(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::DEPOSIT);
+            self.access_control.assert_has_role(ShrineRoles::DEPOSIT);
 
             self.assert_live();
 
@@ -782,7 +800,7 @@ mod Shrine {
 
         // Withdraw a specified amount of a Yang from a Trove with trove safety check
         fn withdraw(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::WITHDRAW);
+            self.access_control.assert_has_role(ShrineRoles::WITHDRAW);
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
@@ -798,7 +816,7 @@ mod Shrine {
             amount: Wad,
             max_forge_fee_pct: Wad
         ) {
-            AccessControl::assert_has_role(ShrineRoles::FORGE);
+            self.access_control.assert_has_role(ShrineRoles::FORGE);
             self.assert_live();
 
             self.charge(trove_id);
@@ -831,7 +849,7 @@ mod Shrine {
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
         fn melt(ref self: ContractState, user: ContractAddress, trove_id: u64, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::MELT);
+            self.access_control.assert_has_role(ShrineRoles::MELT);
             // In the event the Shrine is killed, trove users can no longer repay their debt.
             // This also blocks liquidations by Purger.
             self.assert_live();
@@ -864,7 +882,7 @@ mod Shrine {
         // This is intended for liquidations where collateral needs to be withdrawn and transferred to the liquidator
         // even if the trove is still unsafe.
         fn seize(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::SEIZE);
+            self.access_control.assert_has_role(ShrineRoles::SEIZE);
             self.withdraw_helper(yang, trove_id, amount);
         }
 
@@ -874,7 +892,7 @@ mod Shrine {
             debt_to_redistribute: Wad,
             pct_value_to_redistribute: Ray
         ) {
-            AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
+            self.access_control.assert_has_role(ShrineRoles::REDISTRIBUTE);
             assert(pct_value_to_redistribute <= RAY_ONE.into(), 'SH: pct_val_to_redistribute > 1');
             let current_interval: u64 = now();
 
@@ -918,7 +936,7 @@ mod Shrine {
 
         // Mint a specified amount of synthetic without attributing the debt to a Trove
         fn inject(ref self: ContractState, receiver: ContractAddress, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::INJECT);
+            self.access_control.assert_has_role(ShrineRoles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
             self.forge_helper(receiver, amount);
@@ -926,7 +944,7 @@ mod Shrine {
 
         // Repay a specified amount of synthetic without deattributing the debt from a Trove
         fn eject(ref self: ContractState, burner: ContractAddress, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::EJECT);
+            self.access_control.assert_has_role(ShrineRoles::EJECT);
             self.melt_helper(burner, amount);
         }
 
@@ -2389,49 +2407,6 @@ mod Shrine {
                 assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }
