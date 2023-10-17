@@ -15,11 +15,8 @@ trait IAccessControl<TContractState> {
 
 #[starknet::component]
 mod AccessControlComponent {
-    use starknet::{ContractAddress, get_caller_address, SyscallResultTrait};
+    use starknet::{ContractAddress, get_caller_address};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::storage_access::{
-        StoreContractAddress, StoreU128, StorageBaseAddress, storage_base_address_from_felt252,
-    };
 
     #[storage]
     struct Storage {
