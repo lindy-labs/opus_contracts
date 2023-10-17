@@ -39,7 +39,7 @@ mod interfaces {
 mod types;
 
 mod utils {
-    mod access_control;
+    mod access_control_component;
     mod exp;
     mod math;
     mod reentrancy_guard;
@@ -103,6 +103,7 @@ mod tests {
         mod utils;
     }
     mod utils {
+        mod mock_access_control;
         mod test_access_control;
         mod test_exp;
         mod test_math;
