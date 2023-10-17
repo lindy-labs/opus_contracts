@@ -15,7 +15,9 @@ mod SentinelUtils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, Ray};
 

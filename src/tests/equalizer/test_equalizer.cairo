@@ -9,7 +9,9 @@ mod TestEqualizer {
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
 

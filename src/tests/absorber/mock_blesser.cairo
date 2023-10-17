@@ -6,13 +6,27 @@ mod MockBlesser {
 
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         asset: IERC20Dispatcher,
         absorber: ContractAddress,
         bless_amt: u128,
+    }
+
+    #[event]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    enum Event {
+        AccessControlEvent: access_control_component::Event,
     }
 
     #[constructor]
@@ -23,8 +37,8 @@ mod MockBlesser {
         absorber: ContractAddress,
         bless_amt: u128
     ) {
-        AccessControl::initializer(admin, Option::None);
-        AccessControl::grant_role_helper(BlesserRoles::default_admin_role(), absorber);
+        self.access_control.initializer(admin, Option::None);
+        self.access_control.grant_role_helper(BlesserRoles::default_admin_role(), absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
         self.absorber.write(absorber);
@@ -38,7 +52,7 @@ mod MockBlesser {
         }
 
         fn bless(ref self: ContractState) -> u128 {
-            AccessControl::assert_has_role(BlesserRoles::BLESS);
+            self.access_control.assert_has_role(BlesserRoles::BLESS);
 
             let asset: IERC20Dispatcher = self.asset.read();
             let bless_amt: u256 = self.preview_bless_internal(asset).into();
@@ -57,49 +71,6 @@ mod MockBlesser {
             } else {
                 bless_amt
             }
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

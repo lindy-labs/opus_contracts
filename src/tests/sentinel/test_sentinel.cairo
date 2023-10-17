@@ -11,7 +11,9 @@ mod TestSentinel {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::types::YangSuspensionStatus;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WAD_ONE};

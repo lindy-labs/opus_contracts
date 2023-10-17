@@ -11,7 +11,9 @@ mod FlashmintUtils {
 
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WAD_ONE};
 

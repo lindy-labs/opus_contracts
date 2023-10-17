@@ -16,7 +16,9 @@ mod TestPragma {
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Pragma::{PricesResponse, PriceValidityThresholds, YangSettings};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::utils::math::pow;
     use opus::utils::wadray;
     use opus::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};

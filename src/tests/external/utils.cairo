@@ -16,7 +16,9 @@ mod PragmaUtils {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Pragma::PricesResponse;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::access_control_component::{
+        IAccessControlDispatcher, IAccessControlDispatcherTrait
+    };
     use opus::utils::math::pow;
     use opus::utils::wadray;
     use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
