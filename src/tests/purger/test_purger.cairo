@@ -2675,7 +2675,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_absorb_low_thresholds() {
         let searcher_start_yin: Wad = (PurgerUtils::SEARCHER_YIN * 3).into();
-        // Execution time is greatly reduced
+        // Execution time is significantly reduced
         // by only deploying the contracts once for all parametrizations
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
@@ -2697,7 +2697,7 @@ mod TestPurger {
             .span();
 
         let absorb_type_param: Span<AbsorbType> = array![
-            AbsorbType::None, AbsorbType::Full, AbsorbType::Partial
+            AbsorbType::None, AbsorbType::Full, AbsorbType::Partial,
         ]
             .span();
 
@@ -2716,6 +2716,13 @@ mod TestPurger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
+                                            'absorb type'.print();
+                                            match *absorb_type {
+                                                AbsorbType::Full => { 'full'.print(); },
+                                                AbsorbType::Partial => { 'partial'.print(); },
+                                                AbsorbType::None => { 'none'.print(); },
+                                            };
+
                                             // Calculating the `trove_debt` necessary to achieve
                                             // the `target_ltv`
                                             let target_trove_yang_amts: Span<Wad> = array![
@@ -2734,7 +2741,7 @@ mod TestPurger {
                                                 shrine, yangs, target_trove_yang_amts
                                             );
 
-                                            // Add 1 wei in case of rounding down
+                                            // Add 1 wei in case of rounding down to zero
                                             let trove_debt: Wad = wadray::rmul_wr(
                                                 trove_value, *target_ltv
                                             )
@@ -2758,6 +2765,11 @@ mod TestPurger {
                                             if yin_erc20
                                                 .balance_of(absorber.contract_address)
                                                 .is_non_zero() {
+                                                let (eth_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[0]);
+                                                let (wbtc_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[1]);
+
                                                 set_block_timestamp(
                                                     get_block_timestamp()
                                                         + Absorber::REQUEST_COOLDOWN
@@ -2765,12 +2777,8 @@ mod TestPurger {
 
                                                 // Update yang prices to save gas on fetching them in Shrine functions
                                                 set_contract_address(ShrineUtils::admin());
-                                                let (yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[0]);
-                                                shrine.advance(*yangs[0], yang_price);
-                                                let (yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[1]);
-                                                shrine.advance(*yangs[1], yang_price);
+                                                shrine.advance(*yangs[0], eth_price);
+                                                shrine.advance(*yangs[1], wbtc_price);
 
                                                 // Make a removal request and then remove the searcher's position
                                                 set_contract_address(searcher);
@@ -2831,6 +2839,17 @@ mod TestPurger {
                                             // the target trove is now absorbable
                                             PurgerUtils::set_thresholds(shrine, yangs, *threshold);
 
+                                            'og eth yang price'.print();
+                                            let (eth_price, _, _) = shrine
+                                                .get_current_yang_price(*yangs[0]);
+                                            eth_price.print();
+
+                                            let (
+                                                penalty, max_close_amt, expected_compensation_value
+                                            ) =
+                                                purger
+                                                .preview_absorb(target_trove);
+
                                             set_contract_address(searcher);
                                             let compensation: Span<AssetBalance> = purger
                                                 .absorb(target_trove);
@@ -2860,11 +2879,52 @@ mod TestPurger {
                                                 1_u128,
                                                 'wrong eth compensation'
                                             );
+
                                             common::assert_equalish(
                                                 expected_wbtc_comp,
                                                 actual_wbtc_comp.amount,
                                                 1_u128,
                                                 'wrong wbtc compensation'
+                                            );
+
+                                            let actual_compensation_value: Wad =
+                                                PurgerUtils::get_sum_of_value(
+                                                shrine,
+                                                yangs,
+                                                array![
+                                                    (*gates[0])
+                                                        .convert_to_yang(actual_eth_comp.amount),
+                                                    (*gates[1])
+                                                        .convert_to_yang(actual_wbtc_comp.amount)
+                                                ]
+                                                    .span()
+                                            );
+
+                                            //'eth-yang conversion'.print();
+                                            //(*gates[0]).get_asset_amt_per_yang().print();
+
+                                            //'actual eth comp'.print();
+                                            //actual_eth_comp.amount.print();
+
+                                            //'actual wbtc comp'.print();
+                                            //actual_wbtc_comp.amount.print();
+
+                                            //'eth_asset_amt'.print();
+                                            //(*gates[0]).convert_to_yang(actual_eth_comp.amount).print();
+
+                                            //'wbtc_asset_amt'.print();
+                                            //(*gates[1]).convert_to_yang(actual_wbtc_comp.amount).print();
+
+                                            'cur eth yang price'.print();
+                                            let (eth_price, _, _) = shrine
+                                                .get_current_yang_price(*yangs[0]);
+                                            eth_price.print();
+
+                                            common::assert_equalish(
+                                                expected_compensation_value,
+                                                actual_compensation_value,
+                                                10000000000000000_u128.into(),
+                                                'wrong compensation value'
                                             );
                                         },
                                         Option::None => { break; }
