@@ -177,7 +177,7 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
         let value: u256 = value.into();
         let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
         let (rest, timestamp) = u256_safe_div_rem(value, shift);
-        let (has_removed, timelock) = u256_safe_div_rem(value, shift);
+        let (has_removed, timelock) = u256_safe_div_rem(rest, shift);
 
         Request {
             timestamp: timestamp.try_into().unwrap(),
