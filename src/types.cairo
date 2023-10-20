@@ -1,17 +1,15 @@
+use integer::{u256_safe_div_rem, u256_try_as_non_zero};
 use starknet::{ContractAddress, StorePacking};
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
 use opus::utils::wadray;
 use opus::utils::wadray::Wad;
 
-const TWO_POW_32: u256 = 0x100000000;
-const MASK_32: u256 = 0xffffffff;
-
-const TWO_POW_64: u256 = 0x10000000000000000;
-const MASK_64: u256 = 0xffffffffffffffff;
-
-const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
-const MASK_128: u256 = 0xffffffffffffffffffffffffffffffff;
+const TWO_POW_32: felt252 = 0x100000000;
+const TWO_POW_64: felt252 = 0x10000000000000000;
+const TWO_POW_122: felt252 = 0x4000000000000000000000000000000;
+const TWO_POW_128: felt252 = 0x100000000000000000000000000000000;
+const TWO_POW_250: felt252 = 0x400000000000000000000000000000000000000000000000000000000000000;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
@@ -39,17 +37,18 @@ struct Trove {
     debt: Wad, // Normalized debt
 }
 
-impl TroveStorePacking of StorePacking<Trove, u256> {
-    fn pack(value: Trove) -> u256 {
+impl TroveStorePacking of StorePacking<Trove, felt252> {
+    fn pack(value: Trove) -> felt252 {
         (value.charge_from.into()
             + (value.last_rate_era.into() * TWO_POW_64)
-            + (value.debt.into() * TWO_POW_128))
+            + (value.debt.into() * TWO_POW_64 * TWO_POW_64))
     }
 
-    fn unpack(value: u256) -> Trove {
-        let charge_from = value & MASK_64;
-        let last_rate_era = (value / TWO_POW_64) & MASK_64;
-        let debt = value / TWO_POW_128;
+    fn unpack(value: felt252) -> Trove {
+        let value: u256 = value.into();
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
+        let (rest, charge_from) = u256_safe_div_rem(value, shift);
+        let (debt, last_rate_era) = u256_safe_div_rem(rest, shift);
 
         Trove {
             charge_from: charge_from.try_into().unwrap(),
@@ -61,58 +60,43 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
 
 #[derive(Copy, Drop, Serde)]
 struct YangRedistribution {
-    unit_debt: Wad, // Amount of debt in wad to be distributed to each wad unit of yang
-    error: Wad, // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
-    exception: bool, // Whether the exception flow is triggered to redistribute the yang across all yangs
+    // Amount of debt in wad to be distributed to each wad unit of yang
+    // This is packed into bits 0 to 127.
+    unit_debt: Wad,
+    // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
+    // This is packed into bits 128 to 250, since the error should never approach close to 2 ** 122
+    error: Wad,
+    // Whether the exception flow is triggered to redistribute the yang across all yangs
+    // This is packed into bit 251
+    exception: bool,
 }
 
-#[derive(Copy, Drop, starknet::Store)]
-struct PackedYangRedistribution {
-    packed: u256, // Packed value of unit debt and error
-    exception: bool, // Whether the exception flow is triggered to redistribute the yang across all yangs
-}
-
-impl YangRedistributionStorePacking of StorePacking<YangRedistribution, PackedYangRedistribution> {
-    fn pack(value: YangRedistribution) -> PackedYangRedistribution {
-        PackedYangRedistribution {
-            packed: value.unit_debt.into() + (value.error.into() * TWO_POW_128),
-            exception: value.exception
-        }
+impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252> {
+    fn pack(value: YangRedistribution) -> felt252 {
+        (value.unit_debt.into()
+            + (value.error.into() * TWO_POW_128)
+            + (value.exception.into() * TWO_POW_250))
     }
 
-    fn unpack(value: PackedYangRedistribution) -> YangRedistribution {
-        let unit_debt = value.packed & MASK_128;
-        let error = value.packed / TWO_POW_128;
+    fn unpack(value: felt252) -> YangRedistribution {
+        let value: u256 = value.into();
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_128.into()).unwrap();
+        let (rest, unit_debt) = u256_safe_div_rem(value, shift);
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_122.into()).unwrap();
+        let (exception, error) = u256_safe_div_rem(rest, shift);
 
         YangRedistribution {
             unit_debt: unit_debt.try_into().unwrap(),
             error: error.try_into().unwrap(),
-            exception: value.exception
+            exception: exception == 1
         }
     }
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 struct ExceptionalYangRedistribution {
     unit_debt: Wad, // Amount of debt to be distributed to each wad unit of recipient yang
     unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
-}
-
-impl ExceptionalYangRedistributionStorePacking of StorePacking<
-    ExceptionalYangRedistribution, u256
-> {
-    fn pack(value: ExceptionalYangRedistribution) -> u256 {
-        value.unit_debt.into() + (value.unit_yang.into() * TWO_POW_128)
-    }
-
-    fn unpack(value: u256) -> ExceptionalYangRedistribution {
-        let unit_debt = value & MASK_128;
-        let unit_yang = value / TWO_POW_128;
-
-        ExceptionalYangRedistribution {
-            unit_debt: unit_debt.try_into().unwrap(), unit_yang: unit_yang.try_into().unwrap()
-        }
-    }
 }
 
 //
@@ -123,18 +107,23 @@ impl ExceptionalYangRedistributionStorePacking of StorePacking<
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
 #[derive(Copy, Drop, Serde)]
 struct DistributionInfo {
-    asset_amt_per_share: u128, // Amount of asset in its decimal precision per share wad
-    error: u128, // Error to be added to next absorption
+    // Amount of asset in its decimal precision per share wad
+    // This is packed into bits 0 to 127.
+    asset_amt_per_share: u128,
+    // Error to be added to next absorption
+    // This is packed into bits 128 to 251, since the error should never approach close to 2 ** 123.
+    error: u128,
 }
 
-impl DistributionInfoStorePacking of StorePacking<DistributionInfo, u256> {
-    fn pack(value: DistributionInfo) -> u256 {
+impl DistributionInfoStorePacking of StorePacking<DistributionInfo, felt252> {
+    fn pack(value: DistributionInfo) -> felt252 {
         value.asset_amt_per_share.into() + (value.error.into() * TWO_POW_128)
     }
 
-    fn unpack(value: u256) -> DistributionInfo {
-        let asset_amt_per_share = value & MASK_128;
-        let error = value / TWO_POW_128;
+    fn unpack(value: felt252) -> DistributionInfo {
+        let value: u256 = value.into();
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_128.into()).unwrap();
+        let (error, asset_amt_per_share) = u256_safe_div_rem(value, shift);
 
         DistributionInfo {
             asset_amt_per_share: asset_amt_per_share.try_into().unwrap(),
@@ -156,14 +145,15 @@ struct Provision {
     shares: Wad, // Amount of shares for provider in the above epoch
 }
 
-impl ProvisionStorePacking of StorePacking<Provision, u256> {
-    fn pack(value: Provision) -> u256 {
+impl ProvisionStorePacking of StorePacking<Provision, felt252> {
+    fn pack(value: Provision) -> felt252 {
         value.epoch.into() + (value.shares.into() * TWO_POW_32)
     }
 
-    fn unpack(value: u256) -> Provision {
-        let epoch = value & MASK_32;
-        let shares = value / TWO_POW_32;
+    fn unpack(value: felt252) -> Provision {
+        let value: u256 = value.into();
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_32.into()).unwrap();
+        let (shares, epoch) = u256_safe_div_rem(value, shift);
 
         Provision { epoch: epoch.try_into().unwrap(), shares: shares.try_into().unwrap() }
     }
@@ -176,22 +166,18 @@ struct Request {
     has_removed: bool, // Whether provider has called `remove`
 }
 
-impl RequestStorePacking of StorePacking<Request, u256> {
-    fn pack(value: Request) -> u256 {
-        let has_removed: u256 = if value.has_removed {
-            1
-        } else {
-            0
-        };
+impl RequestStorePacking of StorePacking<Request, felt252> {
+    fn pack(value: Request) -> felt252 {
         value.timestamp.into()
             + (value.timelock.into() * TWO_POW_64)
-            + (has_removed.into() * TWO_POW_128)
+            + (value.has_removed.into() * TWO_POW_128)
     }
 
-    fn unpack(value: u256) -> Request {
-        let timestamp = value & MASK_64;
-        let timelock = (value / TWO_POW_64) & MASK_64;
-        let has_removed = value / TWO_POW_128;
+    fn unpack(value: felt252) -> Request {
+        let value: u256 = value.into();
+        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
+        let (rest, timestamp) = u256_safe_div_rem(value, shift);
+        let (has_removed, timelock) = u256_safe_div_rem(value, shift);
 
         Request {
             timestamp: timestamp.try_into().unwrap(),
