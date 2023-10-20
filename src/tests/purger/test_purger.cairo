@@ -2716,13 +2716,6 @@ mod TestPurger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
-                                            'absorb type'.print();
-                                            match *absorb_type {
-                                                AbsorbType::Full => { 'full'.print(); },
-                                                AbsorbType::Partial => { 'partial'.print(); },
-                                                AbsorbType::None => { 'none'.print(); },
-                                            };
-
                                             // Calculating the `trove_debt` necessary to achieve
                                             // the `target_ltv`
                                             let target_trove_yang_amts: Span<Wad> = array![
@@ -2839,11 +2832,6 @@ mod TestPurger {
                                             // the target trove is now absorbable
                                             PurgerUtils::set_thresholds(shrine, yangs, *threshold);
 
-                                            'og eth yang price'.print();
-                                            let (eth_price, _, _) = shrine
-                                                .get_current_yang_price(*yangs[0]);
-                                            eth_price.print();
-
                                             let (
                                                 penalty, max_close_amt, expected_compensation_value
                                             ) =
@@ -2899,26 +2887,6 @@ mod TestPurger {
                                                 ]
                                                     .span()
                                             );
-
-                                            //'eth-yang conversion'.print();
-                                            //(*gates[0]).get_asset_amt_per_yang().print();
-
-                                            //'actual eth comp'.print();
-                                            //actual_eth_comp.amount.print();
-
-                                            //'actual wbtc comp'.print();
-                                            //actual_wbtc_comp.amount.print();
-
-                                            //'eth_asset_amt'.print();
-                                            //(*gates[0]).convert_to_yang(actual_eth_comp.amount).print();
-
-                                            //'wbtc_asset_amt'.print();
-                                            //(*gates[1]).convert_to_yang(actual_wbtc_comp.amount).print();
-
-                                            'cur eth yang price'.print();
-                                            let (eth_price, _, _) = shrine
-                                                .get_current_yang_price(*yangs[0]);
-                                            eth_price.print();
 
                                             common::assert_equalish(
                                                 expected_compensation_value,
