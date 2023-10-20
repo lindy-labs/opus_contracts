@@ -12,9 +12,9 @@ enum YangSuspensionStatus {
 
 #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
 enum BondStatus {
-    Active: (),
-    Inactive: (),
-    Killed: ()
+    Active,
+    Inactive,
+    Killed
 }
 
 #[derive(Copy, Drop, Serde)]

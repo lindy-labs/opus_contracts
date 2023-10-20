@@ -7,7 +7,6 @@ use opus::utils::wadray::{Ray, Wad};
 trait IBond<TContractState> {
     // getters
     fn get_equalizer(self: @TContractState) -> ContractAddress;
-    fn get_liquidator(self: @TContractState) -> ContractAddress;
     fn get_assets_count(self: @TContractState) -> u8;
     fn get_assets(self: @TContractState) -> Span<ContractAddress>;
     fn get_ceiling(self: @TContractState) -> Wad;
@@ -20,7 +19,6 @@ trait IBond<TContractState> {
     fn is_healthy(self: @TContractState) -> bool;
     // setters
     fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
-    fn set_liquidator(ref self: TContractState, liquidator: ContractAddress);
     fn set_ceiling(ref self: TContractState, ceiling: Wad);
     fn set_price(ref self: TContractState, price: Wad);
     fn set_rate(ref self: TContractState, rate: Ray);
@@ -30,11 +28,11 @@ trait IBond<TContractState> {
     fn borrow(ref self: TContractState, yin_amt: Wad);
     fn repay(ref self: TContractState);
     fn charge(ref self: TContractState);
-    fn liquidate(ref self: TContractState);
+    fn liquidate(ref self: TContractState, recipient: ContractAddress);
     fn settle(ref self: TContractState, recipient: ContractAddress);
     fn close(ref self: TContractState, recipient: ContractAddress);
     // shutdown
-    fn kill(ref self: TContractState);
+    fn kill(ref self: TContractState, recipient: ContractAddress);
     fn reclaim(ref self: TContractState, amount: Wad);
 }
 
@@ -48,5 +46,4 @@ trait IBondRegistry<TContractState> {
     fn remove_bond(ref self: TContractState, bond: ContractAddress);
     // convenience wrappers
     fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
-    fn kill(ref self: TContractState);
 }

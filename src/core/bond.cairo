@@ -32,8 +32,6 @@ mod Bond {
         shrine: IShrineDispatcher,
         // The Equalizer associated with the Shrine
         equalizer: IEqualizerDispatcher,
-        // The address to receive assets for off-chain liquidation
-        liquidator: ContractAddress,
         // Number of assets added as collateral
         assets_count: u8,
         // Mapping from an asset address to its asset ID
@@ -69,7 +67,6 @@ mod Bond {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         EqualizerUpdated: EqualizerUpdated,
-        LiquidatorUpdated: LiquidatorUpdated,
         CeilingUpdated: CeilingUpdated,
         ThresholdUpdated: ThresholdUpdated,
         PriceUpdated: PriceUpdated,
@@ -87,12 +84,6 @@ mod Bond {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct EqualizerUpdated {
-        old_address: ContractAddress,
-        new_address: ContractAddress
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct LiquidatorUpdated {
         old_address: ContractAddress,
         new_address: ContractAddress
     }
@@ -172,7 +163,6 @@ mod Bond {
         admin: ContractAddress,
         shrine: ContractAddress,
         equalizer: ContractAddress,
-        liquidator: ContractAddress,
         rate: Ray,
         threshold: Ray,
         ceiling: Wad,
@@ -182,7 +172,6 @@ mod Bond {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
 
         self.set_equalizer_helper(equalizer);
-        self.set_liquidator_helper(liquidator);
 
         self.set_ceiling_helper(ceiling);
         self.set_rate_helper(rate);
@@ -198,10 +187,6 @@ mod Bond {
         //
         fn get_equalizer(self: @ContractState) -> ContractAddress {
             self.equalizer.read().contract_address
-        }
-
-        fn get_liquidator(self: @ContractState) -> ContractAddress {
-            self.liquidator.read()
         }
 
         fn get_assets_count(self: @ContractState) -> u8 {
@@ -264,13 +249,7 @@ mod Bond {
         fn set_equalizer(ref self: ContractState, equalizer: ContractAddress) {
             AccessControl::assert_has_role(BondRoles::SET_EQUALIZER);
 
-            self.set_liquidator_helper(equalizer);
-        }
-
-        fn set_liquidator(ref self: ContractState, liquidator: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::SET_LIQUIDATOR);
-
-            self.set_liquidator_helper(liquidator);
+            self.set_equalizer_helper(equalizer);
         }
 
         fn set_ceiling(ref self: ContractState, ceiling: Wad) {
@@ -321,6 +300,8 @@ mod Bond {
 
             // Assertions
             self.assert_active();
+
+            self.charge_helper();
             assert(self.borrowed.read() + yin_amt <= self.ceiling.read(), 'BO: Ceiling exceeded');
 
             let ltv: Ray = wadray::rdiv_ww(self.borrowed.read() + yin_amt, self.price.read());
@@ -336,6 +317,8 @@ mod Bond {
 
         // Reduces the borrowed amount by the bond's yin balance
         fn repay(ref self: ContractState) {
+            self.charge_helper();
+
             let bond: ContractAddress = get_contract_address();
 
             let shrine: IShrineDispatcher = self.shrine.read();
@@ -353,20 +336,7 @@ mod Bond {
         fn charge(ref self: ContractState) {
             self.assert_active();
 
-            let last_charged: u64 = self.last_charge_timestamp.read();
-            let current_ts: u64 = get_block_timestamp();
-
-            let t: Wad = Wad { val: (current_ts - last_charged).into() * SECONDS_DIV_YEAR };
-            let start_debt: Wad = self.borrowed.read();
-            let updated_debt: Wad = start_debt * exp(wadray::rmul_rw(self.rate.read(), t));
-
-            self.last_charge_timestamp.write(current_ts);
-            self.borrowed.write(updated_debt);
-
-            let interest: Wad = updated_debt - start_debt;
-            self.shrine.read().inject(self.equalizer.read().contract_address, interest);
-
-            self.emit(Charge { yin_amt: interest });
+            self.charge_helper();
         }
 
         // Repay all debt, transfer all assets to the recipient, and set bond status
@@ -399,16 +369,17 @@ mod Bond {
         // 2. after yin is transferred to the bond module after all liquidations, `settle` 
         //    pays down the outstanding debt, and if there is any deficit, it is written off
         //    to the Equalizer.
-        fn liquidate(ref self: ContractState) {
+        fn liquidate(ref self: ContractState, recipient: ContractAddress) {
             AccessControl::assert_has_role(BondRoles::LIQUIDATE);
 
             self.assert_active();
 
+            self.charge_helper();
             assert(!self.is_healthy(), 'BO: Bond is healthy');
 
             self.status.write(BondStatus::Inactive);
 
-            self.transfer_assets(self.liquidator.read(), RAY_ONE.into());
+            self.transfer_assets(recipient, RAY_ONE.into());
 
             self.emit(Liquidate {})
         }
@@ -441,14 +412,14 @@ mod Bond {
         // Killing the bond sets the status to `Killed`, and transfers the assets to an address
         // for off-chain liquidation. The liquidated value is expected to be transferred back to
         // this module in whichever form that can then be added via `add_asset`.
-        fn kill(ref self: ContractState) {
+        fn kill(ref self: ContractState, recipient: ContractAddress) {
             AccessControl::assert_has_role(BondRoles::KILL);
 
             assert(self.status.read() != BondStatus::Inactive, 'BO: Bond is inactive');
 
             self.status.write(BondStatus::Killed);
 
-            self.transfer_assets(self.liquidator.read(), RAY_ONE.into());
+            self.transfer_assets(recipient, RAY_ONE.into());
 
             self.emit(Killed {});
         }
@@ -487,12 +458,6 @@ mod Bond {
             self.emit(EqualizerUpdated { old_address, new_address: equalizer });
         }
 
-        fn set_liquidator_helper(ref self: ContractState, liquidator: ContractAddress) {
-            let old_address: ContractAddress = self.liquidator.read();
-            self.liquidator.write(liquidator);
-            self.emit(LiquidatorUpdated { old_address, new_address: liquidator });
-        }
-
         fn set_rate_helper(ref self: ContractState, rate: Ray) {
             self.rate.write(rate);
             self.emit(RateUpdated { rate });
@@ -508,6 +473,23 @@ mod Bond {
             self.ceiling.write(ceiling);
 
             self.emit(CeilingUpdated { old_ceiling, new_ceiling: ceiling });
+        }
+
+        fn charge_helper(ref self: ContractState) {
+            let last_charged: u64 = self.last_charge_timestamp.read();
+            let current_ts: u64 = get_block_timestamp();
+
+            let t: Wad = Wad { val: (current_ts - last_charged).into() * SECONDS_DIV_YEAR };
+            let start_debt: Wad = self.borrowed.read();
+            let updated_debt: Wad = start_debt * exp(wadray::rmul_rw(self.rate.read(), t));
+
+            self.last_charge_timestamp.write(current_ts);
+            self.borrowed.write(updated_debt);
+
+            let interest: Wad = updated_debt - start_debt;
+            self.shrine.read().inject(self.equalizer.read().contract_address, interest);
+
+            self.emit(Charge { yin_amt: interest });
         }
 
         fn transfer_assets(

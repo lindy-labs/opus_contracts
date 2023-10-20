@@ -90,23 +90,6 @@ mod BondRegistry {
                 bond_id -= 1;
             };
         }
-
-        fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(BondRegistryRoles::KILL);
-
-            let loop_end: u32 = 0;
-
-            let mut bond_id: u32 = self.bonds_count.read();
-            loop {
-                if bond_id == loop_end {
-                    break;
-                }
-
-                IBondDispatcher { contract_address: self.bonds.read(bond_id) }.kill();
-
-                bond_id -= 1;
-            };
-        }
     }
 
 
