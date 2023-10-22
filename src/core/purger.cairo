@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Purger {
-    use debug::PrintTrait;
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
@@ -338,11 +337,6 @@ mod Purger {
                         debt_to_redistribute
                     )
                 };
-                'this is running'.print();
-                'pct_value_to_redistribute'.print();
-                pct_value_to_redistribute.print();
-                'value_after_compensation'.print();
-                value_after_compensation.print();
 
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 

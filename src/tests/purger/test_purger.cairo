@@ -15,6 +15,7 @@ mod TestPurger {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::math::pow;
@@ -2749,6 +2750,7 @@ mod TestPurger {
                                                 continue;
                                             }
                                             // Resetting the thresholds to reasonable values
+                                            // to allow for creating troves at higher LTVs
                                             PurgerUtils::set_thresholds(
                                                 shrine, yangs, (80 * RAY_PERCENT).into()
                                             );
@@ -2838,6 +2840,16 @@ mod TestPurger {
                                                 purger
                                                 .preview_absorb(target_trove);
 
+                                            let absorber_eth_balance: Wad = (*gates[0])
+                                                .convert_to_yang(
+                                                    IERC20Dispatcher { contract_address: *yangs[0] }
+                                                        .balance_of(absorber.contract_address)
+                                                        .try_into()
+                                                        .unwrap()
+                                                );
+                                            'prev abs eth bal'.print();
+                                            absorber_eth_balance.print();
+
                                             set_contract_address(searcher);
                                             let compensation: Span<AssetBalance> = purger
                                                 .absorb(target_trove);
@@ -2894,6 +2906,67 @@ mod TestPurger {
                                                 10000000000000000_u128.into(),
                                                 'wrong compensation value'
                                             );
+
+                                            // If the trove wasn't fully liquidated, check 
+                                            // that it is healthy 
+                                            if max_close_amt < trove_debt {
+                                                assert(
+                                                    shrine.is_healthy(target_trove),
+                                                    'trove should be healthy'
+                                                );
+                                            }
+
+                                            // Checking that the absorbed assets are equal in value to the 
+                                            // debt liquidated, plus the penalty  
+                                            if *absorb_type == AbsorbType::Full {
+                                                let absorber_eth_balance: Wad = (*gates[0])
+                                                    .convert_to_yang(
+                                                        IERC20Dispatcher {
+                                                            contract_address: *yangs[0]
+                                                        }
+                                                            .balance_of(absorber.contract_address)
+                                                            .try_into()
+                                                            .unwrap()
+                                                    );
+
+                                                let absorber_wbtc_balance: Wad = (*gates[1])
+                                                    .convert_to_yang(
+                                                        IERC20Dispatcher {
+                                                            contract_address: *yangs[1]
+                                                        }
+                                                            .balance_of(absorber.contract_address)
+                                                            .try_into()
+                                                            .unwrap()
+                                                    );
+
+                                                let (current_eth_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[0]);
+                                                let (current_wbtc_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[1]);
+
+                                                let absorber_eth_value: Wad = absorber_eth_balance
+                                                    * current_eth_yang_price;
+                                                let absorber_wbtc_value: Wad = absorber_wbtc_balance
+                                                    * current_wbtc_yang_price;
+
+                                                let absorbed_assets_value = absorber_eth_value
+                                                    + absorber_wbtc_value;
+
+                                                absorbed_assets_value.print();
+                                                wadray::rmul_wr(
+                                                    max_close_amt, (RAY_ONE.into() + penalty)
+                                                )
+                                                    .print();
+
+                                                common::assert_equalish(
+                                                    absorbed_assets_value,
+                                                    wadray::rmul_wr(
+                                                        max_close_amt, (RAY_ONE.into() + penalty)
+                                                    ),
+                                                    10000000000000000_u128.into(),
+                                                    'wrong absorbed assets value'
+                                                );
+                                            }
                                         },
                                         Option::None => { break; }
                                     };
