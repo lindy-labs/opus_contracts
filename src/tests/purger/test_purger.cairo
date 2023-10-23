@@ -2665,6 +2665,175 @@ mod TestPurger {
         );
     }
 
+    #[test]
+    #[available_gas(2000000000000)]
+    fn test_liquidate_suspended_yang_threshold_near_zero() {
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+            PurgerUtils::purger_deploy_with_searcher(
+            PurgerUtils::SEARCHER_YIN.into()
+        );
+
+        // We run the same tests using both searcher liquidations and absorptions as the liquidation methods. 
+        let mut liquidate_via_absorption_param: Span<bool> = array![false, true].span();
+
+        // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
+        let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (20 * WAD_ONE).into()]
+            .span();
+
+        // We also parametrize the test with the desired threshold after liquidation
+        let desired_threshold_param: Span<Ray> = array![
+            RAY_PERCENT.into(),
+            (RAY_PERCENT / 4).into(),
+            // This is the smallest possible desired threshold that
+            // doesn't result in advancing the time enough to make 
+            // the suspension permanent
+            (RAY_ONE + 1).into() / (RAY_ONE * Shrine::SUSPENSION_GRACE_PERIOD.into()).into(),
+        ]
+            .span();
+
+        let eth: ContractAddress = *yangs[0];
+        let eth_gate: IGateDispatcher = *gates[0];
+
+        let target_user: ContractAddress = PurgerUtils::target_trove_owner();
+
+        common::fund_user(target_user, array![eth].span(), array![(10 * WAD_ONE).into()].span());
+
+        // Have the searcher provide half of his yin to the absorber
+        let searcher = PurgerUtils::searcher();
+        let yin_erc20 = IERC20Dispatcher { contract_address: shrine.contract_address };
+
+        set_contract_address(searcher);
+        yin_erc20.approve(absorber.contract_address, (PurgerUtils::SEARCHER_YIN / 2).into());
+        absorber.provide((PurgerUtils::SEARCHER_YIN / 2).into());
+
+        loop {
+            match liquidate_via_absorption_param.pop_front() {
+                Option::Some(liquidate_via_absorption) => {
+                    let mut trove_debt_param_copy = trove_debt_param;
+                    loop {
+                        match trove_debt_param_copy.pop_front() {
+                            Option::Some(trove_debt) => {
+                                let mut desired_threshold_param_copy = desired_threshold_param;
+                                loop {
+                                    match desired_threshold_param_copy.pop_front() {
+                                        Option::Some(desired_threshold) => {
+                                            let target_trove: u64 = common::open_trove_helper(
+                                                abbot,
+                                                PurgerUtils::target_trove_owner(),
+                                                array![eth].span(),
+                                                array![(WAD_ONE / 2).into()].span(),
+                                                array![eth_gate].span(),
+                                                *trove_debt
+                                            );
+
+                                            // Suspend ETH
+                                            let current_timestamp = get_block_timestamp();
+
+                                            set_contract_address(ShrineUtils::admin());
+                                            shrine.suspend_yang(eth);
+
+                                            // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
+                                            let eth_threshold: Ray = ShrineUtils::YANG1_THRESHOLD
+                                                .into();
+
+                                            let decrease_factor: Ray = *desired_threshold
+                                                / eth_threshold;
+                                            let ts_diff: u64 = Shrine::SUSPENSION_GRACE_PERIOD
+                                                - wadray::scale_u128_by_ray(
+                                                    Shrine::SUSPENSION_GRACE_PERIOD.into(),
+                                                    decrease_factor
+                                                )
+                                                    .try_into()
+                                                    .unwrap();
+
+                                            set_block_timestamp(current_timestamp + ts_diff);
+
+                                            // Check that the threshold has decreased to the desired value
+                                            let (_, threshold_after_liquidation) = shrine
+                                                .get_yang_threshold(eth);
+
+                                            common::assert_equalish(
+                                                threshold_after_liquidation,
+                                                *desired_threshold,
+                                                // 0.0000001 = 10^-7 (ray). Precision
+                                                // is limited by the precision of timestamps,
+                                                // which is only in seconds
+                                                100000000000000000000_u128.into(),
+                                                'wrong eth threshold'
+                                            );
+
+                                            // We want to compare the yin balance of the liquidator 
+                                            // before and after the liquidation. In the case of absorption 
+                                            // we check the absorber's balance, and in the case of 
+                                            // searcher liquidation we check the searcher's balance.
+                                            let before_liquidation_yin_balance: u256 =
+                                                if *liquidate_via_absorption {
+                                                yin_erc20.balance_of(absorber.contract_address)
+                                            } else {
+                                                yin_erc20.balance_of(searcher)
+                                            };
+
+                                            // Liquidate the trove 
+                                            set_contract_address(searcher);
+
+                                            if *liquidate_via_absorption {
+                                                purger.absorb(target_trove);
+                                            } else {
+                                                purger
+                                                    .liquidate(target_trove, *trove_debt, searcher);
+                                            }
+
+                                            // Sanity checks
+                                            let (
+                                                threshold_after_liquidation,
+                                                ltv_after_liquidation,
+                                                _,
+                                                debt_after_liquidation
+                                            ) =
+                                                shrine
+                                                .get_trove_info(target_trove);
+
+                                            assert(
+                                                debt_after_liquidation < *trove_debt,
+                                                'trove not correctly liquidated'
+                                            );
+
+                                            // Checking that the liquidator's yin balance has decreased 
+                                            // after liquidation
+                                            if *liquidate_via_absorption {
+                                                assert(
+                                                    yin_erc20
+                                                        .balance_of(
+                                                            absorber.contract_address
+                                                        ) < before_liquidation_yin_balance,
+                                                    'absorber yin not used'
+                                                );
+                                            } else {
+                                                assert(
+                                                    yin_erc20
+                                                        .balance_of(
+                                                            searcher
+                                                        ) < before_liquidation_yin_balance,
+                                                    'searcher yin not used'
+                                                );
+                                            }
+
+                                            set_contract_address(ShrineUtils::admin());
+                                            shrine.unsuspend_yang(eth);
+                                        },
+                                        Option::None => { break; }
+                                    }
+                                };
+                            },
+                            Option::None => { break; }
+                        };
+                    };
+                },
+                Option::None => { break; }
+            }
+        };
+    }
+
     #[derive(Copy, Drop, PartialEq)]
     enum AbsorbType {
         Full: (),
