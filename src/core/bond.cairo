@@ -415,7 +415,7 @@ mod Bond {
         fn kill(ref self: ContractState, recipient: ContractAddress) {
             AccessControl::assert_has_role(BondRoles::KILL);
 
-            assert(self.status.read() != BondStatus::Inactive, 'BO: Bond is inactive');
+            self.assert_active();
 
             self.status.write(BondStatus::Killed);
 
