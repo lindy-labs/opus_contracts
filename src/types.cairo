@@ -37,15 +37,14 @@ struct Trove {
     debt: Wad, // Normalized debt
 }
 
-impl TroveStorePacking of StorePacking<Trove, felt252> {
-    fn pack(value: Trove) -> felt252 {
+impl TroveStorePacking of StorePacking<Trove, u256> {
+    fn pack(value: Trove) -> u256 {
         (value.charge_from.into()
-            + (value.last_rate_era.into() * TWO_POW_64)
-            + (value.debt.into() * TWO_POW_64 * TWO_POW_64))
+            + (value.last_rate_era.into() * TWO_POW_64.into())
+            + (value.debt.into() * TWO_POW_64.into() * TWO_POW_64.into()))
     }
 
-    fn unpack(value: felt252) -> Trove {
-        let value: u256 = value.into();
+    fn unpack(value: u256) -> Trove {
         let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
         let (rest, charge_from) = u256_safe_div_rem(value, shift);
         let (debt, last_rate_era) = u256_safe_div_rem(rest, shift);
