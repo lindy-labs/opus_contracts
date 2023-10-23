@@ -10,7 +10,7 @@ mod Sentinel {
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
@@ -21,7 +21,8 @@ mod Sentinel {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //

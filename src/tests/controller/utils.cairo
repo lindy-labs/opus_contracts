@@ -12,9 +12,7 @@ mod ControllerUtils {
 
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control_component::{
-        IAccessControlDispatcher, IAccessControlDispatcherTrait
-    };
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray_signed;
     use opus::utils::wadray_signed::SignedRay;
     use opus::utils::wadray;

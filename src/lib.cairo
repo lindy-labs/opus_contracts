@@ -39,7 +39,7 @@ mod interfaces {
 mod types;
 
 mod utils {
-    mod access_control_component;
+    mod access_control;
     mod exp;
     mod math;
     mod reentrancy_guard;

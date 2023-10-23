@@ -5,9 +5,7 @@ mod TestAllocator {
     use opus::core::allocator::Allocator;
     use opus::core::roles::AllocatorRoles;
 
-    use opus::utils::access_control_component::{
-        IAccessControlDispatcher, IAccessControlDispatcherTrait
-    };
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::utils::wadray::Ray;
 

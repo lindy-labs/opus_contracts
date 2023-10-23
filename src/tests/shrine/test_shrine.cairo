@@ -13,9 +13,7 @@ mod TestShrine {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{Trove, YangSuspensionStatus};
-    use opus::utils::access_control_component::{
-        IAccessControlDispatcher, IAccessControlDispatcherTrait
-    };
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable,

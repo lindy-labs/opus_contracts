@@ -18,9 +18,7 @@ mod PurgerUtils {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control_component::{
-        IAccessControlDispatcher, IAccessControlDispatcherTrait
-    };
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::math::pow;
     use opus::utils::wadray;

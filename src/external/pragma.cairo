@@ -17,7 +17,7 @@ mod Pragma {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
-    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::Wad;
 
@@ -28,7 +28,8 @@ mod Pragma {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //

@@ -14,9 +14,7 @@ mod CaretakerUtils {
     use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
-    use opus::utils::access_control_component::{
-        IAccessControlDispatcher, IAccessControlDispatcherTrait
-    };
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use opus::tests::abbot::utils::AbbotUtils;
     use opus::tests::equalizer::utils::EqualizerUtils;

@@ -14,7 +14,7 @@ trait IAccessControl<TContractState> {
 }
 
 #[starknet::component]
-mod AccessControlComponent {
+mod access_control_component {
     use starknet::{ContractAddress, get_caller_address};
     use starknet::contract_address::ContractAddressZeroable;
 
@@ -58,7 +58,7 @@ mod AccessControlComponent {
     }
 
     #[embeddable_as(AccessControl)]
-    impl AccessControlImpl<
+    impl AccessControlPublic<
         TContractState, +HasComponent<TContractState>
     > of super::IAccessControl<ComponentState<TContractState>> {
         //

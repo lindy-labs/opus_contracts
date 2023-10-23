@@ -4,9 +4,9 @@ mod tests {
     };
     use starknet::testing::{pop_log, pop_log_raw, set_caller_address};
 
-    use opus::utils::access_control_component::AccessControlComponent;
-    use opus::utils::access_control_component::AccessControlComponent::{
-        AccessControlImpl, AccessControlHelpers
+    use opus::utils::access_control::access_control_component;
+    use opus::utils::access_control::access_control_component::{
+        AccessControlPublic, AccessControlHelpers
     };
 
     use opus::tests::common;
@@ -79,7 +79,7 @@ mod tests {
 
         assert(state.get_admin() == admin, 'initialize wrong admin');
 
-        let event = pop_log::<AccessControlComponent::AdminChanged>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::AdminChanged>(zero_addr()).unwrap();
         assert(event.old_admin.is_zero(), 'should be zero address');
         assert(event.new_admin == admin(), 'wrong admin in event');
 
@@ -99,11 +99,11 @@ mod tests {
         assert(state.has_role(R2, u), 'role R2 not granted');
         assert(state.get_roles(u) == R1 + R2, 'not all roles granted');
 
-        let event = pop_log::<AccessControlComponent::RoleGranted>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::RoleGranted>(zero_addr()).unwrap();
         assert(event.user == u, 'wrong user in event #1');
         assert(event.role_granted == R1, 'wrong role in event #1');
 
-        let event = pop_log::<AccessControlComponent::RoleGranted>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::RoleGranted>(zero_addr()).unwrap();
         assert(event.user == u, 'wrong user in event #2');
         assert(event.role_granted == R2, 'wrong role in event #2');
 
@@ -145,7 +145,7 @@ mod tests {
         assert(state.has_role(R2, u), 'role R2 not kept');
         assert(state.get_roles(u) == R2, 'incorrect roles');
 
-        let event = pop_log::<AccessControlComponent::RoleRevoked>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::RoleRevoked>(zero_addr()).unwrap();
         assert(event.user == u, 'wrong user in event');
         assert(event.role_revoked == R1, 'wrong role in event');
 
@@ -178,11 +178,11 @@ mod tests {
         let non_existent_role: u128 = 64;
         state.renounce_role(non_existent_role);
 
-        let event = pop_log::<AccessControlComponent::RoleRevoked>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::RoleRevoked>(zero_addr()).unwrap();
         assert(event.user == u, 'wrong user in event #1');
         assert(event.role_revoked == R1, 'wrong role in event #1');
 
-        let event = pop_log::<AccessControlComponent::RoleRevoked>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::RoleRevoked>(zero_addr()).unwrap();
         assert(event.user == u, 'wrong user in event #2');
         assert(event.role_revoked == non_existent_role, 'wrong role in event #2');
 
@@ -200,7 +200,7 @@ mod tests {
         state.set_pending_admin(pending_admin);
         assert(state.get_pending_admin() == pending_admin, 'pending admin not changed');
 
-        let event = pop_log::<AccessControlComponent::NewPendingAdmin>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::NewPendingAdmin>(zero_addr()).unwrap();
         assert(event.new_admin == pending_admin, 'wrong user in event');
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
@@ -232,7 +232,7 @@ mod tests {
         assert(state.get_admin() == pending_admin, 'admin not changed');
         assert(state.get_pending_admin().is_zero(), 'pending admin not reset');
 
-        let event = pop_log::<AccessControlComponent::AdminChanged>(zero_addr()).unwrap();
+        let event = pop_log::<access_control_component::AdminChanged>(zero_addr()).unwrap();
         assert(event.old_admin == current_admin, 'wrong old admin in event');
         assert(event.new_admin == pending_admin, 'wrong new admin in event');
 

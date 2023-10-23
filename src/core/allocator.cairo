@@ -5,7 +5,7 @@ mod Allocator {
     use opus::core::roles::AllocatorRoles;
 
     use opus::interfaces::IAllocator::IAllocator;
-    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     //
@@ -15,7 +15,8 @@ mod Allocator {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //

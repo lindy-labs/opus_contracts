@@ -13,7 +13,7 @@ mod Shrine {
     use opus::types::{
         ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
-    use opus::utils::access_control_component::AccessControlComponent as access_control_component;
+    use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
     use opus::utils::wadray;
     use opus::utils::wadray::{
@@ -27,7 +27,8 @@ mod Shrine {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlImpl = access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
