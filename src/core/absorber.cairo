@@ -959,15 +959,6 @@ mod Absorber {
         // Internal - helpers for remove
         //
 
-        // Returns shrine global LTV divided by the global LTV threshold
-        fn get_shrine_ltv_to_threshold(self: @ContractState) -> Ray {
-            let shrine = self.shrine.read();
-            let (threshold, value) = shrine.get_shrine_threshold_and_value();
-            let debt: Wad = shrine.get_total_debt();
-            let ltv: Ray = wadray::rdiv_ww(debt, value);
-            wadray::rdiv(ltv, threshold)
-        }
-
         fn assert_can_remove(self: @ContractState, request: Request) {
             let (recovery_mode_threshold, shrine_ltv) = self
                 .shrine
