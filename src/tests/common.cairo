@@ -216,6 +216,18 @@ fn get_token_balances(
     }
 }
 
+// Fetches the ERC20 asset balance of a given address, and
+// converts it to yang units.
+#[inline(always)]
+fn get_erc20_bal_as_yang(
+    gate: IGateDispatcher, asset: ContractAddress, addr: ContractAddress
+) -> Wad {
+    gate
+        .convert_to_yang(
+            IERC20Dispatcher { contract_address: asset }.balance_of(addr).try_into().unwrap()
+        )
+}
+
 //
 // Helpers - Assertions
 //

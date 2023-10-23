@@ -2722,7 +2722,6 @@ mod TestPurger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
-                                            '[------DIVIDE------]'.print();
                                             // Calculating the `trove_debt` necessary to achieve
                                             // the `target_ltv`
                                             let target_trove_yang_amts: Span<Wad> = array![
@@ -2792,89 +2791,12 @@ mod TestPurger {
                                                 // Removing any remaining yin, and/or 
                                                 // remaining absorbed assets due to the 
                                                 // provider.
-                                                let absorber_eth_balance: Wad = (*gates[0])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[0]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
-
-                                                let absorber_wbtc_balance: Wad = (*gates[1])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[1]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
-                                                let (current_eth_yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[0]);
-                                                let (current_wbtc_yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[1]);
-
-                                                let absorber_eth_value: Wad = absorber_eth_balance
-                                                    * current_eth_yang_price;
-                                                let absorber_wbtc_value: Wad = absorber_wbtc_balance
-                                                    * current_wbtc_yang_price;
-
-                                                let absorbed_assets_value = absorber_eth_value
-                                                    + absorber_wbtc_value;
-
-                                                'abs total shares pre reap'.print();
-                                                absorber
-                                                    .get_total_shares_for_current_epoch()
-                                                    .print();
-                                                'abs assets val pre reap'.print();
-                                                absorbed_assets_value.print();
 
                                                 if searcher_provided_yin.is_non_zero() {
                                                     absorber.remove(searcher_provided_yin);
                                                 } else {
                                                     absorber.reap();
                                                 }
-
-                                                'abs total shares post reap'.print();
-                                                absorber
-                                                    .get_total_shares_for_current_epoch()
-                                                    .print();
-                                                let absorber_eth_balance: Wad = (*gates[0])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[0]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
-
-                                                let absorber_wbtc_balance: Wad = (*gates[1])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[1]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
-                                                let (current_eth_yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[0]);
-                                                let (current_wbtc_yang_price, _, _) = shrine
-                                                    .get_current_yang_price(*yangs[1]);
-
-                                                let absorber_eth_value: Wad = absorber_eth_balance
-                                                    * current_eth_yang_price;
-                                                let absorber_wbtc_value: Wad = absorber_wbtc_balance
-                                                    * current_wbtc_yang_price;
-
-                                                let absorbed_assets_value = absorber_eth_value
-                                                    + absorber_wbtc_value;
-
-                                                'abs assets val pre liq'.print();
-                                                absorbed_assets_value.print();
                                             }
 
                                             // Creating the trove to be liquidated
@@ -2927,6 +2849,15 @@ mod TestPurger {
                                                 .preview_absorb(target_trove);
 
                                             set_contract_address(searcher);
+
+                                            let absorber_eth_balance_before_absorb: Wad =
+                                                common::get_erc20_bal_as_yang(
+                                                *gates[0], *yangs[0], absorber.contract_address
+                                            );
+                                            let absorber_wbtc_balance_before_absorb: Wad =
+                                                common::get_erc20_bal_as_yang(
+                                                *gates[1], *yangs[1], absorber.contract_address
+                                            );
 
                                             let compensation: Span<AssetBalance> = purger
                                                 .absorb(target_trove);
@@ -2996,52 +2927,34 @@ mod TestPurger {
                                             // Checking that the absorbed assets are equal in value to the 
                                             // debt liquidated, plus the penalty  
                                             if *absorb_type == AbsorbType::Full {
-                                                let absorber_eth_balance: Wad = (*gates[0])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[0]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
-
-                                                let absorber_wbtc_balance: Wad = (*gates[1])
-                                                    .convert_to_yang(
-                                                        IERC20Dispatcher {
-                                                            contract_address: *yangs[1]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap()
-                                                    );
+                                                // We subtract the absorber balance before the liquidation
+                                                //  in order to avoid including any leftover 
+                                                // absorbed assets from previous liquidations
+                                                // in the calculation for the value of the 
+                                                // absorption that *just* occured
+                                                let absorbed_eth: Wad =
+                                                    common::get_erc20_bal_as_yang(
+                                                    *gates[0], *yangs[0], absorber.contract_address
+                                                )
+                                                    - absorber_eth_balance_before_absorb;
+                                                let absorbed_wbtc: Wad =
+                                                    common::get_erc20_bal_as_yang(
+                                                    *gates[1], *yangs[1], absorber.contract_address
+                                                )
+                                                    - absorber_wbtc_balance_before_absorb;
 
                                                 let (current_eth_yang_price, _, _) = shrine
                                                     .get_current_yang_price(*yangs[0]);
                                                 let (current_wbtc_yang_price, _, _) = shrine
                                                     .get_current_yang_price(*yangs[1]);
 
-                                                let absorber_eth_value: Wad = absorber_eth_balance
+                                                let absorber_eth_value: Wad = absorbed_eth
                                                     * current_eth_yang_price;
-                                                let absorber_wbtc_value: Wad = absorber_wbtc_balance
+                                                let absorber_wbtc_value: Wad = absorbed_wbtc
                                                     * current_wbtc_yang_price;
 
                                                 let absorbed_assets_value = absorber_eth_value
                                                     + absorber_wbtc_value;
-
-                                                'penalty'.print();
-                                                (RAY_ONE.into() + penalty).print();
-                                                'threshold'.print();
-                                                (*threshold).print();
-                                                'target_ltv'.print();
-                                                (*target_ltv).print();
-                                                'absorbed_assets_value'.print();
-                                                absorbed_assets_value.print();
-                                                'max close amt + penalty'.print();
-                                                wadray::rmul_wr(
-                                                    max_close_amt, (RAY_ONE.into() + penalty)
-                                                )
-                                                    .print();
 
                                                 common::assert_equalish(
                                                     absorbed_assets_value,
