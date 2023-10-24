@@ -10,12 +10,32 @@ mod Purger {
     use opus::interfaces::IPurger::IPurger;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+
+    //
+    // Constants
+    //
 
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
@@ -43,16 +63,17 @@ mod Purger {
     // Cap on compensation value: 50 (Wad)
     const COMPENSATION_CAP: u128 = 50000000000000000000;
 
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
-
-    #[abi(embed_v0)]
-    impl ReentrancyGuardHelpers =
-        reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+    //
+    // Storage
+    //
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
         // the Shrine associated with this Purger
         shrine: IShrineDispatcher,
         // the Sentinel associated with the Shrine and this Purger
@@ -63,9 +84,6 @@ mod Purger {
         oracle: IOracleDispatcher,
         // Scalar for multiplying penalties above `ABSORPTION_THRESHOLD`
         penalty_scalar: Ray,
-        // Components
-        #[substorage(v0)]
-        reentrancy_guard: reentrancy_guard_component::Storage,
     }
 
     //
@@ -75,6 +93,7 @@ mod Purger {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,
         Compensate: Compensate,
@@ -120,7 +139,7 @@ mod Purger {
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
-        AccessControl::initializer(admin, Option::Some(PurgerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(PurgerRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
@@ -178,7 +197,7 @@ mod Purger {
         // External
         //
         fn set_penalty_scalar(ref self: ContractState, new_scalar: Ray) {
-            AccessControl::assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
+            self.access_control.assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
             assert(
                 MIN_PENALTY_SCALAR.into() <= new_scalar && new_scalar <= MAX_PENALTY_SCALAR.into(),
                 'PU: Invalid scalar'
@@ -583,49 +602,6 @@ mod Purger {
             (default_compensation_pct, default_compensation)
         } else {
             (wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value), COMPENSATION_CAP.into())
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

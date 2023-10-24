@@ -20,6 +20,9 @@ mod Abbot {
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
         // Shrine associated with this Abbot
         shrine: IShrineDispatcher,
         // Sentinel associated with this Abbot
@@ -41,9 +44,6 @@ mod Abbot {
         // was used to open the trove
         // (trove ID) -> (owner)
         trove_owner: LegacyMap<u64, ContractAddress>,
-        // Components
-        #[substorage(v0)]
-        reentrancy_guard: reentrancy_guard_component::Storage,
     }
 
     //

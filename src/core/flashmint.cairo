@@ -44,6 +44,7 @@ mod FlashMint {
     #[storage]
     struct Storage {
         shrine: IShrineDispatcher,
+        // components
         #[substorage(v0)]
         reentrancy_guard: reentrancy_guard_component::Storage,
     }
@@ -53,6 +54,7 @@ mod FlashMint {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         FlashMint: FlashMint,
+        // Component events
         ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
