@@ -41,7 +41,7 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
     fn pack(value: Trove) -> u256 {
         (value.charge_from.into()
             + (value.last_rate_era.into() * TWO_POW_64.into())
-            + (value.debt.into() * TWO_POW_64.into() * TWO_POW_64.into()))
+            + (value.debt.into() * TWO_POW_128.into()))
     }
 
     fn unpack(value: u256) -> Trove {
