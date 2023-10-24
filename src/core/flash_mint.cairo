@@ -15,7 +15,7 @@
 //
 
 #[starknet::contract]
-mod FlashMint {
+mod flash_mint {
     use starknet::{ContractAddress, get_caller_address};
 
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};

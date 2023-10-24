@@ -1,4 +1,4 @@
-mod ShrineUtils {
+mod shrine_utils {
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
@@ -10,8 +10,8 @@ mod ShrineUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use opus::core::shrine::Shrine;
-    use opus::core::roles::ShrineRoles;
+    use opus::core::shrine::shrine as shrine_contract;
+    use opus::core::roles::shrine_roles;
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -115,7 +115,7 @@ mod ShrineUtils {
     // Returns the interval ID for the given timestamp
     #[inline(always)]
     fn get_interval(timestamp: u64) -> u64 {
-        timestamp / Shrine::TIME_INTERVAL
+        timestamp / shrine_contract::TIME_INTERVAL
     }
 
     #[inline(always)]
@@ -176,7 +176,9 @@ mod ShrineUtils {
             contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
         ];
 
-        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(Shrine::TEST_CLASS_HASH)
+        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(
+            shrine_contract::TEST_CLASS_HASH
+        )
             .unwrap();
         let (shrine_addr, _) = deploy_syscall(shrine_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
@@ -187,7 +189,7 @@ mod ShrineUtils {
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
         IAccessControlDispatcher { contract_address: shrine_addr }
-            .grant_role(ShrineRoles::all_roles(), user);
+            .grant_role(shrine_roles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -284,7 +286,7 @@ mod ShrineUtils {
 
             shrine.set_multiplier(RAY_ONE.into());
 
-            timestamp += Shrine::TIME_INTERVAL;
+            timestamp += shrine_contract::TIME_INTERVAL;
 
             idx += 1;
         };
@@ -556,7 +558,7 @@ mod ShrineUtils {
                 intervals_in_era = *yang_rate_update_intervals[i + 1] - era_start_interval;
             }
 
-            let t: u128 = intervals_in_era.into() * Shrine::TIME_INTERVAL_DIV_YEAR;
+            let t: u128 = intervals_in_era.into() * shrine_contract::TIME_INTERVAL_DIV_YEAR;
 
             debt *= exp(wadray::rmul_rw(rate, t.into()));
             i += 1;
@@ -568,7 +570,7 @@ mod ShrineUtils {
         base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad,
     ) -> Wad {
         let intervals: u128 = (end_interval - start_interval).into();
-        let t: Wad = (intervals * Shrine::TIME_INTERVAL_DIV_YEAR).into();
+        let t: Wad = (intervals * shrine_contract::TIME_INTERVAL_DIV_YEAR).into();
         debt * exp(wadray::rmul_rw(base_rate * avg_multiplier, t))
     }
 

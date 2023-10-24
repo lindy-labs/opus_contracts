@@ -1,4 +1,4 @@
-mod CaretakerUtils {
+mod caretaker_utils {
     use debug::PrintTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
@@ -6,8 +6,8 @@ mod CaretakerUtils {
     };
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use opus::core::caretaker::Caretaker;
-    use opus::core::roles::{SentinelRoles, ShrineRoles};
+    use opus::core::caretaker::caretaker as caretaker_contract;
+    use opus::core::roles::{sentinel_roles, shrine_roles};
 
     use opus::interfaces::IAbbot::IAbbotDispatcher;
     use opus::interfaces::ICaretaker::ICaretakerDispatcher;
@@ -16,10 +16,10 @@ mod CaretakerUtils {
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
-    use opus::tests::abbot::utils::AbbotUtils;
-    use opus::tests::equalizer::utils::EqualizerUtils;
-    use opus::tests::sentinel::utils::SentinelUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::equalizer::utils::equalizer_utils;
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('caretaker admin').unwrap()
@@ -34,10 +34,10 @@ mod CaretakerUtils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
+        set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let (shrine, sentinel, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let (shrine, equalizer, _allocator) = EqualizerUtils::equalizer_deploy_with_shrine(
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address
         );
 
@@ -50,21 +50,21 @@ mod CaretakerUtils {
         ];
 
         let caretaker_class_hash: ClassHash = class_hash_try_from_felt252(
-            Caretaker::TEST_CLASS_HASH
+            caretaker_contract::TEST_CLASS_HASH
         )
             .unwrap();
         let (caretaker, _) = deploy_syscall(caretaker_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         // allow Caretaker to do its business with Shrine
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         IAccessControlDispatcher { contract_address: shrine.contract_address }
-            .grant_role(ShrineRoles::caretaker(), caretaker);
+            .grant_role(shrine_roles::caretaker(), caretaker);
 
         // allow Caretaker to call exit in Sentinel during shut
-        set_contract_address(SentinelUtils::admin());
+        set_contract_address(sentinel_utils::admin());
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
-            .grant_role(SentinelRoles::caretaker(), caretaker);
+            .grant_role(sentinel_roles::caretaker(), caretaker);
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 
@@ -76,7 +76,7 @@ mod CaretakerUtils {
     ) -> (Span<ContractAddress>, Span<IGateDispatcher>, Span<u128>) {
         let mut eth_yang = array![*yangs[0]];
         let mut eth_gate = array![*gates[0]];
-        let mut eth_amount = array![AbbotUtils::ETH_DEPOSIT_AMT];
+        let mut eth_amount = array![abbot_utils::ETH_DEPOSIT_AMT];
 
         (eth_yang.span(), eth_gate.span(), eth_amount.span())
     }

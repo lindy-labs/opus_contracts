@@ -1,9 +1,9 @@
 #[starknet::contract]
-mod Caretaker {
+mod caretaker {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use opus::core::roles::CaretakerRoles;
+    use opus::core::roles::caretaker_roles;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
@@ -109,7 +109,7 @@ mod Caretaker {
         sentinel: ContractAddress,
         equalizer: ContractAddress
     ) {
-        self.access_control.initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(caretaker_roles::default_admin_role()));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -197,7 +197,7 @@ mod Caretaker {
 
         // Admin will initially have access to `shut`.
         fn shut(ref self: ContractState) {
-            self.access_control.assert_has_role(CaretakerRoles::SHUT);
+            self.access_control.assert_has_role(caretaker_roles::SHUT);
 
             let shrine: IShrineDispatcher = self.shrine.read();
 

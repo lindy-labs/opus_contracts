@@ -1,4 +1,4 @@
-mod tests {
+mod test_access_control {
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
@@ -10,7 +10,7 @@ mod tests {
     };
 
     use opus::tests::common;
-    use opus::tests::utils::mock_access_control::MockAccessControl;
+    use opus::tests::utils::mock_access_control::mock_access_control;
 
     //
     // Constants
@@ -38,11 +38,11 @@ mod tests {
     // Test setup
     //
 
-    fn state() -> MockAccessControl::ContractState {
-        MockAccessControl::contract_state_for_testing()
+    fn state() -> mock_access_control::ContractState {
+        mock_access_control::contract_state_for_testing()
     }
 
-    fn setup(caller: ContractAddress) -> MockAccessControl::ContractState {
+    fn setup(caller: ContractAddress) -> mock_access_control::ContractState {
         let mut state = state();
         state.access_control.initializer(admin(), Option::None);
 
@@ -52,7 +52,7 @@ mod tests {
     }
 
     fn set_pending_admin(
-        ref state: MockAccessControl::ContractState,
+        ref state: mock_access_control::ContractState,
         caller: ContractAddress,
         pending_admin: ContractAddress
     ) {
@@ -60,7 +60,7 @@ mod tests {
         state.set_pending_admin(pending_admin);
     }
 
-    fn default_grant(ref state: MockAccessControl::ContractState) {
+    fn default_grant(ref state: mock_access_control::ContractState) {
         let u = user();
         state.grant_role(R1, u);
         state.grant_role(R2, u);

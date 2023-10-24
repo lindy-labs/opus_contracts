@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod Abbot {
+mod abbot {
     use starknet::{ContractAddress, get_caller_address};
 
     use opus::interfaces::IAbbot::IAbbot;

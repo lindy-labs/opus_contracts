@@ -1,4 +1,4 @@
-mod AbsorberUtils {
+mod absorber_utils {
     use cmp::min;
     use integer::BoundedU256;
     use starknet::{
@@ -8,8 +8,8 @@ mod AbsorberUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::absorber::Absorber;
-    use opus::core::roles::AbsorberRoles;
+    use opus::core::absorber::absorber as absorber_contract;
+    use opus::core::roles::absorber_roles;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{
@@ -26,11 +26,11 @@ mod AbsorberUtils {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
-    use opus::tests::abbot::utils::AbbotUtils;
-    use opus::tests::absorber::mock_blesser::MockBlesser;
+    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::absorber::mock_blesser::mock_blesser;
     use opus::tests::common;
     use opus::tests::erc20::ERC20;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     use debug::PrintTrait;
 
@@ -102,7 +102,7 @@ mod AbsorberUtils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
 
         let admin: ContractAddress = admin();
 
@@ -112,14 +112,16 @@ mod AbsorberUtils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
+        let absorber_class_hash: ClassHash = class_hash_try_from_felt252(
+            absorber_contract::TEST_CLASS_HASH
+        )
             .unwrap();
         let (absorber_addr, _) = deploy_syscall(absorber_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         set_contract_address(admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
-        absorber_ac.grant_role(AbsorberRoles::purger(), mock_purger());
+        absorber_ac.grant_role(absorber_roles::purger(), mock_purger());
         set_contract_address(ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
@@ -164,7 +166,7 @@ mod AbsorberUtils {
         ];
 
         let mock_blesser_class_hash: ClassHash = class_hash_try_from_felt252(
-            MockBlesser::TEST_CLASS_HASH
+            mock_blesser::TEST_CLASS_HASH
         )
             .unwrap();
         let (mock_blesser_addr, _) = deploy_syscall(
@@ -359,7 +361,7 @@ mod AbsorberUtils {
         burn_amt: Wad,
     ) {
         // Simulate burning a percentage of absorber's yin
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         shrine.eject(absorber.contract_address, burn_amt);
 
         // Simulate transfer of "freed" assets to absorber
@@ -585,7 +587,7 @@ mod AbsorberUtils {
                         reward_amt, blessings_multiplier
                     );
                     let expected_amt_per_share: Wad = expected_blessed_amt
-                        / (total_shares - Absorber::INITIAL_SHARES.into());
+                        / (total_shares - absorber_contract::INITIAL_SHARES.into());
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
@@ -655,7 +657,7 @@ mod AbsorberUtils {
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
                     let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
-                        / (total_shares - Absorber::INITIAL_SHARES.into()))
+                        / (total_shares - absorber_contract::INITIAL_SHARES.into()))
                         .val;
 
                     // Check asset amt per share is correct
@@ -666,7 +668,8 @@ mod AbsorberUtils {
 
                     // Check update amount = (total_shares * asset_amt per share) - prev_error + error
                     // Convert to Wad for fixed point operations
-                    let distributed_amt: Wad = ((total_shares - Absorber::INITIAL_SHARES.into())
+                    let distributed_amt: Wad = ((total_shares
+                        - absorber_contract::INITIAL_SHARES.into())
                         * actual_distribution.asset_amt_per_share.into())
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
