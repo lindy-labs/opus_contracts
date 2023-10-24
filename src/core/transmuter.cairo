@@ -35,8 +35,8 @@ mod Transmuter {
         asset: IERC20Dispatcher,
         // The total yin transmuted 
         total_transmuted: Wad,
-        // The maximum amount of assets that can be swapped for yin via this Transmuter
-        ceiling: u128,
+        // The maximum amount of yin that can be minted via this Transmuter
+        ceiling: Wad,
         // The maximum amount of yin that can be minted via this Transmuter
         // as a percentage of the total yin supply
         percentage_cap: Ray,
@@ -79,8 +79,8 @@ mod Transmuter {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct CeilingUpdated {
-        old_ceiling: u128,
-        new_ceiling: u128
+        old_ceiling: Wad,
+        new_ceiling: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -168,7 +168,7 @@ mod Transmuter {
             self.asset.read().contract_address
         }
 
-        fn get_ceiling(self: @ContractState) -> u128 {
+        fn get_ceiling(self: @ContractState) -> Wad {
             self.ceiling.read()
         }
 
@@ -204,9 +204,9 @@ mod Transmuter {
         // Setters
         //
 
-        fn set_ceiling(ref self: ContractState, ceiling: u128) {
+        fn set_ceiling(ref self: ContractState, ceiling: Wad) {
             AccessControl::assert_has_role(TransmuterRoles::SET_CEILING);
-            let old_ceiling: u128 = self.ceiling.read();
+            let old_ceiling: Wad = self.ceiling.read();
             self.ceiling.write(ceiling);
 
             self.emit(CeilingUpdated { old_ceiling, new_ceiling: ceiling });
@@ -409,10 +409,11 @@ mod Transmuter {
             let yin_price_ge_peg: bool = shrine.get_yin_spot_price() >= WAD_ONE.into();
 
             let cap: Wad = wadray::rmul_wr(shrine.get_total_yin(), self.percentage_cap.read());
+            let ceiling: Wad = self.ceiling.read();
             let minted: Wad = self.total_transmuted.read();
-            let is_lt_cap: bool = minted + amt_to_mint <= cap;
+            let is_lt_cap_and_ceiling: bool = minted + amt_to_mint <= min(cap, ceiling);
 
-            assert(yin_price_ge_peg && is_lt_cap, 'TR: Transmute is paused');
+            assert(yin_price_ge_peg && is_lt_cap_and_ceiling, 'TR: Transmute is paused');
         }
 
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {

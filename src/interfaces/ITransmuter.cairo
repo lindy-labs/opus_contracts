@@ -6,7 +6,7 @@ use opus::utils::wadray::{Ray, Wad};
 trait ITransmuter<TContractState> {
     // getters
     fn get_asset(self: @TContractState) -> ContractAddress;
-    fn get_ceiling(self: @TContractState) -> u128;
+    fn get_ceiling(self: @TContractState) -> Wad;
     fn get_percentage_cap(self: @TContractState) -> Ray;
     fn get_receiver(self: @TContractState) -> ContractAddress;
     fn get_reversibility(self: @TContractState) -> bool;
@@ -15,7 +15,7 @@ trait ITransmuter<TContractState> {
     fn get_live(self: @TContractState) -> bool;
     fn get_reclaimable(self: @TContractState) -> bool;
     // setters
-    fn set_ceiling(ref self: TContractState, ceiling: u128);
+    fn set_ceiling(ref self: TContractState, ceiling: Wad);
     fn set_percentage_cap(ref self: TContractState, cap: Ray);
     fn set_receiver(ref self: TContractState, receiver: ContractAddress);
     fn toggle_reversibility(ref self: TContractState);
