@@ -12,8 +12,8 @@ mod Caretaker {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::access_control::access_control_component;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
