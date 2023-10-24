@@ -1,8 +1,8 @@
 #[starknet::contract]
-mod Allocator {
+mod allocator {
     use starknet::ContractAddress;
 
-    use opus::core::roles::AllocatorRoles;
+    use opus::core::roles::allocator_roles;
 
     use opus::interfaces::IAllocator::IAllocator;
     use opus::utils::access_control::access_control_component;
@@ -78,7 +78,7 @@ mod Allocator {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
     ) {
-        self.access_control.initializer(admin, Option::Some(AllocatorRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
 
         self.set_allocation_helper(recipients, percentages);
     }
@@ -124,7 +124,7 @@ mod Allocator {
         fn set_allocation(
             ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
         ) {
-            self.access_control.assert_has_role(AllocatorRoles::SET_ALLOCATION);
+            self.access_control.assert_has_role(allocator_roles::SET_ALLOCATION);
 
             self.set_allocation_helper(recipients, percentages);
         }

@@ -6,17 +6,17 @@
 //       order to get ASSET/SYN
 
 #[starknet::contract]
-mod Pragma {
+mod pragma {
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
-    use opus::core::roles::PragmaRoles;
+    use opus::core::roles::pragma_roles;
 
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
+    use opus::types::pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::Wad;
@@ -158,7 +158,7 @@ mod Pragma {
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
-        self.access_control.initializer(admin, Option::Some(PragmaRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(pragma_roles::default_admin_role()));
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
@@ -193,7 +193,7 @@ mod Pragma {
         //
 
         fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
-            self.access_control.assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
+            self.access_control.assert_has_role(pragma_roles::SET_ORACLE_ADDRESS);
             assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
 
             let old_oracle: IPragmaOracleDispatcher = self.oracle.read();
@@ -208,7 +208,7 @@ mod Pragma {
         }
 
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
-            self.access_control.assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
+            self.access_control.assert_has_role(pragma_roles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
                 LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
                 'PGM: Freshness out of bounds'
@@ -226,7 +226,7 @@ mod Pragma {
         }
 
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
-            self.access_control.assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
+            self.access_control.assert_has_role(pragma_roles::SET_UPDATE_FREQUENCY);
             assert(
                 LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
                     && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
@@ -239,7 +239,7 @@ mod Pragma {
         }
 
         fn add_yang(ref self: ContractState, pair_id: u256, yang: ContractAddress) {
-            self.access_control.assert_has_role(PragmaRoles::ADD_YANG);
+            self.access_control.assert_has_role(pragma_roles::ADD_YANG);
             assert(pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
             self.assert_new_yang(pair_id, yang);
@@ -292,7 +292,7 @@ mod Pragma {
             // force an update to happen immediatelly
             let mut can_update: bool = self.probe_task();
             if !can_update {
-                can_update = self.has_role(PragmaRoles::UPDATE_PRICES, get_caller_address());
+                can_update = self.has_role(pragma_roles::UPDATE_PRICES, get_caller_address());
             }
             assert(can_update, 'PGM: Too soon to update prices');
 

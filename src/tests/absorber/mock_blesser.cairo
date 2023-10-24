@@ -1,8 +1,8 @@
 #[starknet::contract]
-mod MockBlesser {
+mod mock_blesser {
     use starknet::{ContractAddress, get_contract_address};
 
-    use opus::core::roles::BlesserRoles;
+    use opus::core::roles::blesser_roles;
 
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -39,7 +39,7 @@ mod MockBlesser {
         bless_amt: u128
     ) {
         self.access_control.initializer(admin, Option::None);
-        self.access_control.grant_role_helper(BlesserRoles::default_admin_role(), absorber);
+        self.access_control.grant_role_helper(blesser_roles::default_admin_role(), absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
         self.absorber.write(absorber);
@@ -53,7 +53,7 @@ mod MockBlesser {
         }
 
         fn bless(ref self: ContractState) -> u128 {
-            self.access_control.assert_has_role(BlesserRoles::BLESS);
+            self.access_control.assert_has_role(blesser_roles::BLESS);
 
             let asset: IERC20Dispatcher = self.asset.read();
             let bless_amt: u256 = self.preview_bless_internal(asset).into();

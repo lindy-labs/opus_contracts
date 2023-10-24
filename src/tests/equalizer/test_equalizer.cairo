@@ -1,10 +1,10 @@
-mod TestEqualizer {
+mod test_equalizer {
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use opus::core::equalizer::Equalizer;
-    use opus::core::roles::EqualizerRoles;
-    use opus::core::shrine::Shrine;
+    use opus::core::equalizer::equalizer as equalizer_contract;
+    use opus::core::roles::equalizer_roles;
+    use opus::core::shrine::shrine;
 
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
@@ -13,61 +13,61 @@ mod TestEqualizer {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
-    use opus::tests::equalizer::utils::EqualizerUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::equalizer::utils::equalizer_utils;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
 
     #[test]
     #[available_gas(20000000000)]
     fn test_equalizer_deploy() {
-        let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
+        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
         let equalizer_ac = IAccessControlDispatcher {
             contract_address: equalizer.contract_address
         };
-        let admin = ShrineUtils::admin();
+        let admin = shrine_utils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
-        assert(equalizer_ac.get_roles(admin) == EqualizerRoles::SET_ALLOCATOR, 'wrong role');
-        assert(equalizer_ac.has_role(EqualizerRoles::SET_ALLOCATOR, admin), 'role not granted');
+        assert(equalizer_ac.get_roles(admin) == equalizer_roles::SET_ALLOCATOR, 'wrong role');
+        assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_equalize_pass() {
-        let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
+        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let before_total_yin = shrine.get_total_yin();
 
         // Advance by 365 days * 24 hours * 2 intervals per hour = 17520 intervals so that some
         // interest accrues
         let mut timestamp = get_block_timestamp();
-        timestamp += (365 * 24 * 2) * Shrine::TIME_INTERVAL;
+        timestamp += (365 * 24 * 2) * shrine::TIME_INTERVAL;
         set_block_timestamp(timestamp);
 
         // Set the price to make the interest calculation easier
-        ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, 1, ShrineUtils::three_yang_addrs(), ShrineUtils::three_yang_start_prices(),
+        shrine_utils::advance_prices_and_set_multiplier(
+            shrine, 1, shrine_utils::three_yang_addrs(), shrine_utils::three_yang_start_prices(),
         );
 
         // Charge trove 1 and sanity check that some debt has accrued
-        ShrineUtils::trove1_deposit(shrine, WadZeroable::zero());
+        shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
 
         let surplus: Wad = equalizer.get_surplus();
         assert(surplus > WadZeroable::zero(), 'no surplus accrued');
 
-        let recipients = EqualizerUtils::initial_recipients();
-        let percentages = EqualizerUtils::initial_percentages();
+        let recipients = equalizer_utils::initial_recipients();
+        let percentages = equalizer_utils::initial_percentages();
 
         let mut tokens: Array<ContractAddress> = array![shrine.contract_address];
         let mut before_balances = common::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let minted_surplus = equalizer.equalize();
 
         let mut after_balances = common::get_token_balances(tokens.span(), recipients);
@@ -102,12 +102,12 @@ mod TestEqualizer {
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
-        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
-        ShrineUtils::assert_total_debt_invariant(shrine, yangs, 1);
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
 
-        let mut expected_events: Span<Equalizer::Event> = array![
-            Equalizer::Event::Equalize(
-                Equalizer::Equalize { recipients, percentages, amount: minted_surplus }
+        let mut expected_events: Span<equalizer_contract::Event> = array![
+            equalizer_contract::Event::Equalize(
+                equalizer_contract::Equalize { recipients, percentages, amount: minted_surplus }
             ),
         ]
             .span();
@@ -117,12 +117,12 @@ mod TestEqualizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_allocator_pass() {
-        let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
-        let new_recipients = EqualizerUtils::new_recipients();
-        let mut new_percentages = EqualizerUtils::new_percentages();
-        let new_allocator = EqualizerUtils::allocator_deploy(new_recipients, new_percentages);
+        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let new_recipients = equalizer_utils::new_recipients();
+        let mut new_percentages = equalizer_utils::new_percentages();
+        let new_allocator = equalizer_utils::allocator_deploy(new_recipients, new_percentages);
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated
@@ -130,9 +130,9 @@ mod TestEqualizer {
             equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated'
         );
 
-        let mut expected_events: Span<Equalizer::Event> = array![
-            Equalizer::Event::AllocatorUpdated(
-                Equalizer::AllocatorUpdated {
+        let mut expected_events: Span<equalizer_contract::Event> = array![
+            equalizer_contract::Event::AllocatorUpdated(
+                equalizer_contract::AllocatorUpdated {
                     old_address: allocator.contract_address,
                     new_address: new_allocator.contract_address
                 }
@@ -146,9 +146,9 @@ mod TestEqualizer {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocator_fail() {
-        let (_, equalizer, _) = EqualizerUtils::equalizer_deploy();
-        let new_allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::new_recipients(), EqualizerUtils::new_percentages()
+        let (_, equalizer, _) = equalizer_utils::equalizer_deploy();
+        let new_allocator = equalizer_utils::allocator_deploy(
+            equalizer_utils::new_recipients(), equalizer_utils::new_percentages()
         );
 
         set_contract_address(common::badguy());

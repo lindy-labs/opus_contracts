@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod Gate {
+mod gate {
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
