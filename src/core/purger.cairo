@@ -238,9 +238,13 @@ mod Purger {
             // Melt from the funder address directly
             shrine.melt(funder, trove_id, purge_amt);
 
+            self.reentrancy_guard.start();
+
             // Free collateral corresponding to the purged amount
             let freed_assets: Span<AssetBalance> = self
                 .free(shrine, trove_id, percentage_freed, recipient);
+
+            self.reentrancy_guard.end();
 
             // Safety check to ensure the new LTV is not worse off
             let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
@@ -292,9 +296,11 @@ mod Purger {
                 WadZeroable::zero()
             };
 
+            self.reentrancy_guard.start();
             // Transfer a percentage of the penalty to the caller as compensation
             let compensation_assets: Span<AssetBalance> = self
                 .free(shrine, trove_id, pct_value_to_compensate, caller);
+            self.reentrancy_guard.end();
 
             // Melt the trove's debt using the absorber's yin directly
             // This needs to be called even if `purge_amt` is 0 so that accrued interest
@@ -320,8 +326,10 @@ mod Purger {
             // to melt the trove's debt and receive freed trove assets in return
             if can_absorb_some {
                 // Free collateral corresponding to the purged amount
+                self.reentrancy_guard.start();
                 let absorbed_assets: Span<AssetBalance> = self
                     .free(shrine, trove_id, pct_value_to_purge, absorber.contract_address);
+                self.reentrancy_guard.end();
 
                 absorber.update(absorbed_assets);
 
