@@ -1,6 +1,3 @@
-#[starknet::interface]
-trait IReentrancyGuard<TContractState> {}
-
 #[starknet::component]
 mod reentrancy_guard_component {
     #[storage]
@@ -11,12 +8,6 @@ mod reentrancy_guard_component {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {}
-
-    #[embeddable_as(ReentrancyGuard)]
-    impl ReentrancyGuardPublic<
-        TContractState, +HasComponent<TContractState>
-    > of super::IReentrancyGuard<ComponentState<TContractState>> {}
-
 
     #[generate_trait]
     impl ReentrancyGuardHelpers<

@@ -4,7 +4,7 @@ trait IMockReentrancyGuard<TContractState> {
 }
 
 #[starknet::contract]
-mod MockReentrancyGuard {
+mod mock_reentrancy_guard {
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
 
     component!(
@@ -12,9 +12,8 @@ mod MockReentrancyGuard {
     );
 
     #[abi(embed_v0)]
-    impl ReentrancyGuardPublic =
-        reentrancy_guard_component::ReentrancyGuard<ContractState>;
-    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+    impl ReentrancyGuardHelpers =
+        reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     #[storage]
     struct Storage {

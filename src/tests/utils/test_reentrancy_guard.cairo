@@ -2,10 +2,10 @@ mod tests {
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component::{ReentrancyGuardHelpers};
 
-    use opus::tests::utils::mock_reentrancy_guard::{IMockReentrancyGuard, MockReentrancyGuard};
+    use opus::tests::utils::mock_reentrancy_guard::{IMockReentrancyGuard, mock_reentrancy_guard};
 
-    fn state() -> MockReentrancyGuard::ContractState {
-        MockReentrancyGuard::contract_state_for_testing()
+    fn state() -> mock_reentrancy_guard::ContractState {
+        mock_reentrancy_guard::contract_state_for_testing()
     }
 
     #[test]
