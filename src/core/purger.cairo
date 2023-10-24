@@ -434,7 +434,7 @@ mod Purger {
             }
 
             // If the threshold is below the given minimum, we automatically
-            // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+            // return the maximum penalty to avoid division by zero/overflow, or the largest possible penalty,
             // whichever is smaller.
             if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
                 // This check is to avoid overflow in the event that the 
@@ -442,12 +442,12 @@ mod Purger {
                 if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
                     return Option::Some(
                         min(
-                            MIN_PENALTY.into(),
+                            MAX_PENALTY.into(),
                             (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation
                         )
                     );
                 }
-                return Option::Some(MIN_PENALTY.into());
+                return Option::Some(MAX_PENALTY.into());
             }
 
             // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
@@ -560,9 +560,9 @@ mod Purger {
             // This check is to avoid overflow in the event that the 
             // trove's LTV is also extremely low.
             if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
-                return Option::Some(min(MIN_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));
+                return Option::Some(min(MAX_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));
             }
-            return Option::Some(MIN_PENALTY.into());
+            return Option::Some(MAX_PENALTY.into());
         }
 
         let penalty = min(
