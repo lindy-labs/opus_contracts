@@ -21,7 +21,7 @@ mod FlashMint {
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -33,9 +33,19 @@ mod FlashMint {
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
     const FLASH_FEE: u256 = 0;
 
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
+
+    #[abi(embed_v0)]
+    impl ReentrancyGuardHelpers =
+        reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+
     #[storage]
     struct Storage {
         shrine: IShrineDispatcher,
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
     }
 
 
@@ -43,6 +53,7 @@ mod FlashMint {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         FlashMint: FlashMint,
+        ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -100,7 +111,7 @@ mod FlashMint {
             // prevents looping which would lead to excessive minting
             // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
             // yin to be minted, as per spec
-            ReentrancyGuard::start();
+            self.reentrancy_guard.start();
 
             assert(amount <= self.max_flash_loan(token), 'FM: amount exceeds maximum');
 
@@ -122,7 +133,7 @@ mod FlashMint {
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 
-            ReentrancyGuard::end();
+            self.reentrancy_guard.end();
 
             true
         }

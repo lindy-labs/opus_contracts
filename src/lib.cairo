@@ -103,6 +103,7 @@ mod tests {
         mod utils;
     }
     mod utils {
+        mod mock_reentrancy_guard;
         mod test_access_control;
         mod test_exp;
         mod test_math;

@@ -12,7 +12,7 @@ mod Purger {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 
     use opus::utils::access_control::{AccessControl, IAccessControl};
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
@@ -43,6 +43,14 @@ mod Purger {
     // Cap on compensation value: 50 (Wad)
     const COMPENSATION_CAP: u128 = 50000000000000000000;
 
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
+
+    #[abi(embed_v0)]
+    impl ReentrancyGuardHelpers =
+        reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+
     #[storage]
     struct Storage {
         // the Shrine associated with this Purger
@@ -55,6 +63,9 @@ mod Purger {
         oracle: IOracleDispatcher,
         // Scalar for multiplying penalties above `ABSORPTION_THRESHOLD`
         penalty_scalar: Ray,
+        // Components
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
     }
 
     //
@@ -67,6 +78,8 @@ mod Purger {
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,
         Compensate: Compensate,
+        // Component events
+        ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -365,9 +378,6 @@ mod Purger {
             percentage_freed: Ray,
             recipient: ContractAddress,
         ) -> Span<AssetBalance> {
-            // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
-
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             let mut freed_assets: Array<AssetBalance> = ArrayTrait::new();
@@ -398,8 +408,6 @@ mod Purger {
                     Option::None => { break; }
                 };
             };
-
-            ReentrancyGuard::end();
 
             freed_assets.span()
         }
