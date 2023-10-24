@@ -1,3 +1,4 @@
+#[starknet::interface]
 trait IReentrancyGuard<TContractState> {}
 
 #[starknet::component]
