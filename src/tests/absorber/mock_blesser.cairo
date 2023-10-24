@@ -6,7 +6,7 @@ mod MockBlesser {
 
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::utils::access_control::access_control_component as access_control_component;
+    use opus::utils::access_control::access_control_component;
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 

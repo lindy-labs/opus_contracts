@@ -2,7 +2,7 @@
 mod MockAccessControl {
     use starknet::ContractAddress;
 
-    use opus::utils::access_control::access_control_component as access_control_component;
+    use opus::utils::access_control::access_control_component;
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
