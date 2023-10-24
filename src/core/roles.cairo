@@ -1,4 +1,4 @@
-mod AbsorberRoles {
+mod absorber_roles {
     const KILL: u128 = 1;
     const SET_REWARD: u128 = 2;
     const UPDATE: u128 = 4;
@@ -14,7 +14,7 @@ mod AbsorberRoles {
     }
 }
 
-mod AllocatorRoles {
+mod allocator_roles {
     const SET_ALLOCATION: u128 = 1;
 
     #[inline(always)]
@@ -23,7 +23,7 @@ mod AllocatorRoles {
     }
 }
 
-mod BlesserRoles {
+mod blesser_roles {
     const BLESS: u128 = 1;
 
     #[inline(always)]
@@ -32,7 +32,7 @@ mod BlesserRoles {
     }
 }
 
-mod CaretakerRoles {
+mod caretaker_roles {
     const SHUT: u128 = 1;
 
     #[inline(always)]
@@ -41,7 +41,7 @@ mod CaretakerRoles {
     }
 }
 
-mod ControllerRoles {
+mod controller_roles {
     const TUNE_CONTROLLER: u128 = 1;
 
     #[inline(always)]
@@ -50,7 +50,7 @@ mod ControllerRoles {
     }
 }
 
-mod EqualizerRoles {
+mod equalizer_roles {
     const SET_ALLOCATOR: u128 = 1;
 
     #[inline(always)]
@@ -59,7 +59,7 @@ mod EqualizerRoles {
     }
 }
 
-mod PragmaRoles {
+mod pragma_roles {
     const ADD_YANG: u128 = 1;
     const SET_ORACLE_ADDRESS: u128 = 2;
     const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
@@ -77,7 +77,7 @@ mod PragmaRoles {
     }
 }
 
-mod PurgerRoles {
+mod purger_roles {
     const SET_PENALTY_SCALAR: u128 = 1;
 
     #[inline(always)]
@@ -86,7 +86,7 @@ mod PurgerRoles {
     }
 }
 
-mod SentinelRoles {
+mod sentinel_roles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
     const EXIT: u128 = 4;
@@ -115,7 +115,7 @@ mod SentinelRoles {
     }
 }
 
-mod ShrineRoles {
+mod shrine_roles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;
     const DEPOSIT: u128 = 4;

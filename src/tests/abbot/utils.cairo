@@ -1,4 +1,4 @@
-mod AbbotUtils {
+mod abbot_utils {
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         deploy_syscall, SyscallResultTrait
@@ -6,8 +6,8 @@ mod AbbotUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::abbot::Abbot;
-    use opus::core::roles::{SentinelRoles, ShrineRoles};
+    use opus::core::abbot::abbot as abbot_contract;
+    use opus::core::roles::{sentinel_roles, shrine_roles};
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -18,8 +18,8 @@ mod AbbotUtils {
     use opus::utils::wadray::Wad;
 
     use opus::tests::common;
-    use opus::tests::sentinel::utils::SentinelUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     //
     // Constants
@@ -64,15 +64,17 @@ mod AbbotUtils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
-        ShrineUtils::setup_debt_ceiling(shrine.contract_address);
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates();
+        shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let abbot_class_hash: ClassHash = class_hash_try_from_felt252(Abbot::TEST_CLASS_HASH)
+        let abbot_class_hash: ClassHash = class_hash_try_from_felt252(
+            abbot_contract::TEST_CLASS_HASH
+        )
             .unwrap();
         let (abbot_addr, _) = deploy_syscall(abbot_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
@@ -80,14 +82,14 @@ mod AbbotUtils {
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        shrine_ac.grant_role(ShrineRoles::abbot(), abbot_addr);
+        shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
 
         // Grant Sentinel roles to Abbot
-        set_contract_address(SentinelUtils::admin());
+        set_contract_address(sentinel_utils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        sentinel_ac.grant_role(SentinelRoles::abbot(), abbot_addr);
+        sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 

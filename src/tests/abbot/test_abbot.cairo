@@ -1,9 +1,9 @@
-mod TestAbbot {
+mod test_abbot {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
 
-    use opus::core::abbot::Abbot;
-    use opus::core::sentinel::Sentinel;
+    use opus::core::abbot::abbot as abbot_contract;
+    use opus::core::sentinel::sentinel as sentinel_contract;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -13,9 +13,9 @@ mod TestAbbot {
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
 
-    use opus::tests::abbot::utils::AbbotUtils;
-    use opus::tests::sentinel::utils::SentinelUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
 
     use debug::PrintTrait;
@@ -28,7 +28,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_open_trove_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         // Check trove ID
@@ -52,7 +52,7 @@ mod TestAbbot {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let expected_initial_yang: Wad = wadray::fixed_point_to_wad(
-                        Sentinel::INITIAL_DEPOSIT_AMT, decimals
+                        sentinel_contract::INITIAL_DEPOSIT_AMT, decimals
                     );
                     let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
                         *deposited_amts_copy.pop_front().unwrap(), decimals
@@ -80,7 +80,7 @@ mod TestAbbot {
 
         // User opens another trove
         let second_forge_amt: Wad = 1666000000000000000000_u128.into();
-        let mut second_deposit_amts = AbbotUtils::subsequent_deposit_amts();
+        let mut second_deposit_amts = abbot_utils::subsequent_deposit_amts();
         let second_trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, second_deposit_amts, gates, second_forge_amt
         );
@@ -123,25 +123,25 @@ mod TestAbbot {
 
         assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
 
-        let mut expected_events: Span<Abbot::Event> = array![
-            Abbot::Event::TroveOpened(
-                Abbot::TroveOpened { user: trove_owner, trove_id: trove_id, }
+        let mut expected_events: Span<abbot_contract::Event> = array![
+            abbot_contract::Event::TroveOpened(
+                abbot_contract::TroveOpened { user: trove_owner, trove_id: trove_id, }
             ),
-            Abbot::Event::TroveOpened(
-                Abbot::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+            abbot_contract::Event::TroveOpened(
+                abbot_contract::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
             ),
         ]
             .span();
         common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let yangs: Array<ContractAddress> = ArrayTrait::new();
@@ -160,9 +160,9 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
 
-        let invalid_yang: ContractAddress = SentinelUtils::dummy_yang_addr();
+        let invalid_yang: ContractAddress = sentinel_utils::dummy_yang_addr();
         let mut yangs: Array<ContractAddress> = array![invalid_yang];
         let mut yang_amts: Array<u128> = array![WAD_SCALE];
         let forge_amt: Wad = 1_u128.into();
@@ -178,7 +178,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_close_trove_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         set_contract_address(trove_owner);
         abbot.close_trove(trove_id);
@@ -196,20 +196,20 @@ mod TestAbbot {
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt.is_zero(), 'wrong trove debt');
 
-        let mut expected_events: Span<Abbot::Event> = array![
-            Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id }),
+        let mut expected_events: Span<abbot_contract::Event> = array![
+            abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id }),
         ]
             .span();
         common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_close_non_owner_fail() {
-        let (_, _, abbot, _, _, _, trove_id, _, _) = AbbotUtils::deploy_abbot_and_open_trove();
+        let (_, _, abbot, _, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove();
 
         set_contract_address(common::badguy());
         abbot.close_trove(trove_id);
@@ -219,7 +219,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_deposit_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         set_contract_address(trove_owner);
         let mut yangs_copy = yangs;
@@ -253,15 +253,15 @@ mod TestAbbot {
 
         // Check that non-owner can deposit to trove
         let non_owner: ContractAddress = common::trove2_owner_addr();
-        let mut non_owner_deposit_amts: Span<u128> = AbbotUtils::subsequent_deposit_amts();
-        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
+        let mut non_owner_deposit_amts: Span<u128> = abbot_utils::subsequent_deposit_amts();
+        common::fund_user(non_owner, yangs, abbot_utils::initial_asset_amts());
 
         let mut yangs_copy = yangs;
         let mut gates_copy = gates;
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
-                    SentinelUtils::approve_max(*gates_copy.pop_front().unwrap(), *yang, non_owner);
+                    sentinel_utils::approve_max(*gates_copy.pop_front().unwrap(), *yang, non_owner);
 
                     let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
@@ -282,7 +282,7 @@ mod TestAbbot {
             };
         };
 
-        ShrineUtils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -290,7 +290,7 @@ mod TestAbbot {
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
@@ -304,7 +304,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
-        let (_, _, abbot, yangs, _) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let asset_addr = *yangs.at(0);
@@ -320,9 +320,9 @@ mod TestAbbot {
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
-        let asset_addr = SentinelUtils::dummy_yang_addr();
+        let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
 
         set_contract_address(trove_owner);
@@ -334,7 +334,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_non_existent_trove_fail() {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 1;
@@ -350,13 +350,13 @@ mod TestAbbot {
     )]
     fn test_deposit_exceeds_asset_cap_fail() {
         let (_, sentinel, abbot, yangs, gates, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let gate_addr: ContractAddress = *gates.at(0).contract_address;
         let gate_bal = IERC20Dispatcher { contract_address: asset_addr }.balance_of(gate_addr);
 
-        set_contract_address(SentinelUtils::admin());
+        set_contract_address(sentinel_utils::admin());
         let new_asset_max: u128 = gate_bal.try_into().unwrap();
         sentinel.set_yang_asset_max(asset_addr, new_asset_max);
 
@@ -369,7 +369,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_withdraw_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;
@@ -378,12 +378,12 @@ mod TestAbbot {
 
         assert(
             shrine
-                .get_deposit(asset_addr, trove_id) == (AbbotUtils::ETH_DEPOSIT_AMT - amount)
+                .get_deposit(asset_addr, trove_id) == (abbot_utils::ETH_DEPOSIT_AMT - amount)
                 .into(),
             'wrong yang amount'
         );
 
-        ShrineUtils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -391,7 +391,7 @@ mod TestAbbot {
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
@@ -406,9 +406,9 @@ mod TestAbbot {
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
-        let asset_addr = SentinelUtils::dummy_yang_addr();
+        let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
 
         set_contract_address(trove_owner);
@@ -420,7 +420,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_non_owner_fail() {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;
@@ -433,9 +433,9 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_forge_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, forge_amt) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
-        let additional_forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
+        let additional_forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
         set_contract_address(trove_owner);
         abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
 
@@ -445,7 +445,7 @@ mod TestAbbot {
             shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
 
-        ShrineUtils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -455,7 +455,7 @@ mod TestAbbot {
     )]
     fn test_forge_ltv_unsafe_fail() {
         let (shrine, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         set_contract_address(trove_owner);
@@ -466,7 +466,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_forge_non_owner_fail() {
-        let (_, _, abbot, _, _, _, trove_id, _, _) = AbbotUtils::deploy_abbot_and_open_trove();
+        let (_, _, abbot, _, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove();
 
         set_contract_address(common::badguy());
         abbot.forge(trove_id, WadZeroable::zero(), WadZeroable::zero());
@@ -476,7 +476,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_melt_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, start_forge_amt) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+            abbot_utils::deploy_abbot_and_open_trove();
 
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin: Wad = shrine.get_yin(trove_owner);
@@ -491,13 +491,13 @@ mod TestAbbot {
 
         // Test non-owner melting
         let non_owner: ContractAddress = common::trove2_owner_addr();
-        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(non_owner, yangs, abbot_utils::initial_asset_amts());
         let non_owner_forge_amt = start_forge_amt;
         common::open_trove_helper(
             abbot,
             non_owner,
             yangs,
-            AbbotUtils::open_trove_yang_asset_amts(),
+            abbot_utils::open_trove_yang_asset_amts(),
             gates,
             non_owner_forge_amt
         );
@@ -508,31 +508,31 @@ mod TestAbbot {
         let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
         assert(final_trove_debt.is_zero(), 'wrong trove debt');
 
-        ShrineUtils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
-        let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
         let trove_owner1: ContractAddress = common::trove1_owner_addr();
         let trove_owner2: ContractAddress = common::trove2_owner_addr();
 
-        let forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
-        common::fund_user(trove_owner1, yangs, AbbotUtils::initial_asset_amts());
-        common::fund_user(trove_owner2, yangs, AbbotUtils::initial_asset_amts());
+        let forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
+        common::fund_user(trove_owner1, yangs, abbot_utils::initial_asset_amts());
+        common::fund_user(trove_owner2, yangs, abbot_utils::initial_asset_amts());
 
         let first_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, forge_amt
         );
         let second_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner2, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, forge_amt
         );
         let third_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, forge_amt
         );
         let fourth_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner2, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, forge_amt
         );
 
         let mut expected_owner1_trove_ids: Array<u64> = array![first_trove_id, third_trove_id];

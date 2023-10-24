@@ -13,11 +13,11 @@ trait IFlashLiquidator<TContractState> {
 }
 
 #[starknet::contract]
-mod FlashLiquidator {
+mod flash_liquidator {
     use integer::BoundedInt;
     use starknet::{get_contract_address, ContractAddress};
 
-    use opus::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+    use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -30,7 +30,7 @@ mod FlashLiquidator {
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WadZeroable};
 
-    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
 
     #[storage]
@@ -115,7 +115,7 @@ mod FlashLiquidator {
                 .read()
                 .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
-            let mut provider_assets: Span<u128> = AbsorberUtils::provider_asset_amts();
+            let mut provider_assets: Span<u128> = absorber_utils::provider_asset_amts();
             let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut freed_assets_copy = freed_assets;
             loop {

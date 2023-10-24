@@ -1,9 +1,9 @@
 #[starknet::contract]
-mod Purger {
+mod purger {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
-    use opus::core::roles::PurgerRoles;
+    use opus::core::roles::purger_roles;
 
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -12,7 +12,7 @@ mod Purger {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 
     use opus::utils::access_control::access_control_component;
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::reentrancy_guard;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
@@ -130,7 +130,7 @@ mod Purger {
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(PurgerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(purger_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
@@ -188,7 +188,7 @@ mod Purger {
         // External
         //
         fn set_penalty_scalar(ref self: ContractState, new_scalar: Ray) {
-            self.access_control.assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
+            self.access_control.assert_has_role(purger_roles::SET_PENALTY_SCALAR);
             assert(
                 MIN_PENALTY_SCALAR.into() <= new_scalar && new_scalar <= MAX_PENALTY_SCALAR.into(),
                 'PU: Invalid scalar'
@@ -389,7 +389,7 @@ mod Purger {
             recipient: ContractAddress,
         ) -> Span<AssetBalance> {
             // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
@@ -422,7 +422,7 @@ mod Purger {
                 };
             };
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
 
             freed_assets.span()
         }

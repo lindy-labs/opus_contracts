@@ -1,4 +1,4 @@
-mod tests {
+mod test_wadray {
     use opus::utils::wadray;
     use opus::utils::wadray::{
         DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,

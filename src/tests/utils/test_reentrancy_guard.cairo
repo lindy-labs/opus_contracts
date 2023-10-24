@@ -1,14 +1,14 @@
-mod tests {
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+mod test_reentrancy_guard {
+    use opus::utils::reentrancy_guard::reentrancy_guard;
 
     fn guarded_func(recurse_once: bool) {
-        ReentrancyGuard::start();
+        reentrancy_guard::start();
 
         if recurse_once {
             guarded_func(false);
         }
 
-        ReentrancyGuard::end();
+        reentrancy_guard::end();
     }
 
     #[test]

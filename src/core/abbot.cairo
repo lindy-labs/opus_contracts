@@ -1,12 +1,12 @@
 #[starknet::contract]
-mod Abbot {
+mod abbot {
     use starknet::{ContractAddress, get_caller_address};
 
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::reentrancy_guard;
     use opus::utils::wadray::{BoundedWad, Wad};
 
     #[storage]
@@ -228,7 +228,7 @@ mod Abbot {
             ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance
         ) {
             // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             let yang_amt: Wad = self
                 .sentinel
@@ -236,7 +236,7 @@ mod Abbot {
                 .enter(yang_asset.address, user, trove_id, yang_asset.amount);
             self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
         }
 
         #[inline(always)]
@@ -248,12 +248,12 @@ mod Abbot {
             yang_amt: Wad
         ) {
             // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             self.sentinel.read().exit(yang, user, trove_id, yang_amt);
             self.shrine.read().withdraw(yang, trove_id, yang_amt);
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
         }
     }
 }

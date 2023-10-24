@@ -1,4 +1,4 @@
-mod tests {
+mod test_exp {
     use opus::utils::exp::exp;
     use opus::utils::wadray;
     use opus::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};

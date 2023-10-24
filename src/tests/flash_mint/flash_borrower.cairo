@@ -1,8 +1,8 @@
 #[starknet::contract]
-mod FlashBorrower {
+mod flash_borrower {
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
-    use opus::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+    use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};

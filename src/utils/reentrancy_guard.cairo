@@ -1,4 +1,4 @@
-mod ReentrancyGuard {
+mod reentrancy_guard {
     use starknet::SyscallResultTrait;
 
     use starknet::storage_access::StoreBool;

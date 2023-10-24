@@ -1,9 +1,9 @@
 #[starknet::contract]
-mod Sentinel {
+mod sentinel {
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use opus::core::roles::SentinelRoles;
+    use opus::core::roles::sentinel_roles;
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -100,7 +100,7 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        self.access_control.initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(sentinel_roles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
@@ -190,7 +190,7 @@ mod Sentinel {
             yang_rate: Ray,
             gate: ContractAddress
         ) {
-            self.access_control.assert_has_role(SentinelRoles::ADD_YANG);
+            self.access_control.assert_has_role(sentinel_roles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
             assert(gate.is_non_zero(), 'SE: Gate cannot be zero address');
             assert(
@@ -229,7 +229,7 @@ mod Sentinel {
         }
 
         fn set_yang_asset_max(ref self: ContractState, yang: ContractAddress, new_asset_max: u128) {
-            self.access_control.assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
+            self.access_control.assert_has_role(sentinel_roles::SET_YANG_ASSET_MAX);
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
@@ -241,7 +241,7 @@ mod Sentinel {
         }
 
         fn kill_gate(ref self: ContractState, yang: ContractAddress) {
-            self.access_control.assert_has_role(SentinelRoles::KILL_GATE);
+            self.access_control.assert_has_role(sentinel_roles::KILL_GATE);
 
             self.yang_is_live.write(yang, false);
 
@@ -249,12 +249,12 @@ mod Sentinel {
         }
 
         fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
-            self.access_control.assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(sentinel_roles::UPDATE_YANG_SUSPENSION);
             self.shrine.read().suspend_yang(yang);
         }
 
         fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
-            self.access_control.assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.access_control.assert_has_role(sentinel_roles::UPDATE_YANG_SUSPENSION);
             self.shrine.read().unsuspend_yang(yang);
         }
 
@@ -269,7 +269,7 @@ mod Sentinel {
             trove_id: u64,
             asset_amt: u128
         ) -> Wad {
-            self.access_control.assert_has_role(SentinelRoles::ENTER);
+            self.access_control.assert_has_role(sentinel_roles::ENTER);
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
 
@@ -284,7 +284,7 @@ mod Sentinel {
             trove_id: u64,
             yang_amt: Wad
         ) -> u128 {
-            self.access_control.assert_has_role(SentinelRoles::EXIT);
+            self.access_control.assert_has_role(sentinel_roles::EXIT);
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
 

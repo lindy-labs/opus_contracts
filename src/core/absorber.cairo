@@ -5,12 +5,12 @@
 // wadray-fixed-point arithmetic functions in their calculations. Consequently,
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
-mod Absorber {
+mod absorber {
     use cmp::min;
     use integer::u256_safe_divmod;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
-    use opus::core::roles::AbsorberRoles;
+    use opus::core::roles::absorber_roles;
 
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -231,7 +231,7 @@ mod Absorber {
         shrine: ContractAddress,
         sentinel: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(AbsorberRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(absorber_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
@@ -378,7 +378,7 @@ mod Absorber {
             blesser: ContractAddress,
             is_active: bool
         ) {
-            self.access_control.assert_has_role(AbsorberRoles::SET_REWARD);
+            self.access_control.assert_has_role(absorber_roles::SET_REWARD);
 
             assert(asset.is_non_zero() && blesser.is_non_zero(), 'ABS: Address cannot be 0');
 
@@ -593,7 +593,7 @@ mod Absorber {
 
         // Update assets received after an absorption
         fn update(ref self: ContractState, asset_balances: Span<AssetBalance>) {
-            self.access_control.assert_has_role(AbsorberRoles::UPDATE);
+            self.access_control.assert_has_role(absorber_roles::UPDATE);
 
             let current_epoch: u32 = self.current_epoch.read();
 
@@ -680,7 +680,7 @@ mod Absorber {
         }
 
         fn kill(ref self: ContractState) {
-            self.access_control.assert_has_role(AbsorberRoles::KILL);
+            self.access_control.assert_has_role(absorber_roles::KILL);
             self.is_live.write(false);
             self.emit(Killed {});
         }

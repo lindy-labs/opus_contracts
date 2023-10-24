@@ -1,8 +1,8 @@
 #[starknet::contract]
-mod Equalizer {
+mod equalizer {
     use starknet::ContractAddress;
 
-    use opus::core::roles::EqualizerRoles;
+    use opus::core::roles::equalizer_roles;
 
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
@@ -74,7 +74,7 @@ mod Equalizer {
         shrine: ContractAddress,
         allocator: ContractAddress
     ) {
-        self.access_control.initializer(admin, Option::Some(EqualizerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -106,7 +106,7 @@ mod Equalizer {
 
         // Update the Allocator's address
         fn set_allocator(ref self: ContractState, allocator: ContractAddress) {
-            self.access_control.assert_has_role(EqualizerRoles::SET_ALLOCATOR);
+            self.access_control.assert_has_role(equalizer_roles::SET_ALLOCATOR);
 
             let old_address: ContractAddress = self.allocator.read().contract_address;
             self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
