@@ -1,3 +1,4 @@
+use cmp::min;
 use integer::{u256_safe_div_rem, u256_try_as_non_zero};
 use starknet::{ContractAddress, StorePacking};
 
@@ -63,7 +64,11 @@ struct YangRedistribution {
     // This is packed into bits 0 to 127.
     unit_debt: Wad,
     // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
-    // This is packed into bits 128 to 250, since the error should never approach close to 2 ** 122
+    // This is packed into bits 128 to 250.
+    // Note that the error should never approach close to 2 ** 122, but it is capped to this 
+    // value anyway to prevent redistributions from failing in this unlikely scenario, at the 
+    // expense of some amount of redistributed debt not being attributed to troves. These 
+    // unattributed amounts will be backed by the initial yang amounts instead.
     error: Wad,
     // Whether the exception flow is triggered to redistribute the yang across all yangs
     // This is packed into bit 251
@@ -72,8 +77,9 @@ struct YangRedistribution {
 
 impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252> {
     fn pack(value: YangRedistribution) -> felt252 {
+        let capped_error: u128 = min(value.error.val, TWO_POW_122.try_into().unwrap());
         (value.unit_debt.into()
-            + (value.error.into() * TWO_POW_128)
+            + (capped_error.into() * TWO_POW_128)
             + (value.exception.into() * TWO_POW_250))
     }
 
@@ -110,13 +116,19 @@ struct DistributionInfo {
     // This is packed into bits 0 to 127.
     asset_amt_per_share: u128,
     // Error to be added to next absorption
-    // This is packed into bits 128 to 251, since the error should never approach close to 2 ** 123.
+    // This is packed into bits 128 to 251. 
+    // Note that the error should never approach close to 2 ** 123, but it is capped to this value anyway
+    // to prevent redistributions from failing in this unlikely scenario, at the expense of providers 
+    // losing out on some absorbed assets.
     error: u128,
 }
 
+const MAX_DISTRIBUTION_INFO_ERROR: u128 = 0x8000000000000000000000000000000;
+
 impl DistributionInfoStorePacking of StorePacking<DistributionInfo, felt252> {
     fn pack(value: DistributionInfo) -> felt252 {
-        value.asset_amt_per_share.into() + (value.error.into() * TWO_POW_128)
+        let capped_error: u128 = min(value.error, MAX_DISTRIBUTION_INFO_ERROR);
+        value.asset_amt_per_share.into() + (capped_error.into() * TWO_POW_128)
     }
 
     fn unpack(value: felt252) -> DistributionInfo {
