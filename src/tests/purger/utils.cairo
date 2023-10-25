@@ -532,7 +532,7 @@ mod PurgerUtils {
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
     // yang prices
-    fn adjust_prices_for_trove_ltv(
+    fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
         mock_pragma: IMockPragmaDispatcher,
         yangs: Span<ContractAddress>,

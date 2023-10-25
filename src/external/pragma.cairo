@@ -271,7 +271,7 @@ mod Pragma {
             let can_force_update: bool = AccessControl::has_role(
                 PragmaRoles::UPDATE_PRICES, get_caller_address()
             );
-            assert(can_update | can_force_update, 'PGM: Too soon to update prices');
+            assert(can_update || can_force_update, 'PGM: Too soon to update prices');
 
             let block_timestamp: u64 = get_block_timestamp();
             let mut idx: u32 = LOOP_START;

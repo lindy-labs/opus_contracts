@@ -272,14 +272,6 @@ mod Absorber {
             self.provisions.read(provider)
         }
 
-        fn get_provider_yin(self: @ContractState, provider: ContractAddress) -> Wad {
-            let provision: Provision = self.provisions.read(provider);
-            let current_provider_shares: Wad = self
-                .convert_epoch_shares(provision.epoch, self.current_epoch.read(), provision.shares);
-
-            self.convert_to_yin(current_provider_shares)
-        }
-
         fn get_provider_last_absorption(self: @ContractState, provider: ContractAddress) -> u32 {
             self.provider_last_absorption.read(provider)
         }

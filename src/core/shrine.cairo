@@ -20,7 +20,6 @@ mod Shrine {
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
 
-    use debug::PrintTrait;
     //
     // Constants
     //

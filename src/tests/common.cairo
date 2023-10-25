@@ -220,11 +220,11 @@ fn get_token_balances(
 // converts it to yang units.
 #[inline(always)]
 fn get_erc20_bal_as_yang(
-    gate: IGateDispatcher, asset: ContractAddress, addr: ContractAddress
+    gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress
 ) -> Wad {
     gate
         .convert_to_yang(
-            IERC20Dispatcher { contract_address: asset }.balance_of(addr).try_into().unwrap()
+            IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap()
         )
 }
 

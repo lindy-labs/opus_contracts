@@ -13,7 +13,6 @@ trait IAbsorber<TContractState> {
     fn get_absorption_epoch(self: @TContractState, absorption_id: u32) -> u32;
     fn get_total_shares_for_current_epoch(self: @TContractState) -> Wad;
     fn get_provision(self: @TContractState, provider: ContractAddress) -> Provision;
-    fn get_provider_yin(self: @TContractState, provider: ContractAddress) -> Wad;
     fn get_provider_last_absorption(self: @TContractState, provider: ContractAddress) -> u32;
     fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
     fn get_asset_absorption(
