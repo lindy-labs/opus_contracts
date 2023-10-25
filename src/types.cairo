@@ -75,9 +75,12 @@ struct YangRedistribution {
     exception: bool,
 }
 
+// 2 ** 122 - 1
+const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x3ffffffffffffffffffffffffffffff;
+
 impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252> {
     fn pack(value: YangRedistribution) -> felt252 {
-        let capped_error: u128 = min(value.error.val, TWO_POW_122.try_into().unwrap());
+        let capped_error: u128 = min(value.error.val, MAX_YANG_REDISTRIBUTION_ERROR);
         (value.unit_debt.into()
             + (capped_error.into() * TWO_POW_128)
             + (value.exception.into() * TWO_POW_250))
@@ -123,7 +126,8 @@ struct DistributionInfo {
     error: u128,
 }
 
-const MAX_DISTRIBUTION_INFO_ERROR: u128 = 0x8000000000000000000000000000000;
+// 2 ** 123 - 1
+const MAX_DISTRIBUTION_INFO_ERROR: u128 = 0x7ffffffffffffffffffffffffffffff;
 
 impl DistributionInfoStorePacking of StorePacking<DistributionInfo, felt252> {
     fn pack(value: DistributionInfo) -> felt252 {
