@@ -1,4 +1,3 @@
-use array::ArrayTrait;
 use debug::PrintTrait;
 use starknet::{
     deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
@@ -8,7 +7,7 @@ use starknet::{
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
-use opus::core::shrine::Shrine;
+use opus::core::shrine::shrine;
 
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{
@@ -21,8 +20,8 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray;
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
-use opus::tests::sentinel::utils::SentinelUtils;
-use opus::tests::shrine::utils::ShrineUtils;
+use opus::tests::sentinel::utils::sentinel_utils;
+use opus::tests::shrine::utils::shrine_utils;
 
 //
 // Constants
@@ -110,7 +109,7 @@ impl RewardPartialEq of PartialEq<Reward> {
 // Helper function to advance timestamp by the given intervals
 #[inline(always)]
 fn advance_intervals(intervals: u64) {
-    set_block_timestamp(get_block_timestamp() + (intervals * Shrine::TIME_INTERVAL));
+    set_block_timestamp(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
 
 // Helper function to deploy a token
@@ -166,7 +165,7 @@ fn open_trove_helper(
             Option::Some(yang) => {
                 // Approve Gate to transfer from user
                 let gate: IGateDispatcher = *gates.pop_front().unwrap();
-                SentinelUtils::approve_max(gate, *yang, user);
+                sentinel_utils::approve_max(gate, *yang, user);
             },
             Option::None => { break; }
         };

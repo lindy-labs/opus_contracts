@@ -1,4 +1,4 @@
-mod FlashmintUtils {
+mod flash_mint_utils {
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
@@ -6,8 +6,8 @@ mod FlashmintUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::flashmint::FlashMint;
-    use opus::core::roles::ShrineRoles;
+    use opus::core::flash_mint::flash_mint as flash_mint_contract;
+    use opus::core::roles::shrine_roles;
 
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -15,8 +15,8 @@ mod FlashmintUtils {
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WAD_ONE};
 
-    use opus::tests::flashmint::flash_borrower::FlashBorrower;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::flash_mint::flash_borrower::flash_borrower as flash_borrower_contract;
+    use opus::tests::shrine::utils::shrine_utils;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
     const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
@@ -31,7 +31,7 @@ mod FlashmintUtils {
         let mut calldata = array![contract_address_to_felt252(shrine)];
 
         let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(
-            FlashMint::TEST_CLASS_HASH
+            flash_mint_contract::TEST_CLASS_HASH
         )
             .unwrap();
         let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false)
@@ -39,30 +39,30 @@ mod FlashmintUtils {
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
-        shrine_accesscontrol.grant_role(ShrineRoles::flash_mint(), flashmint_addr);
+        shrine_accesscontrol.grant_role(shrine_roles::flash_mint(), flashmint_addr);
 
         flashmint
     }
 
     fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
-        let shrine: ContractAddress = ShrineUtils::shrine_deploy();
+        let shrine: ContractAddress = shrine_utils::shrine_deploy();
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
 
         let shrine_dispatcher = IShrineDispatcher { contract_address: shrine };
 
-        ShrineUtils::shrine_setup(shrine);
-        ShrineUtils::advance_prices_and_set_multiplier(
+        shrine_utils::shrine_setup(shrine);
+        shrine_utils::advance_prices_and_set_multiplier(
             shrine_dispatcher,
             3,
-            ShrineUtils::three_yang_addrs(),
+            shrine_utils::three_yang_addrs(),
             array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()]
                 .span(),
         );
 
         // Mint some yin in shrine
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         shrine_dispatcher.inject(ContractAddressZeroable::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)
     }
@@ -71,7 +71,7 @@ mod FlashmintUtils {
         let mut calldata = array![contract_address_to_felt252(flashmint)];
 
         let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(
-            FlashBorrower::TEST_CLASS_HASH
+            flash_borrower_contract::TEST_CLASS_HASH
         )
             .unwrap();
         let (flash_borrower_addr, _) = deploy_syscall(

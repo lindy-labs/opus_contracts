@@ -1,17 +1,32 @@
 #[starknet::contract]
-mod Controller {
+mod controller {
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
 
-    use opus::core::roles::ControllerRoles;
+    use opus::core::roles::controller_roles;
 
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::math;
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, Ray, RAY_ONE};
     use opus::utils::wadray_signed;
     use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    // 
+    // Constants
+    //
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
@@ -21,9 +36,18 @@ mod Controller {
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
     const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
+    // 
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
+        // Shrine associated with this Controller
         shrine: IShrineDispatcher,
+        // parameters
         yin_previous_price: Wad,
         yin_price_last_updated: u64,
         i_term_last_updated: u64,
@@ -40,6 +64,7 @@ mod Controller {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         ParameterUpdated: ParameterUpdated,
         GainUpdated: GainUpdated,
     }
@@ -70,7 +95,9 @@ mod Controller {
         alpha_i: u8,
         beta_i: u8,
     ) {
-        AccessControl::initializer(admin, Option::Some(ControllerRoles::default_admin_role()));
+        self
+            .access_control
+            .initializer(admin, Option::Some(controller_roles::default_admin_role()));
 
         // Setting `i_term_last_updated` to the current timestamp to
         // ensure that the integral term is correctly updated
@@ -159,14 +186,14 @@ mod Controller {
 
 
         fn set_p_gain(ref self: ContractState, p_gain: Ray) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
             self.p_gain.write(p_gain.into());
             self.emit(GainUpdated { name: 'p_gain', value: p_gain });
         }
 
 
         fn set_i_gain(ref self: ContractState, i_gain: Ray) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
 
             // Since `i_term_last_updated` isn't updated in `update_multiplier`
             // while `i_gain` is zero, we must update it here whenever the
@@ -187,7 +214,7 @@ mod Controller {
 
 
         fn set_alpha_p(ref self: ContractState, alpha_p: u8) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
             assert(alpha_p % 2 == 1, 'CTR: alpha_p must be odd');
             self.alpha_p.write(alpha_p);
             self.emit(ParameterUpdated { name: 'alpha_p', value: alpha_p });
@@ -195,7 +222,7 @@ mod Controller {
 
 
         fn set_beta_p(ref self: ContractState, beta_p: u8) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
             assert(beta_p % 2 == 0, 'CTR: beta_p must be even');
             self.beta_p.write(beta_p);
             self.emit(ParameterUpdated { name: 'beta_p', value: beta_p });
@@ -203,7 +230,7 @@ mod Controller {
 
 
         fn set_alpha_i(ref self: ContractState, alpha_i: u8) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
             assert(alpha_i % 2 == 1, 'CTR: alpha_i must be odd');
             self.alpha_i.write(alpha_i);
             self.emit(ParameterUpdated { name: 'alpha_i', value: alpha_i });
@@ -211,7 +238,7 @@ mod Controller {
 
 
         fn set_beta_i(ref self: ContractState, beta_i: u8) {
-            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
             assert(beta_i % 2 == 0, 'CTR: beta_i must be even');
             self.beta_i.write(beta_i);
             self.emit(ParameterUpdated { name: 'beta_i', value: beta_i });
@@ -274,49 +301,6 @@ mod Controller {
             MIN_MULTIPLIER.into()
         } else {
             multiplier
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

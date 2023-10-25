@@ -5,21 +5,32 @@
 // wadray-fixed-point arithmetic functions in their calculations. Consequently,
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
-mod Absorber {
+mod absorber {
     use cmp::min;
     use integer::u256_safe_divmod;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
-    use opus::core::roles::AbsorberRoles;
+    use opus::core::roles::absorber_roles;
 
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
     // Constants
@@ -68,7 +79,12 @@ mod Absorber {
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
+        // Sentinel associated with the Shrine for this Absorber
         sentinel: ISentinelDispatcher,
+        // Shrine associated with this Absorber
         shrine: IShrineDispatcher,
         // boolean flag indicating whether the absorber is live or not
         is_live: bool,
@@ -128,6 +144,7 @@ mod Absorber {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,
         Provide: Provide,
@@ -214,7 +231,7 @@ mod Absorber {
         shrine: ContractAddress,
         sentinel: ContractAddress,
     ) {
-        AccessControl::initializer(admin, Option::Some(AbsorberRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(absorber_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
@@ -361,7 +378,7 @@ mod Absorber {
             blesser: ContractAddress,
             is_active: bool
         ) {
-            AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
+            self.access_control.assert_has_role(absorber_roles::SET_REWARD);
 
             assert(asset.is_non_zero() && blesser.is_non_zero(), 'ABS: Address cannot be 0');
 
@@ -568,7 +585,7 @@ mod Absorber {
 
         // Update assets received after an absorption
         fn update(ref self: ContractState, asset_balances: Span<AssetBalance>) {
-            AccessControl::assert_has_role(AbsorberRoles::UPDATE);
+            self.access_control.assert_has_role(absorber_roles::UPDATE);
 
             let current_epoch: u32 = self.current_epoch.read();
 
@@ -655,7 +672,7 @@ mod Absorber {
         }
 
         fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(AbsorberRoles::KILL);
+            self.access_control.assert_has_role(absorber_roles::KILL);
             self.is_live.write(false);
             self.emit(Killed {});
         }
@@ -951,15 +968,6 @@ mod Absorber {
         // Internal - helpers for remove
         //
 
-        // Returns shrine global LTV divided by the global LTV threshold
-        fn get_shrine_ltv_to_threshold(self: @ContractState) -> Ray {
-            let shrine = self.shrine.read();
-            let (threshold, value) = shrine.get_shrine_threshold_and_value();
-            let debt: Wad = shrine.get_total_debt();
-            let ltv: Ray = wadray::rdiv_ww(debt, value);
-            wadray::rdiv(ltv, threshold)
-        }
-
         fn assert_can_remove(self: @ContractState, request: Request) {
             let (recovery_mode_threshold, shrine_ltv) = self
                 .shrine
@@ -1188,48 +1196,5 @@ mod Absorber {
     #[inline(always)]
     fn is_operational_helper(total_shares: Wad) -> bool {
         total_shares >= MINIMUM_SHARES.into()
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
-        }
     }
 }

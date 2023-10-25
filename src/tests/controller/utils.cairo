@@ -1,4 +1,4 @@
-mod ControllerUtils {
+mod controller_utils {
     use debug::PrintTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
@@ -7,8 +7,8 @@ mod ControllerUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use opus::core::controller::Controller;
-    use opus::core::roles::ShrineRoles;
+    use opus::core::controller::controller as controller_contract;
+    use opus::core::roles::shrine_roles;
 
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -18,7 +18,7 @@ mod ControllerUtils {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad};
 
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
@@ -39,8 +39,8 @@ mod ControllerUtils {
     }
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
-        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
-        ShrineUtils::make_root(shrine_addr, ShrineUtils::admin());
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
+        shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
@@ -54,15 +54,15 @@ mod ControllerUtils {
         ];
 
         let controller_class_hash: ClassHash = class_hash_try_from_felt252(
-            Controller::TEST_CLASS_HASH
+            controller_contract::TEST_CLASS_HASH
         )
             .unwrap();
         let (controller_addr, _) = deploy_syscall(controller_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::controller(), controller_addr);
+        set_contract_address(shrine_utils::admin());
+        shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 
@@ -74,7 +74,7 @@ mod ControllerUtils {
 
     #[inline(always)]
     fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         shrine.update_yin_spot_price(spot_price);
         set_contract_address(ContractAddressZeroable::zero());
     }

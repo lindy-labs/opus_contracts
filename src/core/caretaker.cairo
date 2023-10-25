@@ -1,9 +1,9 @@
 #[starknet::contract]
-mod Caretaker {
+mod caretaker {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use opus::core::roles::CaretakerRoles;
+    use opus::core::roles::caretaker_roles;
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
@@ -12,10 +12,21 @@ mod Caretaker {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-    use opus::utils::access_control::{AccessControl, IAccessControl};
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::access_control::access_control_component;
+    use opus::utils::reentrancy_guard::reentrancy_guard;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
     // Constants
@@ -24,8 +35,15 @@ mod Caretaker {
     // A dummy trove ID for Caretaker, required in Gate to emit events
     const DUMMY_TROVE_ID: u64 = 0;
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // Abbot associated with the Shrine for this Caretaker
         abbot: IAbbotDispatcher,
         // Equalizer associated with the Shrine for this Caretaker
@@ -43,6 +61,7 @@ mod Caretaker {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         Shut: Shut,
         Release: Release,
         Reclaim: Reclaim,
@@ -81,7 +100,7 @@ mod Caretaker {
         sentinel: ContractAddress,
         equalizer: ContractAddress
     ) {
-        AccessControl::initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(caretaker_roles::default_admin_role()));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -169,7 +188,7 @@ mod Caretaker {
 
         // Admin will initially have access to `shut`.
         fn shut(ref self: ContractState) {
-            AccessControl::assert_has_role(CaretakerRoles::SHUT);
+            self.access_control.assert_has_role(caretaker_roles::SHUT);
 
             let shrine: IShrineDispatcher = self.shrine.read();
 
@@ -241,7 +260,7 @@ mod Caretaker {
             assert(shrine.get_live() == false, 'CA: System is live');
 
             // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             // Assert caller is trove owner
             let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id);
@@ -277,7 +296,7 @@ mod Caretaker {
 
             self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
             released_assets.span()
         }
 
@@ -303,7 +322,7 @@ mod Caretaker {
             assert(shrine.get_live() == false, 'CA: System is live');
 
             // reentrancy guard is used as a precaution
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             let caller = get_caller_address();
 
@@ -337,51 +356,8 @@ mod Caretaker {
 
             self.emit(Reclaim { user: caller, yin_amt: yin, assets: reclaimable_assets });
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
             reclaimable_assets
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

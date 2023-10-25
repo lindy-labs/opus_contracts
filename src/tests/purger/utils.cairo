@@ -1,4 +1,4 @@
-mod PurgerUtils {
+mod purger_utils {
     use cmp::min;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
@@ -8,9 +8,9 @@ mod PurgerUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::absorber::Absorber;
-    use opus::core::purger::Purger;
-    use opus::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
+    use opus::core::absorber::absorber as absorber_contract;
+    use opus::core::purger::purger as purger_contract;
+    use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
@@ -26,17 +26,15 @@ mod PurgerUtils {
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
     };
 
-    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::external::mock_pragma::{
-        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
-    };
-    use opus::tests::external::utils::PragmaUtils;
+    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::tests::external::utils::pragma_utils;
     use opus::tests::purger::flash_liquidator::{
-        FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
+        flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
     };
-    use opus::tests::sentinel::utils::SentinelUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     use debug::PrintTrait;
 
@@ -270,9 +268,9 @@ mod PurgerUtils {
 
     fn inoperational_absorber_yin_cases() -> Span<Wad> {
         array![ // minimum amount that must be provided based on initial shares
-            Absorber::INITIAL_SHARES
+            absorber_contract::INITIAL_SHARES
                 .into(), // largest possible amount of yin in Absorber based on initial shares
-            (Absorber::MINIMUM_SHARES - 1).into()
+            (absorber_contract::MINIMUM_SHARES - 1).into()
         ]
             .span()
     }
@@ -282,7 +280,7 @@ mod PurgerUtils {
     fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         array![
             // smallest possible amount of yin in Absorber based on initial shares
-            Absorber::MINIMUM_SHARES.into(),
+            absorber_contract::MINIMUM_SHARES.into(),
             (trove_debt.val / 3).into(),
             (trove_debt.val - 1000).into(),
             // trove's debt minus the smallest unit of Wad
@@ -304,31 +302,31 @@ mod PurgerUtils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy();
 
-        let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
-        let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
-        AbsorberUtils::deploy_blesser_for_rewards(
+        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
+        absorber_utils::deploy_blesser_for_rewards(
             absorber, reward_tokens, reward_amts_per_blessing
         );
 
-        let (_, oracle, _, mock_pragma) = PragmaUtils::pragma_deploy_with_shrine(
+        let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
         );
-        PragmaUtils::add_yangs_to_pragma(oracle, yangs);
+        pragma_utils::add_yangs_to_pragma(oracle, yangs);
 
         // Seed initial prices for ETH and WBTC in Pragma
         let current_ts = get_block_timestamp();
-        PragmaUtils::mock_valid_price_update(
+        pragma_utils::mock_valid_price_update(
             mock_pragma,
-            PragmaUtils::ETH_USD_PAIR_ID,
-            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE),
+            pragma_utils::ETH_USD_PAIR_ID,
+            pragma_utils::convert_price_to_pragma_scale(pragma_utils::ETH_INIT_PRICE),
             current_ts
         );
-        PragmaUtils::mock_valid_price_update(
+        pragma_utils::mock_valid_price_update(
             mock_pragma,
-            PragmaUtils::WBTC_USD_PAIR_ID,
-            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::WBTC_INIT_PRICE),
+            pragma_utils::WBTC_USD_PAIR_ID,
+            pragma_utils::convert_price_to_pragma_scale(pragma_utils::WBTC_INIT_PRICE),
             current_ts
         );
         IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
@@ -343,7 +341,9 @@ mod PurgerUtils {
             contract_address_to_felt252(oracle.contract_address)
         ];
 
-        let purger_class_hash: ClassHash = class_hash_try_from_felt252(Purger::TEST_CLASS_HASH)
+        let purger_class_hash: ClassHash = class_hash_try_from_felt252(
+            purger_contract::TEST_CLASS_HASH
+        )
             .unwrap();
         let (purger_addr, _) = deploy_syscall(purger_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
@@ -352,26 +352,26 @@ mod PurgerUtils {
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::purger(), purger_addr);
+        set_contract_address(shrine_utils::admin());
+        shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        set_contract_address(SentinelUtils::admin());
-        sentinel_ac.grant_role(SentinelRoles::purger(), purger_addr);
+        set_contract_address(sentinel_utils::admin());
+        sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
         // Approve Purger in Oracle
         let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
-        set_contract_address(PragmaUtils::admin());
-        oracle_ac.grant_role(PragmaRoles::purger(), purger_addr);
+        set_contract_address(pragma_utils::admin());
+        oracle_ac.grant_role(pragma_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        set_contract_address(AbsorberUtils::admin());
-        absorber_ac.grant_role(AbsorberRoles::purger(), purger_addr);
+        set_contract_address(absorber_utils::admin());
+        absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
@@ -411,7 +411,7 @@ mod PurgerUtils {
         ];
 
         let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(
-            FlashLiquidator::TEST_CLASS_HASH
+            flash_liquidator::TEST_CLASS_HASH
         )
             .unwrap();
         let (flash_liquidator_addr, _) = deploy_syscall(
@@ -443,11 +443,11 @@ mod PurgerUtils {
         gates: Span<IGateDispatcher>,
         amt: Wad,
     ) {
-        AbsorberUtils::provide_to_absorber(
+        absorber_utils::provide_to_absorber(
             shrine,
             abbot,
             absorber,
-            AbsorberUtils::provider_1(),
+            absorber_utils::provider_1(),
             yangs,
             recipient_trove_yang_asset_amts(),
             gates,
@@ -482,7 +482,7 @@ mod PurgerUtils {
 
     // Update thresholds for all yangs to the given value
     fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
@@ -501,8 +501,8 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
-        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
-        set_contract_address(ShrineUtils::admin());
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - pragma_utils::PRAGMA_DECIMALS);
+        set_contract_address(shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -517,7 +517,7 @@ mod PurgerUtils {
                     // the target LTV.
                     shrine.advance(*yang, new_price);
 
-                    PragmaUtils::mock_valid_price_update(
+                    pragma_utils::mock_valid_price_update(
                         mock_pragma,
                         *yang_pair_ids.pop_front().unwrap(),
                         new_pragma_price,
@@ -628,7 +628,7 @@ mod PurgerUtils {
 
         let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
         assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
-        if ltv < (RAY_ONE - Purger::COMPENSATION_PCT).into() {
+        if ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
             assert(penalty.is_zero(), 'penalty should be 0');
@@ -642,7 +642,7 @@ mod PurgerUtils {
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
-        let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
+        let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
         let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
