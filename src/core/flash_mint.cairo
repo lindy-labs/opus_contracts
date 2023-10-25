@@ -37,9 +37,7 @@ mod flash_mint {
         path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
     );
 
-    #[abi(embed_v0)]
-    impl ReentrancyGuardHelpers =
-        reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
+    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     #[storage]
     struct Storage {
