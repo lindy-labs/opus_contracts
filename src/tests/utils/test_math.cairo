@@ -1,4 +1,4 @@
-mod tests {
+mod test_math {
     use debug::PrintTrait;
 
     use integer::BoundedU128;

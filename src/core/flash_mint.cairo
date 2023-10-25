@@ -15,13 +15,13 @@
 //
 
 #[starknet::contract]
-mod FlashMint {
+mod flash_mint {
     use starknet::{ContractAddress, get_caller_address};
 
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::reentrancy_guard;
     use opus::utils::wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -100,7 +100,7 @@ mod FlashMint {
             // prevents looping which would lead to excessive minting
             // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
             // yin to be minted, as per spec
-            ReentrancyGuard::start();
+            reentrancy_guard::start();
 
             assert(amount <= self.max_flash_loan(token), 'FM: amount exceeds maximum');
 
@@ -122,7 +122,7 @@ mod FlashMint {
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 
-            ReentrancyGuard::end();
+            reentrancy_guard::end();
 
             true
         }

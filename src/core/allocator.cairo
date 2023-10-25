@@ -1,19 +1,41 @@
 #[starknet::contract]
-mod Allocator {
+mod allocator {
     use starknet::ContractAddress;
 
-    use opus::core::roles::AllocatorRoles;
+    use opus::core::roles::allocator_roles;
 
     use opus::interfaces::IAllocator::IAllocator;
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Constants
+    //
 
     // Helper constant to set the starting index for iterating over the recipients
     // and percentages in the order they were added
     const LOOP_START: u32 = 1;
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // Number of recipients in the current allocation
         recipients_count: u32,
         // Starts from index 1
@@ -35,6 +57,7 @@ mod Allocator {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         AllocationUpdated: AllocationUpdated,
     }
 
@@ -55,7 +78,7 @@ mod Allocator {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
     ) {
-        AccessControl::initializer(admin, Option::Some(AllocatorRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
 
         self.set_allocation_helper(recipients, percentages);
     }
@@ -101,7 +124,7 @@ mod Allocator {
         fn set_allocation(
             ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
         ) {
-            AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
+            self.access_control.assert_has_role(allocator_roles::SET_ALLOCATION);
 
             self.set_allocation_helper(recipients, percentages);
         }
@@ -151,49 +174,6 @@ mod Allocator {
             self.recipients_count.write(recipients_len);
 
             self.emit(AllocationUpdated { recipients, percentages });
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

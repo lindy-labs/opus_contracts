@@ -1,15 +1,15 @@
-mod TestShrineRedistribution {
+mod test_shrine_redistribution {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
-    use opus::core::shrine::Shrine;
+    use opus::core::shrine::shrine as shrine_contract;
 
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ExceptionalYangRedistribution, YangBalance, YangRedistribution};
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
 
     use debug::PrintTrait;
@@ -29,21 +29,21 @@ mod TestShrineRedistribution {
     const TROVE3_FORGE_AMT: u128 = 2222000000000000000000; // 2_222 (Wad)
 
     fn setup_trove1(shrine: IShrineDispatcher) {
-        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang2_addr = ShrineUtils::yang2_addr();
+        let yang1_addr = shrine_utils::yang1_addr();
+        let yang2_addr = shrine_utils::yang2_addr();
 
         let trove1_owner = common::trove1_owner_addr();
-        shrine.deposit(yang1_addr, common::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.deposit(yang2_addr, common::TROVE_1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang1_addr, common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, common::TROVE_1, shrine_utils::TROVE1_YANG2_DEPOSIT.into());
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+                trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), 0_u128.into()
             );
     }
 
     fn setup_trove2(shrine: IShrineDispatcher) {
-        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang2_addr = ShrineUtils::yang2_addr();
+        let yang1_addr = shrine_utils::yang1_addr();
+        let yang2_addr = shrine_utils::yang2_addr();
 
         let trove2_owner = common::trove2_owner_addr();
         shrine.deposit(yang1_addr, common::TROVE_2, TROVE2_YANG1_DEPOSIT.into());
@@ -52,10 +52,10 @@ mod TestShrineRedistribution {
     }
 
     fn setup_trove3(shrine: IShrineDispatcher) {
-        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang2_addr = ShrineUtils::yang2_addr();
+        let yang1_addr = shrine_utils::yang1_addr();
+        let yang2_addr = shrine_utils::yang2_addr();
 
-        let trove3_owner = ShrineUtils::common::trove3_owner_addr();
+        let trove3_owner = shrine_utils::common::trove3_owner_addr();
         shrine.deposit(yang1_addr, common::TROVE_3, TROVE3_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, common::TROVE_3, TROVE3_YANG2_DEPOSIT.into());
         shrine.forge(trove3_owner, common::TROVE_3, TROVE3_FORGE_AMT.into(), 0_u128.into());
@@ -65,9 +65,9 @@ mod TestShrineRedistribution {
     // - Trove 1 deposits and forges the amounts specified in `src/tests/shrine/utils.cairo`
     // - Troves 2 and 3 deposits and forges the amounts specified in this file
     fn redistribution_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
         setup_trove2(shrine);
         setup_trove3(shrine);
@@ -128,7 +128,7 @@ mod TestShrineRedistribution {
                     );
                     cumulative_redistributed_debt += expected_yang_debt;
                     let remainder = trove_debt - cumulative_redistributed_debt;
-                    if remainder < Shrine::ROUNDING_THRESHOLD.into() {
+                    if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
                         expected_yang_debt += remainder;
                         cumulative_redistributed_debt += remainder;
                     }
@@ -145,7 +145,7 @@ mod TestShrineRedistribution {
 
                     expected_errors.append(expected_error);
 
-                    if remainder < Shrine::ROUNDING_THRESHOLD.into() {
+                    if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
                         break;
                     }
                 },
@@ -205,7 +205,7 @@ mod TestShrineRedistribution {
                     let tmp_cumulative_redistributed_debt = cumulative_redistributed_debt
                         + expected_yang_debt;
                     let remainder = redistributed_trove_debt - tmp_cumulative_redistributed_debt;
-                    if remainder < Shrine::ROUNDING_THRESHOLD.into() {
+                    if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
                         expected_yang_debt += remainder;
                     }
 
@@ -269,14 +269,14 @@ mod TestShrineRedistribution {
 
         let redistributed_trove: u64 = common::TROVE_1;
         let recipient_trove: u64 = common::TROVE_2;
-        let yangs: Span<ContractAddress> = ShrineUtils::two_yang_addrs_reversed();
+        let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
         let (trove1_yang_values, expected_unit_debts, expected_errors, expected_remaining_yangs) =
             preview_trove_redistribution(
             shrine, yangs, redistributed_trove
         );
 
         // Simulate purge with 0 yin to update the trove's debt
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let trove1_owner = common::trove1_owner_addr();
         let (_, _, trove1_value, trove1_debt) = shrine.get_trove_info(redistributed_trove);
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
@@ -334,9 +334,9 @@ mod TestShrineRedistribution {
             'wrong id'
         );
 
-        let mut expected_events: Span<Shrine::Event> = array![
-            Shrine::Event::TroveRedistributed(
-                Shrine::TroveRedistributed {
+        let mut expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::TroveRedistributed(
+                shrine_contract::TroveRedistributed {
                     redistribution_id: expected_redistribution_id,
                     trove_id: redistributed_trove,
                     debt: trove1_debt,
@@ -345,7 +345,7 @@ mod TestShrineRedistribution {
         ]
             .span();
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
 
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
@@ -359,13 +359,13 @@ mod TestShrineRedistribution {
         let redistributed_trove2: u64 = common::TROVE_2;
         let recipient_trove: u64 = common::TROVE_3;
 
-        let yangs: Span<ContractAddress> = ShrineUtils::two_yang_addrs_reversed();
+        let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
         let (_, _, expected_redistributed_trove1_errors, _) = preview_trove_redistribution(
             shrine, yangs, redistributed_trove1
         );
 
         // Perform first redistribution - covered by previous test
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         shrine.melt(common::trove1_owner_addr(), redistributed_trove1, WadZeroable::zero());
 
         let (_, _, _, redistributed_trove1_debt) = shrine.get_trove_info(redistributed_trove1);
@@ -448,7 +448,7 @@ mod TestShrineRedistribution {
             'wrong id'
         );
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
     }
 
     // Parametrized test to check that partial redistribution of a trove results in the correct
@@ -484,7 +484,7 @@ mod TestShrineRedistribution {
                                 let mut trove2_yang_deposits = trove2_yang_deposits.span();
 
                                 let yangs: Span<ContractAddress> =
-                                    ShrineUtils::two_yang_addrs_reversed();
+                                    shrine_utils::two_yang_addrs_reversed();
                                 let redistributed_trove = common::TROVE_1;
                                 let (
                                     redistributed_trove_yang_values,
@@ -497,7 +497,7 @@ mod TestShrineRedistribution {
                                 );
 
                                 // Simulate purge with 0 yin to update the trove's debt
-                                set_contract_address(ShrineUtils::admin());
+                                set_contract_address(shrine_utils::admin());
                                 let trove1_owner = common::trove1_owner_addr();
                                 let (
                                     _,
@@ -540,9 +540,9 @@ mod TestShrineRedistribution {
                                 );
 
                                 let expected_redistribution_id: u32 = 1;
-                                let mut expected_events: Span<Shrine::Event> = array![
-                                    Shrine::Event::TroveRedistributed(
-                                        Shrine::TroveRedistributed {
+                                let mut expected_events: Span<shrine_contract::Event> = array![
+                                    shrine_contract::Event::TroveRedistributed(
+                                        shrine_contract::TroveRedistributed {
                                             redistribution_id: expected_redistribution_id,
                                             trove_id: redistributed_trove,
                                             debt: debt_to_redistribute,
@@ -554,7 +554,7 @@ mod TestShrineRedistribution {
                                     shrine.contract_address, expected_events, Option::None
                                 );
 
-                                ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+                                shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
                             // We are unable to test the trove value in a sensible way here because 
                             // the yang price has not been updated to reflect any rebasing of the 
                             // asset amount per yang wad. Instead, refer to the tests for purger
@@ -573,14 +573,14 @@ mod TestShrineRedistribution {
     #[available_gas(20000000000)]
     fn test_shrine_redistribute_dust_yang_rounding() {
         // Manually set up troves so that the redistributed trove has a dust amount of one yang
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
         setup_trove3(shrine);
 
-        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang2_addr = ShrineUtils::yang2_addr();
+        let yang1_addr = shrine_utils::yang1_addr();
+        let yang2_addr = shrine_utils::yang2_addr();
 
         let trove2_owner = common::trove2_owner_addr();
         let redistributed_trove = common::TROVE_2;
@@ -601,7 +601,8 @@ mod TestShrineRedistribution {
             wadray::rdiv_ww(expected_yang2_redistributed_value, trove2_value), trove2_debt
         );
         assert(
-            trove2_yang2_debt < Shrine::ROUNDING_THRESHOLD.into(), 'not below rounding threshold'
+            trove2_yang2_debt < shrine_contract::ROUNDING_THRESHOLD.into(),
+            'not below rounding threshold'
         );
 
         // Redistribute trove 2
@@ -637,7 +638,7 @@ mod TestShrineRedistribution {
         );
 
         // Check that all of trove 2's debt was distributed to yang 1
-        let expected_remaining_yang1: Wad = (ShrineUtils::TROVE1_YANG1_DEPOSIT
+        let expected_remaining_yang1: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT
             + TROVE3_YANG1_DEPOSIT)
             .into();
         let expected_unit_debt_for_yang2 = trove2_debt / expected_remaining_yang1;
@@ -648,17 +649,17 @@ mod TestShrineRedistribution {
             'wrong unit debt'
         );
 
-        ShrineUtils::assert_shrine_invariants(shrine, ShrineUtils::two_yang_addrs(), 3);
+        shrine_utils::assert_shrine_invariants(shrine, shrine_utils::two_yang_addrs(), 3);
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_one_exceptional_redistribution_one_recipient_yang() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (trove 2 and 3) uses only yang 2.
-        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs_reversed();
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs_reversed();
         let yang1_addr = *yangs.at(2);
         let yang2_addr = *yangs.at(1);
         let yang3_addr = *yangs.at(0);
@@ -666,15 +667,15 @@ mod TestShrineRedistribution {
         let trove1_owner = common::trove1_owner_addr();
         let redistributed_trove: u64 = common::TROVE_1;
 
-        set_contract_address(ShrineUtils::admin());
-        shrine.deposit(yang1_addr, redistributed_trove, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.deposit(yang2_addr, redistributed_trove, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
-        shrine.deposit(yang3_addr, redistributed_trove, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
+        set_contract_address(shrine_utils::admin());
+        shrine.deposit(yang1_addr, redistributed_trove, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, redistributed_trove, shrine_utils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang3_addr, redistributed_trove, shrine_utils::TROVE1_YANG3_DEPOSIT.into());
         shrine
             .forge(
                 trove1_owner,
                 redistributed_trove,
-                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                shrine_utils::TROVE1_FORGE_AMT.into(),
                 0_u128.into()
             );
 
@@ -745,10 +746,10 @@ mod TestShrineRedistribution {
 
         // Check redistributions attributed to recipient troves
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
         );
         let expected_recipient_trove1_yang3_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct
+            shrine_utils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct
         );
         let expected_recipient_trove1_attr_yangs: Span<YangBalance> = array![
             YangBalance { yang_id: 1, amount: expected_recipient_trove1_yang1_amt },
@@ -776,10 +777,10 @@ mod TestShrineRedistribution {
         );
 
         let expected_recipient_trove2_yang1_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove2_pct
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove2_pct
         );
         let expected_recipient_trove2_yang3_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove2_pct
+            shrine_utils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove2_pct
         );
         let expected_recipient_trove2_attr_yangs: Span<YangBalance> = array![
             YangBalance { yang_id: 1, amount: expected_recipient_trove2_yang1_amt },
@@ -855,10 +856,10 @@ mod TestShrineRedistribution {
             );
         let expected_redistributed_yang1_amt: Wad = (total_recipient_troves_yang2
             * exc_yang1_redistribution.unit_yang);
-        let expected_error: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+        let expected_error: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into()
             - expected_redistributed_yang1_amt;
         assert(
-            shrine.get_yang_total(yang1_addr) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+            shrine.get_yang_total(yang1_addr) == shrine_utils::TROVE1_YANG1_DEPOSIT.into()
                 - expected_error,
             'wrong yang 1 total'
         );
@@ -893,10 +894,10 @@ mod TestShrineRedistribution {
             );
         let expected_redistributed_yang3_amt: Wad = (total_recipient_troves_yang2
             * exc_yang3_redistribution.unit_yang);
-        let expected_error: Wad = ShrineUtils::TROVE1_YANG3_DEPOSIT.into()
+        let expected_error: Wad = shrine_utils::TROVE1_YANG3_DEPOSIT.into()
             - expected_redistributed_yang3_amt;
         assert(
-            shrine.get_yang_total(yang3_addr) == ShrineUtils::TROVE1_YANG3_DEPOSIT.into()
+            shrine.get_yang_total(yang3_addr) == shrine_utils::TROVE1_YANG3_DEPOSIT.into()
                 - expected_error,
             'wrong yang 3 total'
         );
@@ -970,9 +971,9 @@ mod TestShrineRedistribution {
         );
 
         let expected_redistribution_id: u32 = 1;
-        let mut expected_events: Span<Shrine::Event> = array![
-            Shrine::Event::TroveRedistributed(
-                Shrine::TroveRedistributed {
+        let mut expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::TroveRedistributed(
+                shrine_contract::TroveRedistributed {
                     redistribution_id: expected_redistribution_id,
                     trove_id: redistributed_trove,
                     debt: redistributed_trove_debt,
@@ -981,7 +982,7 @@ mod TestShrineRedistribution {
         ]
             .span();
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
 
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
@@ -989,11 +990,11 @@ mod TestShrineRedistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_one_exceptional_redistribution_two_recipient_yangs() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (troves 2 and 3) use only yang2 and yang3
-        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs_reversed();
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs_reversed();
         let yang1_addr = *yangs.at(2);
         let yang2_addr = *yangs.at(1);
         let yang3_addr = *yangs.at(0);
@@ -1001,15 +1002,15 @@ mod TestShrineRedistribution {
         let trove1_owner = common::trove1_owner_addr();
         let redistributed_trove: u64 = common::TROVE_1;
 
-        set_contract_address(ShrineUtils::admin());
-        shrine.deposit(yang1_addr, redistributed_trove, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.deposit(yang2_addr, redistributed_trove, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
-        shrine.deposit(yang3_addr, redistributed_trove, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
+        set_contract_address(shrine_utils::admin());
+        shrine.deposit(yang1_addr, redistributed_trove, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, redistributed_trove, shrine_utils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang3_addr, redistributed_trove, shrine_utils::TROVE1_YANG3_DEPOSIT.into());
         shrine
             .forge(
                 trove1_owner,
                 redistributed_trove,
-                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                shrine_utils::TROVE1_FORGE_AMT.into(),
                 0_u128.into()
             );
 
@@ -1063,13 +1064,16 @@ mod TestShrineRedistribution {
         // Calculate the percentage of debt redistributed to each yang, and each recipient trove's entitlement
         // to each portion.
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
-        let redistributed_yang1_value: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * yang1_price;
+        let redistributed_yang1_value: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into()
+            * yang1_price;
 
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
-        let redistributed_yang2_value: Wad = ShrineUtils::TROVE1_YANG2_DEPOSIT.into() * yang2_price;
+        let redistributed_yang2_value: Wad = shrine_utils::TROVE1_YANG2_DEPOSIT.into()
+            * yang2_price;
 
         let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
-        let redistributed_yang3_value: Wad = ShrineUtils::TROVE1_YANG3_DEPOSIT.into() * yang3_price;
+        let redistributed_yang3_value: Wad = shrine_utils::TROVE1_YANG3_DEPOSIT.into()
+            * yang3_price;
 
         // Amount of debt redistributed for each yang
         let redistributed_yang1_debt: Wad = wadray::rmul_wr(
@@ -1172,7 +1176,7 @@ mod TestShrineRedistribution {
         };
 
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
         );
         let expected_recipient_trove1_attr_yangs: Span<YangBalance> = array![
             YangBalance { yang_id: 1, amount: expected_recipient_trove1_yang1_amt },
@@ -1195,7 +1199,7 @@ mod TestShrineRedistribution {
         );
 
         let expected_recipient_trove2_yang1_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove2_pct
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove2_pct
         );
         let expected_recipient_trove2_attr_yangs: Span<YangBalance> = array![
             YangBalance { yang_id: 1, amount: expected_recipient_trove2_yang1_amt },
@@ -1261,7 +1265,7 @@ mod TestShrineRedistribution {
 
         common::assert_equalish(
             recipient_trove1_yang1_amt + recipient_trove2_yang1_amt,
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(),
             100_u128.into(), // error margin
             'wrong recipient troves yang 1'
         );
@@ -1278,10 +1282,10 @@ mod TestShrineRedistribution {
         let expected_redistributed_yang1_amt: Wad = (total_recipient_troves_yang2
             * exc_yang1_to_yang2_redistribution.unit_yang)
             + (total_recipient_troves_yang3 * exc_yang1_to_yang3_redistribution.unit_yang);
-        let expected_error: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+        let expected_error: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into()
             - expected_redistributed_yang1_amt;
         assert(
-            shrine.get_yang_total(yang1_addr) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+            shrine.get_yang_total(yang1_addr) == shrine_utils::TROVE1_YANG1_DEPOSIT.into()
                 - expected_error,
             'wrong yang 1 total'
         );
@@ -1417,17 +1421,17 @@ mod TestShrineRedistribution {
             'wrong recipient trove 1 value'
         );
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_redistribution_after_unpulled_exceptional_redistribution() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (trove 2 and 3) uses only yang 2.
-        let yangs: Span<ContractAddress> = ShrineUtils::three_yang_addrs_reversed();
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs_reversed();
         let yang1_addr = *yangs.at(2);
         let yang2_addr = *yangs.at(1);
         let yang3_addr = *yangs.at(0);
@@ -1435,11 +1439,11 @@ mod TestShrineRedistribution {
         let trove1_owner = common::trove1_owner_addr();
         let redistributed_trove1: u64 = common::TROVE_1;
 
-        set_contract_address(ShrineUtils::admin());
-        shrine.deposit(yang1_addr, redistributed_trove1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.deposit(yang2_addr, redistributed_trove1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
-        shrine.deposit(yang3_addr, redistributed_trove1, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
-        let redistributed_trove1_debt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        set_contract_address(shrine_utils::admin());
+        shrine.deposit(yang1_addr, redistributed_trove1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, redistributed_trove1, shrine_utils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang3_addr, redistributed_trove1, shrine_utils::TROVE1_YANG3_DEPOSIT.into());
+        let redistributed_trove1_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, redistributed_trove1, redistributed_trove1_debt, 0_u128.into());
 
         let trove2_owner = common::trove2_owner_addr();
@@ -1497,12 +1501,12 @@ mod TestShrineRedistribution {
 
         // Check redistributions attributed to recipient troves
         let expected_recipient_trove_yang1_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
+            shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
         );
         // Recipient trove's yang 3 amount should be the amount received from the first 
         // redistribution, since the second redistribution would have rebased
         let expected_recipient_trove_yang3_amt: Wad = wadray::rmul_wr(
-            ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct
+            shrine_utils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct
         );
         let expected_recipient_trove_attr_yangs: Span<YangBalance> = array![
             YangBalance { yang_id: 1, amount: expected_recipient_trove_yang1_amt },
@@ -1510,7 +1514,7 @@ mod TestShrineRedistribution {
         ]
             .span();
 
-        let expected_recipient_trove_attr_debt: Wad = (ShrineUtils::TROVE1_FORGE_AMT
+        let expected_recipient_trove_attr_debt: Wad = (shrine_utils::TROVE1_FORGE_AMT
             + TROVE3_FORGE_AMT)
             .into();
 
@@ -1575,7 +1579,7 @@ mod TestShrineRedistribution {
             + (recipient_trove_yang1_amt * second_redistribution_yang1_unit_debt)
             + (recipient_trove_yang2_amt * second_redistribution_yang2_unit_debt)
             + (recipient_trove_yang3_amt * second_redistribution_yang3_unit_debt);
-        let total_redistributed_debt: Wad = (ShrineUtils::TROVE1_FORGE_AMT + TROVE3_FORGE_AMT)
+        let total_redistributed_debt: Wad = (shrine_utils::TROVE1_FORGE_AMT + TROVE3_FORGE_AMT)
             .into();
 
         assert(
@@ -1645,7 +1649,7 @@ mod TestShrineRedistribution {
             'wrong total yang 3'
         );
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
     }
 
     // Redistribution with only 1 trove.
@@ -1656,15 +1660,15 @@ mod TestShrineRedistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_redistribution_only_one_trove_remaining() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
 
         let (_, _, before_trove_value, before_trove_debt) = shrine.get_trove_info(common::TROVE_1);
 
         // Simulate purge with 0 yin to update the trove's debt
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         let trove1_owner = common::trove1_owner_addr();
         let redistributed_trove = common::TROVE_1;
         let (_, _, trove1_value, trove1_debt) = shrine.get_trove_info(redistributed_trove);
@@ -1691,7 +1695,7 @@ mod TestShrineRedistribution {
             'wrong id'
         );
 
-        ShrineUtils::assert_shrine_invariants(shrine, ShrineUtils::two_yang_addrs(), 3);
+        shrine_utils::assert_shrine_invariants(shrine, shrine_utils::two_yang_addrs(), 3);
     }
 
     // This test asserts that the sum of troves' debt after pulling redistributed debt does not
@@ -1703,14 +1707,14 @@ mod TestShrineRedistribution {
     fn test_multi_troves_system_debt_not_exceeded() {
         let shrine: IShrineDispatcher = redistribution_setup();
 
-        let yangs: Span<ContractAddress> = ShrineUtils::two_yang_addrs();
+        let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs();
         let yang1_addr = *yangs.at(0);
         let yang2_addr = *yangs.at(1);
 
         // Create another 10 troves with different collateral amounts
         let mut idx: u64 = 0;
         let new_troves_count: u64 = 10;
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         loop {
             if idx == new_troves_count {
                 break;
@@ -1730,9 +1734,9 @@ mod TestShrineRedistribution {
             idx += 1;
         };
 
-        shrine.redistribute(common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), RAY_ONE.into());
+        shrine.redistribute(common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), RAY_ONE.into());
 
-        ShrineUtils::assert_shrine_invariants(shrine, yangs, 13);
+        shrine_utils::assert_shrine_invariants(shrine, yangs, 13);
     }
 
     #[test]
@@ -1741,7 +1745,7 @@ mod TestShrineRedistribution {
     fn test_shrine_redistribution_gt_one_ray_pct_value_to_redistribute_fail() {
         let shrine: IShrineDispatcher = redistribution_setup();
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
         shrine.redistribute(common::TROVE_1, 1_u128.into(), (RAY_ONE + RAY_PERCENT).into());
     }
 }

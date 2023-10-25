@@ -1,8 +1,8 @@
-mod TestController {
+mod test_controller {
     use debug::PrintTrait;
     use starknet::testing::set_contract_address;
 
-    use opus::core::controller::Controller;
+    use opus::core::controller::controller as controller_contract;
 
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -13,8 +13,8 @@ mod TestController {
 
     use opus::tests::common;
     use opus::tests::common::{assert_equalish, badguy};
-    use opus::tests::controller::utils::ControllerUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::controller::utils::controller_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad
@@ -24,34 +24,46 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_deploy_controller() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
-        assert(p_gain == ControllerUtils::P_GAIN.into(), 'wrong p gain');
-        assert(i_gain == ControllerUtils::I_GAIN.into(), 'wrong i gain');
-        assert(alpha_p == ControllerUtils::ALPHA_P, 'wrong alpha_p');
-        assert(alpha_i == ControllerUtils::ALPHA_I, 'wrong alpha_i');
-        assert(beta_p == ControllerUtils::BETA_P, 'wrong beta_p');
-        assert(beta_i == ControllerUtils::BETA_I, 'wrong beta_i');
+        assert(p_gain == controller_utils::P_GAIN.into(), 'wrong p gain');
+        assert(i_gain == controller_utils::I_GAIN.into(), 'wrong i gain');
+        assert(alpha_p == controller_utils::ALPHA_P, 'wrong alpha_p');
+        assert(alpha_i == controller_utils::ALPHA_I, 'wrong alpha_i');
+        assert(beta_p == controller_utils::BETA_P, 'wrong beta_p');
+        assert(beta_i == controller_utils::BETA_I, 'wrong beta_i');
 
-        let mut expected_events: Span<Controller::Event> = array![
-            Controller::Event::GainUpdated(
-                Controller::GainUpdated { name: 'p_gain', value: ControllerUtils::P_GAIN.into() }
+        let mut expected_events: Span<controller_contract::Event> = array![
+            controller_contract::Event::GainUpdated(
+                controller_contract::GainUpdated {
+                    name: 'p_gain', value: controller_utils::P_GAIN.into()
+                }
             ),
-            Controller::Event::GainUpdated(
-                Controller::GainUpdated { name: 'i_gain', value: ControllerUtils::I_GAIN.into() }
+            controller_contract::Event::GainUpdated(
+                controller_contract::GainUpdated {
+                    name: 'i_gain', value: controller_utils::I_GAIN.into()
+                }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'alpha_p', value: ControllerUtils::ALPHA_P }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated {
+                    name: 'alpha_p', value: controller_utils::ALPHA_P
+                }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'alpha_i', value: ControllerUtils::ALPHA_I }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated {
+                    name: 'alpha_i', value: controller_utils::ALPHA_I
+                }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'beta_p', value: ControllerUtils::BETA_P }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated {
+                    name: 'beta_p', value: controller_utils::BETA_P
+                }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'beta_i', value: ControllerUtils::BETA_I }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated {
+                    name: 'beta_i', value: controller_utils::BETA_I
+                }
             ),
         ]
             .span();
@@ -61,9 +73,9 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_setters() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(ControllerUtils::admin());
+        set_contract_address(controller_utils::admin());
 
         let new_p_gain: Ray = 1_u128.into();
         let new_i_gain: Ray = 2_u128.into();
@@ -87,24 +99,24 @@ mod TestController {
         assert(beta_p == new_beta_p, 'wrong beta_p');
         assert(beta_i == new_beta_i, 'wrong beta_i');
 
-        let mut expected_events: Span<Controller::Event> = array![
-            Controller::Event::GainUpdated(
-                Controller::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
+        let mut expected_events: Span<controller_contract::Event> = array![
+            controller_contract::Event::GainUpdated(
+                controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
             ),
-            Controller::Event::GainUpdated(
-                Controller::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
+            controller_contract::Event::GainUpdated(
+                controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'beta_p', value: new_beta_p }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
             ),
-            Controller::Event::ParameterUpdated(
-                Controller::ParameterUpdated { name: 'beta_i', value: new_beta_i }
+            controller_contract::Event::ParameterUpdated(
+                controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
             ),
         ]
             .span();
@@ -117,7 +129,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_p_gain_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_p_gain(1_u128.into());
     }
@@ -126,7 +138,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_i_gain_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_i_gain(1_u128.into());
     }
@@ -135,7 +147,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_p_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_alpha_p(1);
     }
@@ -144,7 +156,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_i_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_alpha_i(1);
     }
@@ -153,7 +165,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_p_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_beta_p(1);
     }
@@ -162,7 +174,7 @@ mod TestController {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_i_unauthorized() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
         set_contract_address(badguy());
         controller.set_beta_i(1);
     }
@@ -170,9 +182,9 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_against_ground_truth() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(ControllerUtils::admin());
+        set_contract_address(controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
@@ -180,8 +192,8 @@ mod TestController {
         assert(controller.get_p_term() == SignedRayZeroable::zero(), 'Wrong p term #1');
         assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #1');
 
-        ControllerUtils::fast_forward_1_hour();
-        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
+        controller_utils::fast_forward_1_hour();
+        controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -198,8 +210,8 @@ mod TestController {
             'Wrong i term #2'
         );
 
-        ControllerUtils::fast_forward_1_hour();
-        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE2.into());
+        controller_utils::fast_forward_1_hour();
+        controller_utils::set_yin_spot_price(shrine, YIN_PRICE2.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -219,9 +231,9 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_against_ground_truth2() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(ControllerUtils::admin());
+        set_contract_address(controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -447,7 +459,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    ControllerUtils::set_yin_spot_price(shrine, price);
+                    controller_utils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
@@ -471,7 +483,7 @@ mod TestController {
                         'Wrong multiplier'
                     );
 
-                    ControllerUtils::fast_forward_1_hour();
+                    controller_utils::fast_forward_1_hour();
                 },
                 Option::None => { break; }
             };
@@ -484,9 +496,9 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_against_ground_truth3() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(ControllerUtils::admin());
+        set_contract_address(controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -550,7 +562,7 @@ mod TestController {
                 if current_interval == *gt_update_intervals.at(0) {
                     gt_update_intervals.pop_front();
                     let price: Wad = prices.pop_front().unwrap();
-                    ControllerUtils::set_yin_spot_price(shrine, price);
+                    controller_utils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
                 }
             }
@@ -576,7 +588,7 @@ mod TestController {
                 'Wrong multiplier'
             );
 
-            ControllerUtils::fast_forward_1_hour();
+            controller_utils::fast_forward_1_hour();
             current_interval += 1;
         }
     }
@@ -584,9 +596,9 @@ mod TestController {
     #[test]
     #[available_gas(200000000000)]
     fn test_against_ground_truth4() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
+        let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(ControllerUtils::admin());
+        set_contract_address(controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -694,7 +706,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    ControllerUtils::set_yin_spot_price(shrine, price);
+                    controller_utils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
@@ -716,7 +728,7 @@ mod TestController {
                         'Wrong multiplier'
                     );
 
-                    ControllerUtils::fast_forward_1_hour();
+                    controller_utils::fast_forward_1_hour();
                 },
                 Option::None => { break; }
             };
@@ -726,19 +738,19 @@ mod TestController {
     #[test]
     #[available_gas(20000000000)]
     fn test_frequent_updates() {
-        let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::admin());
+        let (controller, shrine) = controller_utils::deploy_controller();
+        set_contract_address(controller_utils::admin());
         controller
             .set_i_gain(
                 100000000000000000000000_u128.into()
             ); // Ensuring the integral gain is non-zero
 
-        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
+        controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
 
         // Standard flow, updating the multiplier every hour
         let prev_multiplier: Ray = controller.get_current_multiplier();
-        ControllerUtils::fast_forward_1_hour();
+        controller_utils::fast_forward_1_hour();
         controller.update_multiplier();
         let current_multiplier: Ray = controller.get_current_multiplier();
         assert(current_multiplier > prev_multiplier, 'Multiplier should increase');
