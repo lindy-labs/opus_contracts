@@ -6,11 +6,24 @@ mod abbot {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-    use opus::utils::reentrancy_guard::reentrancy_guard;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
+
+    // 
+    // Components 
+    // 
+
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
+
+    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
         // Shrine associated with this Abbot
         shrine: IShrineDispatcher,
         // Sentinel associated with this Abbot
@@ -43,6 +56,8 @@ mod abbot {
     enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
+        // Component events
+        ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -228,7 +243,7 @@ mod abbot {
             ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance
         ) {
             // reentrancy guard is used as a precaution
-            reentrancy_guard::start();
+            self.reentrancy_guard.start();
 
             let yang_amt: Wad = self
                 .sentinel
@@ -236,7 +251,7 @@ mod abbot {
                 .enter(yang_asset.address, user, trove_id, yang_asset.amount);
             self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
 
-            reentrancy_guard::end();
+            self.reentrancy_guard.end();
         }
 
         #[inline(always)]
@@ -248,12 +263,12 @@ mod abbot {
             yang_amt: Wad
         ) {
             // reentrancy guard is used as a precaution
-            reentrancy_guard::start();
+            self.reentrancy_guard.start();
 
             self.sentinel.read().exit(yang, user, trove_id, yang_amt);
             self.shrine.read().withdraw(yang, trove_id, yang_amt);
 
-            reentrancy_guard::end();
+            self.reentrancy_guard.end();
         }
     }
 }
