@@ -13,6 +13,7 @@ set -o pipefail
 
 WORK_DIR="$(dirname `realpath $0`)"
 PROJ_DIR="$(realpath $WORK_DIR/..)"
+export STARKLI_NO_PLAIN_KEY_WARNING=1
 
 # user 1 in Katana
 OPUS_ADMIN_ADDR="0x5e405cb48f615268de62931988de94f6d1a084d09ed28ef01d7252e295d3a4f"
@@ -32,7 +33,7 @@ scarb clean && scarb build
 # Shrine
 #
 print "Declaring Shrine"
-SHRINE_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_Shrine.sierra.json)
+SHRINE_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_shrine.contract_class.json)
 print $SHRINE_CLASS_HASH
 
 print "\n\n"
@@ -48,7 +49,7 @@ print "\n\n"
 # Flash mint
 #
 print "Declaring Flashmint"
-FLASHMINT_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_FlashMint.sierra.json)
+FLASHMINT_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_flash_mint.contract_class.json)
 print $FLASHMINT_CLASS_HASH
 
 print "\n\n"
@@ -62,7 +63,7 @@ print $FLASHMINT_ADDR
 # Sentinel
 #
 print "Declaring Sentinel"
-SENTINEL_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_Sentinel.sierra.json)
+SENTINEL_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_sentinel.contract_class.json)
 print $SENTINEL_CLASS_HASH
 
 print "\n\n"
@@ -76,7 +77,7 @@ print $SENTINEL_ADDR
 # Abbot
 #
 print "Declaring Abbot"
-ABBOT_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_Abbot.sierra.json)
+ABBOT_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_abbot.contract_class.json)
 print $ABBOT_CLASS_HASH
 
 print "\n\n"
@@ -90,7 +91,7 @@ print $ABBOT_ADDR
 # Absorber
 #
 print "Declaring Absorber"
-ABSORBER_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_Absorber.sierra.json)
+ABSORBER_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_absorber.contract_class.json)
 print $ABSORBER_CLASS_HASH
 
 print "\n\n"
@@ -104,7 +105,7 @@ print $ABSORBER_ADDR
 # Purger
 #
 print "Declaring Purger"
-PURGER_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_Purger.sierra.json)
+PURGER_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK $PROJ_DIR/target/dev/opus_purger.contract_class.json)
 print $PURGER_CLASS_HASH
 
 print "\n\n"
