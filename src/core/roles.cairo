@@ -58,6 +58,12 @@ mod equalizer_roles {
     fn default_admin_role() -> u128 {
         SET_ALLOCATOR
     }
+
+    #[cfg(test)]
+    #[inline(always)]
+    fn all_roles() -> u128 {
+        INCUR + SET_ALLOCATOR
+    }
 }
 
 mod pragma_roles {

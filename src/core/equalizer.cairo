@@ -77,6 +77,8 @@ mod equalizer {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Normalize {
+        #[key]
+        caller: ContractAddress,
         yin_amt: Wad
     }
 
@@ -116,6 +118,10 @@ mod equalizer {
 
         fn get_allocator(self: @ContractState) -> ContractAddress {
             self.allocator.read().contract_address
+        }
+
+        fn get_deficit(self: @ContractState) -> Wad {
+            self.deficit.read()
         }
 
         //
@@ -163,14 +169,19 @@ mod equalizer {
         // - the percentages add up to one Ray.
         fn allocate(ref self: ContractState) {
             let shrine: IShrineDispatcher = self.shrine.read();
+
+            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+            let balance: Wad = shrine.get_yin(get_contract_address());
+
+            if balance.is_zero() {
+                return;
+            }
+
+            // Loop over equalizer's balance and transfer to recipients
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
 
-            // Loop over equalizer's balance and transfer to recipients
-            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-            let balance: Wad = shrine.get_yin(get_contract_address());
             let mut amount_allocated: Wad = WadZeroable::zero();
-
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
             loop {
@@ -203,15 +214,15 @@ mod equalizer {
         // Anyone can call this function.
         fn normalize(ref self: ContractState, yin_amt: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let caller: ContractAddress = get_caller_address();
 
-            let balance: Wad = shrine.get_yin(caller);
             let deficit: Wad = self.deficit.read();
-            let offset: Wad = min(balance, deficit);
+            let wipe_amt: Wad = min(yin_amt, deficit);
 
-            if offset.is_non_zero() {
-                shrine.eject(caller, offset);
-                self.emit(Normalize { yin_amt: offset });
+            if wipe_amt.is_non_zero() {
+                let caller: ContractAddress = get_caller_address();
+                self.deficit.write(deficit - wipe_amt);
+                shrine.eject(caller, wipe_amt);
+                self.emit(Normalize { caller, yin_amt: wipe_amt });
             }
         }
     }
