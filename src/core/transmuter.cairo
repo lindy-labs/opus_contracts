@@ -34,9 +34,13 @@ mod Transmuter {
 
     // Upper bound of the fee as a percentage that can be charged for both: 1% (Ray)
     // 1. swapping yin for the asset when `reverse` is enabled; and
-    // 2. swapping assett for yin,
+    // 2. swapping asset for yin,
     // This is not set at deployment so it defaults to 0%.
     const FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
+
+    //
+    // Storage
+    //
 
     #[storage]
     struct Storage {
@@ -77,20 +81,17 @@ mod Transmuter {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AccessControlEvent: access_control_component::Event,
-        Killed: Killed,
         CeilingUpdated: CeilingUpdated,
+        Killed: Killed,
         PercentageCapUpdated: PercentageCapUpdated,
-        Transmute: Transmute,
-        Reverse: Reverse,
-        ReversibilityToggled: ReversibilityToggled,
-        TransmuteFeeUpdated: TransmuteFeeUpdated,
-        ReverseFeeUpdated: ReverseFeeUpdated,
-        Sweep: Sweep,
         ReceiverUpdated: ReceiverUpdated,
+        Reverse: Reverse,
+        ReverseFeeUpdated: ReverseFeeUpdated,
+        ReversibilityToggled: ReversibilityToggled,
+        Sweep: Sweep,
+        Transmute: Transmute,
+        TransmuteFeeUpdated: TransmuteFeeUpdated,
     }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Killed {}
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct CeilingUpdated {
@@ -99,16 +100,17 @@ mod Transmuter {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Killed {}
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PercentageCapUpdated {
         cap: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Transmute {
-        #[key]
-        user: ContractAddress,
-        asset_amt: u128,
-        yin_amt: Wad
+    struct ReceiverUpdated {
+        old_receiver: ContractAddress,
+        new_receiver: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -121,21 +123,14 @@ mod Transmuter {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ReversibilityToggled {
-        reversibility: bool
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TransmuteFeeUpdated {
-        old_fee: Ray,
-        new_fee: Ray
-    }
-
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ReverseFeeUpdated {
         old_fee: Ray,
         new_fee: Ray
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct ReversibilityToggled {
+        reversibility: bool
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -146,9 +141,17 @@ mod Transmuter {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ReceiverUpdated {
-        old_receiver: ContractAddress,
-        new_receiver: ContractAddress
+    struct Transmute {
+        #[key]
+        user: ContractAddress,
+        asset_amt: u128,
+        yin_amt: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct TransmuteFeeUpdated {
+        old_fee: Ray,
+        new_fee: Ray
     }
 
     // Constructor
@@ -175,6 +178,10 @@ mod Transmuter {
         // Reversibility is enabled at deployment
         self.reversibility.write(true);
     }
+
+    //
+    // External Transmuter functions
+    //
 
     #[external(v0)]
     impl ITransmuterImpl of ITransmuter<ContractState> {
