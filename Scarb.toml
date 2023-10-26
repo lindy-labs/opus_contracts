@@ -8,6 +8,7 @@ sierra = true
 # strict libfuncs check - throw a compilation error
 # when the code uses a libfunc that is not allowed
 allowed-libfuncs-deny = true
+casm = true
 
 [cairo]
 sierra-replace-ids = true
