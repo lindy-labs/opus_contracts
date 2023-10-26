@@ -963,4 +963,69 @@ mod test_shrine_compound {
             shrine.contract_address, expected_events.span(), Option::None
         );
     }
+
+    //
+    // Tests - Reducing debt surplus
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_reduce_surplus_debt_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+
+        let original_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, original_debt);
+
+        common::advance_intervals(500);
+
+        let trove_id: u64 = common::TROVE_1;
+        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
+
+        // Trigger charge and check interest is accrued
+        set_contract_address(shrine_utils::admin());
+        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
+
+        let interest: Wad = estimated_debt - original_debt;
+        assert(shrine.get_surplus_debt() == interest, 'wrong surplus debt #1');
+
+        common::drop_all_events(shrine.contract_address);
+        shrine.reduce_surplus_debt(interest);
+
+        assert(shrine.get_surplus_debt().is_zero(), 'wrong surplus debt #2');
+
+        let mut expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::SurplusDebtReduced(
+                shrine_contract::SurplusDebtReduced { amount: interest }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Exceeds surplus debt', 'ENTRYPOINT_FAILED'))]
+    fn test_reduce_surplus_debt_exceeds_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+
+        let original_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, original_debt);
+
+        common::advance_intervals(500);
+
+        let trove_id: u64 = common::TROVE_1;
+        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
+
+        // Trigger charge and check interest is accrued
+        set_contract_address(shrine_utils::admin());
+        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
+
+        let interest: Wad = estimated_debt - original_debt;
+        assert(shrine.get_surplus_debt() == interest, 'wrong surplus debt');
+
+        let invalid_amt: Wad = (interest.val + 1).into();
+        shrine.reduce_surplus_debt(invalid_amt);
+    }
 }
