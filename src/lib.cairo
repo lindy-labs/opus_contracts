@@ -43,6 +43,7 @@ mod types;
 
 mod utils {
     mod access_control;
+    mod address_registry;
     mod exp;
     mod math;
     mod reentrancy_guard;
