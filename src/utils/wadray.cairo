@@ -283,6 +283,13 @@ impl TIntoRay<T, impl TIntoU128: Into<T, u128>> of Into<T, Ray> {
     }
 }
 
+impl WadIntoFelt252 of Into<Wad, felt252> {
+    #[inline(always)]
+    fn into(self: Wad) -> felt252 {
+        self.val.into()
+    }
+}
+
 impl WadIntoU256 of Into<Wad, u256> {
     #[inline(always)]
     fn into(self: Wad) -> u256 {
