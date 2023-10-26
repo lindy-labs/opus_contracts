@@ -1,18 +1,36 @@
 #[starknet::contract]
-mod Equalizer {
+mod equalizer {
     use starknet::ContractAddress;
 
-    use opus::core::roles::EqualizerRoles;
+    use opus::core::roles::equalizer_roles;
 
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
 
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // the Allocator to read the current allocation of recipients of any minted
         // surplus debt, and their respective percentages
         allocator: IAllocatorDispatcher,
@@ -27,6 +45,7 @@ mod Equalizer {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
     }
@@ -55,7 +74,7 @@ mod Equalizer {
         shrine: ContractAddress,
         allocator: ContractAddress
     ) {
-        AccessControl::initializer(admin, Option::Some(EqualizerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -87,7 +106,7 @@ mod Equalizer {
 
         // Update the Allocator's address
         fn set_allocator(ref self: ContractState, allocator: ContractAddress) {
-            AccessControl::assert_has_role(EqualizerRoles::SET_ALLOCATOR);
+            self.access_control.assert_has_role(equalizer_roles::SET_ALLOCATOR);
 
             let old_address: ContractAddress = self.allocator.read().contract_address;
             self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -157,48 +176,5 @@ mod Equalizer {
         let total_debt: Wad = shrine.get_total_debt();
         let surplus: Wad = total_debt - shrine.get_total_yin();
         (total_debt, surplus)
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
-        }
     }
 }

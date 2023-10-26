@@ -1,4 +1,4 @@
-mod tests {
+mod test_wadray_signed {
     use debug::PrintTrait;
     use math::Oneable;
 

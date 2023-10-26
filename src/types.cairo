@@ -14,9 +14,9 @@ const TWO_POW_250: felt252 = 0x4000000000000000000000000000000000000000000000000
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
-    None: (),
-    Temporary: (),
-    Permanent: ()
+    None,
+    Temporary,
+    Permanent
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -206,7 +206,7 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
 // Pragma
 //
 
-mod Pragma {
+mod pragma {
     #[derive(Copy, Drop, Serde)]
     enum DataType {
         Spot: u256,

@@ -1,4 +1,4 @@
-mod PragmaUtils {
+mod pragma_utils {
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
@@ -6,8 +6,8 @@ mod PragmaUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::roles::ShrineRoles;
-    use opus::external::pragma::Pragma;
+    use opus::core::roles::shrine_roles;
+    use opus::external::pragma::pragma as pragma_contract;
 
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -15,17 +15,16 @@ mod PragmaUtils {
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::Pragma::PricesResponse;
+    use opus::types::pragma::PricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray;
     use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
-    use opus::tests::external::mock_pragma::{
-        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
-    };
-    use opus::tests::sentinel::utils::SentinelUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::external::mock_pragma::mock_pragma as mock_pragma_contract;
+    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     //
     // Constants
@@ -71,7 +70,7 @@ mod PragmaUtils {
     fn mock_pragma_deploy() -> IMockPragmaDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
         let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
-            MockPragma::TEST_CLASS_HASH
+            mock_pragma_contract::TEST_CLASS_HASH
         )
             .unwrap();
         let (mock_pragma_addr, _) = deploy_syscall(
@@ -98,7 +97,7 @@ mod PragmaUtils {
     fn pragma_deploy() -> (
         IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher,
     ) {
-        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel();
         pragma_deploy_with_shrine(sentinel, shrine_addr)
     }
 
@@ -119,15 +118,17 @@ mod PragmaUtils {
             SOURCES_THRESHOLD.into(),
         ];
 
-        let pragma_class_hash: ClassHash = class_hash_try_from_felt252(Pragma::TEST_CLASS_HASH)
+        let pragma_class_hash: ClassHash = class_hash_try_from_felt252(
+            pragma_contract::TEST_CLASS_HASH
+        )
             .unwrap();
         let (pragma_addr, _) = deploy_syscall(pragma_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         // Grant necessary roles
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::oracle(), pragma_addr);
+        set_contract_address(shrine_utils::admin());
+        shrine_ac.grant_role(shrine_roles::oracle(), pragma_addr);
 
         let shrine = IShrineDispatcher { contract_address: shrine_addr };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
@@ -147,10 +148,10 @@ mod PragmaUtils {
     ) {
         let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
-        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+        let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
             sentinel, shrine.contract_address
         );
-        let (wbtc_token_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(
+        let (wbtc_token_addr, wbtc_gate) = sentinel_utils::add_wbtc_yang(
             sentinel, shrine.contract_address
         );
 
