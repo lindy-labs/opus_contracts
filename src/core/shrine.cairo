@@ -117,9 +117,13 @@ mod shrine {
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued
+        // This includes the `surplus_debt`.
         total_debt: Wad,
-        // Total amount of synthetic forged
+        // Total amount of synthetic forged and injected
         total_yin: Wad,
+        // Total amount of surplus debt (i.e. debt created without creation of yin)
+        // based on current on-chain conditions
+        surplus_debt: Wad,
         // Keeps track of the price history of each Yang
         // Stores both the actual price and the cumulative price of
         // the yang at each time interval, both as Wads.
@@ -434,6 +438,10 @@ mod shrine {
 
         fn get_total_debt(self: @ContractState) -> Wad {
             self.total_debt.read()
+        }
+
+        fn get_surplus_debt(self: @ContractState) -> Wad {
+            self.surplus_debt.read()
         }
 
         fn get_yang_price(
@@ -753,6 +761,14 @@ mod shrine {
             self.emit(DebtCeilingUpdated { ceiling });
         }
 
+        fn reduce_surplus_debt(ref self: ContractState, amount: Wad) {
+            self.access_control.assert_has_role(shrine_roles::REDUCE_SURPLUS_DEBT);
+
+            let current_surplus: Wad = self.surplus_debt.read();
+            assert(amount <= current_surplus, 'SH: Exceeds surplus debt');
+            self.surplus_debt.write(current_surplus - amount);
+        }
+
         // Updates spot price of yin
         //
         // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
@@ -831,6 +847,9 @@ mod shrine {
             let mut new_system_debt = self.total_debt.read() + debt_amount;
             assert(new_system_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
             self.total_debt.write(new_system_debt);
+
+            // Add forge fee to surplus debt
+            self.surplus_debt.write(self.surplus_debt.read() + forge_fee);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -1421,9 +1440,12 @@ mod shrine {
             // Get new system debt
             // This adds the interest charged on the trove's debt to the total debt.
             // This should not include redistributed debt, as that is already included in the total.
-            let new_system_debt: Wad = self.total_debt.read()
-                + (compounded_trove_debt - trove.debt);
+            let charged: Wad = compounded_trove_debt - trove.debt;
+            let new_system_debt: Wad = self.total_debt.read() + charged;
             self.total_debt.write(new_system_debt);
+
+            // Add interest to surplus debt
+            self.surplus_debt.write(self.surplus_debt.read() + charged);
 
             // Emit only if there is a change in the trove's debt
             if compounded_trove_debt != trove.debt {
@@ -2324,11 +2346,11 @@ mod shrine {
         }
 
         fn total_supply(self: @ContractState) -> u256 {
-            self.total_yin.read().val.into()
+            self.total_yin.read().into()
         }
 
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
-            self.yin.read(account).val.into()
+            self.yin.read(account).into()
         }
 
         fn allowance(

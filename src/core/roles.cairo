@@ -51,7 +51,8 @@ mod controller_roles {
 }
 
 mod equalizer_roles {
-    const SET_ALLOCATOR: u128 = 1;
+    const INCUR: u128 = 1;
+    const SET_ALLOCATOR: u128 = 2;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
@@ -125,14 +126,15 @@ mod shrine_roles {
     const KILL: u128 = 64;
     const MELT: u128 = 128;
     const REDISTRIBUTE: u128 = 256;
-    const SEIZE: u128 = 512;
-    const SET_DEBT_CEILING: u128 = 1024;
-    const SET_MULTIPLIER: u128 = 2048;
-    const SET_THRESHOLD: u128 = 4096;
-    const UPDATE_RATES: u128 = 8192;
-    const UPDATE_YANG_SUSPENSION: u128 = 16384;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 32768;
-    const WITHDRAW: u128 = 65536;
+    const REDUCE_SURPLUS_DEBT: u128 = 512;
+    const SEIZE: u128 = 1024;
+    const SET_DEBT_CEILING: u128 = 2048;
+    const SET_MULTIPLIER: u128 = 4096;
+    const SET_THRESHOLD: u128 = 8192;
+    const UPDATE_RATES: u128 = 16384;
+    const UPDATE_YANG_SUSPENSION: u128 = 32768;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 65536;
+    const WITHDRAW: u128 = 131072;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -156,7 +158,7 @@ mod shrine_roles {
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        INJECT
+        EJECT + INJECT + REDUCE_SURPLUS_DEBT
     }
 
     #[inline(always)]
@@ -191,6 +193,7 @@ mod shrine_roles {
             + KILL
             + MELT
             + REDISTRIBUTE
+            + REDUCE_SURPLUS_DEBT
             + SEIZE
             + SET_DEBT_CEILING
             + SET_MULTIPLIER
