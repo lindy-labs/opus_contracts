@@ -208,7 +208,7 @@ mod shrine_roles {
     }
 }
 
-mod TransmuterRoles {
+mod transmuter_roles {
     const ENABLE_RECLAIM: u128 = 1;
     const KILL: u128 = 2;
     const SET_CARETAKER: u128 = 4;
@@ -238,7 +238,7 @@ mod TransmuterRoles {
     }
 }
 
-mod TransmuterRegistryRoles {
+mod transmuter_registry_roles {
     const ADD_TRANSMUTER: u128 = 1;
     const KILL: u128 = 2;
     const REMOVE_TRANSMUTER: u128 = 4;

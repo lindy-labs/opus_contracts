@@ -761,7 +761,7 @@ mod shrine {
         }
 
         fn reduce_surplus_debt(ref self: ContractState, amount: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::REDUCE_SURPLUS_DEBT);
+            self.access_control.assert_has_role(shrine_roles::REDUCE_SURPLUS_DEBT);
 
             let current_surplus: Wad = self.surplus_debt.read();
             assert(amount <= current_surplus, 'SH: Exceeds surplus debt');

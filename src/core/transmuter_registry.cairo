@@ -2,19 +2,51 @@
 mod TransmuterRegistry {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use opus::core::roles::TransmuterRegistryRoles;
+    use opus::core::roles::transmuter_registry_roles;
 
     use opus::interfaces::ITransmuter::{
         ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry
     };
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Storage
+    //
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         transmuters_count: u32,
         transmuter_ids: LegacyMap::<ContractAddress, u32>,
         transmuters: LegacyMap::<u32, ContractAddress>,
     }
+
+    //
+    // Events
+    //
+
+    #[event]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    enum Event {
+        AccessControlEvent: access_control_component::Event,
+    }
+
+    //
+    // External Transmuter registry functions
+    //
 
     #[external(v0)]
     impl ITransmuterRegistryImpl of ITransmuterRegistry<ContractState> {
@@ -40,7 +72,7 @@ mod TransmuterRegistry {
         }
 
         fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            AccessControl::assert_has_role(TransmuterRegistryRoles::ADD_TRANSMUTER);
+            self.access_control.assert_has_role(transmuter_registry_roles::ADD_TRANSMUTER);
 
             assert(self.transmuter_ids.read(transmuter) == 0, 'TRR: Transmuter already exists');
             let transmuter_id: u32 = self.transmuters_count.read() + 1;
@@ -52,7 +84,7 @@ mod TransmuterRegistry {
         }
 
         fn remove_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            AccessControl::assert_has_role(TransmuterRegistryRoles::REMOVE_TRANSMUTER);
+            self.access_control.assert_has_role(transmuter_registry_roles::REMOVE_TRANSMUTER);
 
             let transmuter_id: u32 = self.transmuter_ids.read(transmuter);
             assert(transmuter_id != 0, 'TRR: Transmuter does not exist');
@@ -76,7 +108,7 @@ mod TransmuterRegistry {
         }
 
         fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
-            AccessControl::assert_has_role(TransmuterRegistryRoles::SET_RECEIVER);
+            self.access_control.assert_has_role(transmuter_registry_roles::SET_RECEIVER);
 
             let loop_end: u32 = 0;
 
@@ -94,7 +126,7 @@ mod TransmuterRegistry {
         }
 
         fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(TransmuterRegistryRoles::KILL);
+            self.access_control.assert_has_role(transmuter_registry_roles::KILL);
 
             let loop_end: u32 = 0;
 
@@ -109,50 +141,6 @@ mod TransmuterRegistry {
 
                 transmuter_id -= 1;
             };
-        }
-    }
-
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

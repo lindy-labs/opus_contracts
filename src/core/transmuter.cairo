@@ -3,15 +3,26 @@ mod Transmuter {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use opus::core::roles::TransmuterRoles;
+    use opus::core::roles::transmuter_roles;
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::types::AssetBalance;
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WAD_ONE};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
     // Constants
@@ -29,6 +40,9 @@ mod Transmuter {
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
         // The asset that can be swapped for yin via this Transmuter
@@ -62,6 +76,7 @@ mod Transmuter {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         Killed: Killed,
         CeilingUpdated: CeilingUpdated,
         PercentageCapUpdated: PercentageCapUpdated,
@@ -147,7 +162,9 @@ mod Transmuter {
         receiver: ContractAddress,
         percentage_cap: Ray,
     ) {
-        AccessControl::initializer(admin, Option::Some(TransmuterRoles::default_admin_role()));
+        self
+            .access_control
+            .initializer(admin, Option::Some(transmuter_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
@@ -205,7 +222,7 @@ mod Transmuter {
         //
 
         fn set_ceiling(ref self: ContractState, ceiling: Wad) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_CEILING);
+            self.access_control.assert_has_role(transmuter_roles::SET_CEILING);
             let old_ceiling: Wad = self.ceiling.read();
             self.ceiling.write(ceiling);
 
@@ -213,19 +230,19 @@ mod Transmuter {
         }
 
         fn set_percentage_cap(ref self: ContractState, cap: Ray) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_PERCENTAGE_CAP);
+            self.access_control.assert_has_role(transmuter_roles::SET_PERCENTAGE_CAP);
 
             self.set_percentage_cap_helper(cap);
         }
 
         fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_RECEIVER);
+            self.access_control.assert_has_role(transmuter_roles::SET_RECEIVER);
 
             self.set_receiver_helper(receiver);
         }
 
         fn toggle_reversibility(ref self: ContractState) {
-            AccessControl::assert_has_role(TransmuterRoles::TOGGLE_REVERSIBILITY);
+            self.access_control.assert_has_role(transmuter_roles::TOGGLE_REVERSIBILITY);
 
             let reversibility: bool = !self.reversibility.read();
             self.reversibility.write(reversibility);
@@ -233,7 +250,7 @@ mod Transmuter {
         }
 
         fn set_transmute_fee(ref self: ContractState, fee: Ray) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_FEES);
+            self.access_control.assert_has_role(transmuter_roles::SET_FEES);
 
             assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
             let old_fee: Ray = self.transmute_fee.read();
@@ -243,7 +260,7 @@ mod Transmuter {
         }
 
         fn set_reverse_fee(ref self: ContractState, fee: Ray) {
-            AccessControl::assert_has_role(TransmuterRoles::SET_FEES);
+            self.access_control.assert_has_role(transmuter_roles::SET_FEES);
 
             assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
             let old_fee: Ray = self.reverse_fee.read();
@@ -256,7 +273,7 @@ mod Transmuter {
         // This should be called after the assets backing the total transmuted amount
         //  has been transferred back to the  Transmuter after shutdown.
         fn enable_reclaim(ref self: ContractState) {
-            AccessControl::assert_has_role(TransmuterRoles::ENABLE_RECLAIM);
+            self.access_control.assert_has_role(transmuter_roles::ENABLE_RECLAIM);
 
             assert(!self.is_live.read(), 'TR: Transmuter is live');
             self.is_reclaimable.write(true);
@@ -346,7 +363,7 @@ mod Transmuter {
         fn sweep(ref self: ContractState, asset_amt: u128) {
             self.assert_live();
 
-            AccessControl::assert_has_role(TransmuterRoles::SWEEP);
+            self.access_control.assert_has_role(transmuter_roles::SWEEP);
 
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
@@ -363,7 +380,7 @@ mod Transmuter {
         //
 
         fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(TransmuterRoles::KILL);
+            self.access_control.assert_has_role(transmuter_roles::KILL);
             self.is_live.write(false);
             self.emit(Killed {});
         }
@@ -441,49 +458,6 @@ mod Transmuter {
             let fee: u128 = wadray::rmul_wr(asset_amt.into(), self.reverse_fee.read()).val;
 
             (asset_amt, fee)
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }
