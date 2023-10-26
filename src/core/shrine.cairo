@@ -199,6 +199,7 @@ mod shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         DebtTotalUpdated: DebtTotalUpdated,
+        SurplusDebtReduced: SurplusDebtReduced,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
         ThresholdUpdated: ThresholdUpdated,
@@ -235,6 +236,11 @@ mod shrine {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DebtTotalUpdated {
         total: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct SurplusDebtReduced {
+        amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -767,6 +773,8 @@ mod shrine {
             let current_surplus: Wad = self.surplus_debt.read();
             assert(amount <= current_surplus, 'SH: Exceeds surplus debt');
             self.surplus_debt.write(current_surplus - amount);
+
+            self.emit(SurplusDebtReduced { amount });
         }
 
         // Updates spot price of yin
