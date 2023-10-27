@@ -16,7 +16,7 @@ mod caretaker {
     };
     use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
-    use opus::utils::reentrancy_guard::reentrancy_guard;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
 
@@ -25,11 +25,16 @@ mod caretaker {
     //
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
 
     #[abi(embed_v0)]
     impl AccessControlPublic =
         access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     //
     // Constants
@@ -47,6 +52,8 @@ mod caretaker {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
         // Abbot associated with the Shrine for this Caretaker
         abbot: IAbbotDispatcher,
         // Equalizer associated with the Shrine for this Caretaker
@@ -74,6 +81,8 @@ mod caretaker {
         Shut: Shut,
         Release: Release,
         Reclaim: Reclaim,
+        // Component events
+        ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -280,7 +289,7 @@ mod caretaker {
             assert(shrine.get_live() == false, 'CA: System is live');
 
             // reentrancy guard is used as a precaution
-            reentrancy_guard::start();
+            self.reentrancy_guard.start();
 
             // Assert caller is trove owner
             let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id);
@@ -316,7 +325,7 @@ mod caretaker {
 
             self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
 
-            reentrancy_guard::end();
+            self.reentrancy_guard.end();
             released_assets.span()
         }
 
@@ -342,7 +351,7 @@ mod caretaker {
             assert(shrine.get_live() == false, 'CA: System is live');
 
             // reentrancy guard is used as a precaution
-            reentrancy_guard::start();
+            self.reentrancy_guard.start();
 
             let caller = get_caller_address();
 
@@ -376,7 +385,7 @@ mod caretaker {
 
             self.emit(Reclaim { user: caller, yin_amt: yin, assets: reclaimable_assets });
 
-            reentrancy_guard::end();
+            self.reentrancy_guard.end();
             reclaimable_assets
         }
     }

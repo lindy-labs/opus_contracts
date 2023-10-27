@@ -10,9 +10,8 @@ mod purger {
     use opus::interfaces::IPurger::IPurger;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-
     use opus::utils::access_control::access_control_component;
-    use opus::utils::reentrancy_guard::reentrancy_guard;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::types::AssetBalance;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
@@ -23,10 +22,16 @@ mod purger {
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
+    component!(
+        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
+    );
+
     #[abi(embed_v0)]
     impl AccessControlPublic =
         access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     //
     // Constants
@@ -67,6 +72,8 @@ mod purger {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: reentrancy_guard_component::Storage,
         // the Shrine associated with this Purger
         shrine: IShrineDispatcher,
         // the Sentinel associated with the Shrine and this Purger
@@ -90,6 +97,8 @@ mod purger {
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,
         Compensate: Compensate,
+        // Component events
+        ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -382,15 +391,13 @@ mod purger {
         // recipient address.
         // Returns an array of `AssetBalance` struct.
         fn free(
-            self: @ContractState,
+            ref self: ContractState,
             shrine: IShrineDispatcher,
             trove_id: u64,
             percentage_freed: Ray,
             recipient: ContractAddress,
         ) -> Span<AssetBalance> {
-            // reentrancy guard is used as a precaution
-            reentrancy_guard::start();
-
+            self.reentrancy_guard.start();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             let mut freed_assets: Array<AssetBalance> = ArrayTrait::new();
@@ -422,8 +429,7 @@ mod purger {
                 };
             };
 
-            reentrancy_guard::end();
-
+            self.reentrancy_guard.end();
             freed_assets.span()
         }
 
