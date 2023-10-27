@@ -19,6 +19,8 @@ mod shrine {
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
 
     //
     // Components
@@ -121,9 +123,11 @@ mod shrine {
         total_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
-        // Total amount of surplus debt (i.e. debt created without creation of yin)
+        // Current budget
+        // - If amount is negative, then there is a deficit i.e. yin supply > total debt
+        // - If amount is positive, then there is a surplus i.e. total debt > yin supply
         // based on current on-chain conditions
-        surplus_debt: Wad,
+        budget: SignedWad,
         // Keeps track of the price history of each Yang
         // Stores both the actual price and the cumulative price of
         // the yang at each time interval, both as Wads.
@@ -199,7 +203,7 @@ mod shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         DebtTotalUpdated: DebtTotalUpdated,
-        SurplusDebtReduced: SurplusDebtReduced,
+        BudgetAdjusted: BudgetAdjusted,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
         ThresholdUpdated: ThresholdUpdated,
@@ -239,8 +243,8 @@ mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct SurplusDebtReduced {
-        amount: Wad
+    struct BudgetAdjusted {
+        amount: SignedWad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -446,8 +450,8 @@ mod shrine {
             self.total_debt.read()
         }
 
-        fn get_surplus_debt(self: @ContractState) -> Wad {
-            self.surplus_debt.read()
+        fn get_budget(self: @ContractState) -> SignedWad {
+            self.budget.read()
         }
 
         fn get_yang_price(
@@ -767,14 +771,13 @@ mod shrine {
             self.emit(DebtCeilingUpdated { ceiling });
         }
 
-        fn reduce_surplus_debt(ref self: ContractState, amount: Wad) {
-            self.access_control.assert_has_role(shrine_roles::REDUCE_SURPLUS_DEBT);
+        fn adjust_budget(ref self: ContractState, amount: SignedWad) {
+            self.access_control.assert_has_role(shrine_roles::ADJUST_BUDGET);
 
-            let current_surplus: Wad = self.surplus_debt.read();
-            assert(amount <= current_surplus, 'SH: Exceeds surplus debt');
-            self.surplus_debt.write(current_surplus - amount);
+            let current_surplus: SignedWad = self.budget.read();
+            self.budget.write(current_surplus + amount);
 
-            self.emit(SurplusDebtReduced { amount });
+            self.emit(BudgetAdjusted { amount });
         }
 
         // Updates spot price of yin
@@ -857,7 +860,7 @@ mod shrine {
             self.total_debt.write(new_system_debt);
 
             // Add forge fee to surplus debt
-            self.surplus_debt.write(self.surplus_debt.read() + forge_fee);
+            self.budget.write(self.budget.read() + forge_fee.into());
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -1453,7 +1456,7 @@ mod shrine {
             self.total_debt.write(new_system_debt);
 
             // Add interest to surplus debt
-            self.surplus_debt.write(self.surplus_debt.read() + charged);
+            self.budget.write(self.budget.read() + charged.into());
 
             // Emit only if there is a change in the trove's debt
             if compounded_trove_debt != trove.debt {

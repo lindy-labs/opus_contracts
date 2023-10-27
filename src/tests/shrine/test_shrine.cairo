@@ -19,6 +19,8 @@ mod test_shrine {
         BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable,
         WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
 
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
@@ -1135,16 +1137,16 @@ mod test_shrine {
             'incorrect max forge amt'
         );
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
-        let fee = debt - forge_amt;
+        let fee: Wad = debt - forge_amt;
         assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
 
-        let intermediate_surplus_debt: Wad = shrine.get_surplus_debt();
-        assert(intermediate_surplus_debt == before_surplus_debt + fee, 'wrong surplus debt #1');
+        let intermediate_budget: SignedWad = shrine.get_budget();
+        assert(intermediate_budget == before_budget + fee.into(), 'wrong budget #1');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1159,11 +1161,9 @@ mod test_shrine {
         shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
         let (_, _, _, new_debt) = shrine.get_trove_info(common::TROVE_1);
-        let fee = new_debt - debt - forge_amt;
+        let fee: Wad = new_debt - debt - forge_amt;
         assert(new_debt - debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2');
-        assert(
-            shrine.get_surplus_debt() == intermediate_surplus_debt + fee, 'wrong surplus debt #2'
-        );
+        assert(shrine.get_budget() == intermediate_budget + fee.into(), 'wrong budget #2');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(

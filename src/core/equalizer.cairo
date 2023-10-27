@@ -12,6 +12,8 @@ mod equalizer {
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
 
     //
     // Components
@@ -147,18 +149,20 @@ mod equalizer {
         fn equalize(ref self: ContractState) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            let surplus: Wad = shrine.get_surplus_debt();
+            let budget: SignedWad = shrine.get_budget();
+            let surplus: Option<Wad> = budget.try_into();
 
-            if surplus.is_zero() {
+            if surplus.is_none() {
                 return WadZeroable::zero();
             }
 
-            shrine.inject(get_contract_address(), surplus);
-            shrine.reduce_surplus_debt(surplus);
+            let minted_surplus: Wad = surplus.unwrap();
+            shrine.inject(get_contract_address(), minted_surplus);
+            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
 
-            self.emit(Equalize { yin_amt: surplus });
+            self.emit(Equalize { yin_amt: minted_surplus });
 
-            surplus
+            minted_surplus
         }
 
         // Allocate the yin balance of the Equalizer to the recipients in the allocation 

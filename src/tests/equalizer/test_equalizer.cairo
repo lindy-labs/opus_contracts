@@ -32,7 +32,7 @@ mod test_equalizer {
         };
         let admin = shrine_utils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
-        assert(equalizer_ac.get_roles(admin) == equalizer_roles::SET_ALLOCATOR, 'wrong role');
+        assert(equalizer_ac.get_roles(admin) == equalizer_roles::all_roles(), 'wrong role');
         assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
     }
 
@@ -60,19 +60,21 @@ mod test_equalizer {
         // Charge trove 1 and sanity check that some debt has accrued
         shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
 
-        let surplus: Wad = shrine.get_surplus_debt();
-        assert(surplus > WadZeroable::zero(), 'no surplus accrued');
+        let surplus: Option<Wad> = shrine.get_budget().try_into();
+        assert(surplus.is_some(), 'no surplus accrued');
 
         let before_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
 
-        let minted_surplus = equalizer.equalize();
-        assert(surplus == minted_surplus, 'surplus mismatch');
+        let minted_surplus: Wad = equalizer.equalize();
+        assert(surplus.unwrap() == minted_surplus, 'surplus mismatch');
 
         let after_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
-        assert(after_equalizer_yin == before_equalizer_yin + surplus, 'surplus not received');
+        assert(
+            after_equalizer_yin == before_equalizer_yin + surplus.unwrap(), 'surplus not received'
+        );
 
         // Check remaining surplus
-        assert(shrine.get_surplus_debt().is_zero(), 'surplus should be zeroed');
+        assert(shrine.get_budget().is_zero(), 'surplus should be zeroed');
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
@@ -80,7 +82,9 @@ mod test_equalizer {
         shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus }),
+            equalizer_contract::Event::Equalize(
+                equalizer_contract::Equalize { yin_amt: surplus.unwrap() }
+            ),
         ]
             .span();
         common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);

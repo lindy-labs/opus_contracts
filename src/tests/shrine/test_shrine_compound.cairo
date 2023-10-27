@@ -8,7 +8,9 @@ mod test_shrine_compound {
     use opus::types::Trove;
     use opus::utils::exp::exp;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
 
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
@@ -66,7 +68,7 @@ mod test_shrine_compound {
         let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         // Trigger charge and check interest is accrued
         set_contract_address(shrine_utils::admin());
@@ -74,7 +76,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -173,7 +175,7 @@ mod test_shrine_compound {
         let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         // Trigger charge and check interest is accrued
         set_contract_address(shrine_utils::admin());
@@ -181,7 +183,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -218,7 +220,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, start_debt);
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let trove_id: u64 = common::TROVE_1;
         let yang1_addr = shrine_utils::yang1_addr();
@@ -277,7 +279,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -314,7 +316,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, start_debt);
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let trove_id: u64 = common::TROVE_1;
         let yang1_addr = shrine_utils::yang1_addr();
@@ -369,7 +371,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -404,7 +406,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, start_debt);
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let trove_id: u64 = common::TROVE_1;
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
@@ -467,7 +469,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -526,7 +528,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, start_debt);
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
 
@@ -602,7 +604,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -660,7 +662,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, start_debt);
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
 
@@ -714,7 +716,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -860,7 +862,7 @@ mod test_shrine_compound {
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, trove_id, start_debt, 0_u128.into());
 
-        let before_surplus_debt: Wad = shrine.get_surplus_debt();
+        let before_budget: SignedWad = shrine.get_budget();
 
         let mut yangs_deposited: Array<Wad> = array![
             yang1_deposit_amt, yang2_deposit_amt, WadZeroable::zero()
@@ -982,7 +984,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_surplus_debt() == before_surplus_debt + interest, 'wrong surplus debt');
+        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         expected_events
             .append(
@@ -1012,7 +1014,7 @@ mod test_shrine_compound {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_reduce_surplus_debt_pass() {
+    fn test_adjust_budget_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         let original_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
@@ -1029,45 +1031,33 @@ mod test_shrine_compound {
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
 
         let interest: Wad = estimated_debt - original_debt;
-        assert(shrine.get_surplus_debt() == interest, 'wrong surplus debt #1');
+        assert(shrine.get_budget() == interest.into(), 'wrong budget #1');
 
         common::drop_all_events(shrine.contract_address);
-        shrine.reduce_surplus_debt(interest);
+        let budget_adjustment = SignedWad { val: interest.val, sign: true };
+        shrine.adjust_budget(budget_adjustment);
 
-        assert(shrine.get_surplus_debt().is_zero(), 'wrong surplus debt #2');
+        assert(shrine.get_budget().is_zero(), 'wrong budget #2');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::SurplusDebtReduced(
-                shrine_contract::SurplusDebtReduced { amount: interest }
+            shrine_contract::Event::BudgetAdjusted(
+                shrine_contract::BudgetAdjusted { amount: budget_adjustment }
             ),
         ]
             .span();
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
-    }
 
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Exceeds surplus debt', 'ENTRYPOINT_FAILED'))]
-    fn test_reduce_surplus_debt_exceeds_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        // Adjust budget into a deficit
+        let budget_adjustment = SignedWad { val: (1234 * WAD_ONE), sign: true };
+        shrine.adjust_budget(budget_adjustment);
 
-        let original_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine_utils::trove1_forge(shrine, original_debt);
-
-        common::advance_intervals(500);
-
-        let trove_id: u64 = common::TROVE_1;
-        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
-
-        // Trigger charge and check interest is accrued
-        set_contract_address(shrine_utils::admin());
-        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-
-        let interest: Wad = estimated_debt - original_debt;
-        assert(shrine.get_surplus_debt() == interest, 'wrong surplus debt');
-
-        let invalid_amt: Wad = (interest.val + 1).into();
-        shrine.reduce_surplus_debt(invalid_amt);
+        assert(shrine.get_budget() == budget_adjustment, 'wrong budget #3');
+        let mut expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::BudgetAdjusted(
+                shrine_contract::BudgetAdjusted { amount: budget_adjustment }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 }
