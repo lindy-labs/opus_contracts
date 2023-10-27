@@ -140,7 +140,7 @@ mod equalizer_utils {
             contract_address: equalizer_addr
         };
         set_contract_address(admin);
-        equalizer_ac.grant_role(equalizer_roles::all_roles(), admin);
+        equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine

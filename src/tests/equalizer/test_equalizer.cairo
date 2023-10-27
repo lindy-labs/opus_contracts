@@ -34,7 +34,9 @@ mod test_equalizer {
         };
         let admin = shrine_utils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
-        assert(equalizer_ac.get_roles(admin) == equalizer_roles::all_roles(), 'wrong role');
+        assert(
+            equalizer_ac.get_roles(admin) == equalizer_roles::default_admin_role(), 'wrong role'
+        );
         assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
     }
 
@@ -43,53 +45,41 @@ mod test_equalizer {
     fn test_equalize_pass() {
         let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
-        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+        let surplus: Wad = (500 * WAD_ONE).into();
+        set_contract_address(shrine_utils::admin());
+        shrine.adjust_budget(surplus.into());
+        assert(shrine.get_budget() == surplus.into(), 'sanity check');
 
         let before_total_yin = shrine.get_total_yin();
-
-        // Advance by 365 days * 24 hours * 2 intervals per hour = 17520 intervals so that some
-        // interest accrues
-        let mut timestamp = get_block_timestamp();
-        timestamp += (365 * 24 * 2) * shrine::TIME_INTERVAL;
-        set_block_timestamp(timestamp);
-
-        // Set the price to make the interest calculation easier
-        shrine_utils::advance_prices_and_set_multiplier(
-            shrine, 1, shrine_utils::three_yang_addrs(), shrine_utils::three_yang_start_prices(),
-        );
-
-        // Charge trove 1 and sanity check that some debt has accrued
-        shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
-
-        let surplus: Option<Wad> = shrine.get_budget().try_into();
-        assert(surplus.is_some(), 'no surplus accrued');
-
         let before_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
 
         let minted_surplus: Wad = equalizer.equalize();
-        assert(surplus.unwrap() == minted_surplus, 'surplus mismatch');
+        assert(surplus == minted_surplus, 'surplus mismatch');
 
         let after_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
-        assert(
-            after_equalizer_yin == before_equalizer_yin + surplus.unwrap(), 'surplus not received'
-        );
+        assert(after_equalizer_yin == before_equalizer_yin + surplus, 'surplus not received');
 
         // Check remaining surplus
         assert(shrine.get_budget().is_zero(), 'surplus should be zeroed');
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
-        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
-
         let mut expected_events: Span<equalizer_contract::Event> = array![
             equalizer_contract::Event::Equalize(
-                equalizer_contract::Equalize { yin_amt: surplus.unwrap() }
+                equalizer_contract::Equalize { yin_amt: surplus.into() }
             ),
         ]
             .span();
         common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
+
+        // Assert that calling equalize again passes when budget is zero
+        assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
+
+        // Create a deficit
+        let deficit = SignedWad { val: (500 * WAD_ONE), sign: true };
+        shrine.adjust_budget(deficit);
+
+        assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
     }
 
     #[test]

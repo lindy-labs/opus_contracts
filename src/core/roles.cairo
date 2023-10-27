@@ -51,18 +51,11 @@ mod controller_roles {
 }
 
 mod equalizer_roles {
-    const INCUR: u128 = 1;
-    const SET_ALLOCATOR: u128 = 2;
+    const SET_ALLOCATOR: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATOR
-    }
-
-    #[cfg(test)]
-    #[inline(always)]
-    fn all_roles() -> u128 {
-        INCUR + SET_ALLOCATOR
     }
 }
 
