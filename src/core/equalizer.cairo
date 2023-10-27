@@ -53,7 +53,6 @@ mod equalizer {
         Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
-        Incur: Incur,
         Normalize: Normalize
     }
 
@@ -66,13 +65,6 @@ mod equalizer {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Equalize {
         yin_amt: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Incur {
-        #[key]
-        defaulter: ContractAddress,
-        deficit: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
