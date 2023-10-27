@@ -54,7 +54,6 @@ mod equalizer {
         AccessControlEvent: access_control_component::Event,
         Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
-        Allocate: Allocate,
         Equalize: Equalize,
         Normalize: Normalize
     }

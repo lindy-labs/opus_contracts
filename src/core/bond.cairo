@@ -3,18 +3,30 @@ mod Bond {
     use cmp::min;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
-    use opus::core::roles::BondRoles;
+    use opus::core::roles::bond_roles;
 
     use opus::interfaces::IBond::IBond;
     use opus::interfaces::IERC20::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, BondStatus};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::exp::exp;
     use opus::utils::math::pow;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad, WadZeroable};
     use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
     // Constants
@@ -28,6 +40,9 @@ mod Bond {
     // debt ceiling can be made via `Sentinel.set_yang_asset_max`.
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
         // Number of assets added as collateral
@@ -64,6 +79,7 @@ mod Bond {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
         CeilingUpdated: CeilingUpdated,
         ThresholdUpdated: ThresholdUpdated,
         PriceUpdated: PriceUpdated,
@@ -157,7 +173,7 @@ mod Bond {
         threshold: Ray,
         ceiling: Wad,
     ) {
-        AccessControl::initializer(admin, Option::Some(BondRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(bond_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
 
@@ -232,13 +248,13 @@ mod Bond {
         //
 
         fn set_ceiling(ref self: ContractState, ceiling: Wad) {
-            AccessControl::assert_has_role(BondRoles::SET_CEILING);
+            self.access_control.assert_has_role(bond_roles::SET_CEILING);
 
             self.set_ceiling_helper(ceiling);
         }
 
         fn set_price(ref self: ContractState, price: Wad) {
-            AccessControl::assert_has_role(BondRoles::SET_PRICE);
+            self.access_control.assert_has_role(bond_roles::SET_PRICE);
 
             self.price.write(price);
 
@@ -246,19 +262,19 @@ mod Bond {
         }
 
         fn set_rate(ref self: ContractState, rate: Ray) {
-            AccessControl::assert_has_role(BondRoles::SET_RATE);
+            self.access_control.assert_has_role(bond_roles::SET_RATE);
 
             self.set_threshold_helper(rate);
         }
 
         fn set_threshold(ref self: ContractState, threshold: Ray) {
-            AccessControl::assert_has_role(BondRoles::SET_THRESHOLD);
+            self.access_control.assert_has_role(bond_roles::SET_THRESHOLD);
 
             self.set_threshold_helper(threshold);
         }
 
         fn add_asset(ref self: ContractState, asset: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::ADD_ASSET);
+            self.access_control.assert_has_role(bond_roles::ADD_ASSET);
 
             assert(self.asset_id.read(asset).is_zero(), 'BO: Asset already added');
             let asset_id: u8 = self.assets_count.read() + 1;
@@ -275,7 +291,7 @@ mod Bond {
         //
 
         fn borrow(ref self: ContractState, yin_amt: Wad) {
-            AccessControl::assert_has_role(BondRoles::BORROW);
+            self.access_control.assert_has_role(bond_roles::BORROW);
 
             // Assertions
             self.assert_active();
@@ -322,7 +338,7 @@ mod Bond {
         // to inactive.
         // This is intended to be called by the borrower who wishes to close this bond module.
         fn close(ref self: ContractState, recipient: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::CLOSE);
+            self.access_control.assert_has_role(bond_roles::CLOSE);
 
             self.assert_active();
 
@@ -348,7 +364,7 @@ mod Bond {
         // 2. after yin is transferred to the bond module after all liquidations, `settle` 
         //    pays down the outstanding debt, and if there is any deficit, it is accounted in Shrine
         fn liquidate(ref self: ContractState, recipient: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::LIQUIDATE);
+            self.access_control.assert_has_role(bond_roles::LIQUIDATE);
 
             self.assert_active();
 
@@ -363,7 +379,7 @@ mod Bond {
         }
 
         fn settle(ref self: ContractState, recipient: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::LIQUIDATE);
+            self.access_control.assert_has_role(bond_roles::LIQUIDATE);
 
             assert(self.status.read() == BondStatus::Inactive, 'BO: Bond is not inactive');
 
@@ -391,7 +407,7 @@ mod Bond {
         // for off-chain liquidation. The liquidated value is expected to be transferred back to
         // this module in whichever form that can then be added via `add_asset`.
         fn kill(ref self: ContractState, recipient: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::KILL);
+            self.access_control.assert_has_role(bond_roles::KILL);
 
             self.assert_active();
 
@@ -493,49 +509,6 @@ mod Bond {
             };
 
             asset_balances.span()
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

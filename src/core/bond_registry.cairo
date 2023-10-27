@@ -2,16 +2,44 @@
 mod BondRegistry {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use opus::core::roles::BondRegistryRoles;
+    use opus::core::roles::bond_registry_roles;
 
     use opus::interfaces::IBond::{IBondDispatcher, IBondDispatcherTrait, IBondRegistry};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Storage
+    //
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         bonds_count: u32,
         bond_ids: LegacyMap::<ContractAddress, u32>,
         bonds: LegacyMap::<u32, ContractAddress>,
+    }
+
+    //
+    // Events
+    //
+
+    #[event]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    enum Event {
+        AccessControlEvent: access_control_component::Event,
     }
 
     #[external(v0)]
@@ -38,7 +66,7 @@ mod BondRegistry {
         }
 
         fn add_bond(ref self: ContractState, bond: ContractAddress) {
-            AccessControl::assert_has_role(BondRegistryRoles::ADD_BOND);
+            self.access_control.assert_has_role(bond_registry_roles::ADD_BOND);
 
             assert(self.bond_ids.read(bond) == 0, 'BR: Bond already exists');
             let bond_id: u32 = self.bonds_count.read() + 1;
@@ -50,7 +78,7 @@ mod BondRegistry {
         }
 
         fn remove_bond(ref self: ContractState, bond: ContractAddress) {
-            AccessControl::assert_has_role(BondRegistryRoles::REMOVE_BOND);
+            self.access_control.assert_has_role(bond_registry_roles::REMOVE_BOND);
 
             let bond_id: u32 = self.bond_ids.read(bond);
             assert(bond_id != 0, 'BR: Bond does not exist');
@@ -71,50 +99,6 @@ mod BondRegistry {
             // Decrement bonds count
             self.bonds_count.write(bonds_count - 1);
         // TODO: emit event
-        }
-    }
-
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

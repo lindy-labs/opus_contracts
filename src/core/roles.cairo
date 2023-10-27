@@ -55,12 +55,7 @@ mod equalizer_roles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        INCUR + SET_ALLOCATOR
-    }
-
-    #[inline(always)]
-    fn bond() -> u128 {
-        INCUR
+        SET_ALLOCATOR
     }
 }
 
@@ -214,31 +209,20 @@ mod shrine_roles {
     }
 }
 
-mod BondRoles {
+mod bond_roles {
     const ADD_ASSET: u128 = 1;
     const BORROW: u128 = 2;
     const CLOSE: u128 = 4;
     const KILL: u128 = 8;
     const LIQUIDATE: u128 = 16;
     const SET_CEILING: u128 = 32;
-    const SET_EQUALIZER: u128 = 64;
-    const SET_LIQUIDATOR: u128 = 128;
-    const SET_PRICE: u128 = 256;
-    const SET_RATE: u128 = 512;
-    const SET_THRESHOLD: u128 = 1024;
+    const SET_PRICE: u128 = 64;
+    const SET_RATE: u128 = 128;
+    const SET_THRESHOLD: u128 = 256;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_ASSET
-            + BORROW
-            + CLOSE
-            + KILL
-            + LIQUIDATE
-            + SET_CEILING
-            + SET_EQUALIZER
-            + SET_LIQUIDATOR
-            + SET_PRICE
-            + SET_THRESHOLD
+        ADD_ASSET + BORROW + CLOSE + KILL + LIQUIDATE + SET_CEILING + SET_PRICE + SET_THRESHOLD
     }
 
     #[inline(always)]
@@ -248,19 +232,18 @@ mod BondRoles {
 
     #[inline(always)]
     fn bond_registry() -> u128 {
-        KILL + SET_EQUALIZER
+        KILL
     }
 }
 
-mod BondRegistryRoles {
+mod bond_registry_roles {
     const ADD_BOND: u128 = 1;
     const KILL: u128 = 2;
     const REMOVE_BOND: u128 = 4;
-    const SET_EQUALIZER: u128 = 8;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_BOND + KILL + REMOVE_BOND + SET_EQUALIZER
+        ADD_BOND + KILL + REMOVE_BOND
     }
 
     #[inline(always)]
