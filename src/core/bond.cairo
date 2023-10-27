@@ -6,7 +6,6 @@ mod Bond {
     use opus::core::roles::BondRoles;
 
     use opus::interfaces::IBond::IBond;
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20, IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, BondStatus};
@@ -15,6 +14,7 @@ mod Bond {
     use opus::utils::math::pow;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::wadray_signed;
 
     //
     // Constants
@@ -30,8 +30,6 @@ mod Bond {
     struct Storage {
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
-        // The Equalizer associated with the Shrine
-        equalizer: IEqualizerDispatcher,
         // Number of assets added as collateral
         assets_count: u8,
         // Mapping from an asset address to its asset ID
@@ -66,7 +64,6 @@ mod Bond {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
-        EqualizerUpdated: EqualizerUpdated,
         CeilingUpdated: CeilingUpdated,
         ThresholdUpdated: ThresholdUpdated,
         PriceUpdated: PriceUpdated,
@@ -80,12 +77,6 @@ mod Bond {
         Close: Close,
         Killed: Killed,
         Reclaim: Reclaim,
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct EqualizerUpdated {
-        old_address: ContractAddress,
-        new_address: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -162,7 +153,6 @@ mod Bond {
         ref self: ContractState,
         admin: ContractAddress,
         shrine: ContractAddress,
-        equalizer: ContractAddress,
         rate: Ray,
         threshold: Ray,
         ceiling: Wad,
@@ -170,8 +160,6 @@ mod Bond {
         AccessControl::initializer(admin, Option::Some(BondRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
-
-        self.set_equalizer_helper(equalizer);
 
         self.set_ceiling_helper(ceiling);
         self.set_rate_helper(rate);
@@ -185,9 +173,6 @@ mod Bond {
         //
         // Getters
         //
-        fn get_equalizer(self: @ContractState) -> ContractAddress {
-            self.equalizer.read().contract_address
-        }
 
         fn get_assets_count(self: @ContractState) -> u8 {
             self.assets_count.read()
@@ -245,12 +230,6 @@ mod Bond {
         //
         // Setters
         //
-
-        fn set_equalizer(ref self: ContractState, equalizer: ContractAddress) {
-            AccessControl::assert_has_role(BondRoles::SET_EQUALIZER);
-
-            self.set_equalizer_helper(equalizer);
-        }
 
         fn set_ceiling(ref self: ContractState, ceiling: Wad) {
             AccessControl::assert_has_role(BondRoles::SET_CEILING);
@@ -332,7 +311,7 @@ mod Bond {
             self.emit(Repay { yin_amt: capped_yin_amt });
         }
 
-        // Charge interest and mint the surplus to the Equalizer
+        // Charge interest and add the surplus to Shrine
         fn charge(ref self: ContractState) {
             self.assert_active();
 
@@ -367,8 +346,7 @@ mod Bond {
         // 1. `liquidate` sets the bond to inactive, and transfer the assets to an address
         //    for off-chain liquidation;
         // 2. after yin is transferred to the bond module after all liquidations, `settle` 
-        //    pays down the outstanding debt, and if there is any deficit, it is written off
-        //    to the Equalizer.
+        //    pays down the outstanding debt, and if there is any deficit, it is accounted in Shrine
         fn liquidate(ref self: ContractState, recipient: ContractAddress) {
             AccessControl::assert_has_role(BondRoles::LIQUIDATE);
 
@@ -393,7 +371,7 @@ mod Bond {
 
             let outstanding: Wad = self.borrowed.read();
             if outstanding.is_non_zero() {
-                self.equalizer.read().incur(outstanding);
+                self.shrine.read().adjust_budget(SignedWad { val: outstanding.val, sign: true });
                 self.borrowed.write(WadZeroable::zero());
             }
 
@@ -452,12 +430,6 @@ mod Bond {
             assert(self.status.read() == BondStatus::Active, 'BO: Bond is not active');
         }
 
-        fn set_equalizer_helper(ref self: ContractState, equalizer: ContractAddress) {
-            let old_address: ContractAddress = self.equalizer.read().contract_address;
-            self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
-            self.emit(EqualizerUpdated { old_address, new_address: equalizer });
-        }
-
         fn set_rate_helper(ref self: ContractState, rate: Ray) {
             self.rate.write(rate);
             self.emit(RateUpdated { rate });
@@ -487,7 +459,7 @@ mod Bond {
             self.borrowed.write(updated_debt);
 
             let interest: Wad = updated_debt - start_debt;
-            self.shrine.read().inject(self.equalizer.read().contract_address, interest);
+            self.shrine.read().adjust_budget(interest.into());
 
             self.emit(Charge { yin_amt: interest });
         }

@@ -6,7 +6,6 @@ use opus::utils::wadray::{Ray, Wad};
 #[starknet::interface]
 trait IBond<TContractState> {
     // getters
-    fn get_equalizer(self: @TContractState) -> ContractAddress;
     fn get_assets_count(self: @TContractState) -> u8;
     fn get_assets(self: @TContractState) -> Span<ContractAddress>;
     fn get_ceiling(self: @TContractState) -> Wad;
@@ -18,7 +17,6 @@ trait IBond<TContractState> {
     // view
     fn is_healthy(self: @TContractState) -> bool;
     // setters
-    fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
     fn set_ceiling(ref self: TContractState, ceiling: Wad);
     fn set_price(ref self: TContractState, price: Wad);
     fn set_rate(ref self: TContractState, rate: Ray);
@@ -44,6 +42,4 @@ trait IBondRegistry<TContractState> {
     // setters
     fn add_bond(ref self: TContractState, bond: ContractAddress);
     fn remove_bond(ref self: TContractState, bond: ContractAddress);
-    // convenience wrappers
-    fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
 }

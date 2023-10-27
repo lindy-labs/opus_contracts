@@ -72,24 +72,6 @@ mod BondRegistry {
             self.bonds_count.write(bonds_count - 1);
         // TODO: emit event
         }
-
-        fn set_equalizer(ref self: ContractState, equalizer: ContractAddress) {
-            AccessControl::assert_has_role(BondRegistryRoles::SET_EQUALIZER);
-
-            let loop_end: u32 = 0;
-
-            let mut bond_id: u32 = self.bonds_count.read();
-            loop {
-                if bond_id == loop_end {
-                    break;
-                }
-
-                IBondDispatcher { contract_address: self.bonds.read(bond_id) }
-                    .set_equalizer(equalizer);
-
-                bond_id -= 1;
-            };
-        }
     }
 
 
