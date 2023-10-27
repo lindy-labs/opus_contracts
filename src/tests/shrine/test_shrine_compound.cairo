@@ -1017,44 +1017,42 @@ mod test_shrine_compound {
     fn test_adjust_budget_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
-        let original_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine_utils::trove1_forge(shrine, original_debt);
-
-        common::advance_intervals(500);
-
-        let trove_id: u64 = common::TROVE_1;
-        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
-
-        // Trigger charge and check interest is accrued
-        set_contract_address(shrine_utils::admin());
-        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-
-        let interest: Wad = estimated_debt - original_debt;
-        assert(shrine.get_budget() == interest.into(), 'wrong budget #1');
-
         common::drop_all_events(shrine.contract_address);
-        let budget_adjustment = SignedWad { val: interest.val, sign: true };
-        shrine.adjust_budget(budget_adjustment);
+
+        let surplus: Wad = (500 * WAD_ONE).into();
+        set_contract_address(shrine_utils::admin());
+        shrine.adjust_budget(surplus.into());
+        assert(shrine.get_budget() == surplus.into(), 'wrong budget #1');
+
+        let mut expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::BudgetAdjusted(
+                shrine_contract::BudgetAdjusted { amount: surplus.into() }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+
+        let deficit = SignedWad { val: surplus.val, sign: true };
+        shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget().is_zero(), 'wrong budget #2');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::BudgetAdjusted(
-                shrine_contract::BudgetAdjusted { amount: budget_adjustment }
+                shrine_contract::BudgetAdjusted { amount: deficit }
             ),
         ]
             .span();
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // Adjust budget into a deficit
-        let budget_adjustment = SignedWad { val: (1234 * WAD_ONE), sign: true };
-        shrine.adjust_budget(budget_adjustment);
+        let deficit = SignedWad { val: (1234 * WAD_ONE), sign: true };
+        shrine.adjust_budget(deficit);
 
-        assert(shrine.get_budget() == budget_adjustment, 'wrong budget #3');
+        assert(shrine.get_budget() == deficit, 'wrong budget #3');
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::BudgetAdjusted(
-                shrine_contract::BudgetAdjusted { amount: budget_adjustment }
+                shrine_contract::BudgetAdjusted { amount: deficit }
             ),
         ]
             .span();
