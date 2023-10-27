@@ -40,8 +40,6 @@ mod equalizer {
         allocator: IAllocatorDispatcher,
         // the Shrine that this Equalizer mints surplus debt for
         shrine: IShrineDispatcher,
-        // amount of deficit debt at the current on-chain conditions
-        deficit: Wad,
     }
 
     //
@@ -120,10 +118,6 @@ mod equalizer {
 
         fn get_allocator(self: @ContractState) -> ContractAddress {
             self.allocator.read().contract_address
-        }
-
-        fn get_deficit(self: @ContractState) -> Wad {
-            self.deficit.read()
         }
 
         //
@@ -205,27 +199,19 @@ mod equalizer {
             self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }
 
-        // Incur a debt deficit
-        fn incur(ref self: ContractState, yin_amt: Wad) {
-            self.access_control.assert_has_role(equalizer_roles::INCUR);
-
-            self.deficit.write(self.deficit.read() + yin_amt);
-
-            self.emit(Incur { defaulter: get_caller_address(), deficit: yin_amt });
-        }
-
-        // Burn yin from the caller's balance to wipe off any debt deficit.
+        // Burn yin from the caller's balance to wipe off any budget deficit in Shrine.
         // Anyone can call this function.
         fn normalize(ref self: ContractState, yin_amt: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            let deficit: Wad = self.deficit.read();
-            let wipe_amt: Wad = min(yin_amt, deficit);
-
-            if wipe_amt.is_non_zero() {
+            let budget: SignedWad = shrine.get_budget();
+            let budget_wad: Option<Wad> = budget.try_into();
+            let has_deficit: bool = budget_wad.is_none();
+            if has_deficit {
+                let wipe_amt: Wad = min(yin_amt, budget.val.into());
                 let caller: ContractAddress = get_caller_address();
-                self.deficit.write(deficit - wipe_amt);
                 shrine.eject(caller, wipe_amt);
+                shrine.adjust_budget(wipe_amt.into());
                 self.emit(Normalize { caller, yin_amt: wipe_amt });
             }
         }

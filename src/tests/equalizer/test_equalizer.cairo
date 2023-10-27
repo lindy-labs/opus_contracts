@@ -15,6 +15,8 @@ mod test_equalizer {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
 
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -158,40 +160,15 @@ mod test_equalizer {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_incur_pass() {
-        let (_, equalizer, _) = equalizer_utils::equalizer_deploy();
-
-        let before_deficit: Wad = equalizer.get_deficit();
-        let deficit_increment: Wad = (5000 * WAD_ONE).into();
-
-        common::drop_all_events(equalizer.contract_address);
-
-        let admin: ContractAddress = shrine_utils::admin();
-        set_contract_address(admin);
-        equalizer.incur(deficit_increment);
-
-        assert(equalizer.get_deficit() == before_deficit + deficit_increment, 'wrong deficit');
-
-        let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::Incur(
-                equalizer_contract::Incur { defaulter: admin, deficit: deficit_increment }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
     fn test_normalize_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
-        let deficit: Wad = (5000 * WAD_ONE).into();
+        let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
             WadZeroable::zero(),
-            (deficit.val - 1).into(),
-            deficit,
-            (deficit.val + 1).into(), // exceeds deficit, but should be capped in `normalize`
+            (inject_amt.val - 1).into(),
+            inject_amt,
+            (inject_amt.val + 1).into(), // exceeds deficit, but should be capped in `normalize`
         ]
             .span();
 
@@ -202,19 +179,20 @@ mod test_equalizer {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
                     // Create the deficit
-                    equalizer.incur(deficit);
-                    assert(equalizer.get_deficit() == deficit, 'sanity check #1');
+                    let deficit = SignedWad { val: inject_amt.val, sign: true };
+                    shrine.adjust_budget(deficit);
+                    assert(shrine.get_budget() == deficit, 'sanity check #1');
 
                     // Mint the deficit amount to the admin
-                    shrine.inject(admin, deficit);
+                    shrine.inject(admin, inject_amt);
 
                     common::drop_all_events(equalizer.contract_address);
 
                     equalizer.normalize(*normalize_amt);
 
-                    let expected_normalized_amt: Wad = min(deficit, *normalize_amt);
+                    let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
                     assert(
-                        equalizer.get_deficit() == deficit - expected_normalized_amt,
+                        shrine.get_budget() == deficit + expected_normalized_amt.into(),
                         'wrong remaining deficit'
                     );
 
@@ -236,7 +214,12 @@ mod test_equalizer {
                     // Reset by normalizing all remaining deficit
                     equalizer.normalize(BoundedU128::max().into());
 
-                    assert(equalizer.get_deficit().is_zero(), 'sanity check #2');
+                    assert(shrine.get_budget().is_zero(), 'sanity check #2');
+
+                    // Assert nothing happens if we try to normalize again
+                    equalizer.normalize(BoundedU128::max().into());
+
+                    assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },
                 Option::None => { break; }
             };

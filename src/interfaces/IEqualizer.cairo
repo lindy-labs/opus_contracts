@@ -6,11 +6,9 @@ use opus::utils::wadray::Wad;
 trait IEqualizer<TContractState> {
     // getter
     fn get_allocator(self: @TContractState) -> ContractAddress;
-    fn get_deficit(self: @TContractState) -> Wad;
     // external
     fn set_allocator(ref self: TContractState, allocator: ContractAddress);
     fn allocate(ref self: TContractState);
-    fn incur(ref self: TContractState, yin_amt: Wad);
     fn equalize(ref self: TContractState) -> Wad;
     fn normalize(ref self: TContractState, yin_amt: Wad);
 }
