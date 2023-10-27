@@ -1,4 +1,4 @@
-mod AbsorberRoles {
+mod absorber_roles {
     const KILL: u128 = 1;
     const SET_REWARD: u128 = 2;
     const UPDATE: u128 = 4;
@@ -14,7 +14,7 @@ mod AbsorberRoles {
     }
 }
 
-mod AllocatorRoles {
+mod allocator_roles {
     const SET_ALLOCATION: u128 = 1;
 
     #[inline(always)]
@@ -23,7 +23,7 @@ mod AllocatorRoles {
     }
 }
 
-mod BlesserRoles {
+mod blesser_roles {
     const BLESS: u128 = 1;
 
     #[inline(always)]
@@ -32,7 +32,7 @@ mod BlesserRoles {
     }
 }
 
-mod CaretakerRoles {
+mod caretaker_roles {
     const SHUT: u128 = 1;
 
     #[inline(always)]
@@ -41,7 +41,7 @@ mod CaretakerRoles {
     }
 }
 
-mod ControllerRoles {
+mod controller_roles {
     const TUNE_CONTROLLER: u128 = 1;
 
     #[inline(always)]
@@ -50,9 +50,8 @@ mod ControllerRoles {
     }
 }
 
-mod EqualizerRoles {
-    const INCUR: u128 = 1;
-    const SET_ALLOCATOR: u128 = 2;
+mod equalizer_roles {
+    const SET_ALLOCATOR: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
@@ -65,7 +64,7 @@ mod EqualizerRoles {
     }
 }
 
-mod PragmaRoles {
+mod pragma_roles {
     const ADD_YANG: u128 = 1;
     const SET_ORACLE_ADDRESS: u128 = 2;
     const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
@@ -83,7 +82,7 @@ mod PragmaRoles {
     }
 }
 
-mod PurgerRoles {
+mod purger_roles {
     const SET_PENALTY_SCALAR: u128 = 1;
 
     #[inline(always)]
@@ -92,7 +91,7 @@ mod PurgerRoles {
     }
 }
 
-mod SentinelRoles {
+mod sentinel_roles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
     const EXIT: u128 = 4;
@@ -121,17 +120,17 @@ mod SentinelRoles {
     }
 }
 
-mod ShrineRoles {
+mod shrine_roles {
     const ADD_YANG: u128 = 1;
-    const ADVANCE: u128 = 2;
-    const DEPOSIT: u128 = 4;
-    const EJECT: u128 = 8;
-    const FORGE: u128 = 16;
-    const INJECT: u128 = 32;
-    const KILL: u128 = 64;
-    const MELT: u128 = 128;
-    const REDISTRIBUTE: u128 = 256;
-    const REDUCE_SURPLUS_DEBT: u128 = 512;
+    const ADJUST_BUDGET: u128 = 2;
+    const ADVANCE: u128 = 4;
+    const DEPOSIT: u128 = 8;
+    const EJECT: u128 = 16;
+    const FORGE: u128 = 32;
+    const INJECT: u128 = 64;
+    const KILL: u128 = 128;
+    const MELT: u128 = 256;
+    const REDISTRIBUTE: u128 = 512;
     const SEIZE: u128 = 1024;
     const SET_DEBT_CEILING: u128 = 2048;
     const SET_MULTIPLIER: u128 = 4096;
@@ -168,7 +167,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        EJECT + INJECT + REDUCE_SURPLUS_DEBT
+        EJECT + INJECT + ADJUST_BUDGET
     }
 
     #[inline(always)]
@@ -195,6 +194,7 @@ mod ShrineRoles {
     #[inline(always)]
     fn all_roles() -> u128 {
         ADD_YANG
+            + ADJUST_BUDGET
             + ADVANCE
             + DEPOSIT
             + EJECT

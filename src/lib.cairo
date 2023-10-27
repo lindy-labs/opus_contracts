@@ -7,7 +7,7 @@ mod core {
     mod caretaker;
     mod controller;
     mod equalizer;
-    mod flashmint;
+    mod flash_mint;
     mod gate;
     mod purger;
     mod roles;
@@ -81,9 +81,9 @@ mod tests {
         mod test_pragma;
         mod utils;
     }
-    mod flashmint {
+    mod flash_mint {
         mod flash_borrower;
-        mod test_flashmint;
+        mod test_flash_mint;
         mod utils;
     }
     mod gate {
@@ -106,6 +106,8 @@ mod tests {
         mod utils;
     }
     mod utils {
+        mod mock_access_control;
+        mod mock_reentrancy_guard;
         mod test_access_control;
         mod test_exp;
         mod test_math;

@@ -1,10 +1,10 @@
-mod TestCaretaker {
+mod test_caretaker {
     use debug::PrintTrait;
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
 
-    use opus::core::caretaker::Caretaker;
-    use opus::core::roles::{CaretakerRoles, ShrineRoles};
+    use opus::core::caretaker::caretaker as caretaker_contract;
+    use opus::core::roles::{caretaker_roles, shrine_roles};
 
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
@@ -15,29 +15,29 @@ mod TestCaretaker {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
-    use opus::tests::abbot::utils::AbbotUtils;
-    use opus::tests::caretaker::utils::CaretakerUtils;
+    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::caretaker::utils::caretaker_utils;
     use opus::tests::common;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::shrine::utils::shrine_utils;
 
 
     #[test]
     #[available_gas(100000000)]
     fn test_caretaker_setup() {
-        let (caretaker, shrine, _, _, _, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, shrine, _, _, _, _) = caretaker_utils::caretaker_deploy();
 
         let caretaker_ac = IAccessControlDispatcher {
             contract_address: caretaker.contract_address
         };
 
-        assert(caretaker_ac.get_admin() == CaretakerUtils::admin(), 'setup admin');
+        assert(caretaker_ac.get_admin() == caretaker_utils::admin(), 'setup admin');
         assert(
-            caretaker_ac.get_roles(CaretakerUtils::admin()) == CaretakerRoles::SHUT, 'admin roles'
+            caretaker_ac.get_roles(caretaker_utils::admin()) == caretaker_roles::SHUT, 'admin roles'
         );
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         assert(
-            shrine_ac.has_role(ShrineRoles::KILL, caretaker.contract_address),
+            shrine_ac.has_role(shrine_roles::KILL, caretaker.contract_address),
             'caretaker cant kill shrine'
         );
     }
@@ -46,7 +46,7 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_caretaker_setup_preview_release_throws() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         caretaker.preview_release(1);
     }
 
@@ -54,7 +54,7 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_caretaker_setup_preview_reclaim_throws() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         caretaker.preview_reclaim(WAD_ONE.into());
     }
 
@@ -62,7 +62,7 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_shut_by_badguy_throws() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         set_contract_address(common::badguy());
         caretaker.shut();
     }
@@ -71,21 +71,21 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     fn test_shut() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+            caretaker_utils::caretaker_deploy();
 
         // user 1 with 950 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (950 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+            abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
         // user 2 with 50 yin and 1 yang
         let user2 = common::trove2_owner_addr();
         let trove2_forge_amt: Wad = (50 * WAD_ONE).into();
-        common::fund_user(user2, yangs, AbbotUtils::initial_asset_amts());
-        let (eth_yang, eth_gate, eth_yang_amt) = CaretakerUtils::only_eth(yangs, gates);
+        common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
+        let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
         let trove2_id = common::open_trove_helper(
             abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt
         );
@@ -108,7 +108,7 @@ mod TestCaretaker {
         let y0_backing = wadray::wmul_wr(g0_before_balance, backing).into();
         let y1_backing = wadray::wmul_wr(g1_before_balance, backing).into();
 
-        set_contract_address(CaretakerUtils::admin());
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
         // assert Shrine killed
@@ -151,8 +151,8 @@ mod TestCaretaker {
             caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance'
         );
 
-        let mut expected_events: Span<Caretaker::Event> = array![
-            Caretaker::Event::Shut(Caretaker::Shut {}),
+        let mut expected_events: Span<caretaker_contract::Event> = array![
+            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
         ]
             .span();
         common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
@@ -162,13 +162,13 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     fn test_release() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+            caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
-        let trove1_deposit_amts = AbbotUtils::open_trove_yang_asset_amts();
+        let trove1_deposit_amts = abbot_utils::open_trove_yang_asset_amts();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
             abbot, user1, yangs, trove1_deposit_amts, gates, trove1_forge_amt
         );
@@ -176,8 +176,8 @@ mod TestCaretaker {
         // user 2 with 100 yin and 1 yang
         let user2 = common::trove2_owner_addr();
         let trove2_forge_amt: Wad = (1000 * WAD_ONE).into();
-        common::fund_user(user2, yangs, AbbotUtils::initial_asset_amts());
-        let (eth_yang, eth_gate, eth_yang_amt) = CaretakerUtils::only_eth(yangs, gates);
+        common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
+        let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
         let trove2_id = common::open_trove_helper(
             abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt
         );
@@ -194,7 +194,7 @@ mod TestCaretaker {
         let trove1_yang0_deposit: Wad = shrine.get_deposit(*yangs[0], trove1_id);
         let trove1_yang1_deposit: Wad = shrine.get_deposit(*yangs[1], trove1_id);
 
-        set_contract_address(CaretakerUtils::admin());
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
         set_contract_address(user1);
@@ -253,14 +253,14 @@ mod TestCaretaker {
         assert(*trove2_released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
         assert((*trove2_released_assets.at(1).amount).is_zero(), 'incorrect release');
 
-        let mut expected_events: Span<Caretaker::Event> = array![
-            Caretaker::Event::Release(
-                Caretaker::Release {
+        let mut expected_events: Span<caretaker_contract::Event> = array![
+            caretaker_contract::Event::Release(
+                caretaker_contract::Release {
                     user: user1, trove_id: trove1_id, assets: trove1_released_assets,
                 }
             ),
-            Caretaker::Event::Release(
-                Caretaker::Release {
+            caretaker_contract::Event::Release(
+                caretaker_contract::Release {
                     user: user2, trove_id: trove2_id, assets: trove2_released_assets,
                 }
             ),
@@ -273,17 +273,17 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     fn test_preview_reclaim_more_than_total_yin() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+            caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+            abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
-        set_contract_address(CaretakerUtils::admin());
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
         let reclaimable_assets: Span<AssetBalance> = caretaker
@@ -306,14 +306,14 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     fn test_reclaim() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+            caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+            abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
         // transfer some yin from user1 elsewhere
@@ -331,7 +331,7 @@ mod TestCaretaker {
         let scammer_yang0_before_balance: u256 = y0.balance_of(scammer);
         let scammer_yang1_before_balance: u256 = y1.balance_of(scammer);
 
-        set_contract_address(CaretakerUtils::admin());
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
         //
@@ -423,14 +423,14 @@ mod TestCaretaker {
             'scammer reclaimed yang1'
         );
 
-        let mut expected_events: Span<Caretaker::Event> = array![
-            Caretaker::Event::Reclaim(
-                Caretaker::Reclaim {
+        let mut expected_events: Span<caretaker_contract::Event> = array![
+            caretaker_contract::Event::Reclaim(
+                caretaker_contract::Reclaim {
                     user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets,
                 }
             ),
-            Caretaker::Event::Reclaim(
-                Caretaker::Reclaim {
+            caretaker_contract::Event::Reclaim(
+                caretaker_contract::Reclaim {
                     user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets,
                 }
             ),
@@ -443,14 +443,14 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     fn test_shut_during_armageddon() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            CaretakerUtils::caretaker_deploy();
+            caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+            abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
@@ -467,8 +467,8 @@ mod TestCaretaker {
 
         // manipulate prices to be waaaay below start price to force
         // all yang deposits to be used to back yin
-        ShrineUtils::make_root(shrine.contract_address, CaretakerUtils::admin());
-        set_contract_address(CaretakerUtils::admin());
+        shrine_utils::make_root(shrine.contract_address, caretaker_utils::admin());
+        set_contract_address(caretaker_utils::admin());
         let new_eth_price: Wad = (50 * WAD_ONE).into();
         let new_wbtc_price: Wad = (20 * WAD_ONE).into();
         shrine.advance(*yangs[0], new_eth_price);
@@ -511,10 +511,12 @@ mod TestCaretaker {
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
 
-        let mut expected_events: Span<Caretaker::Event> = array![
-            Caretaker::Event::Shut(Caretaker::Shut {}),
-            Caretaker::Event::Release(
-                Caretaker::Release { user: user1, trove_id: trove1_id, assets: released_assets, }
+        let mut expected_events: Span<caretaker_contract::Event> = array![
+            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
+            caretaker_contract::Event::Release(
+                caretaker_contract::Release {
+                    user: user1, trove_id: trove1_id, assets: released_assets,
+                }
             ),
         ]
             .span();
@@ -525,8 +527,8 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_release_when_system_live_reverts() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
-        set_contract_address(CaretakerUtils::admin());
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        set_contract_address(caretaker_utils::admin());
         caretaker.release(1);
     }
 
@@ -534,8 +536,8 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_release_foreign_trove_reverts() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
-        set_contract_address(CaretakerUtils::admin());
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
         caretaker.release(1);
     }
@@ -544,8 +546,8 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_reclaim_when_system_live_reverts() {
-        let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
-        set_contract_address(CaretakerUtils::admin());
+        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        set_contract_address(caretaker_utils::admin());
         caretaker.reclaim(WAD_ONE.into());
     }
 
@@ -555,14 +557,14 @@ mod TestCaretaker {
         expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_reclaim_insufficient_yin() {
-        let (caretaker, shrine, abbot, _, yangs, gates) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _, yangs, gates) = caretaker_utils::caretaker_deploy();
 
         // opening a trove
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
-        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+            abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
         // Transferring some of user1's yin to someone else
@@ -584,7 +586,7 @@ mod TestCaretaker {
             .transfer(user2, transfer_amt);
 
         // Activating global settlement mode
-        set_contract_address(CaretakerUtils::admin());
+        set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
         // User1 attempts to reclaim more yin than they have 

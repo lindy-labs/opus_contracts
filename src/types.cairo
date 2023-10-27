@@ -5,9 +5,9 @@ use opus::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
-    None: (),
-    Temporary: (),
-    Permanent: ()
+    None,
+    Temporary,
+    Permanent
 }
 
 #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
@@ -86,7 +86,7 @@ struct Request {
 // Pragma
 //
 
-mod Pragma {
+mod pragma {
     #[derive(Copy, Drop, Serde)]
     enum DataType {
         Spot: u256,

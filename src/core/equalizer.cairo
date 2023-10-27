@@ -1,20 +1,40 @@
 #[starknet::contract]
-mod Equalizer {
+mod equalizer {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
-    use opus::core::roles::EqualizerRoles;
+    use opus::core::roles::equalizer_roles;
 
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::SignedWad;
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic =
+        access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    //
+    // Storage
+    //
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
         // the Allocator to read the current allocation of recipients of any minted
         // surplus debt, and their respective percentages
         allocator: IAllocatorDispatcher,
@@ -31,10 +51,11 @@ mod Equalizer {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
+        AccessControlEvent: access_control_component::Event,
+        Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
         Allocate: Allocate,
         Equalize: Equalize,
-        Incur: Incur,
         Normalize: Normalize
     }
 
@@ -50,14 +71,9 @@ mod Equalizer {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Incur {
-        #[key]
-        defaulter: ContractAddress,
-        deficit: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Normalize {
+        #[key]
+        caller: ContractAddress,
         yin_amt: Wad
     }
 
@@ -79,7 +95,7 @@ mod Equalizer {
         shrine: ContractAddress,
         allocator: ContractAddress
     ) {
-        AccessControl::initializer(admin, Option::Some(EqualizerRoles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -105,7 +121,7 @@ mod Equalizer {
 
         // Update the Allocator's address
         fn set_allocator(ref self: ContractState, allocator: ContractAddress) {
-            AccessControl::assert_has_role(EqualizerRoles::SET_ALLOCATOR);
+            self.access_control.assert_has_role(equalizer_roles::SET_ALLOCATOR);
 
             let old_address: ContractAddress = self.allocator.read().contract_address;
             self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -122,18 +138,20 @@ mod Equalizer {
         fn equalize(ref self: ContractState) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            let surplus: Wad = shrine.get_surplus_debt();
+            let budget: SignedWad = shrine.get_budget();
+            let surplus: Option<Wad> = budget.try_into();
 
-            if surplus.is_zero() {
+            if surplus.is_none() {
                 return WadZeroable::zero();
             }
 
-            shrine.inject(get_contract_address(), surplus);
-            shrine.reduce_surplus_debt(surplus);
+            let minted_surplus: Wad = surplus.unwrap();
+            shrine.inject(get_contract_address(), minted_surplus);
+            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
 
-            self.emit(Equalize { yin_amt: surplus });
+            self.emit(Equalize { yin_amt: minted_surplus });
 
-            surplus
+            minted_surplus
         }
 
         // Allocate the yin balance of the Equalizer to the recipients in the allocation 
@@ -144,14 +162,19 @@ mod Equalizer {
         // - the percentages add up to one Ray.
         fn allocate(ref self: ContractState) {
             let shrine: IShrineDispatcher = self.shrine.read();
+
+            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+            let balance: Wad = shrine.get_yin(get_contract_address());
+
+            if balance.is_zero() {
+                return;
+            }
+
+            // Loop over equalizer's balance and transfer to recipients
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
 
-            // Loop over equalizer's balance and transfer to recipients
-            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-            let balance: Wad = shrine.get_yin(get_contract_address());
             let mut amount_allocated: Wad = WadZeroable::zero();
-
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
             loop {
@@ -171,72 +194,21 @@ mod Equalizer {
             self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }
 
-        // Incur a debt deficit
-        fn incur(ref self: ContractState, yin_amt: Wad) {
-            AccessControl::assert_has_role(EqualizerRoles::INCUR);
-
-            self.deficit.write(self.deficit.read() + yin_amt);
-
-            self.emit(Incur { defaulter: get_caller_address(), deficit: yin_amt });
-        }
-
-        // Burn yin from the caller's balance to wipe off any debt deficit.
+        // Burn yin from the caller's balance to wipe off any budget deficit in Shrine.
         // Anyone can call this function.
         fn normalize(ref self: ContractState, yin_amt: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let caller: ContractAddress = get_caller_address();
 
-            let balance: Wad = shrine.get_yin(caller);
-            let deficit: Wad = self.deficit.read();
-            let offset: Wad = min(balance, deficit);
-
-            if offset.is_non_zero() {
-                shrine.eject(caller, offset);
-                self.emit(Normalize { yin_amt: offset });
+            let budget: SignedWad = shrine.get_budget();
+            let budget_wad: Option<Wad> = budget.try_into();
+            let has_deficit: bool = budget_wad.is_none();
+            if has_deficit {
+                let wipe_amt: Wad = min(yin_amt, budget.val.into());
+                let caller: ContractAddress = get_caller_address();
+                shrine.eject(caller, wipe_amt);
+                shrine.adjust_budget(wipe_amt.into());
+                self.emit(Normalize { caller, yin_amt: wipe_amt });
             }
-        }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[external(v0)]
-    impl IAccessControlImpl of IAccessControl<ContractState> {
-        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
-
-        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
-
-        fn get_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_admin()
-        }
-
-        fn get_pending_admin(self: @ContractState) -> ContractAddress {
-            AccessControl::get_pending_admin()
-        }
-
-        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
-
-        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
-
-        fn renounce_role(ref self: ContractState, role: u128) {
-            AccessControl::renounce_role(role);
-        }
-
-        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
-            AccessControl::set_pending_admin(new_admin);
-        }
-
-        fn accept_admin(ref self: ContractState) {
-            AccessControl::accept_admin();
         }
     }
 }

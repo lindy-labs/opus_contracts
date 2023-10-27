@@ -1,4 +1,4 @@
-mod SentinelUtils {
+mod sentinel_utils {
     use debug::PrintTrait;
     use integer::BoundedU256;
     use starknet::{
@@ -8,8 +8,8 @@ mod SentinelUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use opus::core::roles::{SentinelRoles, ShrineRoles};
-    use opus::core::sentinel::Sentinel;
+    use opus::core::roles::{sentinel_roles, shrine_roles};
+    use opus::core::sentinel::sentinel as sentinel_contract;
 
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -19,8 +19,8 @@ mod SentinelUtils {
     use opus::utils::wadray;
     use opus::utils::wadray::{Wad, Ray};
 
-    use opus::tests::gate::utils::GateUtils;
-    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::gate::utils::gate_utils;
+    use opus::tests::shrine::utils::shrine_utils;
 
     const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
     const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
@@ -50,13 +50,15 @@ mod SentinelUtils {
     //
 
     fn deploy_sentinel() -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
         ];
 
-        let sentinel_class_hash: ClassHash = class_hash_try_from_felt252(Sentinel::TEST_CLASS_HASH)
+        let sentinel_class_hash: ClassHash = class_hash_try_from_felt252(
+            sentinel_contract::TEST_CLASS_HASH
+        )
             .unwrap();
 
         let (sentinel_addr, _) = deploy_syscall(sentinel_class_hash, 0, calldata.span(), false)
@@ -65,13 +67,13 @@ mod SentinelUtils {
         // Grant `abbot` role to `mock_abbot`
         set_contract_address(admin());
         IAccessControlDispatcher { contract_address: sentinel_addr }
-            .grant_role(SentinelRoles::abbot(), mock_abbot());
+            .grant_role(sentinel_roles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(shrine_utils::admin());
 
-        shrine_ac.grant_role(ShrineRoles::sentinel(), sentinel_addr);
-        shrine_ac.grant_role(ShrineRoles::abbot(), mock_abbot());
+        shrine_ac.grant_role(shrine_roles::sentinel(), sentinel_addr);
+        shrine_ac.grant_role(shrine_roles::abbot(), mock_abbot());
 
         set_contract_address(ContractAddressZeroable::zero());
 
@@ -104,26 +106,26 @@ mod SentinelUtils {
     fn add_eth_yang(
         sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
     ) -> (ContractAddress, IGateDispatcher) {
-        let eth: ContractAddress = GateUtils::eth_token_deploy();
-        let eth_gate: ContractAddress = GateUtils::gate_deploy(
+        let eth: ContractAddress = gate_utils::eth_token_deploy();
+        let eth_gate: ContractAddress = gate_utils::gate_deploy(
             eth, shrine_addr, sentinel.contract_address
         );
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
 
         // Transferring the initial deposit amounts to `admin()`
-        set_contract_address(GateUtils::eth_hoarder());
-        eth_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
+        set_contract_address(gate_utils::eth_hoarder());
+        eth_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
 
         set_contract_address(admin());
-        eth_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
+        eth_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         sentinel
             .add_yang(
                 eth,
                 ETH_ASSET_MAX,
-                ShrineUtils::YANG1_THRESHOLD.into(),
-                ShrineUtils::YANG1_START_PRICE.into(),
-                ShrineUtils::YANG1_BASE_RATE.into(),
+                shrine_utils::YANG1_THRESHOLD.into(),
+                shrine_utils::YANG1_START_PRICE.into(),
+                shrine_utils::YANG1_BASE_RATE.into(),
                 eth_gate
             );
         set_contract_address(ContractAddressZeroable::zero());
@@ -134,26 +136,27 @@ mod SentinelUtils {
     fn add_wbtc_yang(
         sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
     ) -> (ContractAddress, IGateDispatcher) {
-        let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
-        let wbtc_gate: ContractAddress = GateUtils::gate_deploy(
+        let wbtc: ContractAddress = gate_utils::wbtc_token_deploy();
+        let wbtc_gate: ContractAddress = gate_utils::gate_deploy(
             wbtc, shrine_addr, sentinel.contract_address
         );
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         // Transferring the initial deposit amounts to `admin()`
-        set_contract_address(GateUtils::wbtc_hoarder());
-        wbtc_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
+        set_contract_address(gate_utils::wbtc_hoarder());
+        wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
 
         set_contract_address(admin());
-        wbtc_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
+        wbtc_erc20
+            .approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         sentinel
             .add_yang(
                 wbtc,
                 WBTC_ASSET_MAX,
-                ShrineUtils::YANG2_THRESHOLD.into(),
-                ShrineUtils::YANG2_START_PRICE.into(),
-                ShrineUtils::YANG2_BASE_RATE.into(),
+                shrine_utils::YANG2_THRESHOLD.into(),
+                shrine_utils::YANG2_START_PRICE.into(),
+                shrine_utils::YANG2_BASE_RATE.into(),
                 wbtc_gate
             );
         set_contract_address(ContractAddressZeroable::zero());
