@@ -59,6 +59,10 @@ mod caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
+        // Amount of yin backed by this Caretaker's assets after shutdown
+        backed_yin: Wad,
+        // Amount of yin already claimed via this Caretaker after shutdown
+        claimed_yin: Wad,
     }
 
     //
@@ -159,7 +163,10 @@ mod caretaker {
         }
 
         // Simulates the effects of `reclaim` at the current on-chain conditions.
-        fn preview_reclaim(self: @ContractState, yin: Wad) -> Span<AssetBalance> {
+        // Returns a tuple of:
+        // 1. the amount of yin reclaimable
+        // 2. an array of asset amounts to be received based on (1)
+        fn preview_reclaim(self: @ContractState, yin: Wad) -> (Wad, Span<AssetBalance>) {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             assert(shrine.get_live() == false, 'CA: System is live');
@@ -167,7 +174,9 @@ mod caretaker {
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
             let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
-            let capped_pct: Ray = min(pct_to_reclaim, RAY_ONE.into());
+            let remaining_reclaimable_yin: Wad = self.backed_yin.read() - self.claimed_yin.read();
+            let capped_yin: Wad = min(yin, remaining_reclaimable_yin);
+            let pct_to_reclaim: Ray = wadray::rdiv_ww(capped_yin, remaining_reclaimable_yin);
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
 
@@ -182,11 +191,13 @@ mod caretaker {
                             .balance_of(caretaker)
                             .try_into()
                             .unwrap();
-                        let asset_amt: Wad = wadray::rmul_rw(capped_pct, caretaker_balance.into());
+                        let asset_amt: Wad = wadray::rmul_rw(
+                            pct_to_reclaim, caretaker_balance.into()
+                        );
                         reclaimable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
-                    Option::None => { break reclaimable_assets.span(); },
+                    Option::None => { break (capped_yin, reclaimable_assets.span()); },
                 };
             }
         }
@@ -213,10 +224,14 @@ mod caretaker {
             // not affect the accounting for `release` and `reclaim` in this contract.
             self.equalizer.read().equalize();
 
-            // Calculate the percentage of collateral needed to back yin 1 : 1
-            // based on the last value of all collateral in Shrine
+            // Calculate the percentage of collateral needed to back all troves' yin 1 : 1
+            // based on the last value of all collateral in Shrine. We can use `total_troves_debt`
+            // as a proxy for total yin minted by troves because we would have minted any surplus 
+            // budget (if any) via `Equalizer.equalize` in the preceding step.
             let (_, total_value) = shrine.get_shrine_threshold_and_value();
-            let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), total_value);
+            let total_troves_yin: Wad = shrine.get_total_troves_debt();
+            let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
+            self.backed_yin.write(total_troves_yin);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
@@ -323,9 +338,10 @@ mod caretaker {
         //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive
         //             11.1% * 3_600 = 400 yang A assets approximately.
         //
-        // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts denominated
-        // in each respective asset's decimals.
-        fn reclaim(ref self: ContractState, yin: Wad) -> Span<AssetBalance> {
+        // Returns a tuple of:
+        // 1. the amount of yin reclaimed
+        // 2. an array of asset amounts to be received based on (1)
+        fn reclaim(ref self: ContractState, yin: Wad) -> (Wad, Span<AssetBalance>) {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             assert(shrine.get_live() == false, 'CA: System is live');
@@ -338,10 +354,10 @@ mod caretaker {
             // Calculate amount of collateral corresponding to amount of yin reclaimed.
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
-            let reclaimable_assets: Span<AssetBalance> = self.preview_reclaim(yin);
+            let (reclaimed_yin, reclaimable_assets) = self.preview_reclaim(yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
-            shrine.eject(caller, yin);
+            shrine.eject(caller, reclaimed_yin);
 
             // Loop through yangs and transfer a proportionate share of each yang asset in
             // the Caretaker to caller
@@ -363,10 +379,10 @@ mod caretaker {
                 };
             };
 
-            self.emit(Reclaim { user: caller, yin_amt: yin, assets: reclaimable_assets });
+            self.emit(Reclaim { user: caller, yin_amt: reclaimed_yin, assets: reclaimable_assets });
 
             self.reentrancy_guard.end();
-            reclaimable_assets
+            (reclaimed_yin, reclaimable_assets)
         }
     }
 }

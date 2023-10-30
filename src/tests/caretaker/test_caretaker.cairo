@@ -286,7 +286,7 @@ mod test_caretaker {
         set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
-        let reclaimable_assets: Span<AssetBalance> = caretaker
+        let (reclaimed_yin, reclaimable_assets) = caretaker
             .preview_reclaim(trove1_forge_amt + WAD_ONE.into());
         let caretaker_balances: Span<Span<u128>> = common::get_token_balances(
             yangs, array![caretaker.contract_address].span()
@@ -300,6 +300,7 @@ mod test_caretaker {
             yangs, caretaker_balances_flattened
         );
         assert(reclaimable_assets == expected_reclaimable_assets, 'wrong reclaimable assets');
+        assert(reclaimed_yin == trove1_forge_amt, 'wrong reclaimed yin');
     }
 
     #[test]
@@ -345,7 +346,7 @@ mod test_caretaker {
         // do the reclaiming
         set_contract_address(user1);
         let user1_yin: Wad = shrine.get_yin(user1);
-        let user1_reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(user1_yin);
+        let (user1_reclaimed_yin, user1_reclaimed_assets) = caretaker.reclaim(user1_yin);
 
         // assert none of user's yin is left
         assert(shrine.get_yin(user1).is_zero(), 'user yin balance');
@@ -372,6 +373,8 @@ mod test_caretaker {
             ct_yang1_diff == (*user1_reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1'
         );
 
+        assert(user1_reclaimed_yin == user1_yin, 'user1 reclaimed yin');
+
         //
         // scammer reclaim
         //
@@ -385,7 +388,7 @@ mod test_caretaker {
         // do the reclaiming
         set_contract_address(scammer);
         let scammer_yin: Wad = shrine.get_yin(scammer);
-        let scammer_reclaimed_assets: Span<AssetBalance> = caretaker.reclaim(scammer_yin);
+        let (scammer_reclaimed_yin, scammer_reclaimed_assets) = caretaker.reclaim(scammer_yin);
 
         // assert all yin has been reclaimed
         assert(shrine.get_yin(scammer).is_zero(), 'scammer yin balance 2');
@@ -422,6 +425,7 @@ mod test_caretaker {
             tolerance,
             'scammer reclaimed yang1'
         );
+        assert(scammer_reclaimed_yin == scammer_yin, 'scammer reclaimed yin');
 
         let mut expected_events: Span<caretaker_contract::Event> = array![
             caretaker_contract::Event::Reclaim(
