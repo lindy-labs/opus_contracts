@@ -124,8 +124,8 @@ mod shrine {
         // Total amount of synthetic forged and injected
         total_yin: Wad,
         // Current budget
-        // - If amount is negative, then there is a deficit i.e. yin supply > total debt
-        // - If amount is positive, then there is a surplus i.e. total debt > yin supply
+        // - If amount is negative, then there is a deficit i.e. `total_yin` > total debt
+        // - If amount is positive, then there is a surplus i.e. total debt > `total_yin`
         // based on current on-chain conditions
         budget: SignedWad,
         // Keeps track of the price history of each Yang
@@ -856,16 +856,8 @@ mod shrine {
             let new_total_yin: Wad = self.total_yin.read() + amount;
             let new_budget: SignedWad = self.budget.read() + forge_fee.into();
             let new_equilibrium: SignedWad = new_total_yin.into() + new_budget;
-            let new_equilibrium_wad: Option<Wad> = new_equilibrium.try_into();
-            // Assert the new system equilibrium is less than the ceiling if it is equal to or 
-            // greater than zero. Otherwise, in the extremely unlikely event that new system 
-            // equilibrium is less than zero, then the debt ceiling cannot possibly be reached.
-            if new_equilibrium_wad.is_some() {
-                assert(
-                    new_equilibrium_wad.unwrap() <= self.debt_ceiling.read(),
-                    'SH: Debt ceiling reached'
-                );
-            }
+            let ceiling: SignedWad = self.debt_ceiling.read().into();
+            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
 
             let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
             self.total_troves_debt.write(new_total_troves_debt);
