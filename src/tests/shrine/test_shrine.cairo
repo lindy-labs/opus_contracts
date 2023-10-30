@@ -991,7 +991,7 @@ mod test_shrine {
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -1252,7 +1252,7 @@ mod test_shrine {
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(

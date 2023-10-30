@@ -447,7 +447,7 @@ mod test_abbot {
             shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -510,7 +510,7 @@ mod test_abbot {
         let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
         assert(final_trove_debt.is_zero(), 'wrong trove debt');
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]

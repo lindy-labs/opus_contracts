@@ -227,7 +227,7 @@ mod caretaker {
             // Calculate the percentage of collateral needed to back all troves' yin 1 : 1
             // based on the last value of all collateral in Shrine. We can use `total_troves_debt`
             // as a proxy for total yin minted by troves because we would have minted any surplus 
-            // budget (if any) via `Equalizer.equalize` in the preceding step.
+            // budget via `Equalizer.equalize` in the preceding step.
             let (_, total_value) = shrine.get_shrine_threshold_and_value();
             let total_troves_yin: Wad = shrine.get_total_troves_debt();
             let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
