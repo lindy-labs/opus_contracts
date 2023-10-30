@@ -697,9 +697,11 @@ mod shrine_utils {
     }
 
     // Asserts that the total system debt is less than or equal to the sum of all troves' debt, including
-    // all unpulled redistributions.
+    // all unpulled redistributions. 
     // We do not check for strict equality because there may be loss of precision when 
     // redistributed debt are pulled into troves.
+    // Note that this assertion is not sufficiently rigorous once the test setup involves yin that is 
+    // minted via `Shrine.inject` (e.g. via bonds or transmuters)
     fn assert_total_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {

@@ -136,11 +136,8 @@ mod equalizer_utils {
             .unwrap();
         let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
-        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: equalizer_addr
-        };
+
         set_contract_address(admin);
-        equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine
