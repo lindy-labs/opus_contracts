@@ -118,9 +118,9 @@ mod shrine {
         // Keeps track of how much of each yang has been deposited into each Trove - Wad
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: LegacyMap::<(u32, u64), Wad>,
-        // Total amount of debt accrued
+        // Total amount of debt accrued for troves
         // This includes the `surplus_debt`.
-        total_debt: Wad,
+        total_troves_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
         // Current budget
@@ -136,7 +136,8 @@ mod shrine {
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
         // Spot price of yin
         yin_spot_price: Wad,
-        // Maximum amount of debt that can exist at any given time
+        // Maximum amount of debt that can exist at any given time.
+        // The amount of debt is given by `total_yin + budget`. 
         debt_ceiling: Wad,
         // Global interest rate multiplier
         // stores both the actual multiplier, and the cumulative multiplier of
@@ -202,7 +203,7 @@ mod shrine {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
-        DebtTotalUpdated: DebtTotalUpdated,
+        TotalTrovesDebtUpdated: TotalTrovesDebtUpdated,
         BudgetAdjusted: BudgetAdjusted,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
@@ -238,7 +239,7 @@ mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct DebtTotalUpdated {
+    struct TotalTrovesDebtUpdated {
         total: Wad
     }
 
@@ -446,8 +447,8 @@ mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
-        fn get_total_debt(self: @ContractState) -> Wad {
-            self.total_debt.read()
+        fn get_total_troves_debt(self: @ContractState) -> Wad {
+            self.total_troves_debt.read()
         }
 
         fn get_budget(self: @ContractState) -> SignedWad {
@@ -501,7 +502,7 @@ mod shrine {
         fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
             let (liq_threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
-            let debt: Wad = self.total_debt.read();
+            let debt: Wad = self.total_troves_debt.read();
             let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
             // If no collateral has been deposited, then shrine's LTV is
@@ -774,10 +775,7 @@ mod shrine {
         fn adjust_budget(ref self: ContractState, amount: SignedWad) {
             self.access_control.assert_has_role(shrine_roles::ADJUST_BUDGET);
 
-            let current_surplus: SignedWad = self.budget.read();
-            self.budget.write(current_surplus + amount);
-
-            self.emit(BudgetAdjusted { amount });
+            self.adjust_budget_helper(amount);
         }
 
         // Updates spot price of yin
@@ -855,12 +853,22 @@ mod shrine {
             let forge_fee = amount * forge_fee_pct;
             let debt_amount = amount + forge_fee;
 
-            let mut new_system_debt = self.total_debt.read() + debt_amount;
-            assert(new_system_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
-            self.total_debt.write(new_system_debt);
+            let new_total_yin: Wad = self.total_yin.read() + amount;
+            let new_budget: SignedWad = self.budget.read() + forge_fee.into();
+            let new_equilibrium: SignedWad = new_total_yin.into() + new_budget;
+            let new_equilibrium_wad: Option<Wad> = new_equilibrium.try_into();
+            // Assert the new system equilibrium is less than the ceiling if it is equal to or 
+            // greater than zero. Otherwise, in the extremely unlikely event that new system 
+            // equilibrium is less than zero, then the debt ceiling cannot possibly be reached.
+            if new_equilibrium_wad.is_some() {
+                assert(
+                    new_equilibrium_wad.unwrap() <= self.debt_ceiling.read(),
+                    'SH: Debt ceiling reached'
+                );
+            }
 
-            // Add forge fee to surplus debt
-            self.budget.write(self.budget.read() + forge_fee.into());
+            let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
+            self.total_troves_debt.write(new_total_troves_debt);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -872,9 +880,10 @@ mod shrine {
 
             // Events
             if forge_fee.is_non_zero() {
+                self.adjust_budget_helper(forge_fee.into());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
-            self.emit(DebtTotalUpdated { total: new_system_debt });
+            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
@@ -894,8 +903,8 @@ mod shrine {
             // This is nice for UX so that maximum debt can be melted without knowing the exact
             // of debt in the trove down to the 10**-18.
             let melt_amt: Wad = min(trove.debt, amount);
-            let new_system_debt: Wad = self.total_debt.read() - melt_amt;
-            self.total_debt.write(new_system_debt);
+            let new_total_troves_debt: Wad = self.total_troves_debt.read() - melt_amt;
+            self.total_troves_debt.write(new_total_troves_debt);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             trove.debt -= melt_amt;
@@ -904,8 +913,8 @@ mod shrine {
             // Update user balance
             self.melt_helper(user, melt_amt);
 
-            // Events
-            self.emit(DebtTotalUpdated { total: new_system_debt });
+            // Eventss
+            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
@@ -1351,6 +1360,13 @@ mod shrine {
         // Helpers for core functions
         //
 
+        fn adjust_budget_helper(ref self: ContractState, amount: SignedWad) {
+            let current_surplus: SignedWad = self.budget.read();
+            self.budget.write(current_surplus + amount);
+
+            self.emit(BudgetAdjusted { amount });
+        }
+
         fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
             self.total_yin.write(self.total_yin.read() + amount);
@@ -1452,15 +1468,13 @@ mod shrine {
             // This adds the interest charged on the trove's debt to the total debt.
             // This should not include redistributed debt, as that is already included in the total.
             let charged: Wad = compounded_trove_debt - trove.debt;
-            let new_system_debt: Wad = self.total_debt.read() + charged;
-            self.total_debt.write(new_system_debt);
-
-            // Add interest to surplus debt
-            self.budget.write(self.budget.read() + charged.into());
 
             // Emit only if there is a change in the trove's debt
-            if compounded_trove_debt != trove.debt {
-                self.emit(DebtTotalUpdated { total: new_system_debt });
+            if charged.is_non_zero() {
+                let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
+                self.total_troves_debt.write(new_total_troves_debt);
+                self.adjust_budget_helper(charged.into());
+                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             }
 
             // Emit only if there is a change in the `Trove` struct
@@ -2245,7 +2259,7 @@ mod shrine {
 
                                 // Handle loss of precision from fixed point operations as much as possible
                                 // by adding the cumulative remainder. Note that we do not round up here
-                                // because it could be too aggressive and may lead to `sum(trove_debt) > total_debt`,
+                                // because it could be too aggressive and may lead to `sum(trove_debt) > total_troves_debt`,
                                 // which would result in an overflow if all troves repaid their debt.
                                 let cumulative_r: u128 = cumulative_r.try_into().unwrap();
                                 trove_debt += (cumulative_r / WAD_SCALE).into();
