@@ -354,10 +354,10 @@ mod caretaker {
             // Calculate amount of collateral corresponding to amount of yin reclaimed.
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
-            let (reclaimed_yin, reclaimable_assets) = self.preview_reclaim(yin);
+            let (reclaimable_yin, reclaimable_assets) = self.preview_reclaim(yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
-            shrine.eject(caller, reclaimed_yin);
+            shrine.eject(caller, reclaimable_yin);
 
             // Loop through yangs and transfer a proportionate share of each yang asset in
             // the Caretaker to caller
@@ -379,10 +379,13 @@ mod caretaker {
                 };
             };
 
-            self.emit(Reclaim { user: caller, yin_amt: reclaimed_yin, assets: reclaimable_assets });
+            self
+                .emit(
+                    Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets }
+                );
 
             self.reentrancy_guard.end();
-            (reclaimed_yin, reclaimable_assets)
+            (reclaimable_yin, reclaimable_assets)
         }
     }
 }
