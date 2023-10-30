@@ -491,7 +491,7 @@ mod absorber {
             let provision: Provision = self.provisions.read(provider);
             assert_provider(provision);
 
-            let request: Request = self.provider_request.read(provider);
+            let mut request: Request = self.provider_request.read(provider);
             self.assert_can_remove(request);
 
             // Withdraw absorbed collateral before updating shares
@@ -513,16 +513,8 @@ mod absorber {
                         provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() }
                     );
 
-                self
-                    .provider_request
-                    .write(
-                        provider,
-                        Request {
-                            timestamp: request.timestamp,
-                            timelock: request.timelock,
-                            has_removed: true
-                        }
-                    );
+                request.has_removed = true;
+                self.provider_request.write(provider, request);
 
                 // Event emission
                 self.emit(Remove { provider, epoch: current_epoch, yin: WadZeroable::zero() });

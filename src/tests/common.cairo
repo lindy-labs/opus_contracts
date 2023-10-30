@@ -159,6 +159,7 @@ fn open_trove_helper(
 ) -> u64 {
     set_contract_address(user);
     let mut yangs_copy = yangs;
+
     loop {
         match yangs_copy.pop_front() {
             Option::Some(yang) => {
@@ -173,7 +174,6 @@ fn open_trove_helper(
     set_contract_address(user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-
     set_contract_address(ContractAddressZeroable::zero());
 
     trove_id
@@ -213,6 +213,18 @@ fn get_token_balances(
             Option::None => { break balances.span(); }
         };
     }
+}
+
+// Fetches the ERC20 asset balance of a given address, and
+// converts it to yang units.
+#[inline(always)]
+fn get_erc20_bal_as_yang(
+    gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress
+) -> Wad {
+    gate
+        .convert_to_yang(
+            IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap()
+        )
 }
 
 //

@@ -290,11 +290,11 @@ mod pragma {
             // if the minimal time delay between the last update and now has passed
             // but the caller can have a specialized role in which case they can
             // force an update to happen immediatelly
-            let mut can_update: bool = self.probe_task();
-            if !can_update {
-                can_update = self.has_role(pragma_roles::UPDATE_PRICES, get_caller_address());
-            }
-            assert(can_update, 'PGM: Too soon to update prices');
+            let can_update: bool = self.probe_task();
+            let can_force_update: bool = self
+                .access_control
+                .has_role(pragma_roles::UPDATE_PRICES, get_caller_address());
+            assert(can_update || can_force_update, 'PGM: Too soon to update prices');
 
             let block_timestamp: u64 = get_block_timestamp();
             let mut idx: u32 = LOOP_START;
@@ -324,7 +324,7 @@ mod pragma {
 
                 // if we receive what we consider a valid price from the oracle, record it in the Shrine,
                 // otherwise emit an event about the update being invalid
-                if self.is_valid_price_update(response, asset_amt_per_yang) {
+                if self.is_valid_price_update(response, asset_amt_per_yang, can_force_update) {
                     has_valid_update = true;
                     self.shrine.read().advance(settings.yang, price * asset_amt_per_yang);
                 } else {
@@ -378,7 +378,10 @@ mod pragma {
         }
 
         fn is_valid_price_update(
-            self: @ContractState, update: PricesResponse, asset_amt_per_yang: Wad
+            self: @ContractState,
+            update: PricesResponse,
+            asset_amt_per_yang: Wad,
+            can_force_update: bool
         ) -> bool {
             if asset_amt_per_yang.is_zero() {
                 // can happen when e.g. the yang is invalid or gate is not added to sentinel
@@ -409,7 +412,7 @@ mod pragma {
             let last_updated_timestamp: u64 = update.last_updated_timestamp.try_into().unwrap();
 
             let is_from_future = block_timestamp <= last_updated_timestamp;
-            if is_from_future {
+            if is_from_future || can_force_update {
                 return has_enough_sources;
             }
 

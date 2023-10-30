@@ -63,6 +63,10 @@ mod purger {
     // Cap on compensation value: 50 (Wad)
     const COMPENSATION_CAP: u128 = 50000000000000000000;
 
+    // Minimum threshold for the penalty calculation, under which the
+    // minimum penalty is automatically returned to avoid division by zero/overflow
+    const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
+
     //
     // Storage
     //
@@ -218,12 +222,14 @@ mod purger {
             ref self: ContractState, trove_id: u64, amt: Wad, recipient: ContractAddress
         ) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
+
             let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
                 .get_trove_info(trove_id);
 
             let (trove_penalty, max_close_amt) = preview_liquidate_internal(
                 trove_threshold, trove_ltv, trove_value, trove_debt
             );
+
             assert(max_close_amt.is_non_zero(), 'PU: Not liquidatable');
 
             // Cap the liquidation amount to the trove's maximum close amount
@@ -269,6 +275,7 @@ mod purger {
 
             let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
                 .get_trove_info(trove_id);
+
             let (
                 trove_penalty,
                 max_purge_amt,
@@ -455,10 +462,27 @@ mod purger {
                 return Option::Some(RayZeroable::zero());
             }
 
+            // If the threshold is below the given minimum, we automatically
+            // return the maximum penalty to avoid division by zero/overflow, or the largest possible penalty,
+            // whichever is smaller.
+            if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                // This check is to avoid overflow in the event that the 
+                // trove's LTV is also extremely low.
+                if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                    return Option::Some(
+                        min(
+                            MAX_PENALTY.into(),
+                            (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation
+                        )
+                    );
+                }
+                return Option::Some(MAX_PENALTY.into());
+            }
+
             // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
             // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
             // after absorption.
-            let max_possible_penalty = min(
+            let mut max_possible_penalty: Ray = min(
                 (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation,
                 MAX_PENALTY.into()
             );
@@ -556,6 +580,18 @@ mod purger {
         // Handling the case where `ltv > 1` to avoid underflow
         if ltv >= RAY_ONE.into() {
             return Option::Some(RayZeroable::zero());
+        }
+
+        // If the threshold is below the given minimum, we automatically
+        // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+        // whichever is smaller.
+        if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+            // This check is to avoid overflow in the event that the 
+            // trove's LTV is also extremely low.
+            if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
+                return Option::Some(min(MAX_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));
+            }
+            return Option::Some(MAX_PENALTY.into());
         }
 
         let penalty = min(

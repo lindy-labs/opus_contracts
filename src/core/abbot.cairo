@@ -116,6 +116,15 @@ mod abbot {
             self.troves_count.read()
         }
 
+        fn get_trove_asset_balance(
+            self: @ContractState, trove_id: u64, yang: ContractAddress
+        ) -> u128 {
+            self
+                .sentinel
+                .read()
+                .convert_to_assets(yang, self.shrine.read().get_deposit(yang, trove_id))
+        }
+
         //
         // Core functions
         //

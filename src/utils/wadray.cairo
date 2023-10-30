@@ -97,6 +97,16 @@ fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Ray { val: rdiv_internal(lhs.val, rhs.val) }
 }
 
+#[inline(always)]
+fn scale_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
+    rmul_internal(lhs, rhs.val)
+}
+
+#[inline(always)]
+fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
+    rdiv_internal(lhs, rhs.val)
+}
+
 //
 // Internal helpers
 //

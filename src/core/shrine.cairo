@@ -1209,7 +1209,6 @@ mod shrine {
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
             let base_threshold: Ray = self.thresholds.read(yang_id);
-
             match self.get_yang_suspension_status_helper(yang_id) {
                 YangSuspensionStatus::None => { base_threshold },
                 YangSuspensionStatus::Temporary => {
@@ -1281,7 +1280,6 @@ mod shrine {
                         if (*yang_balance.amount).is_non_zero() {
                             let yang_threshold: Ray = self
                                 .get_yang_threshold_helper(*yang_balance.yang_id);
-
                             let (price, _, _) = self
                                 .get_recent_price_from(*yang_balance.yang_id, interval);
 

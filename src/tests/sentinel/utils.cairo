@@ -22,8 +22,8 @@ mod sentinel_utils {
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
 
-    const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
-    const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
+    const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
     fn admin() -> ContractAddress {
