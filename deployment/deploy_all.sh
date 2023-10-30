@@ -159,6 +159,56 @@ print $CARETAKER_ADDR
 
 print "\n\n"
 
+#
+# Tokens
+#
+print "Declaring ERC20 token"
+ERC20_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK --casm-file $BUILD_DIR/opus_erc20.compiled_contract_class.json $BUILD_DIR/opus_erc20.contract_class.json)
+print $ERC20_CLASS_HASH
+
+print "Deploying ETH"
+# token constructor args are owner, name, symbol, decimals, initial supply, recipient
+ETH_ADDR=$(starkli deploy --private-key $OPUS_ADMIN_PK $ERC20_CLASS_HASH str:Ether str:ETH 18 u256:10000000000000000000000000 $OPUS_ADMIN_ADDR)
+print $ETH_ADDR
+
+print "Deploying BTC"
+# token constructor args are owner, name, symbol, decimals, initial supply, recipient
+BTC_ADDR=$(starkli deploy --private-key $OPUS_ADMIN_PK $ERC20_CLASS_HASH str:Bitcoin str:BTC 8 u256:210000000000000 $OPUS_ADMIN_ADDR)
+print $BTC_ADDR
+
+#
+# Gates
+#
+print "Declaring Gate"
+GATE_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK --casm-file $BUILD_DIR/opus_gate.compiled_contract_class.json $BUILD_DIR/opus_gate.contract_class.json)
+print $GATE_CLASS_HASH
+
+print "Deploying ETH Gate"
+# A Gate's constructor args are shrine, asset addr and sentinel
+ETH_GATE_ADDR=$(starkli deploy --private-key $OPUS_ADMIN_PK $GATE_CLASS_HASH $SHRINE_ADDR $ETH_ADDR $SENTINEL_ADDR)
+print $ETH_GATE_ADDR
+
+print "Deploying BTC Gate"
+# A Gate's constructor args are shrine, asset addr and sentinel
+BTC_GATE_ADDR=$(starkli deploy --private-key $OPUS_ADMIN_PK $GATE_CLASS_HASH $SHRINE_ADDR $BTC_ADDR $SENTINEL_ADDR)
+print $BTC_GATE_ADDR
+
+
+print "\n\n"
+printf "-----------------------------------------------------------------------------------\n"
+# pretty print a table of the modules and their addrs
+addrs=("Abbot $ABBOT_ADDR" "Absorber $ABSORBER_ADDR" "Allocator $ALLOCATOR_ADDR"
+    "Caretaker $CARETAKER_ADDR" "Equalizer $EQUALIZER_ADDR" "Gate[BTC] $BTC_GATE_ADDR" "Gate[ETH] $ETH_GATE_ADDR"
+    "Flashmint $FLASHMINT_ADDR" "Purger $PURGER_ADDR" "Sentinel $SENTINEL_ADDR" "Shrine $SHRINE_ADDR"
+    "Token[BTC] $BTC_ADDR"  "Token[ETH] $ETH_ADDR"
+)
+for tuple in "${addrs[@]}"; do
+    key="${tuple%% *}"
+    val="${tuple#* }"
+
+    printf "%-16s %s\n" $key $val
+done
+printf "-----------------------------------------------------------------------------------\n"
+
 # TODO:
-#   Gates + tokens
 #   Oracle

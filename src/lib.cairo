@@ -47,6 +47,9 @@ mod utils {
     mod wadray_signed;
 }
 
+// mock used for local devnet deployment
+mod erc20;
+
 #[cfg(test)]
 mod tests {
     mod abbot {
