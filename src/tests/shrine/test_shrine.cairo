@@ -971,7 +971,7 @@ mod test_shrine {
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        assert(shrine.get_total_debt() == forge_amt, 'incorrect system debt');
+        assert(shrine.get_total_troves_debt() == forge_amt, 'incorrect system debt');
 
         let (_, ltv, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt == forge_amt, 'incorrect trove debt');
@@ -991,11 +991,11 @@ mod test_shrine {
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::DebtTotalUpdated(
-                shrine_contract::DebtTotalUpdated { total: forge_amt }
+            shrine_contract::Event::TotalTrovesDebtUpdated(
+                shrine_contract::TotalTrovesDebtUpdated { total: forge_amt }
             ),
             shrine_contract::Event::TroveUpdated(
                 shrine_contract::TroveUpdated {
@@ -1221,7 +1221,7 @@ mod test_shrine {
         let trove_id: u64 = common::TROVE_1;
         let trove1_owner_addr = common::trove1_owner_addr();
 
-        let before_total_debt: Wad = shrine.get_total_debt();
+        let before_total_debt: Wad = shrine.get_total_troves_debt();
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
@@ -1231,7 +1231,9 @@ mod test_shrine {
         set_contract_address(shrine_utils::admin());
         shrine.melt(trove1_owner_addr, trove_id, melt_amt);
 
-        assert(shrine.get_total_debt() == before_total_debt - melt_amt, 'incorrect total debt');
+        assert(
+            shrine.get_total_troves_debt() == before_total_debt - melt_amt, 'incorrect total debt'
+        );
 
         let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(trove_id);
         assert(after_trove_debt == before_trove_debt - melt_amt, 'incorrect trove debt');
@@ -1250,11 +1252,11 @@ mod test_shrine {
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::DebtTotalUpdated(
-                shrine_contract::DebtTotalUpdated { total: after_trove_debt }
+            shrine_contract::Event::TotalTrovesDebtUpdated(
+                shrine_contract::TotalTrovesDebtUpdated { total: after_trove_debt }
             ),
             shrine_contract::Event::TroveUpdated(
                 shrine_contract::TroveUpdated {
@@ -2344,7 +2346,7 @@ mod test_shrine {
         let trove1_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
         let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
-        let shrine_ltv: Ray = wadray::rdiv_ww(shrine.get_total_debt(), shrine_value);
+        let shrine_ltv: Ray = wadray::rdiv_ww(shrine.get_total_troves_debt(), shrine_value);
 
         let total_collateral_value_to_withdraw = whale_trove_deposit_value
             - wadray::rdiv_wr(

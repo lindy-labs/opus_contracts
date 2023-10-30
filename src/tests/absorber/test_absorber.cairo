@@ -1825,7 +1825,7 @@ mod test_absorber {
         shrine.advance(eth_addr, new_eth_yang_price);
 
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        let debt: Wad = shrine.get_total_debt();
+        let debt: Wad = shrine.get_total_troves_debt();
         let ltv: Ray = wadray::rdiv_ww(debt, value);
         let (recovery_mode_threshold, _) = shrine.get_recovery_mode_threshold();
 
