@@ -2881,7 +2881,7 @@ mod test_purger {
         yin_erc20.approve(absorber.contract_address, BoundedU256::max());
 
         // Parameters
-        let mut thresholds_param: Span<Ray> = array![RAY_PERCENT.into(), RayZeroable::zero(),]
+        let mut thresholds_param: Span<Ray> = array![RayZeroable::zero(), RAY_PERCENT.into(),]
             .span();
 
         let absorb_type_param: Span<AbsorbType> = array![
@@ -3037,14 +3037,25 @@ mod test_purger {
 
                                             set_contract_address(searcher);
 
-                                            let absorber_eth_balance_before_absorb: Wad =
-                                                common::get_erc20_bal_as_yang(
-                                                *gates[0], *yangs[0], absorber.contract_address
-                                            );
-                                            let absorber_wbtc_balance_before_absorb: Wad =
-                                                common::get_erc20_bal_as_yang(
-                                                *gates[1], *yangs[1], absorber.contract_address
-                                            );
+                                            let absorber_eth_bal_before_absorb: u128 =
+                                                IERC20Dispatcher {
+                                                contract_address: *yangs[0]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+                                            let absorber_wbtc_bal_before_absorb: u128 =
+                                                IERC20Dispatcher {
+                                                contract_address: *yangs[1]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+
+                                            let absorber_yin_bal_before_absorb: Wad = yin_erc20
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
 
                                             let compensation: Span<AssetBalance> = purger
                                                 .absorb(target_trove);
@@ -3114,22 +3125,29 @@ mod test_purger {
 
                                             // Checking that the absorbed assets are equal in value to the 
                                             // debt liquidated, plus the penalty  
-                                            if *absorb_type == AbsorbType::Full {
+                                            if *absorb_type != AbsorbType::None {
                                                 // We subtract the absorber balance before the liquidation
                                                 //  in order to avoid including any leftover 
                                                 // absorbed assets from previous liquidations
                                                 // in the calculation for the value of the 
                                                 // absorption that *just* occured
+
                                                 let absorbed_eth: Wad =
                                                     common::get_erc20_bal_as_yang(
                                                     *gates[0], *yangs[0], absorber.contract_address
                                                 )
-                                                    - absorber_eth_balance_before_absorb;
+                                                    - (*gates[0])
+                                                        .convert_to_yang(
+                                                            absorber_eth_bal_before_absorb
+                                                        );
                                                 let absorbed_wbtc: Wad =
                                                     common::get_erc20_bal_as_yang(
                                                     *gates[1], *yangs[1], absorber.contract_address
                                                 )
-                                                    - absorber_wbtc_balance_before_absorb;
+                                                    - (*gates[1])
+                                                        .convert_to_yang(
+                                                            absorber_wbtc_bal_before_absorb
+                                                        );
 
                                                 let (current_eth_yang_price, _, _) = shrine
                                                     .get_current_yang_price(*yangs[0]);
@@ -3144,10 +3162,14 @@ mod test_purger {
                                                 let absorbed_assets_value = absorber_eth_value
                                                     + absorber_wbtc_value;
 
+                                                let max_absorb_amt = min(
+                                                    max_close_amt, absorber_yin_bal_before_absorb
+                                                );
+
                                                 common::assert_equalish(
                                                     absorbed_assets_value,
                                                     wadray::rmul_wr(
-                                                        max_close_amt, (RAY_ONE.into() + penalty)
+                                                        max_absorb_amt, (RAY_ONE.into() + penalty)
                                                     ),
                                                     10000000000000000_u128.into(),
                                                     'wrong absorbed assets value'
