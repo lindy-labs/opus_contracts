@@ -103,6 +103,20 @@ print $ABSORBER_ADDR
 print "\n\n"
 
 #
+# Mock Oracle
+#
+print "Declaring mock Oracle"
+MOCK_ORACLE_CLASS_HASH=$(starkli declare --private-key $OPUS_ADMIN_PK --casm-file $BUILD_DIR/opus_mock_oracle.compiled_contract_class.json $BUILD_DIR/opus_mock_oracle.contract_class.json)
+print $MOCK_ORACLE_CLASS_HASH
+
+print "Deploying mock Oracle"
+# Mock Oracle's constructor arg is just Shrine addr
+MOCK_ORACLE_ADDR=$(starkli deploy --private-key $OPUS_ADMIN_PK $MOCK_ORACLE_CLASS_HASH $SHRINE_ADDR)
+print $MOCK_ORACLE_ADDR
+
+print "\n\n"
+
+#
 # Purger
 #
 print "Declaring Purger"
@@ -201,6 +215,7 @@ addrs=("Abbot $ABBOT_ADDR" "Absorber $ABSORBER_ADDR" "Allocator $ALLOCATOR_ADDR"
     "Caretaker $CARETAKER_ADDR" "Equalizer $EQUALIZER_ADDR" "Gate[BTC] $BTC_GATE_ADDR" "Gate[ETH] $ETH_GATE_ADDR"
     "Flashmint $FLASHMINT_ADDR" "Purger $PURGER_ADDR" "Sentinel $SENTINEL_ADDR" "Shrine $SHRINE_ADDR"
     "Token[BTC] $BTC_ADDR"  "Token[ETH] $ETH_ADDR"
+    "Oracle $MOCK_ORACLE_ADDR"
 )
 for tuple in "${addrs[@]}"; do
     key="${tuple%% *}"
@@ -212,3 +227,5 @@ printf "------------------------------------------------------------------------
 
 # TODO:
 #   Oracle
+#   add tokens as yangs
+#   less verbose output

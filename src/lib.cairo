@@ -48,7 +48,10 @@ mod utils {
 }
 
 // mock used for local devnet deployment
-mod erc20;
+mod mock {
+    mod erc20;
+    mod oracle;
+}
 
 #[cfg(test)]
 mod tests {
