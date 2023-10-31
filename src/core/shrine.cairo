@@ -905,7 +905,7 @@ mod shrine {
             // Update user balance
             self.melt_helper(user, melt_amt);
 
-            // Eventss
+            // Events
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
@@ -1353,8 +1353,7 @@ mod shrine {
         //
 
         fn adjust_budget_helper(ref self: ContractState, amount: SignedWad) {
-            let current_surplus: SignedWad = self.budget.read();
-            self.budget.write(current_surplus + amount);
+            self.budget.write(self.budget.read() + amount);
 
             self.emit(BudgetAdjusted { amount });
         }

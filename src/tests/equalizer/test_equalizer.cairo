@@ -178,9 +178,10 @@ mod test_equalizer {
 
                     common::drop_all_events(equalizer.contract_address);
 
-                    equalizer.normalize(*normalize_amt);
+                    let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
                     let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
+                    assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
                     assert(
                         shrine.get_budget() == deficit + expected_normalized_amt.into(),
                         'wrong remaining deficit'

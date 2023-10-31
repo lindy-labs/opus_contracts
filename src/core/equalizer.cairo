@@ -193,7 +193,8 @@ mod equalizer {
 
         // Burn yin from the caller's balance to wipe off any budget deficit in Shrine.
         // Anyone can call this function.
-        fn normalize(ref self: ContractState, yin_amt: Wad) {
+        // Returns the amount of deficit wiped.
+        fn normalize(ref self: ContractState, yin_amt: Wad) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let budget: SignedWad = shrine.get_budget();
@@ -205,6 +206,10 @@ mod equalizer {
                 shrine.eject(caller, wipe_amt);
                 shrine.adjust_budget(wipe_amt.into());
                 self.emit(Normalize { caller, yin_amt: wipe_amt });
+
+                wipe_amt
+            } else {
+                WadZeroable::zero()
             }
         }
     }
