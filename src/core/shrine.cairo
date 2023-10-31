@@ -854,10 +854,10 @@ mod shrine {
             let debt_amount = amount + forge_fee;
 
             let new_total_yin: Wad = self.total_yin.read() + amount;
-            let new_budget: SignedWad = self.budget.read() + forge_fee.into();
-            let new_equilibrium: SignedWad = new_total_yin.into() + new_budget;
-            let ceiling: SignedWad = self.debt_ceiling.read().into();
-            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
+            let new_budget: SignedWad = self.budget.read() + forge_fee.try_into().unwrap();
+            let new_equilibrium: SignedWad = new_total_yin.try_into().unwrap() + new_budget;
+            let ceiling: Wad = self.debt_ceiling.read();
+            assert(new_equilibrium.try_into().unwrap() <= ceiling, 'SH: Debt ceiling reached');
 
             let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
             self.total_troves_debt.write(new_total_troves_debt);
@@ -872,7 +872,7 @@ mod shrine {
 
             // Events
             if forge_fee.is_non_zero() {
-                self.adjust_budget_helper(forge_fee.into());
+                self.adjust_budget_helper(forge_fee.try_into().unwrap());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
@@ -1464,7 +1464,7 @@ mod shrine {
             if charged.is_non_zero() {
                 let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
                 self.total_troves_debt.write(new_total_troves_debt);
-                self.adjust_budget_helper(charged.into());
+                self.adjust_budget_helper(charged.try_into().unwrap());
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             }
 

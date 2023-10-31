@@ -10,7 +10,7 @@ mod test_shrine_compound {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed::{SignedWad, U128TryIntoI128};
 
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
@@ -76,7 +76,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -183,7 +183,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -279,7 +279,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -371,7 +371,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -469,7 +469,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -604,7 +604,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -716,7 +716,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -984,7 +984,7 @@ mod test_shrine_compound {
         assert(shrine.get_total_troves_debt() == expected_debt, 'debt not updated');
 
         let interest: Wad = estimated_debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        assert(shrine.get_budget() == before_budget + interest.try_into().unwrap(), 'wrong budget');
 
         expected_events
             .append(
@@ -1021,18 +1021,18 @@ mod test_shrine_compound {
 
         let surplus: Wad = (500 * WAD_ONE).into();
         set_contract_address(shrine_utils::admin());
-        shrine.adjust_budget(surplus.into());
-        assert(shrine.get_budget() == surplus.into(), 'wrong budget #1');
+        shrine.adjust_budget(surplus.try_into().unwrap());
+        assert(shrine.get_budget() == surplus.try_into().unwrap(), 'wrong budget #1');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::BudgetAdjusted(
-                shrine_contract::BudgetAdjusted { amount: surplus.into() }
+                shrine_contract::BudgetAdjusted { amount: surplus.try_into().unwrap() }
             ),
         ]
             .span();
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
-        let deficit = SignedWad { val: surplus.val, sign: true };
+        let deficit = SignedWad { val: -(surplus.val.try_into().unwrap()) };
         shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget().is_zero(), 'wrong budget #2');
@@ -1046,7 +1046,7 @@ mod test_shrine_compound {
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
 
         // Adjust budget into a deficit
-        let deficit = SignedWad { val: (1234 * WAD_ONE), sign: true };
+        let deficit = SignedWad { val: -(1234 * wadray_signed::WAD_ONE) };
         shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget() == deficit, 'wrong budget #3');
@@ -1066,7 +1066,7 @@ mod test_shrine_compound {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
         set_contract_address(common::badguy());
 
-        let surplus: SignedWad = (500 * WAD_ONE).into();
+        let surplus: SignedWad = (500 * wadray_signed::WAD_ONE).into();
         shrine.adjust_budget(surplus);
     }
 }

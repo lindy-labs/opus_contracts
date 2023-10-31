@@ -16,7 +16,7 @@ mod test_equalizer {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed::{SignedWad, U128TryIntoI128, WadTryIntoSignedWad};
 
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -47,8 +47,8 @@ mod test_equalizer {
 
         let surplus: Wad = (500 * WAD_ONE).into();
         set_contract_address(shrine_utils::admin());
-        shrine.adjust_budget(surplus.into());
-        assert(shrine.get_budget() == surplus.into(), 'sanity check');
+        shrine.adjust_budget(surplus.try_into().unwrap());
+        assert(shrine.get_budget() == surplus.try_into().unwrap(), 'sanity check');
 
         let before_total_yin = shrine.get_total_yin();
         let before_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
@@ -76,7 +76,7 @@ mod test_equalizer {
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
 
         // Create a deficit
-        let deficit = SignedWad { val: (500 * WAD_ONE), sign: true };
+        let deficit = SignedWad { val: -(500 * wadray_signed::WAD_ONE) };
         shrine.adjust_budget(deficit);
 
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
@@ -169,7 +169,7 @@ mod test_equalizer {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
                     // Create the deficit
-                    let deficit = SignedWad { val: inject_amt.val, sign: true };
+                    let deficit = SignedWad { val: -(inject_amt.val.try_into().unwrap()) };
                     shrine.adjust_budget(deficit);
                     assert(shrine.get_budget() == deficit, 'sanity check #1');
 
@@ -180,10 +180,13 @@ mod test_equalizer {
 
                     let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
-                    let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
+                    let expected_normalized_amt: Wad = min(
+                        deficit.try_into().unwrap(), *normalize_amt
+                    );
                     assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
                     assert(
-                        shrine.get_budget() == deficit + expected_normalized_amt.into(),
+                        shrine.get_budget() == deficit
+                            + expected_normalized_amt.try_into().unwrap(),
                         'wrong remaining deficit'
                     );
 

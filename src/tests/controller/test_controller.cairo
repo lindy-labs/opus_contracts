@@ -7,7 +7,7 @@ mod test_controller {
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable, I128TryIntoU128};
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad};
 
@@ -20,6 +20,7 @@ mod test_controller {
     const YIN_PRICE2: u128 = 999879000000000000; // wad
 
     const ERROR_MARGIN: u128 = 1000000000000000; // 10^-12 (ray)
+    const ERROR_MARGIN_SIGNED: i128 = 1000000000000000; // 10^-12 (ray)
 
     #[test]
     #[available_gas(20000000000)]
@@ -34,16 +35,14 @@ mod test_controller {
         assert(beta_p == controller_utils::BETA_P, 'wrong beta_p');
         assert(beta_i == controller_utils::BETA_I, 'wrong beta_i');
 
+        let p_gain: u128 = controller_utils::P_GAIN.try_into().unwrap();
+        let i_gain: u128 = controller_utils::I_GAIN.try_into().unwrap();
         let mut expected_events: Span<controller_contract::Event> = array![
             controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated {
-                    name: 'p_gain', value: controller_utils::P_GAIN.into()
-                }
+                controller_contract::GainUpdated { name: 'p_gain', value: p_gain.into() }
             ),
             controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated {
-                    name: 'i_gain', value: controller_utils::I_GAIN.into()
-                }
+                controller_contract::GainUpdated { name: 'i_gain', value: i_gain.into() }
             ),
             controller_contract::Event::ParameterUpdated(
                 controller_contract::ParameterUpdated {
@@ -198,15 +197,15 @@ mod test_controller {
 
         assert_equalish(
             controller.get_p_term(),
-            18715000000000000_u128.into(),
-            ERROR_MARGIN.into(),
+            18715000000000000_i128.into(),
+            ERROR_MARGIN_SIGNED.into(),
             'Wrong p term #2'
         );
 
         assert_equalish(
             controller.get_i_term(),
             SignedRayZeroable::zero(),
-            ERROR_MARGIN.into(),
+            ERROR_MARGIN_SIGNED.into(),
             'Wrong i term #2'
         );
 
@@ -216,14 +215,14 @@ mod test_controller {
 
         assert_equalish(
             controller.get_p_term(),
-            177156100000000000_u128.into(),
-            ERROR_MARGIN.into(),
+            177156100000000000_i128.into(),
+            ERROR_MARGIN_SIGNED.into(),
             'Wrong p term #3'
         );
         assert_equalish(
             controller.get_i_term(),
-            5720000000000000000_u128.into(),
-            ERROR_MARGIN.into(),
+            5720000000000000000_i128.into(),
+            ERROR_MARGIN_SIGNED.into(),
             'Wrong i term #3'
         );
     }
@@ -295,111 +294,111 @@ mod test_controller {
         ];
 
         let mut gt_p_terms: Array<SignedRay> = array![
-            SignedRay { val: 970590147927647000000000000, sign: false },
-            SignedRay { val: 894070898474206000000000000, sign: false },
-            SignedRay { val: 821673437507969000000000000, sign: false },
-            SignedRay { val: 682223134755347000000000000, sign: false },
-            SignedRay { val: 563650679126526000000000000, sign: false },
-            SignedRay { val: 466883377897327000000000000, sign: false },
-            SignedRay { val: 388027439175095000000000000, sign: false },
-            SignedRay { val: 322421778769981000000000000, sign: false },
-            SignedRay { val: 267128295084547000000000000, sign: false },
-            SignedRay { val: 220807295545965000000000000, sign: false },
-            SignedRay { val: 181797017511202000000000000, sign: false },
-            SignedRay { val: 148839923137893000000000000, sign: false },
-            SignedRay { val: 120979934404742000000000000, sign: false },
-            SignedRay { val: 97352460220021900000000000, sign: false },
-            SignedRay { val: 77590330680972000000000000, sign: false },
-            SignedRay { val: 61032188256437500000000000, sign: false },
-            SignedRay { val: 47127014107944500000000000, sign: false },
-            SignedRay { val: 35766291049440400000000000, sign: false },
-            SignedRay { val: 26457120564074500000000000, sign: false },
-            SignedRay { val: 19019740391049200000000000, sign: false },
-            SignedRay { val: 13092320818861100000000000, sign: false },
-            SignedRay { val: 8626275988050790000000000, sign: false },
-            SignedRay { val: 5349866590771690000000000, sign: false },
-            SignedRay { val: 2994352321987200000000000, sign: false },
-            SignedRay { val: 1465538181737340000000000, sign: false },
-            SignedRay { val: 580077744495169000000000, sign: false },
-            SignedRay { val: 149299065094387000000000, sign: false },
-            SignedRay { val: 11771833128707600000000, sign: false },
-            SignedRay { val: 454868699248396000000, sign: true },
-            SignedRay { val: 10137648168357900000000, sign: false },
-            SignedRay { val: 556094500531630000000, sign: true },
-            SignedRay { val: 10318737437779200000000, sign: false },
-            SignedRay { val: 601597192010593000000, sign: true },
-            SignedRay { val: 11443607803844600000000, sign: false },
-            SignedRay { val: 444309924306484000000, sign: true },
-            SignedRay { val: 12884852286933400000000, sign: false },
-            SignedRay { val: 307254269093854000000, sign: true },
-            SignedRay { val: 11694088217335100000000, sign: false },
-            SignedRay { val: 434714972188474000000, sign: true },
-            SignedRay { val: 11899277040162700000000, sign: false },
-            SignedRay { val: 414014311714013000000, sign: true },
-            SignedRay { val: 11702480865715000000000, sign: false },
-            SignedRay { val: 384014080725509000000, sign: true },
-            SignedRay { val: 12195217294212000000000, sign: false },
-            SignedRay { val: 395708534480748000000, sign: true },
-            SignedRay { val: 11651447644416500000000, sign: false },
-            SignedRay { val: 417616564726968000000, sign: true },
-            SignedRay { val: 12022963179828800000000, sign: false },
-            SignedRay { val: 346412629605555000000, sign: true },
-            SignedRay { val: 12908797294705800000000, sign: false },
-            SignedRay { val: 342622403010459000000, sign: true }
+            SignedRay { val: 970590147927647000000000000 },
+            SignedRay { val: 894070898474206000000000000 },
+            SignedRay { val: 821673437507969000000000000 },
+            SignedRay { val: 682223134755347000000000000 },
+            SignedRay { val: 563650679126526000000000000 },
+            SignedRay { val: 466883377897327000000000000 },
+            SignedRay { val: 388027439175095000000000000 },
+            SignedRay { val: 322421778769981000000000000 },
+            SignedRay { val: 267128295084547000000000000 },
+            SignedRay { val: 220807295545965000000000000 },
+            SignedRay { val: 181797017511202000000000000 },
+            SignedRay { val: 148839923137893000000000000 },
+            SignedRay { val: 120979934404742000000000000 },
+            SignedRay { val: 97352460220021900000000000 },
+            SignedRay { val: 77590330680972000000000000 },
+            SignedRay { val: 61032188256437500000000000 },
+            SignedRay { val: 47127014107944500000000000 },
+            SignedRay { val: 35766291049440400000000000 },
+            SignedRay { val: 26457120564074500000000000 },
+            SignedRay { val: 19019740391049200000000000 },
+            SignedRay { val: 13092320818861100000000000 },
+            SignedRay { val: 8626275988050790000000000 },
+            SignedRay { val: 5349866590771690000000000 },
+            SignedRay { val: 2994352321987200000000000 },
+            SignedRay { val: 1465538181737340000000000 },
+            SignedRay { val: 580077744495169000000000 },
+            SignedRay { val: 149299065094387000000000 },
+            SignedRay { val: 11771833128707600000000 },
+            SignedRay { val: -454868699248396000000 },
+            SignedRay { val: 10137648168357900000000 },
+            SignedRay { val: -556094500531630000000 },
+            SignedRay { val: 10318737437779200000000 },
+            SignedRay { val: -601597192010593000000 },
+            SignedRay { val: 11443607803844600000000 },
+            SignedRay { val: -444309924306484000000 },
+            SignedRay { val: 12884852286933400000000 },
+            SignedRay { val: -307254269093854000000 },
+            SignedRay { val: 11694088217335100000000 },
+            SignedRay { val: -434714972188474000000 },
+            SignedRay { val: 11899277040162700000000 },
+            SignedRay { val: -414014311714013000000 },
+            SignedRay { val: 11702480865715000000000 },
+            SignedRay { val: -384014080725509000000 },
+            SignedRay { val: 12195217294212000000000 },
+            SignedRay { val: -395708534480748000000 },
+            SignedRay { val: 11651447644416500000000 },
+            SignedRay { val: -417616564726968000000 },
+            SignedRay { val: 12022963179828800000000 },
+            SignedRay { val: -346412629605555000000 },
+            SignedRay { val: 12908797294705800000000 },
+            SignedRay { val: -342622403010459000000 }
         ];
 
         let mut gt_i_terms: Array<SignedRay> = array![
-            SignedRay { val: 0, sign: false },
-            SignedRay { val: 990050483961299000000000, sign: false },
-            SignedRay { val: 1953370315705950000000000, sign: false },
-            SignedRay { val: 2889955680281540000000000, sign: false },
-            SignedRay { val: 3770244771413480000000000, sign: false },
-            SignedRay { val: 4596260901939910000000000, sign: false },
-            SignedRay { val: 5372013197354250000000000, sign: false },
-            SignedRay { val: 6101374292736350000000000, sign: false },
-            SignedRay { val: 6787069709320670000000000, sign: false },
-            SignedRay { val: 7431087143392610000000000, sign: false },
-            SignedRay { val: 8035494683284410000000000, sign: false },
-            SignedRay { val: 8601979946211740000000000, sign: false },
-            SignedRay { val: 9131928503019010000000000, sign: false },
-            SignedRay { val: 9626503856398830000000000, sign: false },
-            SignedRay { val: 10086524917164800000000000, sign: false },
-            SignedRay { val: 10513037568019600000000000, sign: false },
-            SignedRay { val: 10906753462460900000000000, sign: false },
-            SignedRay { val: 11267958508146100000000000, sign: false },
-            SignedRay { val: 11597433365183300000000000, sign: false },
-            SignedRay { val: 11895407749273100000000000, sign: false },
-            SignedRay { val: 12162339343970200000000000, sign: false },
-            SignedRay { val: 12398027453761000000000000, sign: false },
-            SignedRay { val: 12603115431573400000000000, sign: false },
-            SignedRay { val: 12778011609926200000000000, sign: false },
-            SignedRay { val: 12922145856373900000000000, sign: false },
-            SignedRay { val: 13035733763855500000000000, sign: false },
-            SignedRay { val: 13119132970012600000000000, sign: false },
-            SignedRay { val: 13172183000149500000000000, sign: false },
-            SignedRay { val: 13194931251653000000000000, sign: false },
-            SignedRay { val: 13187240619906900000000000, sign: false },
-            SignedRay { val: 13208883367510000000000000, sign: false },
-            SignedRay { val: 13200660003177300000000000, sign: false },
-            SignedRay { val: 13222430859433100000000000, sign: false },
-            SignedRay { val: 13213989055419400000000000, sign: false },
-            SignedRay { val: 13236523886693600000000000, sign: false },
-            SignedRay { val: 13228893228445400000000000, sign: false },
-            SignedRay { val: 13252336945406000000000000, sign: false },
-            SignedRay { val: 13245589086793100000000000, sign: false },
-            SignedRay { val: 13268287148763300000000000, sign: false },
-            SignedRay { val: 13260711819200200000000000, sign: false },
-            SignedRay { val: 13283541868395200000000000, sign: false },
-            SignedRay { val: 13276088742621000000000000, sign: false },
-            SignedRay { val: 13298792233296800000000000, sign: false },
-            SignedRay { val: 13291523662104200000000000, sign: false },
-            SignedRay { val: 13314541428040600000000000, sign: false },
-            SignedRay { val: 13307199809685200000000000, sign: false },
-            SignedRay { val: 13329870249804400000000000, sign: false },
-            SignedRay { val: 13322395570385200000000000, sign: false },
-            SignedRay { val: 13345304448818300000000000, sign: false },
-            SignedRay { val: 13338281310237400000000000, sign: false },
-            SignedRay { val: 13361739540689300000000000, sign: false }
+            SignedRay { val: 0 },
+            SignedRay { val: 990050483961299000000000 },
+            SignedRay { val: 1953370315705950000000000 },
+            SignedRay { val: 2889955680281540000000000 },
+            SignedRay { val: 3770244771413480000000000 },
+            SignedRay { val: 4596260901939910000000000 },
+            SignedRay { val: 5372013197354250000000000 },
+            SignedRay { val: 6101374292736350000000000 },
+            SignedRay { val: 6787069709320670000000000 },
+            SignedRay { val: 7431087143392610000000000 },
+            SignedRay { val: 8035494683284410000000000 },
+            SignedRay { val: 8601979946211740000000000 },
+            SignedRay { val: 9131928503019010000000000 },
+            SignedRay { val: 9626503856398830000000000 },
+            SignedRay { val: 10086524917164800000000000 },
+            SignedRay { val: 10513037568019600000000000 },
+            SignedRay { val: 10906753462460900000000000 },
+            SignedRay { val: 11267958508146100000000000 },
+            SignedRay { val: 11597433365183300000000000 },
+            SignedRay { val: 11895407749273100000000000 },
+            SignedRay { val: 12162339343970200000000000 },
+            SignedRay { val: 12398027453761000000000000 },
+            SignedRay { val: 12603115431573400000000000 },
+            SignedRay { val: 12778011609926200000000000 },
+            SignedRay { val: 12922145856373900000000000 },
+            SignedRay { val: 13035733763855500000000000 },
+            SignedRay { val: 13119132970012600000000000 },
+            SignedRay { val: 13172183000149500000000000 },
+            SignedRay { val: 13194931251653000000000000 },
+            SignedRay { val: 13187240619906900000000000 },
+            SignedRay { val: 13208883367510000000000000 },
+            SignedRay { val: 13200660003177300000000000 },
+            SignedRay { val: 13222430859433100000000000 },
+            SignedRay { val: 13213989055419400000000000 },
+            SignedRay { val: 13236523886693600000000000 },
+            SignedRay { val: 13228893228445400000000000 },
+            SignedRay { val: 13252336945406000000000000 },
+            SignedRay { val: 13245589086793100000000000 },
+            SignedRay { val: 13268287148763300000000000 },
+            SignedRay { val: 13260711819200200000000000 },
+            SignedRay { val: 13283541868395200000000000 },
+            SignedRay { val: 13276088742621000000000000 },
+            SignedRay { val: 13298792233296800000000000 },
+            SignedRay { val: 13291523662104200000000000 },
+            SignedRay { val: 13314541428040600000000000 },
+            SignedRay { val: 13307199809685200000000000 },
+            SignedRay { val: 13329870249804400000000000 },
+            SignedRay { val: 13322395570385200000000000 },
+            SignedRay { val: 13345304448818300000000000 },
+            SignedRay { val: 13338281310237400000000000 },
+            SignedRay { val: 13361739540689300000000000 }
         ];
 
         let mut gt_multipliers: Array<Ray> = array![
@@ -465,14 +464,14 @@ mod test_controller {
                     assert_equalish(
                         controller.get_p_term(),
                         gt_p_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
+                        ERROR_MARGIN_SIGNED.into(),
                         'Wrong p term'
                     );
 
                     assert_equalish(
                         controller.get_i_term(),
                         gt_i_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
+                        ERROR_MARGIN_SIGNED.into(),
                         'Wrong i term'
                     );
 
@@ -513,28 +512,28 @@ mod test_controller {
             995000000000000000_u128.into()
         ];
         let mut gt_p_terms: Array<SignedRay> = array![
-            SignedRay { val: 1000000000000000000000000, sign: false },
-            SignedRay { val: 1000000000000000000000000, sign: false },
-            SignedRay { val: 1000000000000000000000000, sign: false },
-            SignedRay { val: 8000000000000000000000000, sign: false },
-            SignedRay { val: 8000000000000000000000000, sign: false },
-            SignedRay { val: 27000000000000000000000000, sign: false },
-            SignedRay { val: 64000000000000000000000000, sign: false },
-            SignedRay { val: 64000000000000000000000000, sign: false },
-            SignedRay { val: 125000000000000000000000000, sign: false },
-            SignedRay { val: 125000000000000000000000000, sign: false }
+            SignedRay { val: 1000000000000000000000000 },
+            SignedRay { val: 1000000000000000000000000 },
+            SignedRay { val: 1000000000000000000000000 },
+            SignedRay { val: 8000000000000000000000000 },
+            SignedRay { val: 8000000000000000000000000 },
+            SignedRay { val: 27000000000000000000000000 },
+            SignedRay { val: 64000000000000000000000000 },
+            SignedRay { val: 64000000000000000000000000 },
+            SignedRay { val: 125000000000000000000000000 },
+            SignedRay { val: 125000000000000000000000000 }
         ];
         let mut gt_i_terms: Array<SignedRay> = array![
-            SignedRay { val: 0, sign: false },
-            SignedRay { val: 99999950000037500000000, sign: false },
-            SignedRay { val: 199999900000075000000000, sign: false },
-            SignedRay { val: 299999850000113000000000, sign: false },
-            SignedRay { val: 499999450001313000000000, sign: false },
-            SignedRay { val: 699999050002513000000000, sign: false },
-            SignedRay { val: 999997700011625000000000, sign: false },
-            SignedRay { val: 1399994500050020000000000, sign: false },
-            SignedRay { val: 1799991300088420000000000, sign: false },
-            SignedRay { val: 2299985050205610000000000, sign: false }
+            SignedRay { val: 0 },
+            SignedRay { val: 99999950000037500000000 },
+            SignedRay { val: 199999900000075000000000 },
+            SignedRay { val: 299999850000113000000000 },
+            SignedRay { val: 499999450001313000000000 },
+            SignedRay { val: 699999050002513000000000 },
+            SignedRay { val: 999997700011625000000000 },
+            SignedRay { val: 1399994500050020000000000 },
+            SignedRay { val: 1799991300088420000000000 },
+            SignedRay { val: 2299985050205610000000000 }
         ];
         let mut gt_multipliers: Array<Ray> = array![
             1001000000000000000000000000_u128.into(),
@@ -570,14 +569,14 @@ mod test_controller {
             assert_equalish(
                 controller.get_p_term(),
                 gt_p_terms.pop_front().unwrap(),
-                ERROR_MARGIN.into(),
+                ERROR_MARGIN_SIGNED.into(),
                 'Wrong p term'
             );
 
             assert_equalish(
                 controller.get_i_term(),
                 gt_i_terms.pop_front().unwrap(),
-                ERROR_MARGIN.into(),
+                ERROR_MARGIN_SIGNED.into(),
                 'Wrong i term'
             );
 
@@ -632,51 +631,51 @@ mod test_controller {
         ];
 
         let mut gt_p_terms: Array<SignedRay> = array![
-            SignedRay { val: 1000000000000000000000000000, sign: true },
-            SignedRay { val: 746195479082780000000000000, sign: true },
-            SignedRay { val: 539523383476549000000000000, sign: true },
-            SignedRay { val: 495564327004449000000000000, sign: true },
-            SignedRay { val: 422207524565069000000000000, sign: true },
-            SignedRay { val: 350809670272340000000000000, sign: true },
-            SignedRay { val: 279021745992780000000000000, sign: true },
-            SignedRay { val: 211084503271797000000000000, sign: true },
-            SignedRay { val: 150007593859640000000000000, sign: true },
-            SignedRay { val: 98033733163599700000000000, sign: true },
-            SignedRay { val: 57236566790630100000000000, sign: true },
-            SignedRay { val: 28386114337654400000000000, sign: true },
-            SignedRay { val: 10809080591591700000000000, sign: true },
-            SignedRay { val: 2448543705069680000000000, sign: true },
-            SignedRay { val: 101940531609356000000000, sign: true },
-            SignedRay { val: 74475965338374500000000, sign: false },
-            SignedRay { val: 1893220914100550000000, sign: false },
-            SignedRay { val: 4942406121262390000000, sign: true },
-            SignedRay { val: 370158792771361000000000, sign: false },
-            SignedRay { val: 76076761869019800000000, sign: false },
-            SignedRay { val: 1936814769447970000000, sign: false }
+            SignedRay { val: -1000000000000000000000000000 },
+            SignedRay { val: -746195479082780000000000000 },
+            SignedRay { val: -539523383476549000000000000 },
+            SignedRay { val: -495564327004449000000000000 },
+            SignedRay { val: -422207524565069000000000000 },
+            SignedRay { val: -350809670272340000000000000 },
+            SignedRay { val: -279021745992780000000000000 },
+            SignedRay { val: -211084503271797000000000000 },
+            SignedRay { val: -150007593859640000000000000 },
+            SignedRay { val: -98033733163599700000000000 },
+            SignedRay { val: -57236566790630100000000000 },
+            SignedRay { val: -28386114337654400000000000 },
+            SignedRay { val: -10809080591591700000000000 },
+            SignedRay { val: -2448543705069680000000000 },
+            SignedRay { val: -101940531609356000000000 },
+            SignedRay { val: 74475965338374500000000 },
+            SignedRay { val: 1893220914100550000000 },
+            SignedRay { val: -4942406121262390000000 },
+            SignedRay { val: 370158792771361000000000 },
+            SignedRay { val: 76076761869019800000000 },
+            SignedRay { val: 1936814769447970000000 }
         ];
 
         let mut gt_i_terms: Array<SignedRay> = array![
-            SignedRay { val: 0, sign: false },
-            SignedRay { val: 999950003749688000000000, sign: true },
-            SignedRay { val: 1906934104693500000000000, sign: true },
-            SignedRay { val: 2720992763528470000000000, sign: true },
-            SignedRay { val: 3512314473517650000000000, sign: true },
-            SignedRay { val: 4262490363876780000000000, sign: true },
-            SignedRay { val: 4967745706202580000000000, sign: true },
-            SignedRay { val: 5621182239604350000000000, sign: true },
-            SignedRay { val: 6216585331384020000000000, sign: true },
-            SignedRay { val: 6747916081914270000000000, sign: true },
-            SignedRay { val: 7209007702967550000000000, sign: true },
-            SignedRay { val: 7594386633212950000000000, sign: true },
-            SignedRay { val: 7899433542145930000000000, sign: true },
-            SignedRay { val: 8120536824601320000000000, sign: true },
-            SignedRay { val: 8255319961245460000000000, sign: true },
-            SignedRay { val: 8302034161409560000000000, sign: true },
-            SignedRay { val: 8259960981062700000000000, sign: true },
-            SignedRay { val: 8247590105801630000000000, sign: true },
-            SignedRay { val: 8264623955204720000000000, sign: true },
-            SignedRay { val: 8192823161553290000000000, sign: true },
-            SignedRay { val: 8150450673359900000000000, sign: true }
+            SignedRay { val: 0 },
+            SignedRay { val: -999950003749688000000000 },
+            SignedRay { val: -1906934104693500000000000 },
+            SignedRay { val: -2720992763528470000000000 },
+            SignedRay { val: -3512314473517650000000000 },
+            SignedRay { val: -4262490363876780000000000 },
+            SignedRay { val: -4967745706202580000000000 },
+            SignedRay { val: -5621182239604350000000000 },
+            SignedRay { val: -6216585331384020000000000 },
+            SignedRay { val: -6747916081914270000000000 },
+            SignedRay { val: -7209007702967550000000000 },
+            SignedRay { val: -7594386633212950000000000 },
+            SignedRay { val: -7899433542145930000000000 },
+            SignedRay { val: -8120536824601320000000000 },
+            SignedRay { val: -8255319961245460000000000 },
+            SignedRay { val: -8302034161409560000000000 },
+            SignedRay { val: -8259960981062700000000000 },
+            SignedRay { val: -8247590105801630000000000 },
+            SignedRay { val: -8264623955204720000000000 },
+            SignedRay { val: -8192823161553290000000000 },
+            SignedRay { val: -8150450673359900000000000 }
         ];
 
         let mut gt_multipliers: Array<Ray> = array![
@@ -708,17 +707,16 @@ mod test_controller {
                 Option::Some(price) => {
                     controller_utils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
-
                     assert_equalish(
                         controller.get_p_term(),
                         gt_p_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
+                        ERROR_MARGIN_SIGNED.into(),
                         'Wrong p term'
                     );
                     assert_equalish(
                         controller.get_i_term(),
                         gt_i_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
+                        ERROR_MARGIN_SIGNED.into(),
                         'Wrong i term'
                     );
                     assert_equalish(

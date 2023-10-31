@@ -136,15 +136,14 @@ mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let budget: SignedWad = shrine.get_budget();
-            let surplus: Option<Wad> = budget.try_into();
 
-            if surplus.is_none() {
+            if budget.val <= 0 {
                 return WadZeroable::zero();
             }
 
-            let minted_surplus: Wad = surplus.unwrap();
+            let minted_surplus: Wad = budget.try_into().unwrap();
             shrine.inject(get_contract_address(), minted_surplus);
-            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
+            shrine.adjust_budget(-(minted_surplus.try_into().unwrap()));
 
             self.emit(Equalize { yin_amt: minted_surplus });
 
@@ -201,11 +200,11 @@ mod equalizer {
             let budget_wad: Option<Wad> = budget.try_into();
             let has_deficit: bool = budget_wad.is_none();
             if has_deficit {
-                let wipe_amt: Wad = min(yin_amt, budget.val.into());
+                let wipe_amt: Wad = min(yin_amt, budget_wad.unwrap());
                 let caller: ContractAddress = get_caller_address();
                 shrine.eject(caller, wipe_amt);
-                shrine.adjust_budget(wipe_amt.into());
-                self.emit(Normalize { caller, yin_amt: wipe_amt });
+                shrine.adjust_budget(wipe_amt.try_into().unwrap());
+                self.emit(Normalize { caller, yin_amt: wipe_amt.try_into().unwrap() });
 
                 wipe_amt
             } else {

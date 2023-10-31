@@ -24,8 +24,8 @@ mod controller_utils {
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
 
     // Default controller parameters
-    const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE
-    const I_GAIN: u128 = 0;
+    const P_GAIN: i128 = 100000000000000000000000000000; // 100 * RAY_ONE
+    const I_GAIN: i128 = 0;
     const ALPHA_P: u8 = 3;
     const BETA_P: u8 = 8;
     const ALPHA_I: u8 = 1;

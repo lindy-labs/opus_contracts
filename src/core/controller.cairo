@@ -9,9 +9,9 @@ mod controller {
     use opus::utils::access_control::access_control_component;
     use opus::utils::math;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, Ray, RAY_ONE};
+    use opus::utils::wadray::{Wad, Ray};
     use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use opus::utils::wadray_signed::{abs_i128, SignedRay, SignedRayZeroable, U128TryIntoI128};
 
     //
     // Components
@@ -30,11 +30,11 @@ mod controller {
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
+    const TIME_SCALE: i128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
-    const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
-    const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
+    const MIN_MULTIPLIER: i128 = 200000000000000000000000000; // 0.2
+    const MAX_MULTIPLIER: i128 = 2000000000000000000000000000; // 2
 
     // 
     // Storage
@@ -129,7 +129,8 @@ mod controller {
         fn get_current_multiplier(self: @ContractState) -> Ray {
             let i_gain = self.i_gain.read();
 
-            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
+            let mut multiplier: SignedRay = wadray_signed::RAY_ONE.into()
+                + self.get_p_term_internal();
 
             if i_gain.is_non_zero() {
                 let new_i_term: SignedRay = self.get_i_term_internal();
@@ -167,8 +168,8 @@ mod controller {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let i_gain = self.i_gain.read();
-            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
-
+            let mut multiplier: SignedRay = wadray_signed::RAY_ONE.into()
+                + self.get_p_term_internal();
             // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
             if i_gain.is_non_zero() {
                 let new_i_term: SignedRay = self.get_i_term_internal();
@@ -258,13 +259,16 @@ mod controller {
         #[inline(always)]
         fn get_i_term_internal(self: @ContractState) -> SignedRay {
             let current_timestamp: u64 = get_block_timestamp();
-            let old_i_term = self.i_term.read();
-
             let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read())
                 .into();
-            let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
-                / (TIME_SCALE * RAY_ONE).into();
+            let time_since_last_update_scaled: SignedRay = (time_since_last_update
+                .try_into()
+                .unwrap()
+                * wadray_signed::RAY_ONE)
+                .into()
+                / (TIME_SCALE * wadray_signed::RAY_ONE).into();
 
+            let old_i_term = self.i_term.read();
             old_i_term
                 + nonlinear_transform(
                     self.get_prev_error(), self.alpha_i.read(), self.beta_i.read()
@@ -274,13 +278,13 @@ mod controller {
 
         #[inline(always)]
         fn get_current_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.shrine.read().get_yin_spot_price().into()
+            wadray_signed::RAY_ONE.into() - self.shrine.read().get_yin_spot_price().into()
         }
 
         // Returns the error at the time of the last update to the multiplier
         #[inline(always)]
         fn get_prev_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.yin_previous_price.read().into()
+            wadray_signed::RAY_ONE.into() - self.yin_previous_price.read().into()
         }
     }
 
@@ -288,8 +292,10 @@ mod controller {
 
     #[inline(always)]
     fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
-        let error_ray: Ray = Ray { val: error.val };
-        let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
+        let error_ray: Ray = (abs_i128(error.val)).into();
+
+        let denominator: SignedRay = math::sqrt(wadray::RAY_ONE.into() + math::pow(error_ray, beta))
+            .into();
         math::pow(error, alpha) / denominator
     }
 

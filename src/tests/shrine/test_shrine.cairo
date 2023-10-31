@@ -1146,7 +1146,7 @@ mod test_shrine {
         assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
 
         let intermediate_budget: SignedWad = shrine.get_budget();
-        assert(intermediate_budget == before_budget + fee.into(), 'wrong budget #1');
+        assert(intermediate_budget == before_budget + fee.try_into().unwrap(), 'wrong budget #1');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1163,7 +1163,9 @@ mod test_shrine {
         let (_, _, _, new_debt) = shrine.get_trove_info(common::TROVE_1);
         let fee: Wad = new_debt - debt - forge_amt;
         assert(new_debt - debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2');
-        assert(shrine.get_budget() == intermediate_budget + fee.into(), 'wrong budget #2');
+        assert(
+            shrine.get_budget() == intermediate_budget + fee.try_into().unwrap(), 'wrong budget #2'
+        );
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
