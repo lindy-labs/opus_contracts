@@ -57,9 +57,9 @@ print "\n"
 # Sentinel
 #
 print "Sentinel"
-SENTINEL_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_sentinel.compiled_contract_class.json $BUILD_DIR/opus_sentinel.contract_class.json)
+SENTINEL_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_sentinel.compiled_contract_class.json $BUILD_DIR/opus_sentinel.contract_class.json)
 # Sentinel's constructor args are admin and Shrine addr
-SENTINEL_ADDR=$(starkli deploy  $SENTINEL_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR)
+SENTINEL_ADDR=$(starkli deploy $SENTINEL_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR)
 
 print "\n"
 
@@ -67,9 +67,9 @@ print "\n"
 # Abbot
 #
 print "Abbot"
-ABBOT_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_abbot.compiled_contract_class.json $BUILD_DIR/opus_abbot.contract_class.json)
+ABBOT_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_abbot.compiled_contract_class.json $BUILD_DIR/opus_abbot.contract_class.json)
 # Abbot's constructor args are Shrine addr and Sentinel addr
-ABBOT_ADDR=$(starkli deploy  $ABBOT_CLASS_HASH $SHRINE_ADDR $SENTINEL_ADDR)
+ABBOT_ADDR=$(starkli deploy $ABBOT_CLASS_HASH $SHRINE_ADDR $SENTINEL_ADDR)
 
 print "\n"
 
@@ -77,9 +77,9 @@ print "\n"
 # Absorber
 #
 print "Absorber"
-ABSORBER_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_absorber.compiled_contract_class.json $BUILD_DIR/opus_absorber.contract_class.json)
+ABSORBER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_absorber.compiled_contract_class.json $BUILD_DIR/opus_absorber.contract_class.json)
 # Absorber's constructor args are admin, Shrine addr, Sentinel addr
-ABSORBER_ADDR=$(starkli deploy  $ABSORBER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR)
+ABSORBER_ADDR=$(starkli deploy $ABSORBER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR)
 
 print "\n"
 
@@ -87,9 +87,9 @@ print "\n"
 # Mock Oracle
 #
 print "Mock Oracle"
-MOCK_ORACLE_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_mock_oracle.compiled_contract_class.json $BUILD_DIR/opus_mock_oracle.contract_class.json)
+MOCK_ORACLE_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_mock_oracle.compiled_contract_class.json $BUILD_DIR/opus_mock_oracle.contract_class.json)
 # Mock Oracle's constructor arg is just Shrine addr
-MOCK_ORACLE_ADDR=$(starkli deploy  $MOCK_ORACLE_CLASS_HASH $SHRINE_ADDR)
+MOCK_ORACLE_ADDR=$(starkli deploy $MOCK_ORACLE_CLASS_HASH $SHRINE_ADDR)
 
 print "\n"
 
@@ -97,7 +97,7 @@ print "\n"
 # Purger
 #
 print "Purger"
-PURGER_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_purger.compiled_contract_class.json $BUILD_DIR/opus_purger.contract_class.json)
+PURGER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_purger.compiled_contract_class.json $BUILD_DIR/opus_purger.contract_class.json)
 # Purger's constructor args are admin, Shrine addr, Sentinel addr, Absorber addr and Oracle addr
 PURGER_ADDR=$(starkli deploy  $PURGER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR $ABSORBER_ADDR $MOCK_ORACLE_ADDR)
 
@@ -107,7 +107,7 @@ print "\n"
 # Allocator
 #
 print "Allocator"
-ALLOCATOR_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_allocator.compiled_contract_class.json $BUILD_DIR/opus_allocator.contract_class.json)
+ALLOCATOR_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_allocator.compiled_contract_class.json $BUILD_DIR/opus_allocator.contract_class.json)
 # Allocator's constructor args are admin, recipients (span of addrs) and precentages (span or Rays)
 ALLOCATOR_ADDR=$(starkli deploy  $ALLOCATOR_CLASS_HASH $OPUS_ADMIN_ADDR 1 $KATANA_USER_2_ADDR 1 1000000000000000000000000000)
 
@@ -117,9 +117,9 @@ print "\n"
 # Equalizer
 #
 print "Equalizer"
-EQUALIZER_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_equalizer.compiled_contract_class.json $BUILD_DIR/opus_equalizer.contract_class.json)
+EQUALIZER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_equalizer.compiled_contract_class.json $BUILD_DIR/opus_equalizer.contract_class.json)
 # Equalizer's constructor args are admin, shrine, allocator
-EQUALIZER_ADDR=$(starkli deploy  $EQUALIZER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ALLOCATOR_ADDR)
+EQUALIZER_ADDR=$(starkli deploy $EQUALIZER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ALLOCATOR_ADDR)
 
 print "\n"
 
@@ -127,9 +127,19 @@ print "\n"
 # Caretaker
 #
 print "Caretaker"
-CARETAKER_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_caretaker.compiled_contract_class.json $BUILD_DIR/opus_caretaker.contract_class.json)
+CARETAKER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_caretaker.compiled_contract_class.json $BUILD_DIR/opus_caretaker.contract_class.json)
 # Caretaker's constructor args are admin, shrine, abbot, sentinel, equalizer
-CARETAKER_ADDR=$(starkli deploy  $CARETAKER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ABBOT_ADDR $SENTINEL_ADDR $EQUALIZER_ADDR)
+CARETAKER_ADDR=$(starkli deploy $CARETAKER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ABBOT_ADDR $SENTINEL_ADDR $EQUALIZER_ADDR)
+
+print "\n"
+
+#
+# Controller
+#
+print "Controller"
+CONTROLLER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_controller.compiled_contract_class.json $BUILD_DIR/opus_controller.contract_class.json)
+# Controller's constructor args are admin, shrine, p gain, i gain, alpha p, beta p, alpha i, beta i
+CONTROLLER_ADDR=$(starkli deploy $CONTROLLER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR 100000000000000000000000000000 0 3 8 1 2)
 
 print "\n"
 
@@ -177,8 +187,8 @@ starkli invoke $SENTINEL_ADDR grant_role 4 $CARETAKER_ADDR
 starkli invoke $SHRINE_ADDR grant_role $((4 + 16 + 128 + 65536)) $ABBOT_ADDR
 # eject + kill + seize to Caretaker
 starkli invoke $SHRINE_ADDR grant_role $((8 + 64 + 512)) $CARETAKER_ADDR
-# set multiplier to Controller TODO
-# starkli invoke $SHRINE_ADDR grant_role 2048 $CONTROLLER_ADDR
+# set multiplier to Controller
+starkli invoke $SHRINE_ADDR grant_role 2048 $CONTROLLER_ADDR
 # inject to Equalizer
 starkli invoke $SHRINE_ADDR grant_role 32 $EQUALIZER_ADDR
 # inject + eject to Flash mint
@@ -195,8 +205,9 @@ print "\n"
 printf "-----------------------------------------------------------------------------------\n"
 # pretty print a table of the modules and their addrs
 addrs=("Abbot $ABBOT_ADDR" "Absorber $ABSORBER_ADDR" "Allocator $ALLOCATOR_ADDR"
-    "Caretaker $CARETAKER_ADDR" "Equalizer $EQUALIZER_ADDR" "Gate[BTC] $BTC_GATE_ADDR" "Gate[ETH] $ETH_GATE_ADDR"
-    "Flashmint $FLASHMINT_ADDR" "Oracle $MOCK_ORACLE_ADDR" "Purger $PURGER_ADDR" "Sentinel $SENTINEL_ADDR"
+    "Caretaker $CARETAKER_ADDR" "Controller $CONTROLLER_ADDR" "Equalizer $EQUALIZER_ADDR"
+    "Gate[BTC] $BTC_GATE_ADDR" "Gate[ETH] $ETH_GATE_ADDR" "Flashmint $FLASHMINT_ADDR"
+    "Oracle $MOCK_ORACLE_ADDR" "Purger $PURGER_ADDR" "Sentinel $SENTINEL_ADDR"
     "Shrine $SHRINE_ADDR" "Token[BTC] $BTC_ADDR"  "Token[ETH] $ETH_ADDR"
 )
 for tuple in "${addrs[@]}"; do
@@ -211,4 +222,3 @@ printf "------------------------------------------------------------------------
 
 # TODO:
 #   add tokens as yangs
-#   Controller
