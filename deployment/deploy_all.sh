@@ -158,8 +158,39 @@ print "\n"
 # all necessary contracts are deployed
 # setup their roles
 #
+print "Setting up roles"
 
+# Absorber
+# update to Purger
+starkli invoke $ABSORBER_ADDR grant_role 4 $PURGER_ADDR
 
+# Sentinel
+# enter + exit to Abbot
+starkli invoke $SENTINEL_ADDR grant_role $((2 + 4)) $ABBOT_ADDR
+# exit to Purger
+starkli invoke $SENTINEL_ADDR grant_role 4 $PURGER_ADDR
+# exit to Caretaker
+starkli invoke $SENTINEL_ADDR grant_role 4 $CARETAKER_ADDR
+
+# Shrine
+# deposit + forge + melt + withdraw to Abbot
+starkli invoke $SHRINE_ADDR grant_role $((4 + 16 + 128 + 65536)) $ABBOT_ADDR
+# eject + kill + seize to Caretaker
+starkli invoke $SHRINE_ADDR grant_role $((8 + 64 + 512)) $CARETAKER_ADDR
+# set multiplier to Controller TODO
+# starkli invoke $SHRINE_ADDR grant_role 2048 $CONTROLLER_ADDR
+# inject to Equalizer
+starkli invoke $SHRINE_ADDR grant_role 32 $EQUALIZER_ADDR
+# inject + eject to Flash mint
+starkli invoke $SHRINE_ADDR grant_role $((32 + 8)) $FLASHMINT_ADDR
+# advance to Oracle
+starkli invoke $SHRINE_ADDR grant_role 2 $MOCK_ORACLE_ADDR
+# melt + redistribute + seize to Purger
+starkli invoke $SHRINE_ADDR grant_role $((128 + 256 + 512)) $PURGER_ADDR /
+# add yang + update yang suspension to Sentinel
+starkli invoke $SHRINE_ADDR grant_role $((1 + 16384)) $SENTINEL_ADDR
+
+print "\n"
 
 printf "-----------------------------------------------------------------------------------\n"
 # pretty print a table of the modules and their addrs
@@ -176,6 +207,8 @@ for tuple in "${addrs[@]}"; do
 done
 printf "-----------------------------------------------------------------------------------\n"
 
+
+
 # TODO:
 #   add tokens as yangs
-#   setup all roles (use the roles.cairo values)
+#   Controller
