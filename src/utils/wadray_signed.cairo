@@ -167,8 +167,8 @@ impl SignedWadPartialOrd of PartialOrd<SignedWad> {
 
 
 fn signed_wad_from_felt(val: felt252) -> SignedWad {
-    let ray_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();
-    SignedWad { val: ray_val, sign: _felt_sign(val) }
+    let wad_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();
+    SignedWad { val: wad_val, sign: _felt_sign(val) }
 }
 
 
