@@ -202,6 +202,20 @@ starkli invoke $SHRINE_ADDR grant_role $((1 + 16384)) $SENTINEL_ADDR
 
 print "\n"
 
+#
+# adding ETH and BTC yangs
+#
+print "Adding ETH and BTC yangs"
+# when adding yang, Sentinel takes initial amount, approve sentinel to spend admin's tokens
+starkli invoke $ETH_ADDR approve $SENTINEL_ADDR u256:10000000000000000000000
+starkli invoke $BTC_ADDR approve $SENTINEL_ADDR u256:10000000000000000000000
+# ETH: threshold is 80%, start price 2000, base rate 2%
+starkli invoke $SENTINEL_ADDR add_yang $ETH_ADDR 10000000000000000000000 800000000000000000000000000 2000000000000000000000 20000000000000000000000000 $ETH_GATE_ADDR
+# BTC: threshold is 90%, start price 35000, base rate 2.5%
+starkli invoke $SENTINEL_ADDR add_yang $BTC_ADDR 10000000000000000000000 900000000000000000000000000 35000000000000000000000 25000000000000000000000000 $BTC_GATE_ADDR
+
+print "\n"
+
 printf "-----------------------------------------------------------------------------------\n"
 # pretty print a table of the modules and their addrs
 addrs=("Abbot $ABBOT_ADDR" "Absorber $ABSORBER_ADDR" "Allocator $ALLOCATOR_ADDR"
