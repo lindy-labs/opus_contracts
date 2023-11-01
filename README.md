@@ -10,7 +10,7 @@ To run Opus locally, you'll need to install [Katana (part of Dojo)](https://www.
 
 ### Setup
 
-In one shell, run `scarb run ktn` to boot up a Katana instance. You can use the `http://localhost:5000` as the RPC address.
+In one shell, run `scarb run ktn` to boot up a Katana instance. You can use the `http://localhost:5050` as the RPC address.
 
 In another shell, execute `./deployment/deploy_all.sh` script. That will compile and deploy the contracts on the local Katana devnet and do the initial required setup.
 

@@ -108,7 +108,7 @@ print "\n"
 #
 print "Allocator"
 ALLOCATOR_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_allocator.compiled_contract_class.json $BUILD_DIR/opus_allocator.contract_class.json)
-# Allocator's constructor args are admin, recipients (span of addrs) and precentages (span or Rays)
+# Allocator's constructor args are admin, recipients (span of addrs) and percentages (span of Rays)
 ALLOCATOR_ADDR=$(starkli deploy  $ALLOCATOR_CLASS_HASH $OPUS_ADMIN_ADDR 1 $KATANA_USER_2_ADDR 1 1000000000000000000000000000)
 
 print "\n"
@@ -191,8 +191,8 @@ starkli invoke $SHRINE_ADDR grant_role $((8 + 64 + 512)) $CARETAKER_ADDR
 starkli invoke $SHRINE_ADDR grant_role 2048 $CONTROLLER_ADDR
 # inject to Equalizer
 starkli invoke $SHRINE_ADDR grant_role 32 $EQUALIZER_ADDR
-# inject + eject to Flash mint
-starkli invoke $SHRINE_ADDR grant_role $((32 + 8)) $FLASHMINT_ADDR
+# eject + inject to Flash mint
+starkli invoke $SHRINE_ADDR grant_role $((8 + 32)) $FLASHMINT_ADDR
 # advance to Oracle
 starkli invoke $SHRINE_ADDR grant_role 2 $MOCK_ORACLE_ADDR
 # melt + redistribute + seize to Purger
@@ -231,8 +231,3 @@ for tuple in "${addrs[@]}"; do
     printf "%-16s %s\n" $key $val
 done
 printf "-----------------------------------------------------------------------------------\n"
-
-
-
-# TODO:
-#   add tokens as yangs
