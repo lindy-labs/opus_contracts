@@ -12,7 +12,6 @@ trait IMockPragma<TContractState> {
 mod mock_pragma {
     use opus::interfaces::external::IPragmaOracle;
     use opus::types::pragma::{DataType, PricesResponse};
-
     use super::IMockPragma;
 
     #[storage]

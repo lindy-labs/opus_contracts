@@ -1,13 +1,12 @@
 #[starknet::contract]
 mod gate {
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest

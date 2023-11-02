@@ -1,29 +1,18 @@
 mod test_purger {
     use cmp::{max, min};
+    use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
     use opus::core::shrine::shrine as shrine_contract;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::math::pow;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{
-        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
-    };
-
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::external::utils::pragma_utils;
@@ -33,8 +22,15 @@ mod test_purger {
     };
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
-
-    use debug::PrintTrait;
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray::{
+        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
+    };
+    use opus::utils::wadray;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, get_block_timestamp};
 
     //
     // Tests - Setup
@@ -679,8 +675,8 @@ mod test_purger {
                         .span();
 
                     // Assert that we hit the branch for safety margin check at least once per threshold
-                    // If the threshold is zero we add to the `safe_ltv_count` and set this to true, 
-                    // thereby skipping this check for the given threshold, since a 
+                    // If the threshold is zero we add to the `safe_ltv_count` and set this to true,
+                    // thereby skipping this check for the given threshold, since a
                     // threshold of zero necessitates a full liquidation in all cases.
                     let mut safety_margin_achieved: bool = if (*threshold).is_non_zero() {
                         false
@@ -2871,7 +2867,7 @@ mod test_purger {
         );
 
         // user 1 opens a trove with ETH and BTC that is close to liquidation
-        // `funded_healthy_trove` supplies 2 ETH and 0.5 BTC totalling $9000 in value, so we 
+        // `funded_healthy_trove` supplies 2 ETH and 0.5 BTC totalling $9000 in value, so we
         // create $6000 of debt to ensure the trove is closer to liquidation
         let trove_debt: Wad = (6000 * WAD_ONE).into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
@@ -2901,7 +2897,7 @@ mod test_purger {
         let eth_weight: Ray = wadray::rdiv_ww(eth_value, value);
         let btc_weight: Ray = wadray::rdiv_ww(btc_value, value);
 
-        // We need to decrease BTC's threshold until the trove threshold equals `ltv` 
+        // We need to decrease BTC's threshold until the trove threshold equals `ltv`
         // we derive the decrease factor from the following equation:
         //
         // NOTE: decrease factor is the value which, if we multiply BTC's threshold by it, will give us
@@ -2960,7 +2956,7 @@ mod test_purger {
             purger_utils::SEARCHER_YIN.into()
         );
 
-        // We run the same tests using both searcher liquidations and absorptions as the liquidation methods. 
+        // We run the same tests using both searcher liquidations and absorptions as the liquidation methods.
         let mut liquidate_via_absorption_param: Span<bool> = array![
             false, //true - we comment this parametrization out for now, due to failing in CI
         ]
@@ -2975,7 +2971,7 @@ mod test_purger {
             RAY_PERCENT.into(),
             (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
-            // doesn't result in advancing the time enough to make 
+            // doesn't result in advancing the time enough to make
             // the suspension permanent
             (RAY_ONE + 1).into()
                 / (RAY_ONE * shrine_contract::SUSPENSION_GRACE_PERIOD.into()).into(),
@@ -3054,9 +3050,9 @@ mod test_purger {
                                                 'wrong eth threshold'
                                             );
 
-                                            // We want to compare the yin balance of the liquidator 
-                                            // before and after the liquidation. In the case of absorption 
-                                            // we check the absorber's balance, and in the case of 
+                                            // We want to compare the yin balance of the liquidator
+                                            // before and after the liquidation. In the case of absorption
+                                            // we check the absorber's balance, and in the case of
                                             // searcher liquidation we check the searcher's balance.
                                             let before_liquidation_yin_balance: u256 =
                                                 if *liquidate_via_absorption {
@@ -3065,7 +3061,7 @@ mod test_purger {
                                                 yin_erc20.balance_of(searcher)
                                             };
 
-                                            // Liquidate the trove 
+                                            // Liquidate the trove
                                             set_contract_address(searcher);
 
                                             if *liquidate_via_absorption {
@@ -3090,7 +3086,7 @@ mod test_purger {
                                                 'trove not correctly liquidated'
                                             );
 
-                                            // Checking that the liquidator's yin balance has decreased 
+                                            // Checking that the liquidator's yin balance has decreased
                                             // after liquidation
                                             if *liquidate_via_absorption {
                                                 assert(
@@ -3150,7 +3146,7 @@ mod test_purger {
 
         let searcher = purger_utils::searcher();
 
-        // Approve absorber for maximum yin 
+        // Approve absorber for maximum yin
         set_contract_address(searcher);
         yin_erc20.approve(absorber.contract_address, BoundedU256::max());
 
@@ -3202,9 +3198,9 @@ mod test_purger {
                                             )
                                                 + 1_u128.into();
 
-                                            // We skip test cases of partial liquidations where 
+                                            // We skip test cases of partial liquidations where
                                             // the trove debt is less than the minimum shares in absorber.
-                                            // While it can be done, it is complicated to set up the absorber in such a 
+                                            // While it can be done, it is complicated to set up the absorber in such a
                                             // way that the remaining yin is less than the minimum shares.
                                             if *absorb_type == AbsorbType::Partial
                                                 && trove_debt <= absorber_contract::MINIMUM_SHARES
@@ -3217,8 +3213,8 @@ mod test_purger {
                                                 shrine, yangs, (80 * RAY_PERCENT).into()
                                             );
 
-                                            // Clearing/"resetting" the absorber 
-                                            // if it needs to be reset 
+                                            // Clearing/"resetting" the absorber
+                                            // if it needs to be reset
                                             if yin_erc20
                                                 .balance_of(absorber.contract_address)
                                                 .is_non_zero() {
@@ -3247,8 +3243,8 @@ mod test_purger {
 
                                                 let searcher_provided_yin: Wad = absorber
                                                     .preview_remove(searcher);
-                                                // Removing any remaining yin, and/or 
-                                                // remaining absorbed assets due to the 
+                                                // Removing any remaining yin, and/or
+                                                // remaining absorbed assets due to the
                                                 // provider.
 
                                                 if searcher_provided_yin.is_non_zero() {
@@ -3265,7 +3261,7 @@ mod test_purger {
                                             );
 
                                             // Now, the searcher deposits some yin into the absorber
-                                            // The amount depends on whether we want a full or partial absorption, or 
+                                            // The amount depends on whether we want a full or partial absorption, or
                                             // a full redistribution
 
                                             set_contract_address(searcher);
@@ -3283,7 +3279,7 @@ mod test_purger {
                                                         );
                                                 },
                                                 AbsorbType::Partial => {
-                                                    // We add 1 wei in the event that `trove_debt` is extremely small, 
+                                                    // We add 1 wei in the event that `trove_debt` is extremely small,
                                                     // to avoid the provision amount from being zero.
 
                                                     absorber
@@ -3388,8 +3384,8 @@ mod test_purger {
                                                 'wrong compensation value'
                                             );
 
-                                            // If the trove wasn't fully liquidated, check 
-                                            // that it is healthy 
+                                            // If the trove wasn't fully liquidated, check
+                                            // that it is healthy
                                             if max_close_amt < trove_debt {
                                                 assert(
                                                     shrine.is_healthy(target_trove),
@@ -3397,13 +3393,13 @@ mod test_purger {
                                                 );
                                             }
 
-                                            // Checking that the absorbed assets are equal in value to the 
-                                            // debt liquidated, plus the penalty  
+                                            // Checking that the absorbed assets are equal in value to the
+                                            // debt liquidated, plus the penalty
                                             if *absorb_type != AbsorbType::None {
                                                 // We subtract the absorber balance before the liquidation
-                                                //  in order to avoid including any leftover 
+                                                //  in order to avoid including any leftover
                                                 // absorbed assets from previous liquidations
-                                                // in the calculation for the value of the 
+                                                // in the calculation for the value of the
                                                 // absorption that *just* occured
 
                                                 let absorbed_eth: Wad =

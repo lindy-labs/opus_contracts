@@ -15,8 +15,8 @@ trait IAccessControl<TContractState> {
 
 #[starknet::component]
 mod access_control_component {
-    use starknet::{ContractAddress, get_caller_address};
     use starknet::contract_address::ContractAddressZeroable;
+    use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
     struct Storage {

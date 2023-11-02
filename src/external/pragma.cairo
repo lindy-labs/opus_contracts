@@ -7,19 +7,17 @@
 
 #[starknet::contract]
 mod pragma {
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-
     use opus::core::roles::pragma_roles;
-
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::types::pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::Wad;
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     //
     // Components

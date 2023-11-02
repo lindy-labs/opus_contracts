@@ -1,30 +1,27 @@
 mod pragma_utils {
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
     use opus::core::roles::shrine_roles;
     use opus::external::pragma::pragma as pragma_contract;
-
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::pragma::PricesResponse;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::math::pow;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
-
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::tests::external::mock_pragma::mock_pragma as mock_pragma_contract;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::pragma::PricesResponse;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
+    };
 
     //
     // Constants

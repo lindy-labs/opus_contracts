@@ -1,6 +1,5 @@
-use starknet::ContractAddress;
-
 use opus::utils::wadray::Wad;
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IEqualizer<TContractState> {

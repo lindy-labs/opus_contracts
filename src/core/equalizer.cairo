@@ -1,15 +1,13 @@
 #[starknet::contract]
 mod equalizer {
-    use starknet::ContractAddress;
-
     use opus::core::roles::equalizer_roles;
-
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::ContractAddress;
 
     //
     // Components

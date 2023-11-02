@@ -8,18 +8,16 @@
 mod absorber {
     use cmp::min;
     use integer::u256_safe_divmod;
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-
     use opus::core::roles::absorber_roles;
-
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     //
     // Components
@@ -341,7 +339,7 @@ mod absorber {
         }
 
 
-        // Returns the absorbed assets and rewards that a provider will receive based on 
+        // Returns the absorbed assets and rewards that a provider will receive based on
         // the current on-chain conditions
         fn preview_reap(
             self: @ContractState, provider: ContractAddress
@@ -1058,7 +1056,7 @@ mod absorber {
         }
 
         // Helper function to loop over all rewards and calculate the amounts for a provider.
-        // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus 
+        // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus
         // pending rewards, depending on the `include_pending_rewards` flag.
         fn get_provider_rewards(
             self: @ContractState,

@@ -1,20 +1,17 @@
 mod test_flash_mint {
-    use starknet::ContractAddress;
-    use starknet::testing::set_contract_address;
-
     use opus::core::flash_mint::flash_mint as flash_mint_contract;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, WAD_ONE};
-
     use opus::tests::common;
     use opus::tests::flash_mint::flash_borrower::flash_borrower as flash_borrower_contract;
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::wadray::{Wad, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
 
     //
     // Tests

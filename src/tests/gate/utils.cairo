@@ -1,24 +1,22 @@
 mod gate_utils {
     use debug::PrintTrait;
     use integer::BoundedInt;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable};
-
     use opus::tests::common;
     use opus::tests::erc20::ERC20;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
+    };
 
     //
     // Constants

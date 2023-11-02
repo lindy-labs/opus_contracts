@@ -1,13 +1,10 @@
 mod test_math {
     use debug::PrintTrait;
-
     use integer::BoundedU128;
-
-    use opus::utils::math::{pow, sqrt};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RAY_ONE};
-
     use opus::tests::common::assert_equalish;
+    use opus::utils::math::{pow, sqrt};
+    use opus::utils::wadray::{Ray, RAY_ONE};
+    use opus::utils::wadray;
 
     #[test]
     #[available_gas(20000000000)]

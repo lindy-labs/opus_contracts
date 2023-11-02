@@ -1,13 +1,12 @@
 #[starknet::contract]
 mod abbot {
-    use starknet::{ContractAddress, get_caller_address};
-
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
+    use starknet::{ContractAddress, get_caller_address};
 
     // 
     // Components 

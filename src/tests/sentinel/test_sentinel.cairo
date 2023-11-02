@@ -1,25 +1,22 @@
 mod test_sentinel {
     use debug::PrintTrait;
-    use starknet::ContractAddress;
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
-    use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::core::roles::sentinel_roles;
-
+    use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::types::YangSuspensionStatus;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
-
+    use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
+    use opus::types::YangSuspensionStatus;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::ContractAddress;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
 
     #[test]
     #[available_gas(10000000000)]

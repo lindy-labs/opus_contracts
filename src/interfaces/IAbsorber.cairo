@@ -1,7 +1,6 @@
-use starknet::ContractAddress;
-
 use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
 use opus::utils::wadray::{Ray, Wad};
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IAbsorber<TContractState> {
