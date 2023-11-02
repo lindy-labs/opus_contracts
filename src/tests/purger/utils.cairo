@@ -1,31 +1,15 @@
 mod purger_utils {
     use cmp::min;
-    use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
+    use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::math::pow;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
-    };
-
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -35,8 +19,20 @@ mod purger_utils {
     };
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-
-    use debug::PrintTrait;
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
+    };
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
+    };
 
     //
     // Constants
@@ -558,7 +554,7 @@ mod purger_utils {
         common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
     }
 
-    // Returns a tuple of the expected freed percentage of trove value and the 
+    // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
     fn get_expected_liquidation_assets(
         trove_asset_amts: Span<u128>,

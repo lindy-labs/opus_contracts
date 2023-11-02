@@ -1,7 +1,5 @@
-use debug::PrintTrait;
 use integer::BoundedInt;
 use math::Oneable;
-
 use opus::utils::math::pow;
 
 const WAD_DECIMALS: u8 = 18;
@@ -482,13 +480,13 @@ impl RayOneable of Oneable<Ray> {
 }
 
 // Debug print
-impl WadPrintImpl of PrintTrait<Wad> {
+impl WadPrintImpl of debug::PrintTrait<Wad> {
     fn print(self: Wad) {
         self.val.print();
     }
 }
 
-impl RayPrintImpl of PrintTrait<Ray> {
+impl RayPrintImpl of debug::PrintTrait<Ray> {
     fn print(self: Ray) {
         self.val.print();
     }

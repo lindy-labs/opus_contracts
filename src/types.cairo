@@ -1,10 +1,10 @@
 use cmp::min;
 use integer::{u256_safe_div_rem, u256_try_as_non_zero};
-use starknet::{ContractAddress, StorePacking};
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
-use opus::utils::wadray;
 use opus::utils::wadray::Wad;
+use opus::utils::wadray;
+use starknet::{ContractAddress, StorePacking};
 
 const TWO_POW_32: felt252 = 0x100000000;
 const TWO_POW_64: felt252 = 0x10000000000000000;

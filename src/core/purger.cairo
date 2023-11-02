@@ -1,20 +1,18 @@
 #[starknet::contract]
 mod purger {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address};
-
     use opus::core::roles::purger_roles;
-
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::types::AssetBalance;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_caller_address};
 
     //
     // Components
@@ -466,7 +464,7 @@ mod purger {
             // return the maximum penalty to avoid division by zero/overflow, or the largest possible penalty,
             // whichever is smaller.
             if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
-                // This check is to avoid overflow in the event that the 
+                // This check is to avoid overflow in the event that the
                 // trove's LTV is also extremely low.
                 if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
                     return Option::Some(
@@ -586,7 +584,7 @@ mod purger {
         // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
         // whichever is smaller.
         if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
-            // This check is to avoid overflow in the event that the 
+            // This check is to avoid overflow in the event that the
             // trove's LTV is also extremely low.
             if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
                 return Option::Some(min(MAX_PENALTY.into(), (RAY_ONE.into() - ltv) / ltv));

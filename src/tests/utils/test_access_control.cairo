@@ -1,16 +1,14 @@
 mod test_access_control {
+    use opus::tests::common;
+    use opus::tests::utils::mock_access_control::mock_access_control;
+    use opus::utils::access_control::access_control_component::{
+        AccessControlPublic, AccessControlHelpers
+    };
+    use opus::utils::access_control::access_control_component;
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
     use starknet::testing::{pop_log, pop_log_raw, set_caller_address};
-
-    use opus::utils::access_control::access_control_component;
-    use opus::utils::access_control::access_control_component::{
-        AccessControlPublic, AccessControlHelpers
-    };
-
-    use opus::tests::common;
-    use opus::tests::utils::mock_access_control::mock_access_control;
 
     //
     // Constants

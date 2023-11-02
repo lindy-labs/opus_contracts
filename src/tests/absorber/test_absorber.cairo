@@ -1,32 +1,28 @@
 mod test_absorber {
     use cmp::min;
+    use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IBlesserDispatcher, IBlesserDispatcherTrait
     };
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::absorber::utils::absorber_utils;
+    use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
+    use opus::tests::common;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
     };
-
-    use opus::tests::absorber::utils::absorber_utils;
-    use opus::tests::common;
-    use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
-    use opus::tests::shrine::utils::shrine_utils;
-
-    use debug::PrintTrait;
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
 
     //
     // Tests - Setup

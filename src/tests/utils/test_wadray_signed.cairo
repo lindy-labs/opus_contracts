@@ -1,12 +1,10 @@
 mod test_wadray_signed {
     use debug::PrintTrait;
     use math::Oneable;
-
-    use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
-
+    use opus::utils::wadray;
+    use opus::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};
+    use opus::utils::wadray_signed;
 
     #[test]
     fn test_add_sub() {

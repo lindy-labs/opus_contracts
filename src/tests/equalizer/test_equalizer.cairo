@@ -1,21 +1,18 @@
 mod test_equalizer {
-    use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
     use opus::core::shrine::shrine;
-
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable};
-
+    use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, get_block_timestamp};
 
     #[test]
     #[available_gas(20000000000)]
