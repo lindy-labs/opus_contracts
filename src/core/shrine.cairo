@@ -1,13 +1,9 @@
 #[starknet::contract]
 mod shrine {
-    use core::starknet::event::EventEmitter;
     use cmp::{max, min};
+    use core::starknet::event::EventEmitter;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
-    use starknet::{get_block_timestamp, get_caller_address};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-
     use opus::core::roles::shrine_roles;
-
     use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
@@ -15,10 +11,12 @@ mod shrine {
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
-    use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
+    use opus::utils::wadray;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::{get_block_timestamp, get_caller_address};
 
     //
     // Components

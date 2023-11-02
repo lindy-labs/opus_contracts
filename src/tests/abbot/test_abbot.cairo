@@ -1,24 +1,20 @@
 mod test_abbot {
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use starknet::testing::set_contract_address;
-
+    use debug::PrintTrait;
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::sentinel::sentinel as sentinel_contract;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
-
     use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
-
-    use debug::PrintTrait;
+    use opus::types::AssetBalance;
+    use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
+    use opus::utils::wadray;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::testing::set_contract_address;
 
     //
     // Tests

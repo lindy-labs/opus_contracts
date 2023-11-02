@@ -1,17 +1,14 @@
 mod test_allocator {
-    use starknet::ContractAddress;
-    use starknet::testing::set_contract_address;
-
     use opus::core::allocator::allocator as allocator_contract;
     use opus::core::roles::allocator_roles;
-
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use opus::utils::wadray::Ray;
-
+    use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::Ray;
+    use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
 
     #[test]
     #[available_gas(20000000000)]

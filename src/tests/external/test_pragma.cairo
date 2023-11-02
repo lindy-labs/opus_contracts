@@ -1,30 +1,27 @@
 mod test_pragma {
     use debug::PrintTrait;
     use integer::U256Zeroable;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;
     use opus::external::pragma::pragma as pragma_contract;
-
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::pragma::{PricesResponse, PriceValidityThresholds, YangSettings};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::math::pow;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
-
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::tests::common;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::types::pragma::{PricesResponse, PriceValidityThresholds, YangSettings};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
 
     //
     // Constants

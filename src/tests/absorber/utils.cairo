@@ -1,16 +1,9 @@
 mod absorber_utils {
     use cmp::min;
+    use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IBlesserDispatcher, IBlesserDispatcherTrait
@@ -21,18 +14,21 @@ mod absorber_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{AssetBalance, DistributionInfo, Reward};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
-
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::absorber::mock_blesser::mock_blesser;
     use opus::tests::common;
     use opus::tests::erc20::ERC20;
     use opus::tests::shrine::utils::shrine_utils;
-
-    use debug::PrintTrait;
+    use opus::types::{AssetBalance, DistributionInfo, Reward};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+    };
 
     //
     // Constants

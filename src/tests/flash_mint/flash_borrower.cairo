@@ -1,11 +1,9 @@
 #[starknet::contract]
 mod flash_borrower {
-    use starknet::{contract_address_const, get_contract_address, ContractAddress};
-
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
     const VALID_USAGE: felt252 = 0;
     const ATTEMPT_TO_STEAL: felt252 = 1;
@@ -15,7 +13,6 @@ mod flash_borrower {
     struct Storage {
         flashmint: IFlashMintDispatcher,
     }
-
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -31,7 +28,6 @@ mod flash_borrower {
         fee: u256,
         call_data: Span<felt252>
     }
-
 
     #[constructor]
     fn constructor(ref self: ContractState, flashmint: ContractAddress) {

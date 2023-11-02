@@ -1,14 +1,5 @@
 use debug::PrintTrait;
-use starknet::{
-    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    SyscallResultTrait
-};
-use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
-
 use opus::core::shrine::shrine;
-
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
@@ -16,12 +7,18 @@ use opus::interfaces::IERC20::{
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::erc20::ERC20;
-use opus::types::{AssetBalance, Reward, YangBalance};
-use opus::utils::wadray;
-use opus::utils::wadray::{Ray, Wad, WadZeroable};
-
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
+use opus::types::{AssetBalance, Reward, YangBalance};
+use opus::utils::wadray::{Ray, Wad, WadZeroable};
+use opus::utils::wadray;
+use starknet::contract_address::ContractAddressZeroable;
+use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
+use starknet::{
+    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+    SyscallResultTrait
+};
 
 //
 // Constants
