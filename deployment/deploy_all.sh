@@ -26,6 +26,18 @@ export STARKNET_RPC="http://127.0.0.1:5050"
 
 KATANA_USER_2_ADDR="0x296ef185476e31a65b83ffa6962a8a0f8ccf5b59d5839d744f5890ac72470e4"
 
+deploy_contract() {
+    local module_name=$1
+    local constructor_args=("${@:2}")
+    local class_hash
+    local contract_addr
+
+    class_hash=$(starkli declare --casm-file $BUILD_DIR/$module_name.compiled_contract_class.json $BUILD_DIR/$module_name.contract_class.json)
+    contract_addr=$(starkli deploy $class_hash "${constructor_args[@]}")
+
+    echo $contract_addr
+}
+
 #
 # Clean compile
 #
@@ -34,141 +46,52 @@ print "Building Opus"
 scarb clean && scarb build
 
 #
-# Shrine
+# Declare & deploy
 #
-print "Shrine"
-SHRINE_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_shrine.compiled_contract_class.json $BUILD_DIR/opus_shrine.contract_class.json)
+
+print "Deploying contracts"
+
 # Shrine's constructor args are admin, token name and token symbol
-SHRINE_ADDR=$(starkli deploy $SHRINE_CLASS_HASH $OPUS_ADMIN_ADDR str:Cash str:CASH)
-
-print "\n"
-
-#
-# Flash mint
-#
-print "Flashmint"
-FLASHMINT_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_flash_mint.compiled_contract_class.json $BUILD_DIR/opus_flash_mint.contract_class.json)
+SHRINE_ADDR=$(deploy_contract "opus_shrine" $OPUS_ADMIN_ADDR str:Cash str:CASH)
 # Flashmint's constructor is just Shrine addr
-FLASHMINT_ADDR=$(starkli deploy $FLASHMINT_CLASS_HASH $SHRINE_ADDR)
-
-print "\n"
-
-#
-# Sentinel
-#
-print "Sentinel"
-SENTINEL_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_sentinel.compiled_contract_class.json $BUILD_DIR/opus_sentinel.contract_class.json)
+FLASHMINT_ADDR=$(deploy_contract "opus_flash_mint" $SHRINE_ADDR)
 # Sentinel's constructor args are admin and Shrine addr
-SENTINEL_ADDR=$(starkli deploy $SENTINEL_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR)
-
-print "\n"
-
-#
-# Abbot
-#
-print "Abbot"
-ABBOT_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_abbot.compiled_contract_class.json $BUILD_DIR/opus_abbot.contract_class.json)
+SENTINEL_ADDR=$(deploy_contract "opus_sentinel" $OPUS_ADMIN_ADDR $SHRINE_ADDR)
 # Abbot's constructor args are Shrine addr and Sentinel addr
-ABBOT_ADDR=$(starkli deploy $ABBOT_CLASS_HASH $SHRINE_ADDR $SENTINEL_ADDR)
-
-print "\n"
-
-#
-# Absorber
-#
-print "Absorber"
-ABSORBER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_absorber.compiled_contract_class.json $BUILD_DIR/opus_absorber.contract_class.json)
+ABBOT_ADDR=$(deploy_contract "opus_abbot" $SHRINE_ADDR $SENTINEL_ADDR)
 # Absorber's constructor args are admin, Shrine addr, Sentinel addr
-ABSORBER_ADDR=$(starkli deploy $ABSORBER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR)
-
-print "\n"
-
-#
-# Mock Oracle
-#
-print "Mock Oracle"
-MOCK_ORACLE_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_mock_oracle.compiled_contract_class.json $BUILD_DIR/opus_mock_oracle.contract_class.json)
+ABSORBER_ADDR=$(deploy_contract "opus_absorber" $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR)
 # Mock Oracle's constructor arg is just Shrine addr
-MOCK_ORACLE_ADDR=$(starkli deploy $MOCK_ORACLE_CLASS_HASH $SHRINE_ADDR)
-
-print "\n"
-
-#
-# Purger
-#
-print "Purger"
-PURGER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_purger.compiled_contract_class.json $BUILD_DIR/opus_purger.contract_class.json)
+MOCK_ORACLE_ADDR=$(deploy_contract "opus_mock_oracle" $SHRINE_ADDR)
 # Purger's constructor args are admin, Shrine addr, Sentinel addr, Absorber addr and Oracle addr
-PURGER_ADDR=$(starkli deploy  $PURGER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR $ABSORBER_ADDR $MOCK_ORACLE_ADDR)
-
-print "\n"
-
-#
-# Allocator
-#
-print "Allocator"
-ALLOCATOR_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_allocator.compiled_contract_class.json $BUILD_DIR/opus_allocator.contract_class.json)
+PURGER_ADDR=$(deploy_contract "opus_purger" $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR $ABSORBER_ADDR $MOCK_ORACLE_ADDR)
 # Allocator's constructor args are admin, recipients (span of addrs) and percentages (span of Rays)
-ALLOCATOR_ADDR=$(starkli deploy  $ALLOCATOR_CLASS_HASH $OPUS_ADMIN_ADDR 1 $KATANA_USER_2_ADDR 1 1000000000000000000000000000)
-
-print "\n"
-
-#
-# Equalizer
-#
-print "Equalizer"
-EQUALIZER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_equalizer.compiled_contract_class.json $BUILD_DIR/opus_equalizer.contract_class.json)
+ALLOCATOR_ADDR=$(deploy_contract "opus_allocator" $OPUS_ADMIN_ADDR 1 $KATANA_USER_2_ADDR 1 1000000000000000000000000000)
 # Equalizer's constructor args are admin, shrine, allocator
-EQUALIZER_ADDR=$(starkli deploy $EQUALIZER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ALLOCATOR_ADDR)
-
-print "\n"
-
-#
-# Caretaker
-#
-print "Caretaker"
-CARETAKER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_caretaker.compiled_contract_class.json $BUILD_DIR/opus_caretaker.contract_class.json)
+EQUALIZER_ADDR=$(deploy_contract "opus_equalizer" $OPUS_ADMIN_ADDR $SHRINE_ADDR $ALLOCATOR_ADDR)
 # Caretaker's constructor args are admin, shrine, abbot, sentinel, equalizer
-CARETAKER_ADDR=$(starkli deploy $CARETAKER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR $ABBOT_ADDR $SENTINEL_ADDR $EQUALIZER_ADDR)
-
-print "\n"
-
-#
-# Controller
-#
-print "Controller"
-CONTROLLER_CLASS_HASH=$(starkli declare --casm-file $BUILD_DIR/opus_controller.compiled_contract_class.json $BUILD_DIR/opus_controller.contract_class.json)
+CARETAKER_ADDR=$(deploy_contract "opus_caretaker" $OPUS_ADMIN_ADDR $SHRINE_ADDR $ABBOT_ADDR $SENTINEL_ADDR $EQUALIZER_ADDR)
 # Controller's constructor args are admin, shrine, p gain, i gain, alpha p, beta p, alpha i, beta i
-CONTROLLER_ADDR=$(starkli deploy $CONTROLLER_CLASS_HASH $OPUS_ADMIN_ADDR $SHRINE_ADDR 100000000000000000000000000000 0 3 8 1 2)
+CONTROLLER_ADDR=$(deploy_contract "opus_controller" $OPUS_ADMIN_ADDR $SHRINE_ADDR 100000000000000000000000000000 0 3 8 1 2)
 
-print "\n"
-
-#
 # Tokens
-#
-print "ERC20 tokens (ETH & BTC)"
 ERC20_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_erc20.compiled_contract_class.json $BUILD_DIR/opus_erc20.contract_class.json)
 # token constructor args are owner, name, symbol, decimals, initial supply, recipient
 ETH_ADDR=$(starkli deploy  $ERC20_CLASS_HASH str:Ether str:ETH 18 u256:10000000000000000000000000 $OPUS_ADMIN_ADDR)
 BTC_ADDR=$(starkli deploy  $ERC20_CLASS_HASH str:Bitcoin str:BTC 8 u256:210000000000000 $OPUS_ADMIN_ADDR)
 
-#
 # Gates
-#
-print "Gates"
 GATE_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_gate.compiled_contract_class.json $BUILD_DIR/opus_gate.contract_class.json)
 # A Gate's constructor args are shrine, asset addr and sentinel
 ETH_GATE_ADDR=$(starkli deploy  $GATE_CLASS_HASH $SHRINE_ADDR $ETH_ADDR $SENTINEL_ADDR)
 BTC_GATE_ADDR=$(starkli deploy  $GATE_CLASS_HASH $SHRINE_ADDR $BTC_ADDR $SENTINEL_ADDR)
-print $BTC_GATE_ADDR
-
-print "\n"
 
 #
 # all necessary contracts are deployed
 # setup their roles
 #
-print "Setting up roles"
+
+print "\nSetting up roles"
 
 # Absorber
 # update to Purger
