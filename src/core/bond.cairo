@@ -35,15 +35,16 @@ mod Bond {
     // 1 second / seconds in a year = 0.000000031709791984 (Wad)
     const SECONDS_DIV_YEAR: u128 = 31709791984;
 
-    // Note that the debt ceiling for a Transmuter is enforced via the `yang_asset_max`
-    // for the Transmuter's dummy token in Sentinel. Therefore, any changes to the 
-    // debt ceiling can be made via `Sentinel.set_yang_asset_max`.
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
-        // The Shrine associated with this Transmuter
+        // The Shrine associated with this bond
         shrine: IShrineDispatcher,
         // Number of assets added as collateral
         assets_count: u8,
@@ -420,7 +421,7 @@ mod Bond {
 
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
         // because we do not make any assumptions as to the amount of assets held by the 
-        // Transmuter.
+        // bond.
         fn reclaim(ref self: ContractState, amount: Wad) {
             assert(self.status.read() == BondStatus::Killed, 'BO: Bond is not killed');
 
