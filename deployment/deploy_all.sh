@@ -24,6 +24,7 @@ export STARKNET_PRIVATE_KEY="0x13517e734bea500f1ad4e95c4bea50e3e3676376e3833b00f
 export STARKNET_ACCOUNT="$WORK_DIR/admin_user.json"
 export STARKNET_RPC="http://127.0.0.1:5050"
 
+DEPLOY_SALT="0xf00"
 KATANA_USER_2_ADDR="0x296ef185476e31a65b83ffa6962a8a0f8ccf5b59d5839d744f5890ac72470e4"
 
 deploy_contract() {
@@ -33,7 +34,7 @@ deploy_contract() {
     local contract_addr
 
     class_hash=$(starkli declare --casm-file $BUILD_DIR/$module_name.compiled_contract_class.json $BUILD_DIR/$module_name.contract_class.json)
-    contract_addr=$(starkli deploy $class_hash "${constructor_args[@]}")
+    contract_addr=$(starkli deploy --salt $DEPLOY_SALT $class_hash "${constructor_args[@]}")
 
     echo $contract_addr
 }
