@@ -78,14 +78,14 @@ CONTROLLER_ADDR=$(deploy_contract "opus_controller" $OPUS_ADMIN_ADDR $SHRINE_ADD
 # Tokens
 ERC20_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_erc20.compiled_contract_class.json $BUILD_DIR/opus_erc20.contract_class.json)
 # token constructor args are owner, name, symbol, decimals, initial supply, recipient
-ETH_ADDR=$(starkli deploy  $ERC20_CLASS_HASH str:Ether str:ETH 18 u256:10000000000000000000000000 $OPUS_ADMIN_ADDR)
-BTC_ADDR=$(starkli deploy  $ERC20_CLASS_HASH str:Bitcoin str:BTC 8 u256:210000000000000 $OPUS_ADMIN_ADDR)
+ETH_ADDR=$(starkli deploy --salt $DEPLOY_SALT $ERC20_CLASS_HASH str:Ether str:ETH 18 u256:10000000000000000000000000 $OPUS_ADMIN_ADDR)
+BTC_ADDR=$(starkli deploy --salt $DEPLOY_SALT $ERC20_CLASS_HASH str:Bitcoin str:BTC 8 u256:210000000000000 $OPUS_ADMIN_ADDR)
 
 # Gates
 GATE_CLASS_HASH=$(starkli declare  --casm-file $BUILD_DIR/opus_gate.compiled_contract_class.json $BUILD_DIR/opus_gate.contract_class.json)
 # A Gate's constructor args are shrine, asset addr and sentinel
-ETH_GATE_ADDR=$(starkli deploy  $GATE_CLASS_HASH $SHRINE_ADDR $ETH_ADDR $SENTINEL_ADDR)
-BTC_GATE_ADDR=$(starkli deploy  $GATE_CLASS_HASH $SHRINE_ADDR $BTC_ADDR $SENTINEL_ADDR)
+ETH_GATE_ADDR=$(starkli deploy --salt $DEPLOY_SALT $GATE_CLASS_HASH $SHRINE_ADDR $ETH_ADDR $SENTINEL_ADDR)
+BTC_GATE_ADDR=$(starkli deploy --salt $DEPLOY_SALT $GATE_CLASS_HASH $SHRINE_ADDR $BTC_ADDR $SENTINEL_ADDR)
 
 #
 # all necessary contracts are deployed
