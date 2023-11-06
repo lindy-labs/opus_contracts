@@ -333,9 +333,6 @@ mod test_purger {
                                 let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                                     purger_utils::purger_deploy();
 
-                                // For thresholds below the recovery mode threshold of 70%, we create
-                                // an additional dummy trove that targets a LTV above 70% so that we can 
-                                // bring the Shrine's LTV above the threshold.
                                 if !(*is_recovery_mode) {
                                     purger_utils::create_whale_trove(abbot, yangs, gates);
                                 }
@@ -412,12 +409,6 @@ mod test_purger {
                                             dummy_debt,
                                             dummy_threshold
                                         );
-                                    // Debug statement to get the target trove's value if target threshold is below
-                                    // 2%, in order to calculate the max close amount.
-                                    //
-                                    // let (_, _, tmp, _) = shrine.get_trove_info(target_trove);
-                                    // 'target trove value'.print();
-                                    // tmp.print();
                                     }
                                 }
 
