@@ -438,7 +438,7 @@ mod purger_utils {
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
         amt: Wad,
-    ) {
+    ) -> u64 {
         absorber_utils::provide_to_absorber(
             shrine,
             abbot,
@@ -448,7 +448,7 @@ mod purger_utils {
             recipient_trove_yang_asset_amts(),
             gates,
             amt,
-        );
+        )
     }
 
     // Creates a healthy trove and returns the trove ID
