@@ -1313,6 +1313,8 @@ mod test_purger {
                                                         target_ltv
                                                     );
 
+                                                    let rm_error_margin: Ray = (RAY_PERCENT / 1000)
+                                                        .into();
                                                     if *is_recovery_mode {
                                                         let max_forge_amt: Wad = shrine
                                                             .get_max_forge(recipient_trove);
@@ -1322,13 +1324,17 @@ mod test_purger {
                                                         let (_, shrine_value) = shrine
                                                             .get_shrine_threshold_and_value();
 
+                                                        // Add 10% to the amount needed to activate RM
                                                         let amt_to_activate_rm: Wad =
                                                             wadray::rmul_rw(
-                                                            rm_threshold, shrine_value
-                                                        )
-                                                            - wadray::rmul_rw(
-                                                                shrine_ltv, shrine_value
-                                                            );
+                                                            (RAY_PERCENT * 110).into(),
+                                                            (wadray::rmul_rw(
+                                                                rm_threshold, shrine_value
+                                                            )
+                                                                - wadray::rmul_rw(
+                                                                    shrine_ltv, shrine_value
+                                                                ))
+                                                        );
 
                                                         let additional_forge_amt = min(
                                                             amt_to_activate_rm, max_forge_amt
@@ -1346,7 +1352,8 @@ mod test_purger {
                                                             .get_trove_info(target_trove);
 
                                                         assert(
-                                                            adjusted_threshold < start_threshold,
+                                                            adjusted_threshold < start_threshold
+                                                                - rm_error_margin,
                                                             'not recovery mode'
                                                         );
                                                     } else {
@@ -1361,7 +1368,7 @@ mod test_purger {
                                                         common::assert_equalish(
                                                             adjusted_threshold,
                                                             start_threshold,
-                                                            (RAY_PERCENT / 1000).into(),
+                                                            rm_error_margin,
                                                             'in recovery mode'
                                                         );
                                                     }
@@ -1853,6 +1860,9 @@ mod test_purger {
                                                             );
                                                             abbot.close_trove(whale_trove);
 
+                                                            let rm_error_margin: Ray = (RAY_PERCENT
+                                                                / 1000)
+                                                                .into();
                                                             if *is_recovery_mode {
                                                                 let max_forge_amt: Wad = shrine
                                                                     .get_max_forge(recipient_trove);
@@ -1863,13 +1873,17 @@ mod test_purger {
                                                                 let (_, shrine_value) = shrine
                                                                     .get_shrine_threshold_and_value();
 
+                                                                // Add 10% to the amount needed to activate RM
                                                                 let amt_to_activate_rm: Wad =
                                                                     wadray::rmul_rw(
-                                                                    rm_threshold, shrine_value
-                                                                )
-                                                                    - wadray::rmul_rw(
-                                                                        shrine_ltv, shrine_value
-                                                                    );
+                                                                    (RAY_PERCENT * 110).into(),
+                                                                    (wadray::rmul_rw(
+                                                                        rm_threshold, shrine_value
+                                                                    )
+                                                                        - wadray::rmul_rw(
+                                                                            shrine_ltv, shrine_value
+                                                                        ))
+                                                                );
 
                                                                 let additional_forge_amt = min(
                                                                     amt_to_activate_rm,
@@ -1891,7 +1905,8 @@ mod test_purger {
                                                                     .get_trove_info(target_trove);
 
                                                                 assert(
-                                                                    adjusted_threshold < start_threshold,
+                                                                    adjusted_threshold < start_threshold
+                                                                        - rm_error_margin,
                                                                     'not recovery mode'
                                                                 );
                                                             } else {
@@ -1907,7 +1922,7 @@ mod test_purger {
                                                                 common::assert_equalish(
                                                                     adjusted_threshold,
                                                                     start_threshold,
-                                                                    (RAY_PERCENT / 1000).into(),
+                                                                    rm_error_margin,
                                                                     'in recovery mode'
                                                                 );
                                                             }
@@ -2492,16 +2507,20 @@ mod test_purger {
                                                         // deviation in the threshold. Therefore, we treat the new threshold 
                                                         // as equal to the previous threshold if it is within 0.1% 
                                                         // (i.e. recovery mode is not activated)
+                                                        let rm_error_margin: Ray = (RAY_PERCENT
+                                                            / 1000)
+                                                            .into();
                                                         if *is_recovery_mode {
                                                             assert(
-                                                                adjusted_threshold < threshold,
+                                                                adjusted_threshold < threshold
+                                                                    - rm_error_margin,
                                                                 'not recovery mode'
                                                             )
                                                         } else {
                                                             common::assert_equalish(
                                                                 adjusted_threshold,
                                                                 threshold,
-                                                                (RAY_PERCENT / 1000).into(),
+                                                                rm_error_margin,
                                                                 'in recovery mode'
                                                             );
                                                         }
@@ -2800,6 +2819,7 @@ mod test_purger {
                                                 *target_ltv
                                             );
 
+                                            let rm_error_margin: Ray = (RAY_PERCENT / 1000).into();
                                             if *is_recovery_mode {
                                                 set_contract_address(
                                                     purger_utils::target_trove_owner()
@@ -2814,6 +2834,7 @@ mod test_purger {
                                                 let (_, shrine_value) = shrine
                                                     .get_shrine_threshold_and_value();
 
+                                                // Add 10% to the amount needed to activate RM
                                                 let amt_to_activate_rm: Wad = wadray::rmul_rw(
                                                     (RAY_PERCENT * 110).into(),
                                                     (wadray::rmul_rw(rm_threshold, shrine_value)
@@ -2834,12 +2855,10 @@ mod test_purger {
 
                                                 let (adjusted_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);
-                                                let (rm_threshold, shrine_ltv) = shrine
-                                                    .get_recovery_mode_threshold();
 
                                                 assert(
                                                     adjusted_threshold < start_threshold
-                                                        - (RAY_PERCENT / 1000).into(),
+                                                        - rm_error_margin,
                                                     'not recovery mode'
                                                 );
                                             } else {
@@ -2853,7 +2872,7 @@ mod test_purger {
                                                 common::assert_equalish(
                                                     adjusted_threshold,
                                                     start_threshold,
-                                                    (RAY_PERCENT / 1000).into(),
+                                                    rm_error_margin,
                                                     'in recovery mode'
                                                 );
                                             }
