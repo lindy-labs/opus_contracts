@@ -1313,8 +1313,6 @@ mod test_purger {
                                                         target_ltv
                                                     );
 
-                                                    let rm_error_margin: Ray = (RAY_PERCENT / 1000)
-                                                        .into();
                                                     if *is_recovery_mode {
                                                         let max_forge_amt: Wad = shrine
                                                             .get_max_forge(recipient_trove);
@@ -1353,7 +1351,8 @@ mod test_purger {
 
                                                         assert(
                                                             adjusted_threshold < start_threshold
-                                                                - rm_error_margin,
+                                                                - purger_utils::RM_ERROR_MARGIN
+                                                                    .into(),
                                                             'not recovery mode'
                                                         );
                                                     } else {
@@ -1368,7 +1367,7 @@ mod test_purger {
                                                         common::assert_equalish(
                                                             adjusted_threshold,
                                                             start_threshold,
-                                                            rm_error_margin,
+                                                            purger_utils::RM_ERROR_MARGIN.into(),
                                                             'in recovery mode'
                                                         );
                                                     }
@@ -1860,9 +1859,6 @@ mod test_purger {
                                                             );
                                                             abbot.close_trove(whale_trove);
 
-                                                            let rm_error_margin: Ray = (RAY_PERCENT
-                                                                / 1000)
-                                                                .into();
                                                             if *is_recovery_mode {
                                                                 let max_forge_amt: Wad = shrine
                                                                     .get_max_forge(recipient_trove);
@@ -1906,7 +1902,8 @@ mod test_purger {
 
                                                                 assert(
                                                                     adjusted_threshold < start_threshold
-                                                                        - rm_error_margin,
+                                                                        - purger_utils::RM_ERROR_MARGIN
+                                                                            .into(),
                                                                     'not recovery mode'
                                                                 );
                                                             } else {
@@ -1922,7 +1919,8 @@ mod test_purger {
                                                                 common::assert_equalish(
                                                                     adjusted_threshold,
                                                                     start_threshold,
-                                                                    rm_error_margin,
+                                                                    purger_utils::RM_ERROR_MARGIN
+                                                                        .into(),
                                                                     'in recovery mode'
                                                                 );
                                                             }
@@ -2507,20 +2505,19 @@ mod test_purger {
                                                         // deviation in the threshold. Therefore, we treat the new threshold 
                                                         // as equal to the previous threshold if it is within 0.1% 
                                                         // (i.e. recovery mode is not activated)
-                                                        let rm_error_margin: Ray = (RAY_PERCENT
-                                                            / 1000)
-                                                            .into();
                                                         if *is_recovery_mode {
                                                             assert(
                                                                 adjusted_threshold < threshold
-                                                                    - rm_error_margin,
+                                                                    - purger_utils::RM_ERROR_MARGIN
+                                                                        .into(),
                                                                 'not recovery mode'
                                                             )
                                                         } else {
                                                             common::assert_equalish(
                                                                 adjusted_threshold,
                                                                 threshold,
-                                                                rm_error_margin,
+                                                                purger_utils::RM_ERROR_MARGIN
+                                                                    .into(),
                                                                 'in recovery mode'
                                                             );
                                                         }
@@ -2818,7 +2815,6 @@ mod test_purger {
                                                 *target_ltv
                                             );
 
-                                            let rm_error_margin: Ray = (RAY_PERCENT / 1000).into();
                                             if *is_recovery_mode {
                                                 set_contract_address(
                                                     purger_utils::target_trove_owner()
@@ -2857,7 +2853,7 @@ mod test_purger {
 
                                                 assert(
                                                     adjusted_threshold < start_threshold
-                                                        - rm_error_margin,
+                                                        - purger_utils::RM_ERROR_MARGIN.into(),
                                                     'not recovery mode'
                                                 );
                                             } else {
@@ -2871,7 +2867,7 @@ mod test_purger {
                                                 common::assert_equalish(
                                                     adjusted_threshold,
                                                     start_threshold,
-                                                    rm_error_margin,
+                                                    purger_utils::RM_ERROR_MARGIN.into(),
                                                     'in recovery mode'
                                                 );
                                             }
@@ -3098,7 +3094,6 @@ mod test_purger {
                                                 *target_ltv
                                             );
 
-                                            let rm_error_margin: Ray = (RAY_PERCENT / 1000).into();
                                             if *is_recovery_mode {
                                                 // set_contract_address(
                                                 //     purger_utils::target_trove_owner()
@@ -3137,7 +3132,7 @@ mod test_purger {
 
                                                 assert(
                                                     adjusted_threshold < start_threshold
-                                                        - rm_error_margin,
+                                                        - purger_utils::RM_ERROR_MARGIN.into(),
                                                     'not recovery mode'
                                                 );
                                             } else {
@@ -3151,7 +3146,7 @@ mod test_purger {
                                                 common::assert_equalish(
                                                     adjusted_threshold,
                                                     start_threshold,
-                                                    rm_error_margin,
+                                                    purger_utils::RM_ERROR_MARGIN.into(),
                                                     'in recovery mode'
                                                 );
                                             }
