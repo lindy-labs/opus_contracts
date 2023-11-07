@@ -1044,29 +1044,9 @@ mod test_purger {
                                 // and therefore that function will always return the recovery mode
                                 // threshold as half of the original threshold.
                                 if (*is_recovery_mode) {
-                                    let max_forge_amt: Wad = shrine.get_max_forge(other_trove);
-
-                                    let (rm_threshold, shrine_ltv) = shrine
-                                        .get_recovery_mode_threshold();
-
-                                    let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
-
-                                    // Add 10% to the amount needed to activate RM
-                                    let amt_to_activate_rm: Wad = wadray::rmul_rw(
-                                        (RAY_PERCENT * 110).into(),
-                                        (wadray::rmul_rw(rm_threshold, shrine_value)
-                                            - wadray::rmul_rw(shrine_ltv, shrine_value))
+                                    purger_utils::trigger_recovery_mode(
+                                        shrine, abbot, other_trove, other_trove_owner
                                     );
-
-                                    let additional_forge_amt = min(
-                                        amt_to_activate_rm, max_forge_amt
-                                    );
-
-                                    set_contract_address(other_trove_owner);
-                                    abbot
-                                        .forge(
-                                            other_trove, additional_forge_amt, WadZeroable::zero()
-                                        );
                                 }
 
                                 // Make the target trove absorbable
@@ -1381,37 +1361,12 @@ mod test_purger {
                                                     );
 
                                                     if *is_recovery_mode {
-                                                        let max_forge_amt: Wad = shrine
-                                                            .get_max_forge(recipient_trove);
-
-                                                        let (rm_threshold, shrine_ltv) = shrine
-                                                            .get_recovery_mode_threshold();
-                                                        let (_, shrine_value) = shrine
-                                                            .get_shrine_threshold_and_value();
-
-                                                        // Add 10% to the amount needed to activate RM
-                                                        let amt_to_activate_rm: Wad =
-                                                            wadray::rmul_rw(
-                                                            (RAY_PERCENT * 110).into(),
-                                                            (wadray::rmul_rw(
-                                                                rm_threshold, shrine_value
-                                                            )
-                                                                - wadray::rmul_rw(
-                                                                    shrine_ltv, shrine_value
-                                                                ))
+                                                        purger_utils::trigger_recovery_mode(
+                                                            shrine,
+                                                            abbot,
+                                                            recipient_trove,
+                                                            recipient_trove_owner
                                                         );
-
-                                                        let additional_forge_amt = min(
-                                                            amt_to_activate_rm, max_forge_amt
-                                                        );
-
-                                                        set_contract_address(recipient_trove_owner);
-                                                        abbot
-                                                            .forge(
-                                                                recipient_trove,
-                                                                additional_forge_amt,
-                                                                WadZeroable::zero()
-                                                            );
 
                                                         let (adjusted_threshold, _, _, _) = shrine
                                                             .get_trove_info(target_trove);
@@ -1927,41 +1882,12 @@ mod test_purger {
                                                             abbot.close_trove(whale_trove);
 
                                                             if *is_recovery_mode {
-                                                                let max_forge_amt: Wad = shrine
-                                                                    .get_max_forge(recipient_trove);
-
-                                                                let (rm_threshold, shrine_ltv) =
-                                                                    shrine
-                                                                    .get_recovery_mode_threshold();
-                                                                let (_, shrine_value) = shrine
-                                                                    .get_shrine_threshold_and_value();
-
-                                                                // Add 10% to the amount needed to activate RM
-                                                                let amt_to_activate_rm: Wad =
-                                                                    wadray::rmul_rw(
-                                                                    (RAY_PERCENT * 110).into(),
-                                                                    (wadray::rmul_rw(
-                                                                        rm_threshold, shrine_value
-                                                                    )
-                                                                        - wadray::rmul_rw(
-                                                                            shrine_ltv, shrine_value
-                                                                        ))
-                                                                );
-
-                                                                let additional_forge_amt = min(
-                                                                    amt_to_activate_rm,
-                                                                    max_forge_amt
-                                                                );
-
-                                                                set_contract_address(
+                                                                purger_utils::trigger_recovery_mode(
+                                                                    shrine,
+                                                                    abbot,
+                                                                    recipient_trove,
                                                                     recipient_trove_owner
                                                                 );
-                                                                abbot
-                                                                    .forge(
-                                                                        recipient_trove,
-                                                                        additional_forge_amt,
-                                                                        WadZeroable::zero()
-                                                                    );
 
                                                                 let (adjusted_threshold, _, _, _) =
                                                                     shrine
@@ -2888,32 +2814,9 @@ mod test_purger {
                                                 );
                                                 abbot.close_trove(whale_trove);
 
-                                                let max_forge_amt: Wad = shrine
-                                                    .get_max_forge(other_trove);
-
-                                                let (rm_threshold, shrine_ltv) = shrine
-                                                    .get_recovery_mode_threshold();
-                                                let (_, shrine_value) = shrine
-                                                    .get_shrine_threshold_and_value();
-
-                                                // Add 10% to the amount needed to activate RM
-                                                let amt_to_activate_rm: Wad = wadray::rmul_rw(
-                                                    (RAY_PERCENT * 110).into(),
-                                                    (wadray::rmul_rw(rm_threshold, shrine_value)
-                                                        - wadray::rmul_rw(shrine_ltv, shrine_value))
+                                                purger_utils::trigger_recovery_mode(
+                                                    shrine, abbot, other_trove, other_trove_owner
                                                 );
-
-                                                let additional_forge_amt = min(
-                                                    amt_to_activate_rm, max_forge_amt
-                                                );
-
-                                                set_contract_address(other_trove_owner);
-                                                abbot
-                                                    .forge(
-                                                        other_trove,
-                                                        additional_forge_amt,
-                                                        WadZeroable::zero()
-                                                    );
 
                                                 let (adjusted_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);
@@ -3162,32 +3065,9 @@ mod test_purger {
                                             );
 
                                             if *is_recovery_mode {
-                                                let max_forge_amt: Wad = shrine
-                                                    .get_max_forge(other_trove);
-
-                                                let (rm_threshold, shrine_ltv) = shrine
-                                                    .get_recovery_mode_threshold();
-                                                let (_, shrine_value) = shrine
-                                                    .get_shrine_threshold_and_value();
-
-                                                // Add 10% to the amount needed to activate RM
-                                                let amt_to_activate_rm: Wad = wadray::rmul_rw(
-                                                    (RAY_PERCENT * 110).into(),
-                                                    (wadray::rmul_rw(rm_threshold, shrine_value)
-                                                        - wadray::rmul_rw(shrine_ltv, shrine_value))
+                                                purger_utils::trigger_recovery_mode(
+                                                    shrine, abbot, other_trove, other_trove_owner
                                                 );
-
-                                                let additional_forge_amt = min(
-                                                    amt_to_activate_rm, max_forge_amt
-                                                );
-
-                                                set_contract_address(other_trove_owner);
-                                                abbot
-                                                    .forge(
-                                                        other_trove,
-                                                        additional_forge_amt,
-                                                        WadZeroable::zero()
-                                                    );
 
                                                 let (adjusted_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);

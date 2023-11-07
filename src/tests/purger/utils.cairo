@@ -546,6 +546,30 @@ mod purger_utils {
         decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
     }
 
+    fn trigger_recovery_mode(
+        shrine: IShrineDispatcher,
+        abbot: IAbbotDispatcher,
+        trove: u64,
+        trove_owner: ContractAddress,
+    ) {
+        let max_forge_amt: Wad = shrine.get_max_forge(trove);
+
+        let (rm_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
+        let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
+
+        // Add 10% to the amount needed to activate RM
+        let amt_to_activate_rm: Wad = wadray::rmul_rw(
+            (RAY_PERCENT * 110).into(),
+            (wadray::rmul_rw(rm_threshold, shrine_value)
+                - wadray::rmul_rw(shrine_ltv, shrine_value))
+        );
+
+        let additional_forge_amt = min(amt_to_activate_rm, max_forge_amt);
+
+        set_contract_address(trove_owner);
+        abbot.forge(trove, additional_forge_amt, WadZeroable::zero());
+    }
+
     //
     // Test assertion helpers
     //
