@@ -2444,24 +2444,12 @@ mod test_purger {
                                                                 *absorber_start_yin,
                                                             );
 
-                                                            // Due to the parametrization of amount to be provided to the
-                                                            // absorber by the recipient trove, it is not guaranteed that
-                                                            // recovery mode will be triggered after prices are lowered
-                                                            // e.g. if the amount provided is very low, such that the value
-                                                            // of the recipient trove more than covers for the target trove.
-                                                            // Therefore, we bump up the debt of the recipient trove to ensure
-                                                            // that recovery mode will be triggered.
-                                                            let max_forge_amt: Wad = shrine
-                                                                .get_max_forge(trove_id);
-                                                            set_contract_address(
+                                                            purger_utils::trigger_recovery_mode(
+                                                                shrine,
+                                                                abbot,
+                                                                trove_id,
                                                                 recipient_trove_owner
                                                             );
-                                                            abbot
-                                                                .forge(
-                                                                    trove_id,
-                                                                    (max_forge_amt.val / 2).into(),
-                                                                    WadZeroable::zero()
-                                                                );
 
                                                             trove_id
                                                         } else {

@@ -552,22 +552,23 @@ mod purger_utils {
         trove: u64,
         trove_owner: ContractAddress,
     ) {
-        let max_forge_amt: Wad = shrine.get_max_forge(trove);
-
         let (rm_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
         let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
 
         // Add 10% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
-            (RAY_PERCENT * 110).into(),
+            (RAY_ONE + RAY_PERCENT).into(),
             (wadray::rmul_rw(rm_threshold, shrine_value)
                 - wadray::rmul_rw(shrine_ltv, shrine_value))
         );
 
-        let additional_forge_amt = min(amt_to_activate_rm, max_forge_amt);
+        // Sanity check that we are able to mint the amount of debt to trigger
+        // recovery mode for the given trove
+        let max_forge_amt: Wad = shrine.get_max_forge(trove);
+        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
 
         set_contract_address(trove_owner);
-        abbot.forge(trove, additional_forge_amt, WadZeroable::zero());
+        abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
     }
 
     //
