@@ -3162,11 +3162,6 @@ mod test_purger {
                                             );
 
                                             if *is_recovery_mode {
-                                                // set_contract_address(
-                                                //     purger_utils::target_trove_owner()
-                                                // );
-                                                // abbot.close_trove(whale_trove);
-
                                                 let max_forge_amt: Wad = shrine
                                                     .get_max_forge(other_trove);
 
