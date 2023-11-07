@@ -5,6 +5,7 @@ mod Transmuter {
 
     use opus::core::roles::transmuter_roles;
 
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
@@ -49,6 +50,8 @@ mod Transmuter {
         access_control: access_control_component::Storage,
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
+        // The Equalizer associated with the Shrine and this Transmuter
+        equalizer: IEqualizerDispatcher,
         // The asset that can be swapped for yin via this Transmuter
         asset: IERC20Dispatcher,
         // The total yin transmuted 
@@ -82,6 +85,7 @@ mod Transmuter {
     enum Event {
         AccessControlEvent: access_control_component::Event,
         CeilingUpdated: CeilingUpdated,
+        EqualizerUpdated: EqualizerUpdated,
         Killed: Killed,
         PercentageCapUpdated: PercentageCapUpdated,
         ReceiverUpdated: ReceiverUpdated,
@@ -97,6 +101,12 @@ mod Transmuter {
     struct CeilingUpdated {
         old_ceiling: Wad,
         new_ceiling: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct EqualizerUpdated {
+        old_equalizer: ContractAddress,
+        new_equalizer: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -119,7 +129,7 @@ mod Transmuter {
         user: ContractAddress,
         asset_amt: u128,
         yin_amt: Wad,
-        fee: u128
+        fee: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -145,7 +155,8 @@ mod Transmuter {
         #[key]
         user: ContractAddress,
         asset_amt: u128,
-        yin_amt: Wad
+        yin_amt: Wad,
+        fee: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -161,6 +172,7 @@ mod Transmuter {
         ref self: ContractState,
         admin: ContractAddress,
         shrine: ContractAddress,
+        equalizer: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress,
         percentage_cap: Ray,
@@ -172,6 +184,7 @@ mod Transmuter {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
 
+        self.set_equalizer_helper(equalizer);
         self.set_receiver_helper(receiver);
         self.set_percentage_cap_helper(percentage_cap);
 
@@ -198,6 +211,10 @@ mod Transmuter {
 
         fn get_percentage_cap(self: @ContractState) -> Ray {
             self.percentage_cap.read()
+        }
+
+        fn get_equalizer(self: @ContractState) -> ContractAddress {
+            self.equalizer.read().contract_address
         }
 
         fn get_receiver(self: @ContractState) -> ContractAddress {
@@ -240,6 +257,12 @@ mod Transmuter {
             self.access_control.assert_has_role(transmuter_roles::SET_PERCENTAGE_CAP);
 
             self.set_percentage_cap_helper(cap);
+        }
+
+        fn set_equalizer(ref self: ContractState, equalizer: ContractAddress) {
+            self.access_control.assert_has_role(transmuter_roles::SET_EQUALIZER);
+
+            self.set_equalizer_helper(equalizer);
         }
 
         fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
@@ -293,14 +316,7 @@ mod Transmuter {
         // Returns the amount of yin that a user will receive for the given asset amount
         // based on current on-chain conditions
         fn preview_transmute(self: @ContractState, asset_amt: u128) -> Wad {
-            self.assert_live();
-
-            let asset: IERC20Dispatcher = self.asset.read();
-            let fee: u128 = wadray::rmul_wr(asset_amt.into(), self.reverse_fee.read()).val;
-            let asset_amt_to_transmute: u128 = asset_amt - fee;
-            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt_to_transmute, asset.decimals());
-            self.assert_can_transmute(yin_amt);
-
+            let (yin_amt, _) = self.preview_transmute_helper(asset_amt);
             yin_amt
         }
 
@@ -325,19 +341,22 @@ mod Transmuter {
             self.assert_live();
 
             let asset: IERC20Dispatcher = self.asset.read();
-            let yin_amt: Wad = self.preview_transmute(asset_amt);
+            let (yin_amt, fee) = self.preview_transmute_helper(asset_amt);
 
             let user: ContractAddress = get_caller_address();
 
-            self.total_transmuted.write(self.total_transmuted.read() + yin_amt);
-            self.shrine.read().inject(user, yin_amt);
+            self.total_transmuted.write(self.total_transmuted.read() + yin_amt + fee);
+
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let transmuter: ContractAddress = get_contract_address();
+            shrine.inject(user, yin_amt);
+            shrine.inject(self.equalizer.read().contract_address, fee);
 
             // Transfer asset to Transmuter
-            let transmuter: ContractAddress = get_contract_address();
             let success: bool = asset.transfer_from(user, transmuter, asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
-            self.emit(Transmute { user, asset_amt, yin_amt });
+            self.emit(Transmute { user, asset_amt, yin_amt, fee });
         }
 
         // Swaps yin for the stablecoin asset at a ratio of 1 : 1, scaled down from Wad precision.
@@ -351,12 +370,17 @@ mod Transmuter {
 
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
-            // Decrement total transmuted amount by yin amount
-            self.total_transmuted.write(self.total_transmuted.read() - yin_amt);
+            // Decrement total transmuted amount by yin amount to be reversed 
+            // excluding the fee. The fee is excluded because this transmuter
+            // is still liable to back the amount of CASH representing the fee 
+            // with the corresponding amount of assets in the event of shutdown.
+            self.total_transmuted.write(self.total_transmuted.read() - (yin_amt - fee));
 
             // Burn yin from user
             let user: ContractAddress = get_caller_address();
-            self.shrine.read().eject(user, yin_amt);
+            let shrine: IShrineDispatcher = self.shrine.read();
+            shrine.eject(user, yin_amt);
+            shrine.inject(self.equalizer.read().contract_address, fee);
 
             // Transfer asset to user
             // Since the fee is excluded, it is automatically retained in the Transmuter's balance.
@@ -440,6 +464,14 @@ mod Transmuter {
             assert(yin_price_ge_peg && is_lt_cap_and_ceiling, 'TR: Transmute is paused');
         }
 
+        fn set_equalizer_helper(ref self: ContractState, equalizer: ContractAddress) {
+            assert(equalizer.is_non_zero(), 'TR: Zero address');
+            let old_equalizer: ContractAddress = self.equalizer.read().contract_address;
+            self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
+
+            self.emit(EqualizerUpdated { old_equalizer, new_equalizer: equalizer });
+        }
+
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {
             assert(receiver.is_non_zero(), 'TR: Zero address');
             let old_receiver: ContractAddress = self.receiver.read();
@@ -455,14 +487,27 @@ mod Transmuter {
             self.emit(PercentageCapUpdated { cap });
         }
 
-        fn preview_reverse_helper(self: @ContractState, yin_amt: Wad) -> (u128, u128) {
+        fn preview_transmute_helper(self: @ContractState, asset_amt: u128) -> (Wad, Wad) {
+            self.assert_live();
+
+            let asset: IERC20Dispatcher = self.asset.read();
+            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, asset.decimals());
+            self.assert_can_transmute(yin_amt);
+
+            let fee: Wad = wadray::rmul_wr(yin_amt, self.transmute_fee.read());
+
+            (yin_amt, fee)
+        }
+
+        fn preview_reverse_helper(self: @ContractState, yin_amt: Wad) -> (u128, Wad) {
             self.assert_live();
 
             assert(self.reversibility.read(), 'TR: Reverse is paused');
 
+            let fee: Wad = wadray::rmul_wr(yin_amt.into(), self.reverse_fee.read());
+
             let asset: IERC20Dispatcher = self.asset.read();
-            let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt, asset.decimals());
-            let fee: u128 = wadray::rmul_wr(asset_amt.into(), self.reverse_fee.read()).val;
+            let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt - fee, asset.decimals());
 
             (asset_amt, fee)
         }
