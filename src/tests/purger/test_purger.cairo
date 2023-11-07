@@ -994,59 +994,135 @@ mod test_purger {
         ]
             .span();
 
+        let mut expected_rm_max_close_amts: Span<Wad> = array![
+            896358337401000000000_u128
+                .into(), // 896.358... (65% threshold, 71.18% LTV, 32.5% rm threshold)
+            931454487512000000000_u128
+                .into(), // 931.454... (70% threshold, 76.65% LTV, 35% rm threshold)
+            969502867506000000000_u128
+                .into(), // 969.503... (75% threshold, 82.13% LTV, 37.5% rm threshold)
+            999985053373000000000_u128
+                .into(), // 999.985... (78.74% threshold, 86.2203% LTV, 39.34% rm threshold)
+        ]
+            .span();
+
         loop {
             match interesting_thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltv_arr = *target_ltvs.pop_front().unwrap();
                     let target_ltv = *target_ltv_arr.pop_front().unwrap();
+                    let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
 
-                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-                        purger_utils::purger_deploy();
+                    loop {
+                        match is_recovery_mode_fuzz.pop_front() {
+                            Option::Some(is_recovery_mode) => {
+                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                    purger_utils::purger_deploy();
 
-                    let target_trove: u64 = purger_utils::funded_healthy_trove(
-                        abbot, yangs, gates, trove_debt
-                    );
+                                set_contract_address(shrine_utils::admin());
+                                shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
 
-                    let whale_trove: u64 = purger_utils::create_whale_trove(abbot, yangs, gates);
+                                let target_trove: u64 = purger_utils::funded_healthy_trove(
+                                    abbot, yangs, gates, trove_debt
+                                );
 
-                    purger_utils::funded_absorber(
-                        shrine, abbot, absorber, yangs, gates, (trove_debt.val * 2).into()
-                    );
-                    purger_utils::set_thresholds(shrine, yangs, *threshold);
+                                let other_trove_owner: ContractAddress =
+                                    absorber_utils::provider_1();
+                                let other_trove: u64 = purger_utils::funded_absorber(
+                                    shrine,
+                                    abbot,
+                                    absorber,
+                                    yangs,
+                                    gates,
+                                    (trove_debt.val * 2).into()
+                                );
+                                purger_utils::set_thresholds(shrine, yangs, *threshold);
 
-                    let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+                                // In order to trigger recovery mode, we forge a large amount of debt 
+                                // on the other trove such that `recovery_mode_threshold / shrine_ltv` 
+                                // in `shrine.scale_threshold_for_recovery_mode` is a very small value, 
+                                // and therefore that function will always return the recovery mode
+                                // threshold as half of the original threshold.
+                                if (*is_recovery_mode) {
+                                    let max_forge_amt: Wad = shrine.get_max_forge(other_trove);
 
-                    // Make the target trove absorbable
-                    purger_utils::lower_prices_to_raise_trove_ltv(
-                        shrine,
-                        mock_pragma,
-                        yangs,
-                        yang_pair_ids,
-                        start_value,
-                        before_debt,
-                        target_ltv
-                    );
+                                    let (rm_threshold, shrine_ltv) = shrine
+                                        .get_recovery_mode_threshold();
 
-                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                                    let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
 
-                    purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
+                                    // Add 10% to the amount needed to activate RM
+                                    let amt_to_activate_rm: Wad = wadray::rmul_rw(
+                                        (RAY_PERCENT * 110).into(),
+                                        (wadray::rmul_rw(rm_threshold, shrine_value)
+                                            - wadray::rmul_rw(shrine_ltv, shrine_value))
+                                    );
 
-                    let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
+                                    let additional_forge_amt = min(
+                                        amt_to_activate_rm, max_forge_amt
+                                    );
 
-                    common::assert_equalish(
-                        penalty,
-                        expected_penalty,
-                        (RAY_PERCENT / 10).into(), // 0.1%
-                        'wrong penalty'
-                    );
+                                    set_contract_address(other_trove_owner);
+                                    abbot
+                                        .forge(
+                                            other_trove, additional_forge_amt, WadZeroable::zero()
+                                        );
+                                }
 
-                    let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
-                    common::assert_equalish(
-                        max_close_amt,
-                        expected_max_close_amt,
-                        (WAD_ONE / 10).into(),
-                        'wrong max close amt'
-                    );
+                                // Make the target trove absorbable
+                                let (_, _, start_value, before_debt) = shrine
+                                    .get_trove_info(target_trove);
+                                purger_utils::lower_prices_to_raise_trove_ltv(
+                                    shrine,
+                                    mock_pragma,
+                                    yangs,
+                                    yang_pair_ids,
+                                    start_value,
+                                    before_debt,
+                                    target_ltv
+                                );
+
+                                let (adjusted_threshold, ltv, tmp_value, _) = shrine
+                                    .get_trove_info(target_trove);
+                                if (*is_recovery_mode) {
+                                    let expected_rm_threshold: Ray = (*threshold.val / 2).into();
+                                    common::assert_equalish(
+                                        adjusted_threshold,
+                                        expected_rm_threshold,
+                                        (RAY_PERCENT / 100).into(),
+                                        'wrong rm threshold'
+                                    );
+                                }
+
+                                purger_utils::assert_trove_is_absorbable(
+                                    shrine, purger, target_trove, ltv
+                                );
+
+                                let (penalty, max_close_amt, _) = purger
+                                    .preview_absorb(target_trove);
+
+                                common::assert_equalish(
+                                    penalty,
+                                    expected_penalty,
+                                    (RAY_PERCENT / 10).into(), // 0.1%
+                                    'wrong penalty'
+                                );
+
+                                let expected_max_close_amt = if *is_recovery_mode {
+                                    *expected_rm_max_close_amts.pop_front().unwrap()
+                                } else {
+                                    *expected_max_close_amts.pop_front().unwrap()
+                                };
+                                common::assert_equalish(
+                                    max_close_amt,
+                                    expected_max_close_amt,
+                                    (WAD_ONE / 10).into(),
+                                    'wrong max close amt'
+                                );
+                            },
+                            Option::None => { break; },
+                        };
+                    };
                 },
                 Option::None => { break; },
             };
