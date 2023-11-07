@@ -12,7 +12,8 @@ mod Transmuter {
     use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray_signed::SignedWad;
 
     //
     // Components
@@ -92,6 +93,7 @@ mod Transmuter {
         Reverse: Reverse,
         ReverseFeeUpdated: ReverseFeeUpdated,
         ReversibilityToggled: ReversibilityToggled,
+        Settle: Settle,
         Sweep: Sweep,
         Transmute: Transmute,
         TransmuteFeeUpdated: TransmuteFeeUpdated,
@@ -141,6 +143,11 @@ mod Transmuter {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ReversibilityToggled {
         reversibility: bool
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Settle {
+        deficit: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -406,8 +413,51 @@ mod Transmuter {
             self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
         }
 
+        // 
+        // Isolated deprecation
+        // 
+
+        fn settle(ref self: ContractState) {
+            self.assert_live();
+
+            self.access_control.assert_has_role(transmuter_roles::SETTLE);
+
+            // Pay down the transmuter's debt using the Transmuter's CASH balance,
+            // capped at the total debt transmuted.
+            let transmuter: ContractAddress = get_contract_address();
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let yin_amt: Wad = shrine.get_yin(transmuter);
+
+            let mut total_transmuted: Wad = self.total_transmuted.read();
+            let settle_amt: Wad = min(total_transmuted, yin_amt);
+            total_transmuted -= settle_amt;
+
+            self.total_transmuted.write(WadZeroable::zero());
+            self.is_live.write(false);
+
+            shrine.eject(transmuter, settle_amt);
+
+            // Incur deficit if any
+            if total_transmuted.is_non_zero() {
+                self
+                    .shrine
+                    .read()
+                    .adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
+            }
+
+            // Transfer all remaining CASH to Equalizer, and all remaining assets to receiver
+            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+            yin.transfer(self.equalizer.read().contract_address, (yin_amt - settle_amt).into());
+
+            let asset: IERC20Dispatcher = self.asset.read();
+            asset.transfer(self.receiver.read(), asset.balance_of(transmuter));
+
+            // Emit event
+            self.emit(Settle { deficit: total_transmuted })
+        }
+
         //
-        // Shutdown
+        // Global shutdown
         //
 
         fn kill(ref self: ContractState) {

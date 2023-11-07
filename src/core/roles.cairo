@@ -212,14 +212,15 @@ mod shrine_roles {
 mod transmuter_roles {
     const ENABLE_RECLAIM: u128 = 1;
     const KILL: u128 = 2;
-    const SET_CARETAKER: u128 = 4;
-    const SET_CEILING: u128 = 8;
-    const SET_EQUALIZER: u128 = 16;
-    const SET_FEES: u128 = 32;
-    const SET_PERCENTAGE_CAP: u128 = 64;
-    const SET_RECEIVER: u128 = 128;
-    const SWEEP: u128 = 256;
-    const TOGGLE_REVERSIBILITY: u128 = 512;
+    const SETTLE: u128 = 4;
+    const SET_CARETAKER: u128 = 8;
+    const SET_CEILING: u128 = 16;
+    const SET_EQUALIZER: u128 = 32;
+    const SET_FEES: u128 = 64;
+    const SET_PERCENTAGE_CAP: u128 = 128;
+    const SET_RECEIVER: u128 = 256;
+    const SWEEP: u128 = 512;
+    const TOGGLE_REVERSIBILITY: u128 = 1024;
 
     #[inline(always)]
     fn caretaker() -> u128 {
@@ -230,6 +231,7 @@ mod transmuter_roles {
     fn default_admin_role() -> u128 {
         ENABLE_RECLAIM
             + KILL
+            + SETTLE
             + SET_CARETAKER
             + SET_CEILING
             + SET_EQUALIZER

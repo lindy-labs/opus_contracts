@@ -30,7 +30,9 @@ trait ITransmuter<TContractState> {
     fn transmute(ref self: TContractState, asset_amt: u128);
     fn reverse(ref self: TContractState, yin_amt: Wad);
     fn sweep(ref self: TContractState, asset_amt: u128);
-    // shutdown
+    // isolated deprecation
+    fn settle(ref self: TContractState);
+    // global shutdown
     fn kill(ref self: TContractState);
     fn preview_reclaim(self: @TContractState, yin: Wad) -> u128;
     fn reclaim(ref self: TContractState, yin: Wad);
