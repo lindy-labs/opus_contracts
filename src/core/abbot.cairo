@@ -1,13 +1,12 @@
 #[starknet::contract]
 mod abbot {
-    use starknet::{ContractAddress, get_caller_address};
-
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
+    use starknet::{ContractAddress, get_caller_address};
 
     // 
     // Components 
@@ -114,6 +113,15 @@ mod abbot {
 
         fn get_troves_count(self: @ContractState) -> u64 {
             self.troves_count.read()
+        }
+
+        fn get_trove_asset_balance(
+            self: @ContractState, trove_id: u64, yang: ContractAddress
+        ) -> u128 {
+            self
+                .sentinel
+                .read()
+                .convert_to_assets(yang, self.shrine.read().get_deposit(yang, trove_id))
         }
 
         //

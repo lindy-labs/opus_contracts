@@ -1,19 +1,16 @@
 mod test_shrine_compound {
-    use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::shrine::shrine as shrine_contract;
-
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::common;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Trove;
     use opus::utils::exp::exp;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray_signed;
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
-
-    use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
+    use opus::utils::wadray_signed;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, get_block_timestamp};
 
     //
     // Tests - Trove estimate and charge

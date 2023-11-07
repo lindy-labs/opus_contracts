@@ -1,7 +1,5 @@
-use debug::PrintTrait;
 use integer::BoundedInt;
 use math::Oneable;
-
 use opus::utils::math::pow;
 
 const WAD_DECIMALS: u8 = 18;
@@ -95,6 +93,16 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 #[inline(always)]
 fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Ray { val: rdiv_internal(lhs.val, rhs.val) }
+}
+
+#[inline(always)]
+fn scale_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
+    rmul_internal(lhs, rhs.val)
+}
+
+#[inline(always)]
+fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
+    rdiv_internal(lhs, rhs.val)
 }
 
 //
@@ -283,6 +291,13 @@ impl TIntoRay<T, impl TIntoU128: Into<T, u128>> of Into<T, Ray> {
     }
 }
 
+impl WadIntoFelt252 of Into<Wad, felt252> {
+    #[inline(always)]
+    fn into(self: Wad) -> felt252 {
+        self.val.into()
+    }
+}
+
 impl WadIntoU256 of Into<Wad, u256> {
     #[inline(always)]
     fn into(self: Wad) -> u256 {
@@ -465,13 +480,13 @@ impl RayOneable of Oneable<Ray> {
 }
 
 // Debug print
-impl WadPrintImpl of PrintTrait<Wad> {
+impl WadPrintImpl of debug::PrintTrait<Wad> {
     fn print(self: Wad) {
         self.val.print();
     }
 }
 
-impl RayPrintImpl of PrintTrait<Ray> {
+impl RayPrintImpl of debug::PrintTrait<Ray> {
     fn print(self: Ray) {
         self.val.print();
     }

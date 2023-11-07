@@ -1,29 +1,25 @@
 mod shrine_utils {
+    use debug::PrintTrait;
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
+    use opus::core::roles::shrine_roles;
+    use opus::core::shrine::shrine as shrine_contract;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::common;
+    use opus::types::YangRedistribution;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::exp::exp;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
         SyscallResultTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
-    use opus::core::shrine::shrine as shrine_contract;
-    use opus::core::roles::shrine_roles;
-
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::YangRedistribution;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::exp::exp;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
-
-    use opus::tests::common;
-
-    use debug::PrintTrait;
 
     //
     // Constants
@@ -638,10 +634,10 @@ mod shrine_utils {
     // Invariant helpers
     //
 
-    // Asserts that for each yang, the total yang amount is less than or equal to the sum of 
-    // all troves' deposited amount, including any unpulled exceptional redistributions, and 
+    // Asserts that for each yang, the total yang amount is less than or equal to the sum of
+    // all troves' deposited amount, including any unpulled exceptional redistributions, and
     // the initial yang amount.
-    // We do not check for strict equality because there may be loss of precision when 
+    // We do not check for strict equality because there may be loss of precision when
     // exceptionally redistributed yang are pulled into troves.
     fn assert_total_yang_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,

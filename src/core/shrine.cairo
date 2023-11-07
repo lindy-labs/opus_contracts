@@ -1,13 +1,9 @@
 #[starknet::contract]
 mod shrine {
-    use core::starknet::event::EventEmitter;
     use cmp::{max, min};
+    use core::starknet::event::EventEmitter;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
-    use starknet::{get_block_timestamp, get_caller_address};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-
     use opus::core::roles::shrine_roles;
-
     use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
@@ -15,12 +11,14 @@ mod shrine {
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
-    use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
-    use opus::utils::wadray_signed;
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::{get_block_timestamp, get_caller_address};
 
     //
     // Components
@@ -1240,7 +1238,6 @@ mod shrine {
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
             let base_threshold: Ray = self.thresholds.read(yang_id);
-
             match self.get_yang_suspension_status_helper(yang_id) {
                 YangSuspensionStatus::None => { base_threshold },
                 YangSuspensionStatus::Temporary => {
@@ -1312,7 +1309,6 @@ mod shrine {
                         if (*yang_balance.amount).is_non_zero() {
                             let yang_threshold: Ray = self
                                 .get_yang_threshold_helper(*yang_balance.yang_id);
-
                             let (price, _, _) = self
                                 .get_recent_price_from(*yang_balance.yang_id, interval);
 

@@ -1,21 +1,19 @@
 #[starknet::contract]
 mod caretaker {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-
     use opus::core::roles::caretaker_roles;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     //
     // Components

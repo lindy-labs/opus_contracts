@@ -1,14 +1,5 @@
 use debug::PrintTrait;
-use starknet::{
-    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    SyscallResultTrait
-};
-use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
-
 use opus::core::shrine::shrine;
-
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
@@ -16,12 +7,18 @@ use opus::interfaces::IERC20::{
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::erc20::ERC20;
-use opus::types::{AssetBalance, Reward, YangBalance};
-use opus::utils::wadray;
-use opus::utils::wadray::{Ray, Wad, WadZeroable};
-
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
+use opus::types::{AssetBalance, Reward, YangBalance};
+use opus::utils::wadray::{Ray, Wad, WadZeroable};
+use opus::utils::wadray;
+use starknet::contract_address::ContractAddressZeroable;
+use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
+use starknet::{
+    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+    SyscallResultTrait
+};
 
 //
 // Constants
@@ -159,6 +156,7 @@ fn open_trove_helper(
 ) -> u64 {
     set_contract_address(user);
     let mut yangs_copy = yangs;
+
     loop {
         match yangs_copy.pop_front() {
             Option::Some(yang) => {
@@ -173,7 +171,6 @@ fn open_trove_helper(
     set_contract_address(user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-
     set_contract_address(ContractAddressZeroable::zero());
 
     trove_id
@@ -213,6 +210,18 @@ fn get_token_balances(
             Option::None => { break balances.span(); }
         };
     }
+}
+
+// Fetches the ERC20 asset balance of a given address, and
+// converts it to yang units.
+#[inline(always)]
+fn get_erc20_bal_as_yang(
+    gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress
+) -> Wad {
+    gate
+        .convert_to_yang(
+            IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap()
+        )
 }
 
 //

@@ -3,21 +3,18 @@
 
 mod test_gate {
     use debug::PrintTrait;
-    use starknet::{ContractAddress, contract_address_try_from_felt252};
-    use starknet::testing::set_contract_address;
-
     use opus::core::gate::gate as gate_contract;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{WAD_SCALE, Wad};
-
-    use opus::tests::gate::utils::gate_utils;
-    use opus::tests::gate::utils::gate_utils::WBTC_SCALE;
-    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::common;
+    use opus::tests::gate::utils::gate_utils::WBTC_SCALE;
+    use opus::tests::gate::utils::gate_utils;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::wadray::{WAD_SCALE, Wad};
+    use opus::utils::wadray;
+    use starknet::testing::set_contract_address;
+    use starknet::{ContractAddress, contract_address_try_from_felt252};
 
     #[test]
     #[available_gas(10000000000)]

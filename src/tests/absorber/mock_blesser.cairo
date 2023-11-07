@@ -1,12 +1,10 @@
 #[starknet::contract]
 mod mock_blesser {
-    use starknet::{ContractAddress, get_contract_address};
-
     use opus::core::roles::blesser_roles;
-
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::utils::access_control::access_control_component;
+    use starknet::{ContractAddress, get_contract_address};
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 

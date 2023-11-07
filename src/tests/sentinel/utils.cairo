@@ -1,29 +1,26 @@
 mod sentinel_utils {
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, Ray};
-
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Wad, Ray};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
+    };
 
-    const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
-    const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
+    const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
     fn admin() -> ContractAddress {

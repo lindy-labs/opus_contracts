@@ -1,6 +1,5 @@
-use starknet::ContractAddress;
-
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IFlashLiquidator<TContractState> {
@@ -15,10 +14,7 @@ trait IFlashLiquidator<TContractState> {
 #[starknet::contract]
 mod flash_liquidator {
     use integer::BoundedInt;
-    use starknet::{get_contract_address, ContractAddress};
-
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
@@ -26,12 +22,12 @@ mod flash_liquidator {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, WadZeroable};
-
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
+    use opus::types::AssetBalance;
+    use opus::utils::wadray::{Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::{get_contract_address, ContractAddress};
 
     #[storage]
     struct Storage {

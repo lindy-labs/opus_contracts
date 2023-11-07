@@ -1,8 +1,7 @@
 use debug::PrintTrait;
 use math::Oneable;
-
-use opus::utils::wadray;
 use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
+use opus::utils::wadray;
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;

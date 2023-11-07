@@ -1,18 +1,14 @@
 mod test_shrine_redistribution {
+    use debug::PrintTrait;
+    use opus::core::shrine::shrine as shrine_contract;
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::common;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::{ExceptionalYangRedistribution, YangBalance, YangRedistribution};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-
-    use opus::core::shrine::shrine as shrine_contract;
-
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{ExceptionalYangRedistribution, YangBalance, YangRedistribution};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
-
-    use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
-
-    use debug::PrintTrait;
 
     //
     // Setup
@@ -555,8 +551,8 @@ mod test_shrine_redistribution {
                                 );
 
                                 shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-                            // We are unable to test the trove value in a sensible way here because 
-                            // the yang price has not been updated to reflect any rebasing of the 
+                            // We are unable to test the trove value in a sensible way here because
+                            // the yang price has not been updated to reflect any rebasing of the
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
@@ -1154,7 +1150,7 @@ mod test_shrine_redistribution {
         );
 
         let expected_recipient_trove1_attr_debt: Wad = {
-            // Redistributed debt from yang 1 to yang 2 
+            // Redistributed debt from yang 1 to yang 2
             wadray::rmul_wr(yang1_debt_redistributed_to_yang2, recipient_trove1_yang2_pct)
                 + // Redistributed debt from yang 1 to yang 3
                 wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove1_yang3_pct)
@@ -1165,7 +1161,7 @@ mod test_shrine_redistribution {
         };
 
         let expected_recipient_trove2_attr_debt: Wad = {
-            // Redistributed debt from yang 1 to yang 2 
+            // Redistributed debt from yang 1 to yang 2
             wadray::rmul_wr(yang1_debt_redistributed_to_yang2, recipient_trove2_yang2_pct)
                 + // Redistributed debt from yang 1 to yang 3
                 wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove2_yang3_pct)
@@ -1503,7 +1499,7 @@ mod test_shrine_redistribution {
         let expected_recipient_trove_yang1_amt: Wad = wadray::rmul_wr(
             shrine_utils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
         );
-        // Recipient trove's yang 3 amount should be the amount received from the first 
+        // Recipient trove's yang 3 amount should be the amount received from the first
         // redistribution, since the second redistribution would have rebased
         let expected_recipient_trove_yang3_amt: Wad = wadray::rmul_wr(
             shrine_utils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct
