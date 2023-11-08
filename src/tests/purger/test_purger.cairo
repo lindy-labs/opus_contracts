@@ -3646,7 +3646,6 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000000)]
     fn test_absorb_low_thresholds() {
-        let mut whale_trove: u64 = 0;
         let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
 
         let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
@@ -3721,11 +3720,15 @@ mod test_purger {
                                                             shrine, yangs, target_trove_yang_amts
                                                         );
 
-                                                        // Add 1 wei in case of rounding down to zero
-                                                        let trove_debt: Wad = wadray::rmul_wr(
-                                                            trove_value, *target_ltv
-                                                        )
-                                                            + 1_u128.into();
+                                                        // Add 100 Wad to guarantee recovery mode for non-zero debt.
+                                                        // In case of rounding down to zero, set to 1 wei.
+                                                        let trove_debt: Wad = max(
+                                                            wadray::rmul_wr(
+                                                                trove_value, *target_ltv
+                                                            )
+                                                                + (100 * WAD_ONE).into(),
+                                                            1_u128.into()
+                                                        );
 
                                                         // We skip test cases of partial liquidations where
                                                         // the trove debt is less than the minimum shares in absorber.
@@ -3829,20 +3832,41 @@ mod test_purger {
                                                             AbsorbType::None => {},
                                                         };
 
-                                                        // Mint enough debt to trigger recovery mode before 
-                                                        // thresholds are set to a very low value
-                                                        if *is_recovery_mode {
-                                                            whale_trove =
+                                                        let whale_trove: u64 =
+                                                            if *is_recovery_mode {
+                                                            // Mint enough debt to trigger recovery mode before 
+                                                            // thresholds are set to a very low value
+                                                            let trove_id: u64 =
                                                                 purger_utils::create_whale_trove(
-                                                                    abbot, yangs, gates
-                                                                );
+                                                                abbot, yangs, gates
+                                                            );
                                                             purger_utils::trigger_recovery_mode(
                                                                 shrine,
                                                                 abbot,
-                                                                whale_trove,
+                                                                trove_id,
                                                                 whale_trove_owner
                                                             );
-                                                        }
+
+                                                            trove_id
+                                                        } else {
+                                                            // Otherwise, create a whale trove to prevent recovery 
+                                                            // mode from beign triggered
+                                                            let deposit_amts: Span<u128> =
+                                                                purger_utils::whale_trove_yang_asset_amts();
+                                                            common::fund_user(
+                                                                whale_trove_owner,
+                                                                yangs,
+                                                                deposit_amts
+                                                            );
+                                                            common::open_trove_helper(
+                                                                abbot,
+                                                                whale_trove_owner,
+                                                                yangs,
+                                                                deposit_amts,
+                                                                gates,
+                                                                WAD_ONE.into()
+                                                            )
+                                                        };
 
                                                         // Setting the threshold to the desired value
                                                         // the target trove is now absorbable
@@ -3850,16 +3874,23 @@ mod test_purger {
                                                             shrine, yangs, *threshold
                                                         );
 
+                                                        let (adjusted_threshold, ltv, _, _) = shrine
+                                                            .get_trove_info(target_trove);
                                                         if *is_recovery_mode
                                                             && (*threshold).is_non_zero() {
-                                                            let (adjusted_threshold, _, _, _) =
-                                                                shrine
-                                                                .get_trove_info(target_trove);
                                                             assert(
                                                                 adjusted_threshold < *threshold
                                                                     - purger_utils::RM_ERROR_MARGIN
                                                                         .into(),
                                                                 'not recovery mode'
+                                                            );
+                                                        } else {
+                                                            common::assert_equalish(
+                                                                adjusted_threshold,
+                                                                *threshold,
+                                                                purger_utils::RM_ERROR_MARGIN
+                                                                    .into(),
+                                                                'in recovery mode'
                                                             );
                                                         }
 
@@ -4034,10 +4065,8 @@ mod test_purger {
                                                             );
                                                         }
 
-                                                        if *is_recovery_mode {
-                                                            set_contract_address(whale_trove_owner);
-                                                            abbot.close_trove(whale_trove);
-                                                        }
+                                                        set_contract_address(whale_trove_owner);
+                                                        abbot.close_trove(whale_trove);
                                                     },
                                                     Option::None => { break; }
                                                 };
