@@ -16,7 +16,6 @@ mod test_purger {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::external::utils::pragma_utils;
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::purger::flash_liquidator::{
         IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
@@ -63,10 +62,7 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_penalty_scalar_pass() {
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
-            Option::None
-        );
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
+        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -80,15 +76,7 @@ mod test_purger {
 
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
         let target_ltv: Ray = threshold + RAY_PERCENT.into(); // 92%
-        purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine,
-            mock_pragma,
-            yangs,
-            yang_pair_ids,
-            target_trove_health.value,
-            target_trove_health.debt,
-            target_ltv
-        );
+        purger_utils::lower_prices_to_raise_trove_ltv(shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv);
 
         // sanity check that LTV is at the target liquidation LTV
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
@@ -162,13 +150,9 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_penalty_scalar_lower_bound() {
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
-            Option::None
-        );
+        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
-
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         let target_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -184,15 +168,7 @@ mod test_purger {
         // hand, if a penalty scalar is not applied, then the maximum possible penalty will be
         // reached from 92.09% onwards, so the trove would not be absorbable at this LTV
         let target_ltv: Ray = 910000000000000000000000000_u128.into();
-        purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine,
-            mock_pragma,
-            yangs,
-            yang_pair_ids,
-            target_trove_health.value,
-            target_trove_health.debt,
-            target_ltv
-        );
+        purger_utils::lower_prices_to_raise_trove_ltv(shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv);
 
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
         // sanity check that threshold is correct
@@ -252,13 +228,11 @@ mod test_purger {
     // penalty and close amount when LTV is at threshold. The error margin is relaxed because
     // `lower_prices_to_raise_trove_ltv` may not put the trove in the exact LTV as the threshold.
     //
-    // For low thresholds (arbitraily defined as 2% or less), the trove's debt is set based on the 
+    // For low thresholds (arbitraily defined as 2% or less), the trove's debt is set based on the
     // value instead. See inline comments for more details.
     #[test]
     #[available_gas(20000000000)]
     fn test_preview_liquidate_parametrized() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
 
         let default_trove_debt: Wad = (WAD_ONE * 1000).into();
@@ -304,7 +278,7 @@ mod test_purger {
         let mut expected_rm_penalty: Span<Ray> = array![
             (3 * RAY_PERCENT).into(), // 3% (0% threshold)
             (3 * RAY_PERCENT).into(), // 3% (1% threshold)
-            purger_contract::MAX_PENALTY.into(), // 3% (70% threshold, 49% rm threshold) 
+            purger_contract::MAX_PENALTY.into(), // 3% (70% threshold, 49% rm threshold)
             purger_contract::MAX_PENALTY.into(), // 3% (80% threshold, 56% rm threshold)
             purger_contract::MAX_PENALTY.into(), // 3% (90% threshold)
             purger_contract::MAX_PENALTY.into(), // 3% (96% threshold)
@@ -349,9 +323,8 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
-                                    purger_utils::purger_deploy(
-                                    Option::Some(salt)
+                                 let (shrine, abbot, seer, absorber, purger, yangs, gates) =
+                                    purger_utils::purger_deploy(Option::Some(salt)
                                 );
 
                                 if !(*is_recovery_mode) {
@@ -362,14 +335,14 @@ mod test_purger {
                                 // we get the desired ltv for the trove from the get-go in order to
                                 // avoid overflow issues in `lower_prices_to_raise_trove_ltv`.
                                 //
-                                // This is because `lower_prices_to_raise_trove_ltv` is designed for 
+                                // This is because `lower_prices_to_raise_trove_ltv` is designed for
                                 // raising the trove's LTV to the given *higher* LTV,
-                                // not lowering it. 
+                                // not lowering it.
                                 //
-                                // NOTE: This 2% cut off is completely arbitrary and meant only for excluding 
-                                // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%. 
-                                // If more low thresholds were added that were above 2% but below the 
-                                // starting LTV of the trove, then this cutoff would need to be adjusted. 
+                                // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
+                                // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
+                                // If more low thresholds were added that were above 2% but below the
+                                // starting LTV of the trove, then this cutoff would need to be adjusted.
                                 let mut dummy_trove: u64 = 0;
                                 let trove_debt = if *threshold > (RAY_PERCENT * 2).into() {
                                     default_trove_debt
@@ -409,9 +382,8 @@ mod test_purger {
                                 if *threshold > (RAY_PERCENT * 2).into() {
                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                         shrine,
-                                        mock_pragma,
+                                        seer,
                                         yangs,
-                                        yang_pair_ids,
                                         target_trove_health.value,
                                         target_trove_health.debt,
                                         *threshold
@@ -422,9 +394,8 @@ mod test_purger {
 
                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                         shrine,
-                                        mock_pragma,
+                                        seer,
                                         yangs,
-                                        yang_pair_ids,
                                         dummy_trove_health.value,
                                         dummy_trove_health.debt,
                                         dummy_threshold
@@ -494,7 +465,7 @@ mod test_purger {
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
         let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
+        let (shrine, abbot, seer, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             searcher_start_yin, Option::None
         );
@@ -505,7 +476,6 @@ mod test_purger {
         let target_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, initial_trove_debt
         );
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         // Accrue some interest
         common::advance_intervals(500);
@@ -520,9 +490,8 @@ mod test_purger {
         let target_ltv: Ray = (target_trove_start_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
             shrine,
-            mock_pragma,
+            seer,
             yangs,
-            yang_pair_ids,
             target_trove_start_health.value,
             target_trove_start_health.debt,
             target_ltv
@@ -620,14 +589,12 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_with_flashmint_pass() {
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
+        let (shrine, abbot, seer, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
-
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         let target_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -653,9 +620,8 @@ mod test_purger {
         let target_ltv: Ray = (target_trove_start_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
             shrine,
-            mock_pragma,
+            seer,
             yangs,
-            yang_pair_ids,
             target_trove_start_health.value,
             target_trove_start_health.debt,
             target_ltv
@@ -697,8 +663,6 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000000)]
     fn test_liquidate_parametrized() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
 
         let num_thresholds: usize = thresholds.len();
@@ -746,7 +710,7 @@ mod test_purger {
                                             let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN
                                                 .into();
                                             let (
-                                                shrine, abbot, mock_pragma, _, purger, yangs, gates
+                                                shrine, abbot, seer, _, purger, yangs, gates
                                             ) =
                                                 purger_utils::purger_deploy_with_searcher(
                                                 searcher_start_yin, Option::Some(salt)
@@ -758,26 +722,26 @@ mod test_purger {
                                                 );
                                             }
 
-                                            // NOTE: This 2% cut off is completely arbitrary and meant only for excluding 
-                                            // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%. 
-                                            // If more low thresholds were added that were above 2% but below the 
-                                            // starting LTV of the trove, then this cutoff would need to be adjusted. 
+                                            // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
+                                            // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
+                                            // If more low thresholds were added that were above 2% but below the
+                                            // starting LTV of the trove, then this cutoff would need to be adjusted.
                                             let mut dummy_trove: u64 = 0;
                                             let target_ltv_above_cutoff =
                                                 *target_ltv > low_ltv_cutoff;
                                             let trove_debt: Wad = if target_ltv_above_cutoff {
                                                 // If target_ltv is above 2%, then we can set the trove's debt
-                                                // to `TARGET_TROVE_YIN` and adjust prices in order to reach 
+                                                // to `TARGET_TROVE_YIN` and adjust prices in order to reach
                                                 // the target LTV
                                                 purger_utils::TARGET_TROVE_YIN.into()
                                             } else {
-                                                // Otherwise, we set the debt for the trove such that we get 
+                                                // Otherwise, we set the debt for the trove such that we get
                                                 // the desired ltv for the trove from the get-go in order
                                                 // to avoid overflow issues in lower_prices_to_raise_trove_ltv
                                                 //
-                                                // This is because lower_prices_to_raise_trove_ltv is designed for 
+                                                // This is because lower_prices_to_raise_trove_ltv is designed for
                                                 // raising the trove's LTV to the given *higher* LTV,
-                                                // not lowering it. 
+                                                // not lowering it.
                                                 let target_trove_yang_amts: Span<Wad> = array![
                                                     purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT
                                                         .into(),
@@ -824,9 +788,8 @@ mod test_purger {
                                             if target_ltv_above_cutoff {
                                                 purger_utils::lower_prices_to_raise_trove_ltv(
                                                     shrine,
-                                                    mock_pragma,
+                                                    seer,
                                                     yangs,
-                                                    yang_pair_ids,
                                                     target_trove_start_health.value,
                                                     target_trove_start_health.debt,
                                                     *target_ltv
@@ -838,9 +801,8 @@ mod test_purger {
 
                                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                                         shrine,
-                                                        mock_pragma,
+                                                        seer,
                                                         yangs,
-                                                        yang_pair_ids,
                                                         dummy_trove_health.value,
                                                         dummy_trove_health.debt,
                                                         dummy_threshold
@@ -849,7 +811,7 @@ mod test_purger {
                                             }
 
                                             // Get the updated values after adjusting prices
-                                            // The threshold may have changed if in recovery mode 
+                                            // The threshold may have changed if in recovery mode
                                             let target_trove_updated_start_health: Health = shrine
                                                 .get_trove_health(target_trove);
 
@@ -1008,11 +970,10 @@ mod test_purger {
         let target_trove_yin: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.val / 10).into();
 
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
+        let (shrine, abbot, seer, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             searcher_yin, Option::None
         );
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
         let target_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, target_trove_yin
         );
@@ -1022,9 +983,8 @@ mod test_purger {
         let target_ltv: Ray = (target_trove_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
             shrine,
-            mock_pragma,
+            seer,
             yangs,
-            yang_pair_ids,
             target_trove_health.value,
             target_trove_health.debt,
             target_ltv
@@ -1051,8 +1011,6 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000000000)]
     fn test_preview_absorb_below_trove_debt_parametrized() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut interesting_thresholds =
             purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
         let mut target_ltvs: Span<Span<Ray>> =
@@ -1092,7 +1050,7 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                let (shrine, abbot, seer, absorber, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
                                     Option::Some(salt)
                                 );
@@ -1114,9 +1072,9 @@ mod test_purger {
                                 );
                                 purger_utils::set_thresholds(shrine, yangs, *threshold);
 
-                                // In order to trigger recovery mode, we forge a large amount of debt 
-                                // on the other trove such that `recovery_mode_threshold / shrine_ltv` 
-                                // in `shrine.scale_threshold_for_recovery_mode` is a very small value, 
+                                // In order to trigger recovery mode, we forge a large amount of debt
+                                // on the other trove such that `recovery_mode_threshold / shrine_ltv`
+                                // in `shrine.scale_threshold_for_recovery_mode` is a very small value,
                                 // and therefore that function will always return the recovery mode
                                 // threshold as half of the original threshold.
                                 if (*is_recovery_mode) {
@@ -1137,9 +1095,8 @@ mod test_purger {
                                     .get_trove_health(target_trove);
                                 purger_utils::lower_prices_to_raise_trove_ltv(
                                     shrine,
-                                    mock_pragma,
+                                    seer,
                                     yangs,
-                                    yang_pair_ids,
                                     target_trove_start_health.value,
                                     target_trove_start_health.debt,
                                     target_ltv
@@ -1201,7 +1158,7 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_full_absorb_pass() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, seer, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
@@ -1209,7 +1166,6 @@ mod test_purger {
         let target_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, initial_trove_debt
         );
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         // Accrue some interest
         common::advance_intervals(500);
@@ -1236,9 +1192,8 @@ mod test_purger {
         let target_ltv: Ray = (purger_contract::ABSORPTION_THRESHOLD + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
             shrine,
-            mock_pragma,
+            seer,
             yangs,
-            yang_pair_ids,
             target_trove_start_health.value,
             target_trove_start_health.debt,
             target_ltv
@@ -1372,7 +1327,6 @@ mod test_purger {
     fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
         let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
@@ -1400,7 +1354,7 @@ mod test_purger {
                                                     let (
                                                         shrine,
                                                         abbot,
-                                                        mock_pragma,
+                                                        seer,
                                                         absorber,
                                                         purger,
                                                         yangs,
@@ -1462,9 +1416,8 @@ mod test_purger {
 
                                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                                         shrine,
-                                                        mock_pragma,
+                                                        seer,
                                                         yangs,
-                                                        yang_pair_ids,
                                                         target_trove_start_health.value,
                                                         target_trove_start_health.debt,
                                                         target_ltv
@@ -1783,8 +1736,6 @@ mod test_purger {
     fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
@@ -1835,7 +1786,7 @@ mod test_purger {
                                                             let (
                                                                 shrine,
                                                                 abbot,
-                                                                mock_pragma,
+                                                                seer,
                                                                 absorber,
                                                                 purger,
                                                                 yangs,
@@ -1893,9 +1844,8 @@ mod test_purger {
                                                             // Make the target trove absorbable
                                                             purger_utils::lower_prices_to_raise_trove_ltv(
                                                                 shrine,
-                                                                mock_pragma,
+                                                                seer,
                                                                 yangs,
-                                                                yang_pair_ids,
                                                                 target_trove_start_health.value,
                                                                 target_trove_start_health.debt,
                                                                 target_ltv
@@ -1945,7 +1895,7 @@ mod test_purger {
                                                                 absorber_utils::provider_1();
 
                                                             // Provide the minimum to absorber.
-                                                            // The actual amount will be provided after 
+                                                            // The actual amount will be provided after
                                                             // recovery mode adjustment is made.
                                                             let recipient_trove: u64 =
                                                                 absorber_utils::provide_to_absorber(
@@ -1996,7 +1946,7 @@ mod test_purger {
                                                                 );
                                                             }
 
-                                                            // Preview absorption again based on adjustments for recovery mode                                                            
+                                                            // Preview absorption again based on adjustments for recovery mode
                                                             let (
                                                                 penalty,
                                                                 max_close_amt,
@@ -2429,8 +2379,6 @@ mod test_purger {
     fn test_absorb_full_redistribution_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
@@ -2455,7 +2403,7 @@ mod test_purger {
                                                         let (
                                                             shrine,
                                                             abbot,
-                                                            mock_pragma,
+                                                            seer,
                                                             absorber,
                                                             purger,
                                                             yangs,
@@ -2549,9 +2497,8 @@ mod test_purger {
                                                             .into();
                                                         purger_utils::lower_prices_to_raise_trove_ltv(
                                                             shrine,
-                                                            mock_pragma,
+                                                            seer,
                                                             yangs,
-                                                            yang_pair_ids,
                                                             target_trove_start_health.value,
                                                             target_trove_start_health.debt,
                                                             target_ltv
@@ -2562,9 +2509,9 @@ mod test_purger {
                                                             .get_trove_health(target_trove);
 
                                                         // Sanity check to ensure recovery mode paramterization is correct
-                                                        // Due to the changes in yang prices, there may be a very slight 
-                                                        // deviation in the threshold. Therefore, we treat the new threshold 
-                                                        // as equal to the previous threshold if it is within 0.1% 
+                                                        // Due to the changes in yang prices, there may be a very slight
+                                                        // deviation in the threshold. Therefore, we treat the new threshold
+                                                        // as equal to the previous threshold if it is within 0.1%
                                                         // (i.e. recovery mode is not activated)
                                                         if *is_recovery_mode {
                                                             assert(
@@ -2720,8 +2667,8 @@ mod test_purger {
 
                                                         // Check Purger events
 
-                                                        // Note that this indirectly asserts that `Purged` 
-                                                        // is not emitted if it does not revert because 
+                                                        // Note that this indirectly asserts that `Purged`
+                                                        // is not emitted if it does not revert because
                                                         // `Purged` would have been emitted before `Compensate`
                                                         let compensate_event: purger_contract::Compensate =
                                                             common::pop_event_with_indexed_keys(
@@ -2787,8 +2734,6 @@ mod test_purger {
     #[test]
     #[available_gas(200000000000000)]
     fn test_absorb_less_than_trove_debt_parametrized() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut thresholds: Span<Ray> =
             purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
@@ -2812,7 +2757,7 @@ mod test_purger {
                                             let (
                                                 shrine,
                                                 abbot,
-                                                mock_pragma,
+                                                seer,
                                                 absorber,
                                                 purger,
                                                 yangs,
@@ -2873,9 +2818,8 @@ mod test_purger {
                                             // Make the target trove absorbable
                                             purger_utils::lower_prices_to_raise_trove_ltv(
                                                 shrine,
-                                                mock_pragma,
+                                                seer,
                                                 yangs,
-                                                yang_pair_ids,
                                                 target_trove_start_health.value,
                                                 target_trove_start_health.debt,
                                                 *target_ltv
@@ -3028,8 +2972,6 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000000)]
     fn test_absorb_trove_debt_parametrized() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let mut thresholds: Span<Ray> =
             purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
@@ -3074,7 +3016,7 @@ mod test_purger {
                                             let (
                                                 shrine,
                                                 abbot,
-                                                mock_pragma,
+                                                seer,
                                                 absorber,
                                                 purger,
                                                 yangs,
@@ -3130,9 +3072,8 @@ mod test_purger {
                                             // Make the target trove absorbable
                                             purger_utils::lower_prices_to_raise_trove_ltv(
                                                 shrine,
-                                                mock_pragma,
+                                                seer,
                                                 yangs,
-                                                yang_pair_ids,
                                                 target_trove_start_health.value,
                                                 target_trove_start_health.debt,
                                                 *target_ltv
@@ -3311,11 +3252,10 @@ mod test_purger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
     fn test_absorb_below_absorbable_ltv_fail() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, seer, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -3327,9 +3267,8 @@ mod test_purger {
         let target_ltv: Ray = target_trove_health.threshold + RAY_PERCENT.into();
         purger_utils::lower_prices_to_raise_trove_ltv(
             shrine,
-            mock_pragma,
+            seer,
             yangs,
-            yang_pair_ids,
             target_trove_health.value,
             target_trove_health.debt,
             target_ltv
@@ -3349,8 +3288,6 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_marginally_below_absorbable_ltv_not_absorbable() {
-        let yang_pair_ids = pragma_utils::yang_pair_ids();
-
         let (mut thresholds, mut target_ltvs) =
             purger_utils::interesting_thresholds_and_ltvs_below_absorption_ltv();
 
@@ -3359,7 +3296,7 @@ mod test_purger {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                    let (shrine, abbot, seer, absorber, purger, yangs, gates) =
                         purger_utils::purger_deploy_with_searcher(
                         searcher_start_yin, Option::Some(salt)
                     );
@@ -3388,9 +3325,8 @@ mod test_purger {
                     // Adjust the trove to the target LTV
                     purger_utils::lower_prices_to_raise_trove_ltv(
                         shrine,
-                        mock_pragma,
+                        seer,
                         yangs,
-                        yang_pair_ids,
                         target_trove_start_health.value,
                         target_trove_start_health.debt,
                         *target_ltvs.pop_front().unwrap()
@@ -3923,7 +3859,7 @@ mod test_purger {
 
                                                         let whale_trove: u64 =
                                                             if *is_recovery_mode {
-                                                            // Mint enough debt to trigger recovery mode before 
+                                                            // Mint enough debt to trigger recovery mode before
                                                             // thresholds are set to a very low value
                                                             let trove_id: u64 =
                                                                 purger_utils::create_whale_trove(
@@ -3938,7 +3874,7 @@ mod test_purger {
 
                                                             trove_id
                                                         } else {
-                                                            // Otherwise, create a whale trove to prevent recovery 
+                                                            // Otherwise, create a whale trove to prevent recovery
                                                             // mode from beign triggered
                                                             let deposit_amts: Span<u128> =
                                                                 purger_utils::whale_trove_yang_asset_amts();
@@ -3973,7 +3909,7 @@ mod test_purger {
                                                                 'not recovery mode'
                                                             );
                                                         } else if (*threshold).is_non_zero() {
-                                                            // skip zero threshold because recovery mode 
+                                                            // skip zero threshold because recovery mode
                                                             // is unavoidable
                                                             assert(
                                                                 !shrine.is_recovery_mode(),

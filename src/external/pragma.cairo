@@ -10,14 +10,12 @@ mod pragma {
     use opus::core::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use opus::types::pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
+    use opus::types::pragma::{DataType, PricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp};
 
     //
     // Components
@@ -34,10 +32,6 @@ mod pragma {
     // Constants
     //
 
-    // Helper constant to set the starting index for iterating over the yangs
-    // in the order they were added
-    const LOOP_START: u32 = 1;
-
     // there are sanity bounds for settable values, i.e. they can never
     // be set outside of this hardcoded range
     // the range is [lower, upper]
@@ -46,9 +40,6 @@ mod pragma {
         consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
     const LOWER_SOURCES_BOUND: u64 = 3;
     const UPPER_SOURCES_BOUND: u64 = 13;
-    const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    const UPPER_UPDATE_FREQUENCY_BOUND: u64 =
-        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
 
     //
     // Storage
@@ -61,17 +52,6 @@ mod pragma {
         access_control: access_control_component::Storage,
         // interface to the Pragma oracle contract
         oracle: IPragmaOracleDispatcher,
-        // Shrine associated with this module
-        // this is where a valid price update is posted to
-        shrine: IShrineDispatcher,
-        // Sentinel associated with this module
-        // a Sentinel module is necessary to verify a price update
-        sentinel: ISentinelDispatcher,
-        // the minimal time difference in seconds of how often we
-        // want to fetch from the oracle
-        update_frequency: u64,
-        // block timestamp of the last `update_prices` call
-        last_update_prices_call_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which we consider a
@@ -79,10 +59,10 @@ mod pragma {
         // `sources` is the minimum number of data publishers used to aggregate the
         // price value
         price_validity_thresholds: PriceValidityThresholds,
-        // number of yangs in `yang_settings` "array"
-        yangs_count: u32,
-        // a 1-based "array" of values used to get the Yang prices from Pragma
-        yang_settings: LegacyMap::<u32, YangSettings>
+        // A mapping between a token's address and the ID Pragma uses
+        // to identify the price feed
+        // (yang addres) -> (Pragma pair ID)
+        yang_pair_ids: LegacyMap::<ContractAddress, u256>
     }
 
     //
@@ -94,10 +74,7 @@ mod pragma {
     enum Event {
         AccessControlEvent: access_control_component::Event,
         InvalidPriceUpdate: InvalidPriceUpdate,
-        OracleAddressUpdated: OracleAddressUpdated,
-        PricesUpdated: PricesUpdated,
         PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
-        UpdateFrequencyUpdated: UpdateFrequencyUpdated,
         YangAdded: YangAdded,
     }
 
@@ -108,7 +85,6 @@ mod pragma {
         price: Wad,
         pragma_last_updated_ts: u256,
         pragma_num_sources: u256,
-        asset_amt_per_yang: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -117,11 +93,6 @@ mod pragma {
         new_address: ContractAddress
     }
 
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PricesUpdated {
-        timestamp: u64,
-        caller: ContractAddress
-    }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PriceValidityThresholdsUpdated {
@@ -130,15 +101,9 @@ mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct UpdateFrequencyUpdated {
-        old_frequency: u64,
-        new_frequency: u64
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
-        index: u32,
-        settings: YangSettings
+        address: ContractAddress,
+        pair_id: u256
     }
 
     //
@@ -150,9 +115,6 @@ mod pragma {
         ref self: ContractState,
         admin: ContractAddress,
         oracle: ContractAddress,
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
-        update_frequency: u64,
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
@@ -160,17 +122,11 @@ mod pragma {
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
-        self.shrine.write(IShrineDispatcher { contract_address: shrine });
-        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
-        self.update_frequency.write(update_frequency);
         let new_thresholds = PriceValidityThresholds {
             freshness: freshness_threshold, sources: sources_threshold
         };
         self.price_validity_thresholds.write(new_thresholds);
 
-        // emit events
-        self.emit(OracleAddressUpdated { old_address: Zeroable::zero(), new_address: oracle });
-        self.emit(UpdateFrequencyUpdated { old_frequency: 0, new_frequency: update_frequency });
         self
             .emit(
                 PriceValidityThresholdsUpdated {
@@ -186,23 +142,24 @@ mod pragma {
 
     #[abi(embed_v0)]
     impl IPragmaImpl of IPragma<ContractState> {
-        //
-        // Setters
-        //
+        fn add_yang(ref self: ContractState, yang: ContractAddress, pair_id: u256) {
+            self.access_control.assert_has_role(pragma_roles::ADD_YANG);
+            assert(pair_id != 0, 'PGM: Invalid pair ID');
+            assert(yang.is_non_zero(), 'PGM: Invalid yang address');
 
-        fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
-            self.access_control.assert_has_role(pragma_roles::SET_ORACLE_ADDRESS);
-            assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
+            // doing a sanity check if Pragma actually offers a price feed
+            // of the requested asset and if it's suitable for our needs
+            let response: PricesResponse = self
+                .oracle
+                .read()
+                .get_data_median(DataType::Spot(pair_id));
+            // Pragma returns 0 decimals for an unknown pair ID
+            assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
+            assert(response.decimals <= 18, 'PGM: Too many decimals');
 
-            let old_oracle: IPragmaOracleDispatcher = self.oracle.read();
-            self.oracle.write(IPragmaOracleDispatcher { contract_address: new_oracle });
+            self.yang_pair_ids.write(yang, pair_id);
 
-            self
-                .emit(
-                    OracleAddressUpdated {
-                        old_address: old_oracle.contract_address, new_address: new_oracle
-                    }
-                );
+            self.emit(YangAdded { address: yang, pair_id });
         }
 
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
@@ -222,59 +179,6 @@ mod pragma {
 
             self.emit(PriceValidityThresholdsUpdated { old_thresholds, new_thresholds });
         }
-
-        fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
-            self.access_control.assert_has_role(pragma_roles::SET_UPDATE_FREQUENCY);
-            assert(
-                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
-                    && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
-                'PGM: Frequency out of bounds'
-            );
-
-            let old_frequency: u64 = self.update_frequency.read();
-            self.update_frequency.write(new_frequency);
-            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
-        }
-
-        fn add_yang(ref self: ContractState, pair_id: u256, yang: ContractAddress) {
-            self.access_control.assert_has_role(pragma_roles::ADD_YANG);
-            assert(pair_id != 0, 'PGM: Invalid pair ID');
-            assert(yang.is_non_zero(), 'PGM: Invalid yang address');
-            self.assert_new_yang(pair_id, yang);
-
-            // doing a sanity check if Pragma actually offers a price feed
-            // of the requested asset and if it's suitable for our needs
-            let response: PricesResponse = self
-                .oracle
-                .read()
-                .get_data_median(DataType::Spot(pair_id));
-            // Pragma returns 0 decimals for an unknown pair ID
-            assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
-            assert(response.decimals <= 18, 'PGM: Too many decimals');
-
-            let index: u32 = self.yangs_count.read() + 1;
-            let settings = YangSettings { pair_id, yang };
-            self.yang_settings.write(index, settings);
-            self.yangs_count.write(index);
-
-            self.emit(YangAdded { index, settings });
-        }
-
-        //
-        // Yagi keepers
-        // TODO: check their Cairo 1 API
-        //
-
-        #[inline(always)]
-        fn probe_task(self: @ContractState) -> bool {
-            let seconds_since_last_update: u64 = get_block_timestamp()
-                - self.last_update_prices_call_timestamp.read();
-            self.update_frequency.read() <= seconds_since_last_update
-        }
-
-        fn execute_task(ref self: ContractState) {
-            self.update_prices();
-        }
     }
 
     //
@@ -283,73 +187,47 @@ mod pragma {
 
     #[abi(embed_v0)]
     impl IOracleImpl of IOracle<ContractState> {
-        fn update_prices(ref self: ContractState) {
-            // check first if an update can happen - under normal circumstances, it means
-            // if the minimal time delay between the last update and now has passed
-            // but the caller can have a specialized role in which case they can
-            // force an update to happen immediatelly
-            let can_update: bool = self.probe_task();
-            let can_force_update: bool = self
-                .access_control
-                .has_role(pragma_roles::UPDATE_PRICES, get_caller_address());
-            assert(can_update || can_force_update, 'PGM: Too soon to update prices');
+        fn get_name(self: @ContractState) -> felt252 {
+            'Pragma'
+        }
 
-            let block_timestamp: u64 = get_block_timestamp();
-            let mut idx: u32 = LOOP_START;
-            let loop_end: u32 = self.yangs_count.read() + LOOP_START;
-            let mut has_valid_update: bool = false;
+        fn get_oracle(self: @ContractState) -> ContractAddress {
+            self.oracle.read().contract_address
+        }
 
-            loop {
-                if idx == loop_end {
-                    break;
-                }
+        fn fetch_price(
+            ref self: ContractState, yang: ContractAddress, force_update: bool
+        ) -> Result<Wad, felt252> {
+            let pair_id: u256 = self.yang_pair_ids.read(yang);
+            assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-                let settings: YangSettings = self.yang_settings.read(idx);
-                let response: PricesResponse = self
-                    .oracle
-                    .read()
-                    .get_data_median(DataType::Spot(settings.pair_id));
+            let response: PricesResponse = self
+                .oracle
+                .read()
+                .get_data_median(DataType::Spot(pair_id));
 
-                // convert price value to Wad
-                // this will revert if the decimals is greater than 18 (wad)
-                let price: Wad = wadray::fixed_point_to_wad(
-                    response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
-                );
-                let asset_amt_per_yang: Wad = self
-                    .sentinel
-                    .read()
-                    .get_asset_amt_per_yang(settings.yang);
+            // convert price value to Wad
+            let price: Wad = wadray::fixed_point_to_wad(
+                response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
+            );
 
-                // if we receive what we consider a valid price from the oracle, record it in the Shrine,
-                // otherwise emit an event about the update being invalid
-                if self.is_valid_price_update(response, asset_amt_per_yang, can_force_update) {
-                    has_valid_update = true;
-                    self.shrine.read().advance(settings.yang, price * asset_amt_per_yang);
-                } else {
-                    self
-                        .emit(
-                            InvalidPriceUpdate {
-                                yang: settings.yang,
-                                price,
-                                pragma_last_updated_ts: response.last_updated_timestamp,
-                                pragma_num_sources: response.num_sources_aggregated,
-                                asset_amt_per_yang
-                            }
-                        );
-                }
-
-                idx += 1;
-            };
-
-            // Record the timestamp for the last `update_prices` call
-            self.last_update_prices_call_timestamp.write(block_timestamp);
-            // Emit the event only if at least one price update is valid
-            if has_valid_update {
-                self
-                    .emit(
-                        PricesUpdated { timestamp: block_timestamp, caller: get_caller_address() }
-                    );
+            // if we receive what we consider a valid price from the oracle,
+            // return it back, otherwise emit an event about the update being invalid
+            // the check can be overridden with the `force_update` flag
+            if force_update || self.is_valid_price_update(response) {
+                return Result::Ok(price);
             }
+
+            self
+                .emit(
+                    InvalidPriceUpdate {
+                        yang,
+                        price,
+                        pragma_last_updated_ts: response.last_updated_timestamp,
+                        pragma_num_sources: response.num_sources_aggregated,
+                    }
+                );
+            Result::Err('PGM: Invalid price update')
         }
     }
 
@@ -359,33 +237,7 @@ mod pragma {
 
     #[generate_trait]
     impl PragmaInternalFunctions of PragmaInternalFunctionsTrait {
-        fn assert_new_yang(self: @ContractState, pair_id: u256, yang: ContractAddress) {
-            let mut idx: u32 = LOOP_START;
-            let loop_end: u32 = self.yangs_count.read() + LOOP_START;
-
-            loop {
-                if idx == loop_end {
-                    break;
-                }
-
-                let settings: YangSettings = self.yang_settings.read(idx);
-                assert(settings.yang != yang, 'PGM: Yang already present');
-                assert(settings.pair_id != pair_id, 'PGM: Pair ID already present');
-                idx += 1;
-            };
-        }
-
-        fn is_valid_price_update(
-            self: @ContractState,
-            update: PricesResponse,
-            asset_amt_per_yang: Wad,
-            can_force_update: bool
-        ) -> bool {
-            if asset_amt_per_yang.is_zero() {
-                // can happen when e.g. the yang is invalid or gate is not added to sentinel
-                return false;
-            }
-
+        fn is_valid_price_update(self: @ContractState, update: PricesResponse) -> bool {
             let required: PriceValidityThresholds = self.price_validity_thresholds.read();
 
             // check if the update is from enough sources
@@ -409,12 +261,12 @@ mod pragma {
             let block_timestamp = get_block_timestamp();
             let last_updated_timestamp: u64 = update.last_updated_timestamp.try_into().unwrap();
 
-            let is_from_future = block_timestamp <= last_updated_timestamp;
-            if is_from_future || can_force_update {
+            if block_timestamp <= last_updated_timestamp {
                 return has_enough_sources;
             }
 
-            // the result of the first argument `block_timestamp - last_updated_ts` can never be negative if the code reaches here
+            // the result of `block_timestamp - last_updated_timestamp` can
+            // never be negative if the code reaches here
             let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
             has_enough_sources && is_fresh

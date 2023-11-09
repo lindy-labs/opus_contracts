@@ -10,6 +10,7 @@ mod core {
     mod gate;
     mod purger;
     mod roles;
+    mod seer;
     mod sentinel;
     mod shrine;
 }
@@ -32,6 +33,7 @@ mod interfaces {
     mod IOracle;
     mod IPragma;
     mod IPurger;
+    mod ISeer;
     mod ISentinel;
     mod IShrine;
     mod external;
@@ -49,7 +51,7 @@ mod utils {
 // mock used for local devnet deployment
 mod mock {
     mod erc20;
-    mod oracle;
+//mod oracle;
 }
 
 #[cfg(test)]
@@ -99,6 +101,10 @@ mod tests {
     }
     mod sentinel {
         mod test_sentinel;
+        mod utils;
+    }
+    mod seer {
+        mod test_seer;
         mod utils;
     }
     mod shrine {
