@@ -2,7 +2,7 @@ use cmp::min;
 use integer::{u256_safe_div_rem, u256_try_as_non_zero};
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
-use opus::utils::wadray::Wad;
+use opus::utils::wadray::{Ray, Wad};
 use opus::utils::wadray;
 use starknet::{ContractAddress, StorePacking};
 
@@ -17,6 +17,19 @@ enum YangSuspensionStatus {
     None,
     Temporary,
     Permanent
+}
+
+#[derive(Copy, Drop, Serde)]
+struct Health {
+    // Threshold at which a trove can be liquidated, or at which
+    // recovery mode is triggered for Shrine
+    threshold: Ray,
+    // Debt as a percentage of value
+    ltv: Ray,
+    // Total value of collateral
+    value: Wad,
+    // Total amount of debt
+    debt: Wad,
 }
 
 #[derive(Copy, Drop, Serde)]
