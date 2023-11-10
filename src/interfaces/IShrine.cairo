@@ -1,5 +1,6 @@
 use opus::types::{
-    ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+    ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution,
+    YangSuspensionStatus
 };
 use opus::utils::wadray::{Ray, Wad};
 use starknet::ContractAddress;
@@ -14,7 +15,6 @@ trait IShrine<TContractState> {
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
-    fn get_total_debt(self: @TContractState) -> Wad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, rate_era: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
@@ -24,7 +24,6 @@ trait IShrine<TContractState> {
         self: @TContractState, yang: ContractAddress
     ) -> YangSuspensionStatus;
     fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
-    fn get_recovery_mode_threshold(self: @TContractState) -> (Ray, Ray);
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(
@@ -76,7 +75,7 @@ trait IShrine<TContractState> {
     fn inject(ref self: TContractState, receiver: ContractAddress, amount: Wad);
     fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
     // view
-    fn get_shrine_threshold_and_value(self: @TContractState) -> (Ray, Wad);
+    fn get_shrine_info(self: @TContractState) -> (Health, Ray);
     fn get_current_yang_price(self: @TContractState, yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier(self: @TContractState) -> (Ray, Ray, u64);
     fn get_forge_fee_pct(self: @TContractState) -> Wad;

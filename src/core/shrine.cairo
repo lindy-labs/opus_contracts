@@ -7,7 +7,8 @@ mod shrine {
     use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
-        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+        ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution,
+        YangSuspensionStatus
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
@@ -430,10 +431,6 @@ mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
-        fn get_total_debt(self: @ContractState) -> Wad {
-            self.total_debt.read()
-        }
-
         fn get_yang_price(
             self: @ContractState, yang: ContractAddress, interval: u64
         ) -> (Wad, Wad) {
@@ -476,21 +473,21 @@ mod shrine {
         }
 
         // Returns a tuple of
-        // 1. The recovery mode threshold
-        // 2. Shrine's LTV
-        fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
-            let (liq_threshold, value) = self
+        // 1. a Health struct comprising the Shrine's threshold, LTV, value and debt;
+        // 2. the Shrine's recovery mode threshold.
+        fn get_shrine_info(self: @ContractState) -> (Health, Ray) {
+            let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_debt.read();
-            let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+            let rm_threshold = threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
             if value.is_zero() {
-                return (rm_threshold, BoundedRay::max());
+                return (Health { threshold, ltv: BoundedRay::max(), value, debt }, rm_threshold);
             }
 
-            (rm_threshold, wadray::rdiv_ww(debt, value))
+            (Health { threshold, ltv: wadray::rdiv_ww(debt, value), value, debt }, rm_threshold)
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -951,11 +948,6 @@ mod shrine {
         // Core Functions - View
         //
 
-        fn get_shrine_threshold_and_value(self: @ContractState) -> (Ray, Wad) {
-            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
-            self.get_threshold_and_value(yang_totals, now())
-        }
-
         // Get the last updated price for a yang
         fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
             self.get_recent_price_from(self.get_valid_yang_id(yang), now())
@@ -1004,7 +996,20 @@ mod shrine {
             let max_debt: Wad = wadray::rmul_rw(threshold, value);
 
             if debt < max_debt {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+                let max_forge_amt: Wad = (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+
+                let (shrine_health, rm_threshold) = self.get_shrine_info();
+                if shrine_health.ltv < rm_threshold {
+                    return max_forge_amt;
+                } else {
+                    // If recovery mode is not triggered, cap the amount to what would
+                    // trigger recovery mode. Otherwise, the forge transaction would revert
+                    // if we simply forge the maximum amount based on a trove's health.
+                    let amt_to_activate_rm: Wad = wadray::rmul_rw(rm_threshold, shrine_health.value)
+                        - wadray::rmul_rw(shrine_health.ltv, shrine_health.value);
+
+                    return min(amt_to_activate_rm, max_forge_amt);
+                }
             }
 
             WadZeroable::zero()
@@ -1154,12 +1159,12 @@ mod shrine {
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
-            if shrine_ltv >= recovery_mode_threshold {
+            let (shrine_health, recovery_mode_threshold) = self.get_shrine_info();
+            if shrine_health.ltv >= recovery_mode_threshold {
                 return max(
                     threshold
                         * THRESHOLD_DECREASE_FACTOR.into()
-                        * (recovery_mode_threshold / shrine_ltv),
+                        * (recovery_mode_threshold / shrine_health.ltv),
                     (threshold.val / 2_u128).into()
                 );
             }

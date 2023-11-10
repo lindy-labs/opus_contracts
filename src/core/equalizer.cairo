@@ -171,8 +171,8 @@ mod equalizer {
     // calculated based on the Shrine's total debt and the total minted yin.
     #[inline(always)]
     fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
-        let total_debt: Wad = shrine.get_total_debt();
-        let surplus: Wad = total_debt - shrine.get_total_yin();
-        (total_debt, surplus)
+        let (shrine_health, _) = shrine.get_shrine_info();
+        let surplus: Wad = shrine_health.debt - shrine.get_total_yin();
+        (shrine_health.debt, surplus)
     }
 }
