@@ -87,8 +87,8 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (_, total_value) = shrine.get_shrine_threshold_and_value();
-        let backing: Ray = wadray::rdiv_ww(total_yin, total_value);
+        let (shrine_health, _) = shrine.get_shrine_info();
+        let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
@@ -179,8 +179,8 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (_, total_value) = shrine.get_shrine_threshold_and_value();
-        let backing: Ray = wadray::rdiv_ww(total_yin, total_value);
+        let (shrine_health, _) = shrine.get_shrine_info();
+        let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };

@@ -552,14 +552,12 @@ mod purger_utils {
         trove: u64,
         trove_owner: ContractAddress,
     ) {
-        let (rm_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
-        let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
+        let (shrine_health, rm_threshold) = shrine.get_shrine_info();
 
         // Add 10% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
             (RAY_ONE + RAY_PERCENT).into(),
-            (wadray::rmul_rw(rm_threshold, shrine_value)
-                - wadray::rmul_rw(shrine_ltv, shrine_value))
+            (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
         );
 
         // Sanity check that we are able to mint the amount of debt to trigger

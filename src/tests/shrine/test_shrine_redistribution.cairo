@@ -1452,7 +1452,8 @@ mod test_shrine_redistribution {
         shrine.deposit(yang2_addr, redistributed_trove2, TROVE3_YANG2_DEPOSIT.into());
         shrine.forge(trove3_owner, redistributed_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
 
-        let start_total_debt: Wad = shrine.get_total_debt();
+        let (shrine_health, _) = shrine.get_shrine_info();
+        let start_total_debt: Wad = shrine_health.debt;
 
         // Simulate purge with 0 yin to update the trove's debt
         let (_, _, before_recipient_trove_value, before_recipient_trove_debt) = shrine

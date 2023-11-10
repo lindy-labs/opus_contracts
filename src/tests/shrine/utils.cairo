@@ -753,11 +753,13 @@ mod shrine_utils {
 
         total += errors;
 
-        let actual_debt: Wad = shrine.get_total_debt();
-        assert(total <= actual_debt, 'debt invariant failed #1');
+        let (shrine_health, _) = shrine.get_shrine_info();
+        assert(total <= shrine_health.debt, 'debt invariant failed #1');
 
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, actual_debt, error_margin, 'debt invariant failed #2');
+        common::assert_equalish(
+            total, shrine_health.debt, error_margin, 'debt invariant failed #2'
+        );
     }
 
     fn assert_shrine_invariants(
