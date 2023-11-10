@@ -1006,7 +1006,7 @@ mod shrine {
                     // trigger recovery mode. Otherwise, the forge transaction would revert
                     // if we simply forge the maximum amount based on a trove's health.
                     let amt_to_activate_rm: Wad = wadray::rmul_rw(rm_threshold, shrine_health.value)
-                        - wadray::rmul_rw(shrine_health.ltv, shrine_health.value);
+                        - shrine_health.debt;
 
                     return min(amt_to_activate_rm, max_forge_amt);
                 }
