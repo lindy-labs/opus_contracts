@@ -10,7 +10,7 @@ mod test_caretaker {
     use opus::tests::caretaker::utils::caretaker_utils;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
@@ -87,7 +87,7 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (shrine_health, _) = shrine.get_shrine_health();
+        let shrine_health: Health = shrine.get_shrine_health();
         let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
@@ -179,7 +179,7 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (shrine_health, _) = shrine.get_shrine_health();
+        let shrine_health: Health = shrine.get_shrine_health();
         let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
