@@ -472,9 +472,7 @@ mod shrine {
             (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
-        // Returns a tuple of
-        // 1. a Health struct comprising the Shrine's threshold, LTV, value and debt;
-        // 2. the Shrine's recovery mode threshold.
+        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt;
         fn get_shrine_health(self: @ContractState) -> Health {
             let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
@@ -899,7 +897,7 @@ mod shrine {
             let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
-            // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
+            // The trove's debt is used instead of estimated debt from `get_trove_health` to ensure that
             // system has accounted for the accrued interest.
             let mut trove: Trove = self.troves.read(trove_id);
 
@@ -991,25 +989,27 @@ mod shrine {
 
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
-            let (threshold, ltv, _, _) = self.get_trove_info(trove_id);
-            ltv <= threshold
+            let health: Health = self.get_trove_health(trove_id);
+            health.ltv <= health.threshold
         }
 
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let (threshold, _, value, debt) = self.get_trove_info(trove_id);
+            let health: Health = self.get_trove_health(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            let max_debt: Wad = wadray::rmul_rw(threshold, value);
+            let max_debt: Wad = wadray::rmul_rw(health.threshold, health.value);
 
-            if debt < max_debt {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+            if health.debt < max_debt {
+                return (max_debt - health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
             WadZeroable::zero()
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
-        fn get_trove_info(self: @ContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad) {
+        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt, 
+        // trove value and compounded debt;
+        fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
 
             // Get threshold and trove value
@@ -1029,11 +1029,13 @@ mod shrine {
                 //   of debt / value will run into a zero division error.
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
                 //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
-                if trove.debt.is_non_zero() {
-                    return (threshold, BoundedRay::max(), value, trove.debt);
+                let ltv: Ray = if trove.debt.is_non_zero() {
+                    BoundedRay::max()
                 } else {
-                    return (threshold, BoundedRay::min(), value, trove.debt);
-                }
+                    BoundedRay::min()
+                };
+
+                return Health { threshold, ltv, value, debt: trove.debt };
             }
 
             // Calculate debt
@@ -1050,7 +1052,7 @@ mod shrine {
 
             let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
 
-            (threshold, ltv, value, compounded_debt_with_redistributed_debt)
+            Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
 
         fn get_redistributions_attributed_to_trove(
