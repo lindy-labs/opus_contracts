@@ -483,11 +483,13 @@ mod shrine {
 
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
-            if value.is_zero() {
-                return (Health { threshold, ltv: BoundedRay::max(), value, debt }, rm_threshold);
-            }
+            let ltv: Ray = if value.is_zero() {
+                BoundedRay::max()
+            } else {
+                wadray::rdiv_ww(debt, value)
+            };
 
-            (Health { threshold, ltv: wadray::rdiv_ww(debt, value), value, debt }, rm_threshold)
+            (Health { threshold, ltv, value, debt }, rm_threshold)
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
