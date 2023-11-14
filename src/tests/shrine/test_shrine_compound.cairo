@@ -66,7 +66,7 @@ mod test_shrine_compound {
         set_contract_address(shrine_utils::admin());
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -168,7 +168,7 @@ mod test_shrine_compound {
         // Trigger charge and check interest is accrued
         set_contract_address(shrine_utils::admin());
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -260,7 +260,7 @@ mod test_shrine_compound {
         assert(expected_debt == debt, 'wrong compounded debt');
 
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -348,7 +348,7 @@ mod test_shrine_compound {
         assert(expected_debt == debt, 'wrong compounded debt');
 
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -442,7 +442,7 @@ mod test_shrine_compound {
 
         set_contract_address(shrine_utils::admin());
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -573,7 +573,7 @@ mod test_shrine_compound {
         assert(expected_debt == debt, 'wrong compounded debt');
 
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -681,7 +681,7 @@ mod test_shrine_compound {
 
         set_contract_address(shrine_utils::admin());
         shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
@@ -945,7 +945,7 @@ mod test_shrine_compound {
 
         set_contract_address(shrine_utils::admin());
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         expected_events

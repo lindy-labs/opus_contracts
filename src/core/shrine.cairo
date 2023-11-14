@@ -475,7 +475,7 @@ mod shrine {
         // Returns a tuple of
         // 1. a Health struct comprising the Shrine's threshold, LTV, value and debt;
         // 2. the Shrine's recovery mode threshold.
-        fn get_shrine_info(self: @ContractState) -> Health {
+        fn get_shrine_health(self: @ContractState) -> Health {
             let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_debt.read();
@@ -520,7 +520,7 @@ mod shrine {
         }
 
         fn is_recovery_mode(self: @ContractState) -> bool {
-            let shrine_health: Health = self.get_shrine_info();
+            let shrine_health: Health = self.get_shrine_health();
             self.is_recovery_mode_helper(shrine_health)
         }
 
@@ -1159,7 +1159,7 @@ mod shrine {
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let shrine_health: Health = self.get_shrine_info();
+            let shrine_health: Health = self.get_shrine_health();
 
             if self.is_recovery_mode_helper(shrine_health) {
                 let recovery_mode_threshold: Ray = shrine_health.threshold

@@ -488,7 +488,7 @@ mod test_purger {
         // Accrue some interest
         common::advance_intervals(500);
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let before_total_debt: Wad = shrine_health.debt;
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let accrued_interest: Wad = debt - initial_trove_debt;
@@ -516,7 +516,7 @@ mod test_purger {
             .liquidate(target_trove, BoundedWad::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let after_total_debt: Wad = shrine_health.debt;
         assert(
             after_total_debt == before_total_debt + accrued_interest - max_close_amt,
@@ -1139,7 +1139,7 @@ mod test_purger {
         // sanity check
         assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let before_total_debt: Wad = shrine_health.debt;
 
         // Make the target trove absorbable
@@ -1167,7 +1167,7 @@ mod test_purger {
         let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
         // Assert that total debt includes accrued interest on liquidated trove
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let after_total_debt: Wad = shrine_health.debt;
         assert(
             after_total_debt == before_total_debt + accrued_interest - max_close_amt,
@@ -1399,7 +1399,7 @@ mod test_purger {
                                                     }
 
                                                     let (shrine_health, _) = shrine
-                                                        .get_shrine_info();
+                                                        .get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
 
                                                     let (_, ltv, before_value, _) = shrine
@@ -1462,7 +1462,7 @@ mod test_purger {
                                                         .absorb(target_trove);
 
                                                     let (shrine_health, _) = shrine
-                                                        .get_shrine_info();
+                                                        .get_shrine_health();
                                                     let after_total_debt: Wad = shrine_health.debt;
                                                     assert(
                                                         after_total_debt == before_total_debt
@@ -1953,7 +1953,7 @@ mod test_purger {
                                                                 .get_trove_info(target_trove);
 
                                                             let (shrine_health, _) = shrine
-                                                                .get_shrine_info();
+                                                                .get_shrine_health();
                                                             let before_total_debt: Wad =
                                                                 shrine_health
                                                                 .debt;
@@ -2019,7 +2019,7 @@ mod test_purger {
 
                                                             // Assert that total debt includes accrued interest on liquidated trove
                                                             let (shrine_health, _) = shrine
-                                                                .get_shrine_info();
+                                                                .get_shrine_health();
                                                             let after_total_debt: Wad =
                                                                 shrine_health
                                                                 .debt;
@@ -2472,7 +2472,7 @@ mod test_purger {
                                                         };
 
                                                         let (shrine_health, _) = shrine
-                                                            .get_shrine_info();
+                                                            .get_shrine_health();
                                                         let before_total_debt: Wad = shrine_health
                                                             .debt;
 
@@ -2554,7 +2554,7 @@ mod test_purger {
 
                                                         // Assert that total debt includes accrued interest on liquidated trove
                                                         let (shrine_health, _) = shrine
-                                                            .get_shrine_info();
+                                                            .get_shrine_health();
                                                         let after_total_debt: Wad = shrine_health
                                                             .debt;
                                                         assert(

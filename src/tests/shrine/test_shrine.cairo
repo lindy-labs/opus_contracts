@@ -136,7 +136,7 @@ mod test_shrine {
         };
 
         // Check shrine threshold and value
-        let (shrine_health, recovery_mode_threshold) = shrine.get_shrine_info();
+        let (shrine_health, recovery_mode_threshold) = shrine.get_shrine_health();
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
         assert(recovery_mode_threshold.is_zero(), 'wrong recovery mode threshold');
@@ -962,7 +962,7 @@ mod test_shrine {
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt, 'incorrect system debt');
 
         let (_, ltv, _, debt) = shrine.get_trove_info(trove_id);
@@ -1207,7 +1207,7 @@ mod test_shrine {
         let trove_id: u64 = common::TROVE_1;
         let trove1_owner_addr = common::trove1_owner_addr();
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let before_total_debt: Wad = shrine_health.debt;
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
@@ -1218,7 +1218,7 @@ mod test_shrine {
         set_contract_address(shrine_utils::admin());
         shrine.melt(trove1_owner_addr, trove_id, melt_amt);
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == before_total_debt - melt_amt, 'incorrect total debt');
 
         let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(trove_id);
@@ -1831,7 +1831,7 @@ mod test_shrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_shrine_info() {
+    fn test_get_shrine_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         let yang1_addr: ContractAddress = shrine_utils::yang1_addr();
@@ -1883,7 +1883,7 @@ mod test_shrine {
             shrine_utils::calculate_trove_threshold_and_value(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.threshold == expected_threshold, 'wrong threshold');
         assert(shrine_health.value == expected_value, 'wrong value');
     }
@@ -2284,7 +2284,7 @@ mod test_shrine {
         // Increasing the whale trove's LTV to just above the recovery mode threshold
         // Since it makes up the vast majority of collateral (and debt), the global
         // LTV will be almost equal to the whale trove's LTV
-        let (_, rm_threshold) = shrine.get_shrine_info();
+        let (_, rm_threshold) = shrine.get_shrine_health();
 
         //  whale_trove_forge_amt / (whale_trove_deposit_value - x) = rm_threshold * 1.01
         //  whale_trove_forge_amt = rm_threshold * 1.01 * whale_trove_deposit_value - rm_threshold * 1.01 * x
@@ -2331,7 +2331,7 @@ mod test_shrine {
         );
         let trove1_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         let shrine_ltv: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
 
         let total_collateral_value_to_withdraw = whale_trove_deposit_value

@@ -213,7 +213,7 @@ mod caretaker {
 
             // Calculate the percentage of collateral needed to back yin 1 : 1
             // based on the last value of all collateral in Shrine
-            let shrine_health: Health = shrine.get_shrine_info();
+            let shrine_health: Health = shrine.get_shrine_health();
             let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), shrine_health.value);
 
             // Cap the percentage to 100%

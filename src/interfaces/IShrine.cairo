@@ -76,7 +76,7 @@ trait IShrine<TContractState> {
     fn inject(ref self: TContractState, receiver: ContractAddress, amount: Wad);
     fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
     // view
-    fn get_shrine_info(self: @TContractState) -> Health;
+    fn get_shrine_health(self: @TContractState) -> Health;
     fn get_current_yang_price(self: @TContractState, yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier(self: @TContractState) -> (Ray, Ray, u64);
     fn get_forge_fee_pct(self: @TContractState) -> Wad;

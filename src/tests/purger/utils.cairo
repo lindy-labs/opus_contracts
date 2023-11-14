@@ -552,7 +552,7 @@ mod purger_utils {
         trove: u64,
         trove_owner: ContractAddress,
     ) {
-        let (shrine_health, rm_threshold) = shrine.get_shrine_info();
+        let (shrine_health, rm_threshold) = shrine.get_shrine_health();
 
         // Add 10% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(

@@ -72,7 +72,7 @@ mod test_abbot {
         let (_, _, _, debt) = shrine.get_trove_info(expected_trove_id);
         assert(debt == forge_amt, 'wrong trove debt');
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt, 'wrong total debt');
 
         // User opens another trove
@@ -118,7 +118,7 @@ mod test_abbot {
             };
         };
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt + second_forge_amt, 'wrong total debt #2');
 
         let mut expected_events: Span<abbot_contract::Event> = array![

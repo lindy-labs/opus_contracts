@@ -753,7 +753,7 @@ mod shrine_utils {
 
         total += errors;
 
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let (shrine_health, _) = shrine.get_shrine_health();
         assert(total <= shrine_health.debt, 'debt invariant failed #1');
 
         let error_margin: Wad = 10_u128.into();
