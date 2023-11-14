@@ -967,8 +967,7 @@ mod absorber {
         //
 
         fn assert_can_remove(self: @ContractState, request: Request) {
-            let (shrine_health, recovery_mode_threshold) = self.shrine.read().get_shrine_info();
-            assert(shrine_health.ltv < recovery_mode_threshold, 'ABS: Recovery Mode active');
+            assert(!self.shrine.read().is_recovery_mode(), 'ABS: Recovery Mode active');
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
             assert(!request.has_removed, 'ABS: Only 1 removal per request');

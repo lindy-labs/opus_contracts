@@ -8,7 +8,7 @@ mod caretaker {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
@@ -213,7 +213,7 @@ mod caretaker {
 
             // Calculate the percentage of collateral needed to back yin 1 : 1
             // based on the last value of all collateral in Shrine
-            let (shrine_health, _) = shrine.get_shrine_info();
+            let shrine_health: Health = shrine.get_shrine_info();
             let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), shrine_health.value);
 
             // Cap the percentage to 100%

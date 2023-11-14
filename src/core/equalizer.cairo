@@ -4,6 +4,7 @@ mod equalizer {
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Health;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
@@ -171,7 +172,7 @@ mod equalizer {
     // calculated based on the Shrine's total debt and the total minted yin.
     #[inline(always)]
     fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
-        let (shrine_health, _) = shrine.get_shrine_info();
+        let shrine_health: Health = shrine.get_shrine_info();
         let surplus: Wad = shrine_health.debt - shrine.get_total_yin();
         (shrine_health.debt, surplus)
     }

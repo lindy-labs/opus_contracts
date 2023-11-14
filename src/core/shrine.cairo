@@ -475,11 +475,10 @@ mod shrine {
         // Returns a tuple of
         // 1. a Health struct comprising the Shrine's threshold, LTV, value and debt;
         // 2. the Shrine's recovery mode threshold.
-        fn get_shrine_info(self: @ContractState) -> (Health, Ray) {
+        fn get_shrine_info(self: @ContractState) -> Health {
             let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_debt.read();
-            let rm_threshold = threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
@@ -489,7 +488,7 @@ mod shrine {
                 wadray::rdiv_ww(debt, value)
             };
 
-            (Health { threshold, ltv, value, debt }, rm_threshold)
+            Health { threshold, ltv, value, debt }
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -518,6 +517,11 @@ mod shrine {
             self
                 .yang_to_yang_redistribution
                 .read((recipient_yang_id, redistribution_id, redistributed_yang_id))
+        }
+
+        fn is_recovery_mode(self: @ContractState) -> bool {
+            let shrine_health: Health = self.get_shrine_info();
+            self.is_recovery_mode_helper(shrine_health)
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -1000,17 +1004,19 @@ mod shrine {
             if debt < max_debt {
                 let max_forge_amt: Wad = (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
 
-                let (shrine_health, rm_threshold) = self.get_shrine_info();
-                if shrine_health.ltv < rm_threshold {
-                    return max_forge_amt;
-                } else {
+                let shrine_health: Health = self.get_shrine_info();
+                if self.is_recovery_mode_helper(shrine_health) {
                     // If recovery mode is not triggered, cap the amount to what would
                     // trigger recovery mode. Otherwise, the forge transaction would revert
                     // if we simply forge the maximum amount based on a trove's health.
+                    let rm_threshold: Ray = shrine_health.threshold
+                        * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
                     let amt_to_activate_rm: Wad = wadray::rmul_rw(rm_threshold, shrine_health.value)
                         - shrine_health.debt;
 
                     return min(amt_to_activate_rm, max_forge_amt);
+                } else {
+                    return max_forge_amt;
                 }
             }
 
@@ -1126,6 +1132,13 @@ mod shrine {
         // Helpers for getters and view functions
         //
 
+        // Helper function to check if recovery mode is triggered for Shrine
+        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
+            let recovery_mode_threshold: Ray = health.threshold
+                * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+            health.ltv >= recovery_mode_threshold
+        }
+
         // Helper function to get the yang ID given a yang address, and throw an error if
         // yang address has not been added (i.e. yang ID = 0)
         fn get_valid_yang_id(self: @ContractState, yang: ContractAddress) -> u32 {
@@ -1161,8 +1174,11 @@ mod shrine {
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let (shrine_health, recovery_mode_threshold) = self.get_shrine_info();
-            if shrine_health.ltv >= recovery_mode_threshold {
+            let shrine_health: Health = self.get_shrine_info();
+
+            if self.is_recovery_mode_helper(shrine_health) {
+                let recovery_mode_threshold: Ray = shrine_health.threshold
+                    * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
                 return max(
                     threshold
                         * THRESHOLD_DECREASE_FACTOR.into()
