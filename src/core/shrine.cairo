@@ -655,6 +655,7 @@ mod shrine {
             let mut new_rates_copy = new_rates;
             // TODO: temporary workaround for issue with borrowing snapshots in loops
             let self_snap = @self;
+            let mut cumulative_yang_ids: u32 = 0;
             loop {
                 match new_rates_copy.pop_front() {
                     Option::Some(rate) => {
@@ -672,6 +673,7 @@ mod shrine {
                             assert_rate_is_valid(*rate);
                             self.yang_rates.write((current_yang_id, rate_era), *rate);
                         }
+                        cumulative_yang_ids += current_yang_id;
                     },
                     Option::None => { break; }
                 };
@@ -684,16 +686,10 @@ mod shrine {
             // Even though this is an admin/governance function, such a mistake could break
             // interest rate calculations, which is why it's important that we verify that all yangs'
             // rates were correctly updated.
-            let mut idx: u32 = num_yangs;
-            loop {
-                if idx == 0 {
-                    break ();
-                }
-                assert(
-                    self.yang_rates.read((idx, rate_era)).is_non_zero(), 'SH: Incorrect rate update'
-                );
-                idx -= 1;
-            };
+
+            // Gauss summation: 1 + 2 + ... + n = [n(n + 1)] / 2
+            let expected: u32 = (num_yangs * (num_yangs + 1)) / 2;
+            assert(cumulative_yang_ids == expected, 'SH: Incorrect rate update');
 
             self.emit(YangRatesUpdated { rate_era, current_interval, yangs, new_rates });
         }
