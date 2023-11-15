@@ -411,21 +411,19 @@ mod test_purger {
                                         target_trove_health.debt,
                                         *threshold
                                     );
-                                } else {
-                                    if (*is_recovery_mode) {
-                                        let dummy_trove_health: Health = shrine
-                                            .get_trove_health(dummy_trove);
+                                } else if (*is_recovery_mode) {
+                                    let dummy_trove_health: Health = shrine
+                                        .get_trove_health(dummy_trove);
 
-                                        purger_utils::lower_prices_to_raise_trove_ltv(
-                                            shrine,
-                                            mock_pragma,
-                                            yangs,
-                                            yang_pair_ids,
-                                            dummy_trove_health.value,
-                                            dummy_trove_health.debt,
-                                            dummy_threshold
-                                        );
-                                    }
+                                    purger_utils::lower_prices_to_raise_trove_ltv(
+                                        shrine,
+                                        mock_pragma,
+                                        yangs,
+                                        yang_pair_ids,
+                                        dummy_trove_health.value,
+                                        dummy_trove_health.debt,
+                                        dummy_threshold
+                                    );
                                 }
 
                                 let target_trove_updated_health: Health = shrine

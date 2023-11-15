@@ -556,7 +556,7 @@ mod purger_utils {
         let shrine_health: Health = shrine.get_shrine_health();
         let rm_threshold: Ray = shrine_health.threshold
             * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-        // Add 10% to the amount needed to activate RM
+        // Add 1% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
             (RAY_ONE + RAY_PERCENT).into(),
             (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
