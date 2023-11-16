@@ -44,6 +44,9 @@ mod purger_utils {
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
+
+    const RM_ERROR_MARGIN: u128 = 10000000000000000000000; // 0.001% (Ray)
+
     //
     // Address constants
     //
@@ -438,7 +441,7 @@ mod purger_utils {
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
         amt: Wad,
-    ) {
+    ) -> u64 {
         absorber_utils::provide_to_absorber(
             shrine,
             abbot,
@@ -448,7 +451,7 @@ mod purger_utils {
             recipient_trove_yang_asset_amts(),
             gates,
             amt,
-        );
+        )
     }
 
     // Creates a healthy trove and returns the trove ID
@@ -541,6 +544,31 @@ mod purger_utils {
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
 
         decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
+    }
+
+    fn trigger_recovery_mode(
+        shrine: IShrineDispatcher,
+        abbot: IAbbotDispatcher,
+        trove: u64,
+        trove_owner: ContractAddress,
+    ) {
+        let (rm_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
+        let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
+
+        // Add 1% to the amount needed to activate RM
+        let amt_to_activate_rm: Wad = wadray::rmul_rw(
+            (RAY_ONE + RAY_PERCENT).into(),
+            (wadray::rmul_rw(rm_threshold, shrine_value)
+                - wadray::rmul_rw(shrine_ltv, shrine_value))
+        );
+
+        // Sanity check that we are able to mint the amount of debt to trigger
+        // recovery mode for the given trove
+        let max_forge_amt: Wad = shrine.get_max_forge(trove);
+        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
+
+        set_contract_address(trove_owner);
+        abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
     }
 
     //
