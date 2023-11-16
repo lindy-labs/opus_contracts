@@ -172,10 +172,10 @@ mod abbot {
                 };
             };
 
-            self.assert_has_minimum_value(new_trove_id);
-
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
+
+            self.assert_has_minimum_value(new_trove_id);
 
             self.emit(TroveOpened { user, trove_id: new_trove_id });
 
