@@ -268,4 +268,27 @@ mod test_wadray_signed {
         assert(one.is_positive() && !one.is_negative(), 'Signable one fail');
         assert(!neg_one.is_positive() && neg_one.is_negative(), 'Signable neg one fail');
     }
+
+    #[test]
+    fn test_zero_cmp() {
+        let pos_zero = SignedWad { val: 0, sign: false };
+        let neg_zero = SignedWad { val: 0, sign: true };
+
+        assert(pos_zero == neg_zero, 'Zero eq');
+        assert(!(pos_zero != neg_zero), 'Zero neq');
+        assert(pos_zero >= neg_zero, 'Zero ge');
+        assert(pos_zero <= neg_zero, 'Zero le');
+        assert(!(pos_zero > neg_zero), 'Zero gt');
+        assert(!(pos_zero < neg_zero), 'Zero lt');
+
+        let pos_zero = SignedRay { val: 0, sign: false };
+        let neg_zero = SignedRay { val: 0, sign: true };
+
+        assert(pos_zero == neg_zero, 'Zero eq');
+        assert(!(pos_zero != neg_zero), 'Zero neq');
+        assert(pos_zero >= neg_zero, 'Zero ge');
+        assert(pos_zero <= neg_zero, 'Zero le');
+        assert(!(pos_zero > neg_zero), 'Zero gt');
+        assert(!(pos_zero < neg_zero), 'Zero lt');
+    }
 }
