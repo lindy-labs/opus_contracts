@@ -9,7 +9,7 @@ mod equalizer {
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed::{Signable, SignedWad};
     use opus::utils::wadray_signed;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
@@ -194,15 +194,13 @@ mod equalizer {
         // Returns the amount of deficit wiped.
         fn normalize(ref self: ContractState, yin_amt: Wad) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
-
             let budget: SignedWad = shrine.get_budget();
-            let budget_wad: Option<Wad> = budget.try_into();
-            let has_deficit: bool = budget_wad.is_none();
-            if has_deficit {
+            if budget.is_negative() {
                 let wipe_amt: Wad = min(yin_amt, budget.val.into());
                 let caller: ContractAddress = get_caller_address();
                 shrine.eject(caller, wipe_amt);
                 shrine.adjust_budget(wipe_amt.into());
+
                 self.emit(Normalize { caller, yin_amt: wipe_amt });
 
                 wipe_amt

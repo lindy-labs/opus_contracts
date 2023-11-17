@@ -6,10 +6,25 @@ use opus::utils::wadray;
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
 
+trait Signable<T> {
+    fn is_negative(self: T) -> bool;
+    fn is_positive(self: T) -> bool;
+}
+
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct SignedWad {
     val: u128,
     sign: bool
+}
+
+impl SignedWadSignable of Signable<SignedWad> {
+    fn is_negative(self: SignedWad) -> bool {
+        self.val > 0 && self.sign
+    }
+
+    fn is_positive(self: SignedWad) -> bool {
+        self.val > 0 && !self.sign
+    }
 }
 
 impl SignedWadIntoFelt252 of Into<SignedWad, felt252> {
@@ -175,6 +190,16 @@ fn signed_wad_from_felt(val: felt252) -> SignedWad {
 struct SignedRay {
     val: u128,
     sign: bool
+}
+
+impl SignedRaySignable of Signable<SignedRay> {
+    fn is_negative(self: SignedRay) -> bool {
+        self.val > 0 && self.sign
+    }
+
+    fn is_positive(self: SignedRay) -> bool {
+        self.val > 0 && !self.sign
+    }
 }
 
 impl SignedRayIntoFelt252 of Into<SignedRay, felt252> {

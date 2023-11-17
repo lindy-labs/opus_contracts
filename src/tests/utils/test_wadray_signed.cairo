@@ -4,7 +4,7 @@ mod test_wadray_signed {
     use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{
-        SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable,
+        Signable, SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable,
         SignedWadZeroable
     };
     use opus::utils::wadray_signed;
@@ -246,5 +246,26 @@ mod test_wadray_signed {
         let non_one = SignedRay { val: 200, sign: false };
         assert(!non_one.is_one(), 'Oneable non_one fail');
         assert(non_one.is_non_one(), 'Oneable non_one fail');
+    }
+
+    #[test]
+    fn test_signable() {
+        // Test SignedWadSignable
+        let zero = SignedWadZeroable::zero();
+        let one = SignedWad { val: 1, sign: false };
+        let neg_one = SignedWad { val: 1, sign: true };
+
+        assert(!zero.is_positive() && !zero.is_negative(), 'Signable zero fail');
+        assert(one.is_positive() && !one.is_negative(), 'Signable one fail');
+        assert(!neg_one.is_positive() && neg_one.is_negative(), 'Signable neg one fail');
+
+        // Test SignedRaySignable
+        let zero = SignedRayZeroable::zero();
+        let one = SignedRay { val: 1, sign: false };
+        let neg_one = SignedRay { val: 1, sign: true };
+
+        assert(!zero.is_positive() && !zero.is_negative(), 'Signable zero fail');
+        assert(one.is_positive() && !one.is_negative(), 'Signable one fail');
+        assert(!neg_one.is_positive() && neg_one.is_negative(), 'Signable neg one fail');
     }
 }
