@@ -1000,10 +1000,29 @@ mod shrine {
             let max_debt: Wad = wadray::rmul_rw(health.threshold, health.value);
 
             if health.debt < max_debt {
-                return (max_debt - health.debt) / (WAD_ONE.into() + forge_fee_pct);
-            }
+                let max_forge_amt: Wad = (max_debt - health.debt)
+                    / (WAD_ONE.into() + forge_fee_pct);
 
-            WadZeroable::zero()
+                let shrine_health: Health = self.get_shrine_health();
+                if self.is_recovery_mode_helper(shrine_health) {
+                    // If recovery mode is not triggered, then `health.threshold`
+                    // already takes into account recovery mode, and we can return the 
+                    // `max_forge_amt` directly
+                    max_forge_amt
+                } else {
+                    // Otherwise, cap the amount to what would trigger recovery mode. 
+                    // so that a subsequent forge transaction using the return value
+                    // of this function would not revert
+                    let rm_threshold: Ray = shrine_health.threshold
+                        * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+                    let amt_to_activate_rm: Wad = wadray::rmul_rw(rm_threshold, shrine_health.value)
+                        - shrine_health.debt;
+
+                    min(amt_to_activate_rm, max_forge_amt)
+                }
+            } else {
+                WadZeroable::zero()
+            }
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
