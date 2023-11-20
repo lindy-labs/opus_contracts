@@ -7,7 +7,8 @@ mod shrine {
     use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
-        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+        ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution,
+        YangSuspensionStatus
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
@@ -445,10 +446,6 @@ mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
-        fn get_total_troves_debt(self: @ContractState) -> Wad {
-            self.total_troves_debt.read()
-        }
-
         fn get_budget(self: @ContractState) -> SignedWad {
             self.budget.read()
         }
@@ -494,22 +491,21 @@ mod shrine {
             (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
-        // Returns a tuple of
-        // 1. The recovery mode threshold
-        // 2. Shrine's LTV
-        fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
-            let (liq_threshold, value) = self
+        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt;
+        fn get_shrine_health(self: @ContractState) -> Health {
+            let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_troves_debt.read();
-            let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
-            if value.is_zero() {
-                return (rm_threshold, BoundedRay::max());
-            }
+            let ltv: Ray = if value.is_zero() {
+                BoundedRay::max()
+            } else {
+                wadray::rdiv_ww(debt, value)
+            };
 
-            (rm_threshold, wadray::rdiv_ww(debt, value))
+            Health { threshold, ltv, value, debt }
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -538,6 +534,11 @@ mod shrine {
             self
                 .yang_to_yang_redistribution
                 .read((recipient_yang_id, redistribution_id, redistributed_yang_id))
+        }
+
+        fn is_recovery_mode(self: @ContractState) -> bool {
+            let shrine_health: Health = self.get_shrine_health();
+            self.is_recovery_mode_helper(shrine_health)
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -927,7 +928,7 @@ mod shrine {
             let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
-            // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
+            // The trove's debt is used instead of estimated debt from `get_trove_health` to ensure that
             // system has accounted for the accrued interest.
             let mut trove: Trove = self.troves.read(trove_id);
 
@@ -982,11 +983,6 @@ mod shrine {
         // Core Functions - View
         //
 
-        fn get_shrine_threshold_and_value(self: @ContractState) -> (Ray, Wad) {
-            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
-            self.get_threshold_and_value(yang_totals, now())
-        }
-
         // Get the last updated price for a yang
         fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
             self.get_recent_price_from(self.get_valid_yang_id(yang), now())
@@ -1024,25 +1020,27 @@ mod shrine {
 
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
-            let (threshold, ltv, _, _) = self.get_trove_info(trove_id);
-            ltv <= threshold
+            let health: Health = self.get_trove_health(trove_id);
+            health.ltv <= health.threshold
         }
 
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let (threshold, _, value, debt) = self.get_trove_info(trove_id);
+            let health: Health = self.get_trove_health(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            let max_debt: Wad = wadray::rmul_rw(threshold, value);
+            let max_debt: Wad = wadray::rmul_rw(health.threshold, health.value);
 
-            if debt < max_debt {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+            if health.debt < max_debt {
+                return (max_debt - health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
             WadZeroable::zero()
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
-        fn get_trove_info(self: @ContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad) {
+        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt, 
+        // trove value and compounded debt;
+        fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
 
             // Get threshold and trove value
@@ -1062,11 +1060,13 @@ mod shrine {
                 //   of debt / value will run into a zero division error.
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
                 //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
-                if trove.debt.is_non_zero() {
-                    return (threshold, BoundedRay::max(), value, trove.debt);
+                let ltv: Ray = if trove.debt.is_non_zero() {
+                    BoundedRay::max()
                 } else {
-                    return (threshold, BoundedRay::min(), value, trove.debt);
-                }
+                    BoundedRay::min()
+                };
+
+                return Health { threshold, ltv, value, debt: trove.debt };
             }
 
             // Calculate debt
@@ -1083,7 +1083,7 @@ mod shrine {
 
             let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
 
-            (threshold, ltv, value, compounded_debt_with_redistributed_debt)
+            Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
 
         fn get_redistributions_attributed_to_trove(
@@ -1150,6 +1150,13 @@ mod shrine {
         // Helpers for getters and view functions
         //
 
+        // Helper function to check if recovery mode is triggered for Shrine
+        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
+            let recovery_mode_threshold: Ray = health.threshold
+                * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+            health.ltv >= recovery_mode_threshold
+        }
+
         // Helper function to get the yang ID given a yang address, and throw an error if
         // yang address has not been added (i.e. yang ID = 0)
         fn get_valid_yang_id(self: @ContractState, yang: ContractAddress) -> u32 {
@@ -1185,12 +1192,15 @@ mod shrine {
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
-            if shrine_ltv >= recovery_mode_threshold {
+            let shrine_health: Health = self.get_shrine_health();
+
+            if self.is_recovery_mode_helper(shrine_health) {
+                let recovery_mode_threshold: Ray = shrine_health.threshold
+                    * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
                 return max(
                     threshold
                         * THRESHOLD_DECREASE_FACTOR.into()
-                        * (recovery_mode_threshold / shrine_ltv),
+                        * (recovery_mode_threshold / shrine_health.ltv),
                     (threshold.val / 2_u128).into()
                 );
             }

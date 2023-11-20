@@ -1820,12 +1820,7 @@ mod test_absorber {
         set_contract_address(shrine_utils::admin());
         shrine.advance(eth_addr, new_eth_yang_price);
 
-        let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        let debt: Wad = shrine.get_total_troves_debt();
-        let ltv: Ray = wadray::rdiv_ww(debt, value);
-        let (recovery_mode_threshold, _) = shrine.get_recovery_mode_threshold();
-
-        assert(ltv > recovery_mode_threshold, 'sanity check for RM threshold');
+        assert(shrine.is_recovery_mode(), 'sanity check for RM threshold');
 
         set_contract_address(provider);
         absorber.request();

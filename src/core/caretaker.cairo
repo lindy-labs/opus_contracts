@@ -8,7 +8,7 @@ mod caretaker {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
@@ -223,13 +223,12 @@ mod caretaker {
             self.equalizer.read().equalize();
 
             // Calculate the percentage of collateral needed to back all troves' yin 1 : 1
-            // based on the last value of all collateral in Shrine. We can use `total_troves_debt`
-            // as a proxy for total yin minted by troves because we would have minted any surplus 
-            // budget via `Equalizer.equalize` in the preceding step.
-            let (_, total_value) = shrine.get_shrine_threshold_and_value();
-            let total_troves_yin: Wad = shrine.get_total_troves_debt();
-            let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
-            self.backed_yin.write(total_troves_yin);
+            // based on the last value of all collateral in Shrine. We can use the total troves' 
+            // debt from the Shrine's Health as a proxy for total yin minted by troves because 
+            // we would have minted any surplus budget via `Equalizer.equalize` in the preceding step.
+            let shrine_health: Health = shrine.get_shrine_health();
+            let backing_pct: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
+            self.backed_yin.write(shrine_health.debt);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());

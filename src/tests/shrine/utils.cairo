@@ -8,7 +8,7 @@ mod shrine_utils {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::types::YangRedistribution;
+    use opus::types::{Health, YangRedistribution};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::exp::exp;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
@@ -713,8 +713,8 @@ mod shrine_utils {
             // Accrue interest on trove
             shrine.melt(admin(), trove_id, WadZeroable::zero());
 
-            let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
-            total += trove_debt;
+            let trove_health: Health = shrine.get_trove_health(trove_id);
+            total += trove_health.debt;
 
             trove_id += 1;
         };
@@ -753,11 +753,13 @@ mod shrine_utils {
 
         total += errors;
 
-        let actual_debt: Wad = shrine.get_total_troves_debt();
-        assert(total <= actual_debt, 'debt invariant failed #1');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(total <= shrine_health.debt, 'debt invariant failed #1');
 
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, actual_debt, error_margin, 'debt invariant failed #2');
+        common::assert_equalish(
+            total, shrine_health.debt, error_margin, 'debt invariant failed #2'
+        );
     }
 
     fn assert_shrine_invariants(

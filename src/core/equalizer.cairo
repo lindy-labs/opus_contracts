@@ -6,6 +6,7 @@ mod equalizer {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Health;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
