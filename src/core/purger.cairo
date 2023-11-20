@@ -231,7 +231,7 @@ mod purger {
             let trove_health: Health = shrine.get_trove_health(trove_id);
 
             let (trove_penalty, max_close_amt) = preview_liquidate_internal(trove_health)
-                .expect('PU: not liquidatable');
+                .expect('PU: Not liquidatable');
 
             // Cap the liquidation amount to the trove's maximum close amount
             let purge_amt: Wad = min(amt, max_close_amt);
