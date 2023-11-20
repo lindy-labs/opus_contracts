@@ -7,7 +7,7 @@ mod purger {
     use opus::interfaces::IPurger::IPurger;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
@@ -165,8 +165,8 @@ mod purger {
         //    trove is liquidatable or not.
         // 2. the maximum amount of debt that can be liquidated for the trove (Wad)
         fn preview_liquidate(self: @ContractState, trove_id: u64) -> (Ray, Wad) {
-            let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
-            preview_liquidate_internal(threshold, ltv, value, debt)
+            let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
+            preview_liquidate_internal(trove_health)
         }
 
         // Returns a tuple of:
@@ -178,16 +178,15 @@ mod purger {
         // 2. the maximum amount of debt that can be absorbed for the trove (Wad)
         // 3. the amount of compensation the caller will receive (Wad)
         fn preview_absorb(self: @ContractState, trove_id: u64) -> (Ray, Wad, Wad) {
-            let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
+            let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
             let (penalty, max_absorption_amt, _, compensation, _, _) = self
-                .preview_absorb_internal(threshold, ltv, value, debt);
+                .preview_absorb_internal(trove_health);
             (penalty, max_absorption_amt, compensation)
         }
 
         fn is_absorbable(self: @ContractState, trove_id: u64) -> bool {
-            let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
-            let (_, max_absorption_amt, _, _, _, _) = self
-                .preview_absorb_internal(threshold, ltv, value, debt);
+            let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
+            let (_, max_absorption_amt, _, _, _, _) = self.preview_absorb_internal(trove_health);
             max_absorption_amt.is_non_zero()
         }
 
@@ -221,12 +220,9 @@ mod purger {
         ) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
-                .get_trove_info(trove_id);
+            let trove_health: Health = shrine.get_trove_health(trove_id);
 
-            let (trove_penalty, max_close_amt) = preview_liquidate_internal(
-                trove_threshold, trove_ltv, trove_value, trove_debt
-            );
+            let (trove_penalty, max_close_amt) = preview_liquidate_internal(trove_health);
 
             assert(max_close_amt.is_non_zero(), 'PU: Not liquidatable');
 
@@ -234,7 +230,7 @@ mod purger {
             let purge_amt: Wad = min(amt, max_close_amt);
 
             let percentage_freed: Ray = get_percentage_freed(
-                trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
+                trove_health.ltv, trove_health.value, trove_health.debt, trove_penalty, purge_amt
             );
 
             let funder: ContractAddress = get_caller_address();
@@ -247,8 +243,8 @@ mod purger {
                 .free(shrine, trove_id, percentage_freed, recipient);
 
             // Safety check to ensure the new LTV is not worse off
-            let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
-            assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+            let updated_trove_health: Health = shrine.get_trove_health(trove_id);
+            assert(updated_trove_health.ltv <= trove_health.ltv, 'PU: LTV increased');
 
             self
                 .emit(
@@ -271,8 +267,7 @@ mod purger {
         fn absorb(ref self: ContractState, trove_id: u64) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
-                .get_trove_info(trove_id);
+            let trove_health: Health = shrine.get_trove_health(trove_id);
 
             let (
                 trove_penalty,
@@ -283,7 +278,7 @@ mod purger {
                 value_after_compensation
             ) =
                 self
-                .preview_absorb_internal(trove_threshold, trove_ltv, trove_value, trove_debt);
+                .preview_absorb_internal(trove_health);
             assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
 
             let caller: ContractAddress = get_caller_address();
@@ -313,7 +308,7 @@ mod purger {
                 get_percentage_freed(
                     ltv_after_compensation,
                     value_after_compensation,
-                    trove_debt,
+                    trove_health.debt,
                     trove_penalty,
                     purge_amt
                 )
@@ -348,11 +343,11 @@ mod purger {
                 // This is guaranteed to be greater than zero.
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
 
-                let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
+                let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_health.debt;
                 let pct_value_to_redistribute: Ray = if redistribute_trove_debt_in_full {
                     RAY_ONE.into()
                 } else {
-                    let debt_after_absorption: Wad = trove_debt - purge_amt;
+                    let debt_after_absorption: Wad = trove_health.debt - purge_amt;
                     let value_after_absorption: Wad = value_after_compensation
                         - wadray::rmul_rw(pct_value_to_purge, value_after_compensation);
                     let ltv_after_absorption: Ray = wadray::rdiv_ww(
@@ -376,8 +371,8 @@ mod purger {
             }
 
             // Safety check to ensure the new LTV is not worse off
-            let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
-            assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+            let updated_trove_health: Health = shrine.get_trove_health(trove_id);
+            assert(updated_trove_health.ltv <= trove_health.ltv, 'PU: LTV increased');
 
             self.emit(Compensate { recipient: caller, compensation: compensation_assets });
 
@@ -513,19 +508,23 @@ mod purger {
         // 5. LTV after compensation (unchanged if trove is not absorbable)
         // 6. value after compensation (unchanged if trove is not absorbable)
         fn preview_absorb_internal(
-            self: @ContractState, threshold: Ray, ltv: Ray, value: Wad, debt: Wad
+            self: @ContractState, trove_health: Health
         ) -> (Ray, Wad, Ray, Wad, Ray, Wad) {
-            let (compensation_pct, compensation) = get_compensation(value);
-            let ltv_after_compensation: Ray = ltv / (RAY_ONE.into() - compensation_pct);
-            match self.get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
+            let (compensation_pct, compensation) = get_compensation(trove_health.value);
+            let ltv_after_compensation: Ray = trove_health.ltv
+                / (RAY_ONE.into() - compensation_pct);
+            match self
+                .get_absorption_penalty_internal(
+                    trove_health.threshold, trove_health.ltv, ltv_after_compensation
+                ) {
                 Option::Some(penalty) => {
                     let value_after_compensation: Wad = wadray::rmul_rw(
-                        RAY_ONE.into() - compensation_pct, value
+                        RAY_ONE.into() - compensation_pct, trove_health.value
                     );
 
                     // LTV and value after compensation are used to calculate the max purge amount
                     let max_absorption_amt: Wad = get_max_close_amount_internal(
-                        threshold, value_after_compensation, debt, penalty
+                        trove_health.threshold, value_after_compensation, trove_health.debt, penalty
                     );
                     (
                         penalty,
@@ -541,8 +540,8 @@ mod purger {
                     WadZeroable::zero(),
                     RayZeroable::zero(),
                     WadZeroable::zero(),
-                    ltv,
-                    value
+                    trove_health.ltv,
+                    trove_health.value
                 ),
             }
         }
@@ -603,10 +602,15 @@ mod purger {
     // Helper function to return the following for a trove:
     // 1. liquidation penalty (zero if trove is not liquidatable)
     // 2. maximum liquidation amount (zero if trove is not liquidatable)
-    fn preview_liquidate_internal(threshold: Ray, ltv: Ray, value: Wad, debt: Wad) -> (Ray, Wad) {
-        match get_liquidation_penalty_internal(threshold, ltv) {
+    fn preview_liquidate_internal(trove_health: Health) -> (Ray, Wad) {
+        match get_liquidation_penalty_internal(trove_health.threshold, trove_health.ltv) {
             Option::Some(penalty) => {
-                (penalty, get_max_close_amount_internal(threshold, value, debt, penalty))
+                (
+                    penalty,
+                    get_max_close_amount_internal(
+                        trove_health.threshold, trove_health.value, trove_health.debt, penalty
+                    )
+                )
             },
             Option::None => (RayZeroable::zero(), WadZeroable::zero()),
         }

@@ -10,7 +10,7 @@ mod test_abbot {
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
     use opus::utils::wadray;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
@@ -69,10 +69,11 @@ mod test_abbot {
         };
 
         // Check trove's debt
-        let (_, _, _, debt) = shrine.get_trove_info(expected_trove_id);
-        assert(debt == forge_amt, 'wrong trove debt');
+        let trove_health: Health = shrine.get_trove_health(expected_trove_id);
+        assert(trove_health.debt == forge_amt, 'wrong trove debt');
 
-        assert(shrine.get_total_debt() == forge_amt, 'wrong total debt');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == forge_amt, 'wrong total debt');
 
         // User opens another trove
         let second_forge_amt: Wad = 1666000000000000000000_u128.into();
@@ -117,7 +118,8 @@ mod test_abbot {
             };
         };
 
-        assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == forge_amt + second_forge_amt, 'wrong total debt #2');
 
         let mut expected_events: Span<abbot_contract::Event> = array![
             abbot_contract::Event::TroveOpened(
@@ -189,8 +191,8 @@ mod test_abbot {
             };
         };
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt.is_zero(), 'wrong trove debt');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.debt.is_zero(), 'wrong trove debt');
 
         let mut expected_events: Span<abbot_contract::Event> = array![
             abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id }),
@@ -435,8 +437,8 @@ mod test_abbot {
         set_contract_address(trove_owner);
         abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
 
-        let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == forge_amt + additional_forge_amt, 'wrong trove debt');
+        let after_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(after_trove_health.debt == forge_amt + additional_forge_amt, 'wrong trove debt');
         assert(
             shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
@@ -474,15 +476,15 @@ mod test_abbot {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, start_forge_amt) =
             abbot_utils::deploy_abbot_and_open_trove();
 
-        let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
+        let before_trove_health: Health = shrine.get_trove_health(trove_id);
         let before_yin: Wad = shrine.get_yin(trove_owner);
 
         let melt_amt: Wad = (before_yin.val / 2).into();
         set_contract_address(trove_owner);
         abbot.melt(trove_id, melt_amt);
 
-        let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == before_trove_debt - melt_amt, 'wrong trove debt');
+        let after_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(after_trove_health.debt == before_trove_health.debt - melt_amt, 'wrong trove debt');
         assert(shrine.get_yin(trove_owner) == before_yin - melt_amt, 'wrong yin balance');
 
         // Test non-owner melting
@@ -499,10 +501,10 @@ mod test_abbot {
         );
 
         set_contract_address(non_owner);
-        abbot.melt(trove_id, after_trove_debt);
+        abbot.melt(trove_id, after_trove_health.debt);
 
-        let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(final_trove_debt.is_zero(), 'wrong trove debt');
+        let final_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(final_trove_health.debt.is_zero(), 'wrong trove debt');
 
         shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }

@@ -22,7 +22,7 @@ mod test_purger {
     };
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{
@@ -75,16 +75,24 @@ mod test_purger {
         let threshold: Ray = (91 * RAY_PERCENT).into();
         purger_utils::set_thresholds(shrine, yangs, threshold);
 
-        let (_, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
         let target_ltv: Ray = threshold + RAY_PERCENT.into(); // 92%
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_health.value,
+            target_trove_health.debt,
+            target_ltv
         );
 
         // sanity check that LTV is at the target liquidation LTV
-        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
         let error_margin: Ray = 2000000_u128.into();
-        common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
+        common::assert_equalish(
+            target_trove_health.ltv, target_ltv, error_margin, 'LTV sanity check'
+        );
 
         common::drop_all_events(purger.contract_address);
 
@@ -165,23 +173,31 @@ mod test_purger {
         let threshold: Ray = (90 * RAY_PERCENT).into();
         purger_utils::set_thresholds(shrine, yangs, threshold);
 
-        let (_, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
         // 91%; Note that if a penalty scalar is applied, then the trove would be absorbable
         // at this LTV because the penalty would be the maximum possible penalty. On the other
         // hand, if a penalty scalar is not applied, then the maximum possible penalty will be
         // reached from 92.09% onwards, so the trove would not be absorbable at this LTV
         let target_ltv: Ray = 910000000000000000000000000_u128.into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_health.value,
+            target_trove_health.debt,
+            target_ltv
         );
 
-        let (trove_threshold, ltv, _, _) = shrine.get_trove_info(target_trove);
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
         // sanity check that threshold is correct
-        assert(trove_threshold == threshold, 'threshold sanity check');
+        assert(target_trove_health.threshold == threshold, 'threshold sanity check');
 
         // sanity check that LTV is at the target liquidation LTV
         let error_margin: Ray = 100000000_u128.into();
-        common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
+        common::assert_equalish(
+            target_trove_health.ltv, target_ltv, error_margin, 'LTV sanity check'
+        );
 
         let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = RayZeroable::zero();
@@ -382,8 +398,8 @@ mod test_purger {
 
                                 purger_utils::set_thresholds(shrine, yangs, *threshold);
 
-                                let (_, _, value, before_debt) = shrine
-                                    .get_trove_info(target_trove);
+                                let target_trove_health: Health = shrine
+                                    .get_trove_health(target_trove);
 
                                 if *threshold > (RAY_PERCENT * 2).into() {
                                     purger_utils::lower_prices_to_raise_trove_ltv(
@@ -391,29 +407,29 @@ mod test_purger {
                                         mock_pragma,
                                         yangs,
                                         yang_pair_ids,
-                                        value,
-                                        before_debt,
+                                        target_trove_health.value,
+                                        target_trove_health.debt,
                                         *threshold
                                     );
                                 } else if (*is_recovery_mode) {
-                                    let (_, _, dummy_value, dummy_debt) = shrine
-                                        .get_trove_info(dummy_trove);
+                                    let dummy_trove_health: Health = shrine
+                                        .get_trove_health(dummy_trove);
 
                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                         shrine,
                                         mock_pragma,
                                         yangs,
                                         yang_pair_ids,
-                                        dummy_value,
-                                        dummy_debt,
+                                        dummy_trove_health.value,
+                                        dummy_trove_health.debt,
                                         dummy_threshold
                                     );
                                 }
 
-                                let (adjusted_threshold, ltv, _, _) = shrine
-                                    .get_trove_info(target_trove);
+                                let target_trove_updated_health: Health = shrine
+                                    .get_trove_health(target_trove);
                                 purger_utils::assert_trove_is_liquidatable(
-                                    shrine, purger, target_trove, ltv
+                                    shrine, purger, target_trove, target_trove_updated_health.ltv
                                 );
 
                                 if (*is_recovery_mode) {
@@ -421,7 +437,7 @@ mod test_purger {
                                         .pop_front()
                                         .unwrap();
                                     common::assert_equalish(
-                                        adjusted_threshold,
+                                        target_trove_updated_health.threshold,
                                         expected_rm_threshold,
                                         (RAY_PERCENT / 100).into(),
                                         'wrong rm threshold'
@@ -486,20 +502,29 @@ mod test_purger {
         // Accrue some interest
         common::advance_intervals(500);
 
-        let before_total_debt: Wad = shrine.get_total_debt();
-        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
-        let accrued_interest: Wad = debt - initial_trove_debt;
+        let shrine_health: Health = shrine.get_shrine_health();
+        let before_total_debt: Wad = shrine_health.debt;
+        let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+        let accrued_interest: Wad = target_trove_start_health.debt - initial_trove_debt;
         // Sanity check that some interest has accrued
         assert(accrued_interest.is_non_zero(), 'no interest accrued');
 
-        let target_ltv: Ray = (threshold.val + 1).into();
+        let target_ltv: Ray = (target_trove_start_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_start_health.value,
+            target_trove_start_health.debt,
+            target_ltv
         );
 
         // Sanity check that LTV is at the target liquidation LTV
-        let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+        let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(
+            shrine, purger, target_trove, target_trove_updated_start_health.ltv
+        );
 
         let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
         let searcher: ContractAddress = purger_utils::searcher();
@@ -513,17 +538,24 @@ mod test_purger {
             .liquidate(target_trove, BoundedWad::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
-        let after_total_debt: Wad = shrine.get_total_debt();
+        let shrine_health: Health = shrine.get_shrine_health();
+        let after_total_debt: Wad = shrine_health.debt;
         assert(
             after_total_debt == before_total_debt + accrued_interest - max_close_amt,
             'wrong total debt'
         );
 
         // Check that LTV is close to safety margin
-        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
-        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+        let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+        assert(
+            target_trove_after_health.debt == target_trove_updated_start_health.debt
+                - max_close_amt,
+            'wrong debt after liquidation'
+        );
 
-        purger_utils::assert_ltv_at_safety_margin(threshold, after_ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv
+        );
 
         // Check searcher yin balance
         assert(
@@ -534,7 +566,7 @@ mod test_purger {
         let (expected_freed_pct, expected_freed_amts) =
             purger_utils::get_expected_liquidation_assets(
             purger_utils::target_trove_yang_asset_amts(),
-            before_value,
+            target_trove_updated_start_health.value,
             max_close_amt,
             penalty,
             Option::None
@@ -607,15 +639,23 @@ mod test_purger {
         // Accrue some interest
         common::advance_intervals(500);
 
-        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
-        let target_ltv: Ray = (threshold.val + 1).into();
+        let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+        let target_ltv: Ray = (target_trove_start_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_start_health.value,
+            target_trove_start_health.debt,
+            target_ltv
         );
 
         // Sanity check that LTV is at the target liquidation LTV
-        let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+        let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(
+            shrine, purger, target_trove, target_trove_updated_start_health.ltv
+        );
         let (_, max_close_amt) = purger.preview_liquidate(target_trove);
 
         let searcher: ContractAddress = purger_utils::searcher();
@@ -623,10 +663,16 @@ mod test_purger {
         flash_liquidator.flash_liquidate(target_trove, yangs, gates);
 
         // Check that LTV is close to safety margin
-        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
-        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+        let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+        assert(
+            target_trove_after_health.debt == target_trove_updated_start_health.debt
+                - max_close_amt,
+            'wrong debt after liquidation'
+        );
 
-        purger_utils::assert_ltv_at_safety_margin(threshold, after_ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv
+        );
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -759,8 +805,8 @@ mod test_purger {
                                             // Accrue some interest
                                             common::advance_intervals(500);
 
-                                            let (_, _, before_value, before_debt) = shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
 
                                             if target_ltv_above_cutoff {
                                                 purger_utils::lower_prices_to_raise_trove_ltv(
@@ -768,22 +814,22 @@ mod test_purger {
                                                     mock_pragma,
                                                     yangs,
                                                     yang_pair_ids,
-                                                    before_value,
-                                                    before_debt,
+                                                    target_trove_start_health.value,
+                                                    target_trove_start_health.debt,
                                                     *target_ltv
                                                 );
                                             } else {
                                                 if (*is_recovery_mode) {
-                                                    let (_, _, dummy_value, dummy_debt) = shrine
-                                                        .get_trove_info(dummy_trove);
+                                                    let dummy_trove_health: Health = shrine
+                                                        .get_trove_health(dummy_trove);
 
                                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                                         shrine,
                                                         mock_pragma,
                                                         yangs,
                                                         yang_pair_ids,
-                                                        dummy_value,
-                                                        dummy_debt,
+                                                        dummy_trove_health.value,
+                                                        dummy_trove_health.debt,
                                                         dummy_threshold
                                                     );
                                                 }
@@ -791,9 +837,8 @@ mod test_purger {
 
                                             // Get the updated values after adjusting prices
                                             // The threshold may have changed if in recovery mode 
-                                            let (adjusted_threshold, _, before_value, before_debt) =
-                                                shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_updated_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
 
                                             let (penalty, max_close_amt) = purger
                                                 .preview_liquidate(target_trove);
@@ -807,18 +852,23 @@ mod test_purger {
                                                 );
 
                                             // Check that LTV is close to safety margin
-                                            let (_, after_ltv, _, after_debt) = shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_after_health: Health = shrine
+                                                .get_trove_health(target_trove);
 
                                             let is_fully_liquidated: bool =
-                                                before_debt == max_close_amt;
+                                                target_trove_updated_start_health
+                                                .debt == max_close_amt;
                                             if !is_fully_liquidated {
                                                 purger_utils::assert_ltv_at_safety_margin(
-                                                    adjusted_threshold, after_ltv
+                                                    target_trove_updated_start_health.threshold,
+                                                    target_trove_after_health.ltv
                                                 );
 
                                                 assert(
-                                                    after_debt == before_debt - max_close_amt,
+                                                    target_trove_after_health
+                                                        .debt == target_trove_updated_start_health
+                                                        .debt
+                                                        - max_close_amt,
                                                     'wrong debt after liquidation'
                                                 );
 
@@ -827,13 +877,16 @@ mod test_purger {
                                                     safety_margin_achieved = true;
                                                 }
                                             } else {
-                                                assert(after_debt.is_zero(), 'should be 0 debt');
+                                                assert(
+                                                    target_trove_after_health.debt.is_zero(),
+                                                    'should be 0 debt'
+                                                );
                                             }
 
                                             let (expected_freed_pct, _) =
                                                 purger_utils::get_expected_liquidation_assets(
                                                 purger_utils::target_trove_yang_asset_amts(),
-                                                before_value,
+                                                target_trove_updated_start_health.value,
                                                 max_close_amt,
                                                 penalty,
                                                 Option::None,
@@ -921,8 +974,8 @@ mod test_purger {
         abbot.forge(healthy_trove, max_forge_amt, 0_u128.into());
 
         // Sanity check that LTV is above absorption threshold and safe
-        let (_, ltv, _, _) = shrine.get_trove_info(healthy_trove);
-        assert(ltv > purger_contract::ABSORPTION_THRESHOLD.into(), 'too low');
+        let health: Health = shrine.get_trove_health(healthy_trove);
+        assert(health.ltv > purger_contract::ABSORPTION_THRESHOLD.into(), 'too low');
         purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove);
 
         let searcher: ContractAddress = purger_utils::searcher();
@@ -948,16 +1001,24 @@ mod test_purger {
             abbot, yangs, gates, target_trove_yin
         );
 
-        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
 
-        let target_ltv: Ray = (threshold.val + 1).into();
+        let target_ltv: Ray = (target_trove_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_health.value,
+            target_trove_health.debt,
+            target_ltv
         );
 
         // Sanity check that LTV is at the target liquidation LTV
-        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+        let updated_target_trove_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(
+            shrine, purger, target_trove, updated_target_trove_health.ltv
+        );
 
         let searcher: ContractAddress = purger_utils::searcher();
         set_contract_address(searcher);
@@ -1048,24 +1109,24 @@ mod test_purger {
                                 }
 
                                 // Make the target trove absorbable
-                                let (_, _, start_value, before_debt) = shrine
-                                    .get_trove_info(target_trove);
+                                let target_trove_start_health: Health = shrine
+                                    .get_trove_health(target_trove);
                                 purger_utils::lower_prices_to_raise_trove_ltv(
                                     shrine,
                                     mock_pragma,
                                     yangs,
                                     yang_pair_ids,
-                                    start_value,
-                                    before_debt,
+                                    target_trove_start_health.value,
+                                    target_trove_start_health.debt,
                                     target_ltv
                                 );
 
-                                let (adjusted_threshold, ltv, tmp_value, _) = shrine
-                                    .get_trove_info(target_trove);
+                                let target_trove_updated_start_health: Health = shrine
+                                    .get_trove_health(target_trove);
                                 if (*is_recovery_mode) {
                                     let expected_rm_threshold: Ray = (*threshold.val / 2).into();
                                     common::assert_equalish(
-                                        adjusted_threshold,
+                                        target_trove_updated_start_health.threshold,
                                         expected_rm_threshold,
                                         (RAY_PERCENT / 100).into(),
                                         'wrong rm threshold'
@@ -1073,7 +1134,10 @@ mod test_purger {
                                 }
 
                                 purger_utils::assert_trove_is_absorbable(
-                                    shrine, purger, target_trove, ltv
+                                    shrine,
+                                    purger,
+                                    target_trove,
+                                    target_trove_updated_start_health.ltv
                                 );
 
                                 let (penalty, max_close_amt, _) = purger
@@ -1123,27 +1187,39 @@ mod test_purger {
         // Accrue some interest
         common::advance_intervals(500);
 
-        let (threshold, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
-        let accrued_interest: Wad = before_debt - initial_trove_debt;
+        let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+        let accrued_interest: Wad = target_trove_start_health.debt - initial_trove_debt;
         // Sanity check that some interest has accrued
         assert(accrued_interest.is_non_zero(), 'no interest accrued');
 
         // Fund the absorber with twice the target trove's debt
-        let absorber_start_yin: Wad = (before_debt.val * 2).into();
+        let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
         purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
 
         // sanity check
-        assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
+        assert(
+            shrine.get_yin(absorber.contract_address) > target_trove_start_health.debt,
+            'not full absorption'
+        );
 
-        let before_total_debt: Wad = shrine.get_total_debt();
+        let shrine_health: Health = shrine.get_shrine_health();
+        let before_total_debt: Wad = shrine_health.debt;
 
         // Make the target trove absorbable
         let target_ltv: Ray = (purger_contract::ABSORPTION_THRESHOLD + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_start_health.value,
+            target_trove_start_health.debt,
+            target_ltv
         );
-        let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
-        purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
+        let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_absorbable(
+            shrine, purger, target_trove, target_trove_updated_start_health.ltv
+        );
 
         let (penalty, max_close_amt, expected_compensation_value) = purger
             .preview_absorb(target_trove);
@@ -1162,7 +1238,8 @@ mod test_purger {
         let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
         // Assert that total debt includes accrued interest on liquidated trove
-        let after_total_debt: Wad = shrine.get_total_debt();
+        let shrine_health: Health = shrine.get_shrine_health();
+        let after_total_debt: Wad = shrine_health.debt;
         assert(
             after_total_debt == before_total_debt + accrued_interest - max_close_amt,
             'wrong total debt'
@@ -1172,18 +1249,25 @@ mod test_purger {
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
 
         // Check trove debt and LTV
-        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
-        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+        let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+        assert(
+            target_trove_after_health.debt == target_trove_start_health.debt - max_close_amt,
+            'wrong debt after liquidation'
+        );
 
-        let is_fully_absorbed: bool = after_debt.is_zero();
+        let is_fully_absorbed: bool = target_trove_after_health.debt.is_zero();
         if !is_fully_absorbed {
-            purger_utils::assert_ltv_at_safety_margin(threshold, after_ltv);
+            purger_utils::assert_ltv_at_safety_margin(
+                target_trove_start_health.threshold, target_trove_after_health.ltv
+            );
         }
 
         // Check that caller has received compensation
         let target_trove_yang_asset_amts: Span<u128> = purger_utils::target_trove_yang_asset_amts();
         let expected_compensation_amts: Span<u128> = purger_utils::get_expected_compensation_assets(
-            target_trove_yang_asset_amts, before_value, expected_compensation_value
+            target_trove_yang_asset_amts,
+            target_trove_updated_start_health.value,
+            expected_compensation_value
         );
         let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, expected_compensation_amts
@@ -1210,7 +1294,7 @@ mod test_purger {
         // Check that absorber has received collateral
         let (_, expected_freed_asset_amts) = purger_utils::get_expected_liquidation_assets(
             target_trove_yang_asset_amts,
-            before_value,
+            target_trove_updated_start_health.value,
             max_close_amt,
             penalty,
             Option::Some(expected_compensation_value)
@@ -1322,11 +1406,8 @@ mod test_purger {
                                                     // absorber's yin balance based on target trove's debt
                                                     //common::advance_intervals(500);
 
-                                                    let (
-                                                        start_threshold, _, start_value, before_debt
-                                                    ) =
-                                                        shrine
-                                                        .get_trove_info(target_trove);
+                                                    let target_trove_start_health: Health = shrine
+                                                        .get_trove_health(target_trove);
 
                                                     let recipient_trove_owner: ContractAddress =
                                                         absorber_utils::provider_1();
@@ -1353,11 +1434,14 @@ mod test_purger {
                                                         mock_pragma,
                                                         yangs,
                                                         yang_pair_ids,
-                                                        start_value,
-                                                        before_debt,
+                                                        target_trove_start_health.value,
+                                                        target_trove_start_health.debt,
                                                         target_ltv
                                                     );
 
+                                                    let mut target_trove_updated_start_health: Health =
+                                                        shrine
+                                                        .get_trove_health(target_trove);
                                                     if *is_recovery_mode {
                                                         purger_utils::trigger_recovery_mode(
                                                             shrine,
@@ -1366,48 +1450,45 @@ mod test_purger {
                                                             recipient_trove_owner
                                                         );
 
-                                                        let (adjusted_threshold, _, _, _) = shrine
-                                                            .get_trove_info(target_trove);
+                                                        target_trove_updated_start_health = shrine
+                                                            .get_trove_health(target_trove);
 
                                                         assert(
-                                                            adjusted_threshold < start_threshold
+                                                            target_trove_updated_start_health
+                                                                .threshold < target_trove_start_health
+                                                                .threshold
                                                                 - purger_utils::RM_ERROR_MARGIN
                                                                     .into(),
                                                             'not recovery mode'
                                                         );
                                                     } else {
-                                                        let (adjusted_threshold, _, _, _) = shrine
-                                                            .get_trove_info(target_trove);
-
                                                         // Sanity check to ensure recovery mode paramterization is correct
                                                         // Due to the changes in yang prices, there may be a very slight 
                                                         // deviation in the threshold. Therefore, we treat the new threshold 
                                                         // as equal to the previous threshold if it is within 0.1% 
                                                         // (i.e. recovery mode is not activated)
                                                         common::assert_equalish(
-                                                            adjusted_threshold,
-                                                            start_threshold,
+                                                            target_trove_updated_start_health
+                                                                .threshold,
+                                                            target_trove_start_health.threshold,
                                                             purger_utils::RM_ERROR_MARGIN.into(),
                                                             'in recovery mode'
                                                         );
                                                     }
 
-                                                    let before_total_debt: Wad = shrine
-                                                        .get_total_debt();
+                                                    let shrine_health: Health = shrine
+                                                        .get_shrine_health();
+                                                    let before_total_debt: Wad = shrine_health.debt;
 
-                                                    let (_, ltv, before_value, _) = shrine
-                                                        .get_trove_info(target_trove);
-                                                    let (
-                                                        _,
-                                                        _,
-                                                        recipient_trove_value,
-                                                        recipient_trove_debt
-                                                    ) =
+                                                    let recipient_trove_start_health: Health =
                                                         shrine
-                                                        .get_trove_info(recipient_trove);
+                                                        .get_trove_health(recipient_trove);
 
                                                     purger_utils::assert_trove_is_absorbable(
-                                                        shrine, purger, target_trove, ltv
+                                                        shrine,
+                                                        purger,
+                                                        target_trove,
+                                                        target_trove_updated_start_health.ltv
                                                     );
 
                                                     let (
@@ -1454,8 +1535,9 @@ mod test_purger {
                                                     let compensation: Span<AssetBalance> = purger
                                                         .absorb(target_trove);
 
-                                                    let after_total_debt: Wad = shrine
-                                                        .get_total_debt();
+                                                    let shrine_health: Health = shrine
+                                                        .get_shrine_health();
+                                                    let after_total_debt: Wad = shrine_health.debt;
                                                     assert(
                                                         after_total_debt == before_total_debt
                                                             - close_amt,
@@ -1469,14 +1551,14 @@ mod test_purger {
                                                     );
 
                                                     // Check trove debt, value and LTV
-                                                    let (_, _, after_value, after_debt) = shrine
-                                                        .get_trove_info(target_trove);
+                                                    let target_trove_after_health: Health = shrine
+                                                        .get_trove_health(target_trove);
                                                     assert(
-                                                        after_debt.is_zero(),
+                                                        target_trove_after_health.debt.is_zero(),
                                                         'wrong debt after liquidation'
                                                     );
                                                     assert(
-                                                        after_value.is_zero(),
+                                                        target_trove_after_health.value.is_zero(),
                                                         'wrong value after liquidation'
                                                     );
 
@@ -1484,7 +1566,7 @@ mod test_purger {
                                                     let expected_compensation_amts: Span<u128> =
                                                         purger_utils::get_expected_compensation_assets(
                                                         *target_trove_yang_asset_amts,
-                                                        before_value,
+                                                        target_trove_updated_start_health.value,
                                                         expected_compensation_value
                                                     );
                                                     let expected_compensation: Span<AssetBalance> =
@@ -1523,7 +1605,7 @@ mod test_purger {
                                                     ) =
                                                         purger_utils::get_expected_liquidation_assets(
                                                         *target_trove_yang_asset_amts,
-                                                        before_value,
+                                                        target_trove_updated_start_health.value,
                                                         close_amt,
                                                         penalty,
                                                         Option::Some(expected_compensation_value),
@@ -1551,38 +1633,37 @@ mod test_purger {
                                                     );
 
                                                     // Check recipient trove's value and debt
-                                                    let (
-                                                        _,
-                                                        _,
-                                                        after_recipient_trove_value,
-                                                        after_recipient_trove_debt
-                                                    ) =
+                                                    let recipient_trove_after_health: Health =
                                                         shrine
-                                                        .get_trove_info(recipient_trove);
+                                                        .get_trove_health(recipient_trove);
                                                     let redistributed_amt: Wad = max_close_amt
                                                         - close_amt;
                                                     let expected_recipient_trove_debt: Wad =
-                                                        recipient_trove_debt
+                                                        recipient_trove_start_health
+                                                        .debt
                                                         + redistributed_amt;
 
                                                     common::assert_equalish(
-                                                        after_recipient_trove_debt,
+                                                        recipient_trove_after_health.debt,
                                                         expected_recipient_trove_debt,
                                                         (WAD_ONE / 100).into(), // error margin
                                                         'wrong recipient trove debt'
                                                     );
 
-                                                    let redistributed_value: Wad = before_value
+                                                    let redistributed_value: Wad =
+                                                        target_trove_updated_start_health
+                                                        .value
                                                         - wadray::rmul_wr(
                                                             close_amt, RAY_ONE.into() + penalty
                                                         )
                                                         - expected_compensation_value;
                                                     let expected_recipient_trove_value: Wad =
-                                                        recipient_trove_value
+                                                        recipient_trove_start_health
+                                                        .value
                                                         + redistributed_value;
 
                                                     common::assert_equalish(
-                                                        after_recipient_trove_value,
+                                                        recipient_trove_after_health.value,
                                                         expected_recipient_trove_value,
                                                         (WAD_ONE / 100).into(), // error margin
                                                         'wrong recipient trove value'
@@ -1771,10 +1852,12 @@ mod test_purger {
                                                                 abbot, yangs, gates
                                                             );
 
-                                                            let (_, _, start_value, before_debt) =
+                                                            let target_trove_start_health: Health =
                                                                 shrine
-                                                                .get_trove_info(target_trove);
-                                                            let accrued_interest: Wad = before_debt
+                                                                .get_trove_health(target_trove);
+                                                            let accrued_interest: Wad =
+                                                                target_trove_start_health
+                                                                .debt
                                                                 - initial_trove_debt;
                                                             // Sanity check that some interest has accrued
                                                             assert(
@@ -1786,32 +1869,26 @@ mod test_purger {
                                                                 shrine, yangs, *threshold
                                                             );
 
-                                                            let (_, _, start_value, before_debt) =
-                                                                shrine
-                                                                .get_trove_info(target_trove);
-
                                                             // Make the target trove absorbable
                                                             purger_utils::lower_prices_to_raise_trove_ltv(
                                                                 shrine,
                                                                 mock_pragma,
                                                                 yangs,
                                                                 yang_pair_ids,
-                                                                start_value,
-                                                                before_debt,
+                                                                target_trove_start_health.value,
+                                                                target_trove_start_health.debt,
                                                                 target_ltv
                                                             );
 
-                                                            let (
-                                                                start_threshold,
-                                                                ltv,
-                                                                before_value,
-                                                                _
-                                                            ) =
+                                                            let target_trove_start_health: Health =
                                                                 shrine
-                                                                .get_trove_info(target_trove);
+                                                                .get_trove_health(target_trove);
 
                                                             purger_utils::assert_trove_is_absorbable(
-                                                                shrine, purger, target_trove, ltv
+                                                                shrine,
+                                                                purger,
+                                                                target_trove,
+                                                                target_trove_start_health.ltv
                                                             );
 
                                                             let (
@@ -1824,7 +1901,8 @@ mod test_purger {
 
                                                             // sanity check
                                                             assert(
-                                                                max_close_amt < before_debt,
+                                                                max_close_amt < target_trove_start_health
+                                                                    .debt,
                                                                 'close amt not below trove debt'
                                                             );
 
@@ -1879,6 +1957,10 @@ mod test_purger {
                                                             );
                                                             abbot.close_trove(whale_trove);
 
+                                                            let mut target_trove_updated_start_health: Health =
+                                                                shrine
+                                                                .get_trove_health(target_trove);
+
                                                             if *is_recovery_mode {
                                                                 purger_utils::trigger_recovery_mode(
                                                                     shrine,
@@ -1887,29 +1969,29 @@ mod test_purger {
                                                                     recipient_trove_owner
                                                                 );
 
-                                                                let (adjusted_threshold, _, _, _) =
+                                                                target_trove_updated_start_health =
                                                                     shrine
-                                                                    .get_trove_info(target_trove);
+                                                                    .get_trove_health(target_trove);
 
                                                                 assert(
-                                                                    adjusted_threshold < start_threshold
+                                                                    target_trove_updated_start_health
+                                                                        .threshold < target_trove_start_health
+                                                                        .threshold
                                                                         - purger_utils::RM_ERROR_MARGIN
                                                                             .into(),
                                                                     'not recovery mode'
                                                                 );
                                                             } else {
-                                                                let (adjusted_threshold, _, _, _) =
-                                                                    shrine
-                                                                    .get_trove_info(target_trove);
-
                                                                 // Sanity check to ensure recovery mode paramterization is correct
                                                                 // Due to the changes in yang prices, there may be a very slight 
                                                                 // deviation in the threshold. Therefore, we treat the new threshold 
                                                                 // as equal to the previous threshold if it is within 0.1% 
                                                                 // (i.e. recovery mode is not activated)
                                                                 common::assert_equalish(
-                                                                    adjusted_threshold,
-                                                                    start_threshold,
+                                                                    target_trove_updated_start_health
+                                                                        .threshold,
+                                                                    target_trove_start_health
+                                                                        .threshold,
                                                                     purger_utils::RM_ERROR_MARGIN
                                                                         .into(),
                                                                     'in recovery mode'
@@ -1927,24 +2009,20 @@ mod test_purger {
 
                                                             // sanity check
                                                             assert(
-                                                                max_close_amt < before_debt,
+                                                                max_close_amt < target_trove_start_health
+                                                                    .debt,
                                                                 'close amt not below trove debt'
                                                             );
 
-                                                            let (
-                                                                _,
-                                                                _,
-                                                                recipient_trove_value,
-                                                                recipient_trove_debt
-                                                            ) =
+                                                            let before_recipient_trove_health: Health =
                                                                 shrine
-                                                                .get_trove_info(recipient_trove);
+                                                                .get_trove_health(recipient_trove);
 
-                                                            let (adjusted_threshold, _, _, _) =
-                                                                shrine
-                                                                .get_trove_info(target_trove);
-                                                            let before_total_debt: Wad = shrine
-                                                                .get_total_debt();
+                                                            let shrine_health: Health = shrine
+                                                                .get_shrine_health();
+                                                            let before_total_debt: Wad =
+                                                                shrine_health
+                                                                .debt;
 
                                                             // Fund absorber based on adjusted max close amount
                                                             // after recovery mode has been set up
@@ -2006,8 +2084,11 @@ mod test_purger {
                                                                 .absorb(target_trove);
 
                                                             // Assert that total debt includes accrued interest on liquidated trove
-                                                            let after_total_debt: Wad = shrine
-                                                                .get_total_debt();
+                                                            let shrine_health: Health = shrine
+                                                                .get_shrine_health();
+                                                            let after_total_debt: Wad =
+                                                                shrine_health
+                                                                .debt;
                                                             assert(
                                                                 after_total_debt == before_total_debt
                                                                     + accrued_interest
@@ -2023,14 +2104,9 @@ mod test_purger {
                                                             );
 
                                                             // Check trove debt, value and LTV
-                                                            let (
-                                                                _,
-                                                                after_ltv,
-                                                                after_value,
-                                                                after_debt
-                                                            ) =
+                                                            let target_trove_after_health: Health =
                                                                 shrine
-                                                                .get_trove_info(target_trove);
+                                                                .get_trove_health(target_trove);
 
                                                             let expected_liquidated_value: Wad =
                                                                 wadray::rmul_wr(
@@ -2038,29 +2114,36 @@ mod test_purger {
                                                                 RAY_ONE.into() + penalty
                                                             );
                                                             let expected_after_value: Wad =
-                                                                before_value
+                                                                target_trove_updated_start_health
+                                                                .value
                                                                 - expected_compensation_value
                                                                 - expected_liquidated_value;
                                                             assert(
-                                                                after_debt.is_non_zero(),
+                                                                target_trove_after_health
+                                                                    .debt
+                                                                    .is_non_zero(),
                                                                 'debt should not be 0'
                                                             );
 
                                                             let expected_after_debt: Wad =
-                                                                before_debt
+                                                                target_trove_updated_start_health
+                                                                .debt
                                                                 - max_close_amt;
                                                             assert(
-                                                                after_debt == expected_after_debt,
+                                                                target_trove_after_health
+                                                                    .debt == expected_after_debt,
                                                                 'wrong debt after liquidation'
                                                             );
 
                                                             assert(
-                                                                after_value.is_non_zero(),
+                                                                target_trove_after_health
+                                                                    .value
+                                                                    .is_non_zero(),
                                                                 'value should not be 0'
                                                             );
 
                                                             common::assert_equalish(
-                                                                after_value,
+                                                                target_trove_after_health.value,
                                                                 expected_after_value,
                                                                 // (10 ** 15) error margin
                                                                 1000000000000000_u128.into(),
@@ -2068,7 +2151,9 @@ mod test_purger {
                                                             );
 
                                                             purger_utils::assert_ltv_at_safety_margin(
-                                                                adjusted_threshold, after_ltv
+                                                                target_trove_updated_start_health
+                                                                    .threshold,
+                                                                target_trove_after_health.ltv
                                                             );
 
                                                             // Check that caller has received compensation
@@ -2077,7 +2162,8 @@ mod test_purger {
                                                             > =
                                                                 purger_utils::get_expected_compensation_assets(
                                                                 *target_trove_yang_asset_amts,
-                                                                before_value,
+                                                                target_trove_updated_start_health
+                                                                    .value,
                                                                 expected_compensation_value
                                                             );
                                                             let expected_compensation: Span<
@@ -2120,7 +2206,8 @@ mod test_purger {
                                                             ) =
                                                                 purger_utils::get_expected_liquidation_assets(
                                                                 *target_trove_yang_asset_amts,
-                                                                before_value,
+                                                                target_trove_updated_start_health
+                                                                    .value,
                                                                 close_amt,
                                                                 penalty,
                                                                 Option::Some(
@@ -2155,23 +2242,19 @@ mod test_purger {
                                                             );
 
                                                             // Check recipient trove's debt
-                                                            let (
-                                                                _,
-                                                                _,
-                                                                after_recipient_trove_value,
-                                                                after_recipient_trove_debt
-                                                            ) =
+                                                            let after_recipient_trove_health =
                                                                 shrine
-                                                                .get_trove_info(recipient_trove);
+                                                                .get_trove_health(recipient_trove);
                                                             let expected_redistributed_amt: Wad =
                                                                 max_close_amt
                                                                 - close_amt;
                                                             let expected_recipient_trove_debt: Wad =
-                                                                recipient_trove_debt
+                                                                before_recipient_trove_health
+                                                                .debt
                                                                 + expected_redistributed_amt;
 
                                                             common::assert_equalish(
-                                                                after_recipient_trove_debt,
+                                                                after_recipient_trove_health.debt,
                                                                 expected_recipient_trove_debt,
                                                                 (WAD_ONE / 100)
                                                                     .into(), // error margin
@@ -2184,11 +2267,12 @@ mod test_purger {
                                                                 RAY_ONE.into() + penalty
                                                             );
                                                             let expected_recipient_trove_value: Wad =
-                                                                recipient_trove_value
+                                                                before_recipient_trove_health
+                                                                .value
                                                                 + redistributed_value;
 
                                                             common::assert_equalish(
-                                                                after_recipient_trove_value,
+                                                                after_recipient_trove_health.value,
                                                                 expected_recipient_trove_value,
                                                                 (WAD_ONE / 100)
                                                                     .into(), // error margin
@@ -2198,7 +2282,9 @@ mod test_purger {
                                                             // Check remainder yang assets for redistributed trove is correct
                                                             let expected_remainder_pct: Ray =
                                                                 wadray::rdiv_ww(
-                                                                expected_after_value, before_value
+                                                                expected_after_value,
+                                                                target_trove_updated_start_health
+                                                                    .value
                                                             );
                                                             let mut expected_remainder_trove_yang_asset_amts =
                                                                 common::scale_span_by_pct(
@@ -2408,16 +2494,12 @@ mod test_purger {
                                                         // Accrue some interest
                                                         common::advance_intervals(500);
 
-                                                        let (
-                                                            threshold,
-                                                            _,
-                                                            before_target_trove_value,
-                                                            before_target_trove_debt
-                                                        ) =
+                                                        let target_trove_start_health: Health =
                                                             shrine
-                                                            .get_trove_info(target_trove);
+                                                            .get_trove_health(target_trove);
                                                         let accrued_interest: Wad =
-                                                            before_target_trove_debt
+                                                            target_trove_start_health
+                                                            .debt
                                                             - initial_trove_debt;
                                                         // Sanity check that some interest has accrued
                                                         assert(
@@ -2456,8 +2538,10 @@ mod test_purger {
                                                             )
                                                         };
 
-                                                        let before_total_debt: Wad = shrine
-                                                            .get_total_debt();
+                                                        let shrine_health: Health = shrine
+                                                            .get_shrine_health();
+                                                        let before_total_debt: Wad = shrine_health
+                                                            .debt;
 
                                                         let target_ltv: Ray =
                                                             (purger_contract::ABSORPTION_THRESHOLD
@@ -2468,16 +2552,14 @@ mod test_purger {
                                                             mock_pragma,
                                                             yangs,
                                                             yang_pair_ids,
-                                                            before_target_trove_value,
-                                                            before_target_trove_debt,
+                                                            target_trove_start_health.value,
+                                                            target_trove_start_health.debt,
                                                             target_ltv
                                                         );
 
-                                                        let (
-                                                            adjusted_threshold, ltv, before_value, _
-                                                        ) =
+                                                        let target_trove_updated_start_health: Health =
                                                             shrine
-                                                            .get_trove_info(target_trove);
+                                                            .get_trove_health(target_trove);
 
                                                         // Sanity check to ensure recovery mode paramterization is correct
                                                         // Due to the changes in yang prices, there may be a very slight 
@@ -2486,32 +2568,33 @@ mod test_purger {
                                                         // (i.e. recovery mode is not activated)
                                                         if *is_recovery_mode {
                                                             assert(
-                                                                adjusted_threshold < threshold
+                                                                target_trove_updated_start_health
+                                                                    .threshold < target_trove_start_health
+                                                                    .threshold
                                                                     - purger_utils::RM_ERROR_MARGIN
                                                                         .into(),
                                                                 'not recovery mode'
                                                             )
                                                         } else {
                                                             common::assert_equalish(
-                                                                adjusted_threshold,
-                                                                threshold,
+                                                                target_trove_updated_start_health
+                                                                    .threshold,
+                                                                target_trove_start_health.threshold,
                                                                 purger_utils::RM_ERROR_MARGIN
                                                                     .into(),
                                                                 'in recovery mode'
                                                             );
                                                         }
 
-                                                        let (
-                                                            _,
-                                                            _,
-                                                            before_recipient_trove_value,
-                                                            before_recipient_trove_debt
-                                                        ) =
+                                                        let before_recipient_trove_health: Health =
                                                             shrine
-                                                            .get_trove_info(recipient_trove);
+                                                            .get_trove_health(recipient_trove);
 
                                                         purger_utils::assert_trove_is_absorbable(
-                                                            shrine, purger, target_trove, ltv
+                                                            shrine,
+                                                            purger,
+                                                            target_trove,
+                                                            target_trove_updated_start_health.ltv
                                                         );
 
                                                         let caller: ContractAddress =
@@ -2536,8 +2619,10 @@ mod test_purger {
                                                             .absorb(target_trove);
 
                                                         // Assert that total debt includes accrued interest on liquidated trove
-                                                        let after_total_debt: Wad = shrine
-                                                            .get_total_debt();
+                                                        let shrine_health: Health = shrine
+                                                            .get_shrine_health();
+                                                        let after_total_debt: Wad = shrine_health
+                                                            .debt;
                                                         assert(
                                                             after_total_debt == before_total_debt
                                                                 + accrued_interest,
@@ -2548,7 +2633,7 @@ mod test_purger {
                                                         let expected_compensation_amts: Span<u128> =
                                                             purger_utils::get_expected_compensation_assets(
                                                             *target_trove_yang_asset_amts,
-                                                            before_value,
+                                                            target_trove_updated_start_health.value,
                                                             expected_compensation_value
                                                         );
                                                         let expected_compensation: Span<
@@ -2574,25 +2659,27 @@ mod test_purger {
                                                             'wrong freed asset amount'
                                                         );
 
-                                                        let (
-                                                            _,
-                                                            ltv,
-                                                            after_target_trove_value,
-                                                            after_target_trove_debt
-                                                        ) =
+                                                        let target_trove_after_health: Health =
                                                             shrine
-                                                            .get_trove_info(target_trove);
+                                                            .get_trove_health(target_trove);
                                                         assert(
                                                             shrine.is_healthy(target_trove),
                                                             'should be healthy'
                                                         );
-                                                        assert(ltv.is_zero(), 'LTV should be 0');
                                                         assert(
-                                                            after_target_trove_value.is_zero(),
+                                                            target_trove_after_health.ltv.is_zero(),
+                                                            'LTV should be 0'
+                                                        );
+                                                        assert(
+                                                            target_trove_after_health
+                                                                .value
+                                                                .is_zero(),
                                                             'value should be 0'
                                                         );
                                                         assert(
-                                                            after_target_trove_debt.is_zero(),
+                                                            target_trove_after_health
+                                                                .debt
+                                                                .is_zero(),
                                                             'debt should be 0'
                                                         );
 
@@ -2609,32 +2696,30 @@ mod test_purger {
                                                         );
 
                                                         // Check recipient trove's value and debt
-                                                        let (
-                                                            _,
-                                                            _,
-                                                            after_recipient_trove_value,
-                                                            after_recipient_trove_debt
-                                                        ) =
-                                                            shrine
-                                                            .get_trove_info(recipient_trove);
+                                                        let after_recipient_trove_health = shrine
+                                                            .get_trove_health(recipient_trove);
                                                         let expected_recipient_trove_debt: Wad =
-                                                            before_recipient_trove_debt
-                                                            + before_target_trove_debt;
+                                                            before_recipient_trove_health
+                                                            .debt
+                                                            + target_trove_start_health.debt;
 
                                                         common::assert_equalish(
-                                                            after_recipient_trove_debt,
+                                                            after_recipient_trove_health.debt,
                                                             expected_recipient_trove_debt,
                                                             (WAD_ONE / 100).into(), // error margin
                                                             'wrong recipient trove debt'
                                                         );
 
-                                                        let redistributed_value: Wad = before_value
+                                                        let redistributed_value: Wad =
+                                                            target_trove_updated_start_health
+                                                            .value
                                                             - expected_compensation_value;
                                                         let expected_recipient_trove_value: Wad =
-                                                            before_recipient_trove_value
+                                                            before_recipient_trove_health
+                                                            .value
                                                             + redistributed_value;
                                                         common::assert_equalish(
-                                                            after_recipient_trove_value,
+                                                            after_recipient_trove_health.value,
                                                             expected_recipient_trove_value,
                                                             (WAD_ONE / 100).into(), // error margin
                                                             'wrong recipient trove value'
@@ -2667,7 +2752,8 @@ mod test_purger {
                                                                 shrine_contract::TroveRedistributed {
                                                                     redistribution_id: expected_redistribution_id,
                                                                     trove_id: target_trove,
-                                                                    debt: before_target_trove_debt,
+                                                                    debt: target_trove_updated_start_health
+                                                                        .debt,
                                                                 }
                                                             ),
                                                         ]
@@ -2756,12 +2842,14 @@ mod test_purger {
                                             // Accrue some interest
                                             common::advance_intervals(500);
 
-                                            let (start_threshold, _, start_value, before_debt) =
-                                                shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
 
                                             // Fund the absorber with twice the target trove's debt
-                                            let absorber_start_yin: Wad = (before_debt.val * 2)
+                                            let absorber_start_yin: Wad = (target_trove_start_health
+                                                .debt
+                                                .val
+                                                * 2)
                                                 .into();
                                             let other_trove_owner: ContractAddress =
                                                 absorber_utils::provider_1();
@@ -2779,7 +2867,8 @@ mod test_purger {
                                                 shrine
                                                     .get_yin(
                                                         absorber.contract_address
-                                                    ) > before_debt,
+                                                    ) > target_trove_start_health
+                                                    .debt,
                                                 'not full absorption'
                                             );
 
@@ -2789,10 +2878,14 @@ mod test_purger {
                                                 mock_pragma,
                                                 yangs,
                                                 yang_pair_ids,
-                                                start_value,
-                                                before_debt,
+                                                target_trove_start_health.value,
+                                                target_trove_start_health.debt,
                                                 *target_ltv
                                             );
+
+                                            let mut target_trove_updated_start_health: Health =
+                                                shrine
+                                                .get_trove_health(target_trove);
 
                                             if *is_recovery_mode {
                                                 set_contract_address(
@@ -2804,11 +2897,13 @@ mod test_purger {
                                                     shrine, abbot, other_trove, other_trove_owner
                                                 );
 
-                                                let (adjusted_threshold, _, _, _) = shrine
-                                                    .get_trove_info(target_trove);
+                                                target_trove_updated_start_health = shrine
+                                                    .get_trove_health(target_trove);
 
                                                 assert(
-                                                    adjusted_threshold < start_threshold
+                                                    target_trove_updated_start_health
+                                                        .threshold < target_trove_start_health
+                                                        .threshold
                                                         - purger_utils::RM_ERROR_MARGIN.into(),
                                                     'not recovery mode'
                                                 );
@@ -2818,21 +2913,19 @@ mod test_purger {
                                                 // deviation in the threshold. Therefore, we treat the new threshold 
                                                 // as equal to the previous threshold if it is within 0.1% 
                                                 // (i.e. recovery mode is not activated)
-                                                let (adjusted_threshold, _, _, _) = shrine
-                                                    .get_trove_info(target_trove);
                                                 common::assert_equalish(
-                                                    adjusted_threshold,
-                                                    start_threshold,
+                                                    target_trove_updated_start_health.threshold,
+                                                    target_trove_start_health.threshold,
                                                     purger_utils::RM_ERROR_MARGIN.into(),
                                                     'in recovery mode'
                                                 );
                                             }
 
-                                            let (adjusted_threshold, ltv, before_value, _) = shrine
-                                                .get_trove_info(target_trove);
-
                                             purger_utils::assert_trove_is_absorbable(
-                                                shrine, purger, target_trove, ltv
+                                                shrine,
+                                                purger,
+                                                target_trove,
+                                                target_trove_updated_start_health.ltv
                                             );
 
                                             let (
@@ -2841,7 +2934,9 @@ mod test_purger {
                                                 purger
                                                 .preview_absorb(target_trove);
                                             assert(
-                                                max_close_amt < before_debt, 'close amount == debt'
+                                                max_close_amt < target_trove_updated_start_health
+                                                    .debt,
+                                                'close amount == debt'
                                             );
 
                                             common::drop_all_events(purger.contract_address);
@@ -2853,21 +2948,25 @@ mod test_purger {
                                                 .absorb(target_trove);
 
                                             // Check that LTV is close to safety margin
-                                            let (_, after_ltv, _, after_debt) = shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_after_health: Health = shrine
+                                                .get_trove_health(target_trove);
                                             assert(
-                                                after_debt == before_debt - max_close_amt,
+                                                target_trove_after_health
+                                                    .debt == target_trove_updated_start_health
+                                                    .debt
+                                                    - max_close_amt,
                                                 'wrong debt after liquidation'
                                             );
 
                                             purger_utils::assert_ltv_at_safety_margin(
-                                                adjusted_threshold, after_ltv
+                                                target_trove_updated_start_health.threshold,
+                                                target_trove_after_health.ltv
                                             );
 
                                             let (expected_freed_pct, expected_freed_amts) =
                                                 purger_utils::get_expected_liquidation_assets(
                                                 purger_utils::target_trove_yang_asset_amts(),
-                                                before_value,
+                                                target_trove_updated_start_health.value,
                                                 max_close_amt,
                                                 penalty,
                                                 Option::Some(expected_compensation_value)
@@ -3012,12 +3111,14 @@ mod test_purger {
                                             // Accrue some interest
                                             common::advance_intervals(500);
 
-                                            let (start_threshold, _, start_value, before_debt) =
-                                                shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
 
                                             // Fund the absorber with twice the target trove's debt
-                                            let absorber_start_yin: Wad = (before_debt.val * 2)
+                                            let absorber_start_yin: Wad = (target_trove_start_health
+                                                .debt
+                                                .val
+                                                * 2)
                                                 .into();
                                             let other_trove_owner: ContractAddress =
                                                 absorber_utils::provider_1();
@@ -3035,7 +3136,8 @@ mod test_purger {
                                                 shrine
                                                     .get_yin(
                                                         absorber.contract_address
-                                                    ) > before_debt,
+                                                    ) > target_trove_start_health
+                                                    .debt,
                                                 'not full absorption'
                                             );
 
@@ -3045,21 +3147,27 @@ mod test_purger {
                                                 mock_pragma,
                                                 yangs,
                                                 yang_pair_ids,
-                                                start_value,
-                                                before_debt,
+                                                target_trove_start_health.value,
+                                                target_trove_start_health.debt,
                                                 *target_ltv
                                             );
+
+                                            let mut target_trove_updated_start_health: Health =
+                                                shrine
+                                                .get_trove_health(target_trove);
 
                                             if *is_recovery_mode {
                                                 purger_utils::trigger_recovery_mode(
                                                     shrine, abbot, other_trove, other_trove_owner
                                                 );
 
-                                                let (adjusted_threshold, _, _, _) = shrine
-                                                    .get_trove_info(target_trove);
+                                                target_trove_updated_start_health = shrine
+                                                    .get_trove_health(target_trove);
 
                                                 assert(
-                                                    adjusted_threshold < start_threshold
+                                                    target_trove_updated_start_health
+                                                        .threshold < target_trove_start_health
+                                                        .threshold
                                                         - purger_utils::RM_ERROR_MARGIN.into(),
                                                     'not recovery mode'
                                                 );
@@ -3069,20 +3177,19 @@ mod test_purger {
                                                 // deviation in the threshold. Therefore, we treat the new threshold 
                                                 // as equal to the previous threshold if it is within 0.1% 
                                                 // (i.e. recovery mode is not activated)
-                                                let (adjusted_threshold, _, _, _) = shrine
-                                                    .get_trove_info(target_trove);
                                                 common::assert_equalish(
-                                                    adjusted_threshold,
-                                                    start_threshold,
+                                                    target_trove_updated_start_health.threshold,
+                                                    target_trove_start_health.threshold,
                                                     purger_utils::RM_ERROR_MARGIN.into(),
                                                     'in recovery mode'
                                                 );
                                             }
 
-                                            let (_, ltv, before_value, _) = shrine
-                                                .get_trove_info(target_trove);
                                             purger_utils::assert_trove_is_absorbable(
-                                                shrine, purger, target_trove, ltv
+                                                shrine,
+                                                purger,
+                                                target_trove,
+                                                target_trove_updated_start_health.ltv
                                             );
 
                                             let (
@@ -3091,7 +3198,9 @@ mod test_purger {
                                                 purger
                                                 .preview_absorb(target_trove);
                                             assert(
-                                                max_close_amt == before_debt, 'close amount != debt'
+                                                max_close_amt == target_trove_updated_start_health
+                                                    .debt,
+                                                'close amount != debt'
                                             );
                                             if *target_ltv >= ninety_nine_pct {
                                                 assert(penalty.is_zero(), 'wrong penalty');
@@ -3113,17 +3222,19 @@ mod test_purger {
                                                 .absorb(target_trove);
 
                                             // Check that LTV is close to safety margin
-                                            let (_, after_ltv, after_value, after_debt) = shrine
-                                                .get_trove_info(target_trove);
+                                            let target_trove_after_health: Health = shrine
+                                                .get_trove_health(target_trove);
                                             assert(
-                                                after_ltv.is_zero(), 'wrong debt after liquidation'
+                                                target_trove_after_health.ltv.is_zero(),
+                                                'wrong LTV after liquidation'
                                             );
                                             assert(
-                                                after_value.is_zero(),
+                                                target_trove_after_health.value.is_zero(),
+                                                'wrong value after liquidation'
+                                            );
+                                            assert(
+                                                target_trove_after_health.debt.is_zero(),
                                                 'wrong debt after liquidation'
-                                            );
-                                            assert(
-                                                after_debt.is_zero(), 'wrong debt after liquidation'
                                             );
 
                                             let target_trove_yang_asset_amts: Span<u128> =
@@ -3131,7 +3242,7 @@ mod test_purger {
                                             let (_, expected_freed_asset_amts) =
                                                 purger_utils::get_expected_liquidation_assets(
                                                 target_trove_yang_asset_amts,
-                                                before_value,
+                                                target_trove_updated_start_health.value,
                                                 max_close_amt,
                                                 penalty,
                                                 Option::Some(expected_compensation_value)
@@ -3241,15 +3352,23 @@ mod test_purger {
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
         purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
 
-        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
-        let target_ltv: Ray = threshold + RAY_PERCENT.into();
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
+        let target_ltv: Ray = target_trove_health.threshold + RAY_PERCENT.into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv
+            shrine,
+            mock_pragma,
+            yangs,
+            yang_pair_ids,
+            target_trove_health.value,
+            target_trove_health.debt,
+            target_ltv
         );
 
-        let (_, new_ltv, value, _) = shrine.get_trove_info(target_trove);
+        let upated_target_trove_health: Health = shrine.get_trove_health(target_trove);
 
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, new_ltv);
+        purger_utils::assert_trove_is_liquidatable(
+            shrine, purger, target_trove, target_trove_health.ltv
+        );
         purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
 
         set_contract_address(purger_utils::random_user());
@@ -3288,10 +3407,10 @@ mod test_purger {
                     // Accrue some interest
                     common::advance_intervals(500);
 
-                    let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+                    let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
 
                     // Fund the absorber with twice the target trove's debt
-                    let absorber_start_yin: Wad = (before_debt.val * 2).into();
+                    let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
                     purger_utils::funded_absorber(
                         shrine, abbot, absorber, yangs, gates, absorber_start_yin
                     );
@@ -3302,13 +3421,16 @@ mod test_purger {
                         mock_pragma,
                         yangs,
                         yang_pair_ids,
-                        start_value,
-                        before_debt,
+                        target_trove_start_health.value,
+                        target_trove_start_health.debt,
                         *target_ltvs.pop_front().unwrap()
                     );
 
-                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-                    purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+                    let updated_target_trove_start_health: Health = shrine
+                        .get_trove_health(target_trove);
+                    purger_utils::assert_trove_is_liquidatable(
+                        shrine, purger, target_trove, updated_target_trove_start_health.ltv
+                    );
                     purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
                 Option::None => { break; },
@@ -3340,7 +3462,7 @@ mod test_purger {
         assert(shrine.is_healthy(target_trove), 'should still be healthy');
 
         // The trove has $6000 in debt and $9000 in collateral. BTC's value must decrease
-        let (threshold, ltv, value, _) = shrine.get_trove_info(target_trove);
+        let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
 
         let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
         let btc_threshold: Ray = shrine_utils::YANG2_THRESHOLD.into();
@@ -3353,8 +3475,8 @@ mod test_purger {
 
         // These represent the percentages of the total value of the trove each
         // of the yangs respectively make up
-        let eth_weight: Ray = wadray::rdiv_ww(eth_value, value);
-        let btc_weight: Ray = wadray::rdiv_ww(btc_value, value);
+        let eth_weight: Ray = wadray::rdiv_ww(eth_value, target_trove_start_health.value);
+        let btc_weight: Ray = wadray::rdiv_ww(btc_value, target_trove_start_health.value);
 
         // We need to decrease BTC's threshold until the trove threshold equals `ltv`
         // we derive the decrease factor from the following equation:
@@ -3366,7 +3488,8 @@ mod test_purger {
         // eth_weight * eth_threshold + btc_weight * btc_threshold * decrease_factor = ltv
         // btc_weight * btc_threshold * decrease_factor = ltv - eth_weight * eth_threshold
         // decrease_factor = (ltv - eth_weight * eth_threshold) / (btc_weight * btc_threshold)
-        let btc_threshold_decrease_factor: Ray = (ltv - eth_weight * eth_threshold)
+        let btc_threshold_decrease_factor: Ray = (target_trove_start_health.ltv
+            - eth_weight * eth_threshold)
             / (btc_weight * btc_threshold);
         let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
             - wadray::scale_u128_by_ray(
@@ -3378,20 +3501,21 @@ mod test_purger {
         // Adding one to offset any precision loss
         let new_timestamp: u64 = current_timestamp + ts_diff + 1;
         set_block_timestamp(new_timestamp);
-        let (threshold, _, _, _) = shrine.get_trove_info(target_trove);
 
         assert(!shrine.is_healthy(target_trove), 'should be unhealthy');
 
         // Liquidate the trove
         let searcher = purger_utils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(target_trove, trove_debt, searcher);
+        purger.liquidate(target_trove, target_trove_start_health.debt, searcher);
 
         // Sanity checks
-        let (threshold_after_liquidation, ltv_after_liquidation, _, debt_after_liquidation) = shrine
-            .get_trove_info(target_trove);
+        let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
 
-        assert(debt_after_liquidation < trove_debt, 'trove not correctly liquidated');
+        assert(
+            target_trove_after_health.debt < target_trove_start_health.debt,
+            'trove not correctly liquidated'
+        );
 
         assert(
             IERC20Dispatcher { contract_address: shrine.contract_address }
@@ -3402,7 +3526,7 @@ mod test_purger {
         );
 
         purger_utils::assert_ltv_at_safety_margin(
-            threshold_after_liquidation, ltv_after_liquidation
+            target_trove_after_health.threshold, target_trove_after_health.ltv
         );
     }
 
@@ -3580,17 +3704,13 @@ mod test_purger {
                                                         }
 
                                                         // Sanity checks
-                                                        let (
-                                                            threshold_after_liquidation,
-                                                            ltv_after_liquidation,
-                                                            _,
-                                                            debt_after_liquidation
-                                                        ) =
+                                                        let target_trove_after_health: Health =
                                                             shrine
-                                                            .get_trove_info(target_trove);
+                                                            .get_trove_health(target_trove);
 
                                                         assert(
-                                                            debt_after_liquidation < *trove_debt,
+                                                            target_trove_after_health
+                                                                .debt < *trove_debt,
                                                             'trove not correctly liquidated'
                                                         );
 
@@ -3872,19 +3992,21 @@ mod test_purger {
                                                             shrine, yangs, *threshold
                                                         );
 
-                                                        let (adjusted_threshold, ltv, _, _) = shrine
-                                                            .get_trove_info(target_trove);
+                                                        let target_trove_start_health: Health =
+                                                            shrine
+                                                            .get_trove_health(target_trove);
                                                         if *is_recovery_mode
                                                             && (*threshold).is_non_zero() {
                                                             assert(
-                                                                adjusted_threshold < *threshold
+                                                                target_trove_start_health
+                                                                    .threshold < *threshold
                                                                     - purger_utils::RM_ERROR_MARGIN
                                                                         .into(),
                                                                 'not recovery mode'
                                                             );
                                                         } else {
                                                             common::assert_equalish(
-                                                                adjusted_threshold,
+                                                                target_trove_start_health.threshold,
                                                                 *threshold,
                                                                 purger_utils::RM_ERROR_MARGIN
                                                                     .into(),
@@ -3937,7 +4059,7 @@ mod test_purger {
                                                             wadray::rdiv_ww(
                                                             purger_contract::COMPENSATION_CAP
                                                                 .into(),
-                                                            trove_value
+                                                            target_trove_start_health.value
                                                         );
 
                                                         let expected_eth_comp: u128 =
