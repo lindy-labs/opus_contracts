@@ -1,6 +1,7 @@
 #[starknet::contract]
 mod purger {
     use cmp::min;
+    use core::zeroable::Zeroable;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -177,17 +178,24 @@ mod purger {
         //    trove is absorbable or not.
         // 2. the maximum amount of debt that can be absorbed for the trove (Wad)
         // 3. the amount of compensation the caller will receive (Wad)
-        fn preview_absorb(self: @ContractState, trove_id: u64) -> (Ray, Wad, Wad) {
+        fn preview_absorb(self: @ContractState, trove_id: u64) -> Option<(Ray, Wad, Wad)> {
             let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
-            let (penalty, max_absorption_amt, _, compensation, _, _) = self
-                .preview_absorb_internal(trove_health);
-            (penalty, max_absorption_amt, compensation)
+
+            match self.preview_absorb_internal(trove_health) {
+                Option::Some((
+                    penalty, max_absorption_amt, _, compensation, _, _,
+                )) => { Option::Some((penalty, max_absorption_amt, compensation)) },
+                Option::None => Option::None,
+            }
         }
 
         fn is_absorbable(self: @ContractState, trove_id: u64) -> bool {
             let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
-            let (_, max_absorption_amt, _, _, _, _) = self.preview_absorb_internal(trove_health);
-            max_absorption_amt.is_non_zero()
+
+            match self.preview_absorb_internal(trove_health) {
+                Option::Some((_, _, _, _, _, _,)) => true,
+                Option::None => false,
+            }
         }
 
         fn get_penalty_scalar(self: @ContractState) -> Ray {
@@ -277,8 +285,8 @@ mod purger {
                 value_after_compensation
             ) =
                 self
-                .preview_absorb_internal(trove_health);
-            assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
+                .preview_absorb_internal(trove_health)
+                .expect('PU: Not absorbable');
 
             let caller: ContractAddress = get_caller_address();
             let absorber: IAbsorberDispatcher = self.absorber.read();
@@ -508,10 +516,11 @@ mod purger {
         // 6. value after compensation (unchanged if trove is not absorbable)
         fn preview_absorb_internal(
             self: @ContractState, trove_health: Health
-        ) -> (Ray, Wad, Ray, Wad, Ray, Wad) {
+        ) -> Option<(Ray, Wad, Ray, Wad, Ray, Wad)> {
             let (compensation_pct, compensation) = get_compensation(trove_health.value);
             let ltv_after_compensation: Ray = trove_health.ltv
                 / (RAY_ONE.into() - compensation_pct);
+
             match self
                 .get_absorption_penalty_internal(
                     trove_health.threshold, trove_health.ltv, ltv_after_compensation
@@ -525,23 +534,23 @@ mod purger {
                     let max_absorption_amt: Wad = get_max_close_amount_internal(
                         trove_health.threshold, value_after_compensation, trove_health.debt, penalty
                     );
-                    (
-                        penalty,
-                        max_absorption_amt,
-                        compensation_pct,
-                        compensation,
-                        ltv_after_compensation,
-                        value_after_compensation
-                    )
+
+                    if max_absorption_amt.is_non_zero() {
+                        Option::Some(
+                            (
+                                penalty,
+                                max_absorption_amt,
+                                compensation_pct,
+                                compensation,
+                                ltv_after_compensation,
+                                value_after_compensation
+                            )
+                        )
+                    } else {
+                        Option::None
+                    }
                 },
-                Option::None => (
-                    RayZeroable::zero(),
-                    WadZeroable::zero(),
-                    RayZeroable::zero(),
-                    WadZeroable::zero(),
-                    trove_health.ltv,
-                    trove_health.value
-                ),
+                Option::None => Option::None,
             }
         }
     }

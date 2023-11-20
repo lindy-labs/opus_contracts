@@ -106,7 +106,7 @@ mod test_purger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #1');
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
         let expected_penalty: Ray = 41000000000000000000000000_u128.into(); // 4.1%
         let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #1');
@@ -124,7 +124,7 @@ mod test_purger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #2');
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
         let expected_penalty: Ray = 10700000000000000000000000_u128.into(); // 1.07%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #2');
 
@@ -141,7 +141,7 @@ mod test_purger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #3');
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
         let expected_penalty: Ray = 54300000000000000000000000_u128.into(); // 5.43%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #3');
 
@@ -200,7 +200,7 @@ mod test_purger {
             target_trove_health.ltv, target_ltv, error_margin, 'LTV sanity check'
         );
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
         let expected_penalty: Ray = RayZeroable::zero();
         assert(penalty.is_zero(), 'should not be absorbable #1');
 
@@ -209,7 +209,7 @@ mod test_purger {
         let penalty_scalar: Ray = purger_contract::MAX_PENALTY_SCALAR.into();
         purger.set_penalty_scalar(penalty_scalar);
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
         assert(penalty.is_zero(), 'should not be absorbable #2');
     }
 
@@ -1148,7 +1148,8 @@ mod test_purger {
                                 );
 
                                 let (penalty, max_close_amt, _) = purger
-                                    .preview_absorb(target_trove);
+                                    .preview_absorb(target_trove)
+                                    .expect('Should be absorbable');
 
                                 common::assert_equalish(
                                     penalty,
@@ -1229,7 +1230,8 @@ mod test_purger {
         );
 
         let (penalty, max_close_amt, expected_compensation_value) = purger
-            .preview_absorb(target_trove);
+            .preview_absorb(target_trove)
+            .expect('Should be absorbable');
         let caller: ContractAddress = purger_utils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -1504,7 +1506,8 @@ mod test_purger {
                                                         expected_compensation_value
                                                     ) =
                                                         purger
-                                                        .preview_absorb(target_trove);
+                                                        .preview_absorb(target_trove)
+                                                        .expect('Should be absorbable');
                                                     let close_amt: Wad = *absorber_start_yin;
 
                                                     // Sanity check
@@ -1904,7 +1907,8 @@ mod test_purger {
                                                                 expected_compensation_value
                                                             ) =
                                                                 purger
-                                                                .preview_absorb(target_trove);
+                                                                .preview_absorb(target_trove)
+                                                                .expect('Should be absorbable');
 
                                                             // sanity check
                                                             assert(
@@ -2012,7 +2016,8 @@ mod test_purger {
                                                                 expected_compensation_value
                                                             ) =
                                                                 purger
-                                                                .preview_absorb(target_trove);
+                                                                .preview_absorb(target_trove)
+                                                                .expect('Should be absorbable');
 
                                                             // sanity check
                                                             assert(
@@ -2614,7 +2619,8 @@ mod test_purger {
                                                         );
                                                         let (_, _, expected_compensation_value) =
                                                             purger
-                                                            .preview_absorb(target_trove);
+                                                            .preview_absorb(target_trove)
+                                                            .expect('Should be absorbable');
 
                                                         common::drop_all_events(
                                                             purger.contract_address
@@ -2939,7 +2945,8 @@ mod test_purger {
                                                 penalty, max_close_amt, expected_compensation_value
                                             ) =
                                                 purger
-                                                .preview_absorb(target_trove);
+                                                .preview_absorb(target_trove)
+                                                .expect('Should be absorbable');
                                             assert(
                                                 max_close_amt < target_trove_updated_start_health
                                                     .debt,
@@ -3203,7 +3210,8 @@ mod test_purger {
                                                 penalty, max_close_amt, expected_compensation_value
                                             ) =
                                                 purger
-                                                .preview_absorb(target_trove);
+                                                .preview_absorb(target_trove)
+                                                .expect('Should be absorbable');
                                             assert(
                                                 max_close_amt == target_trove_updated_start_health
                                                     .debt,
@@ -4027,7 +4035,8 @@ mod test_purger {
                                                             expected_compensation_value
                                                         ) =
                                                             purger
-                                                            .preview_absorb(target_trove);
+                                                            .preview_absorb(target_trove)
+                                                            .expect('Should be absorbable');
 
                                                         set_contract_address(searcher);
 
