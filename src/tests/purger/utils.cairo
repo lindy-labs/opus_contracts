@@ -5,6 +5,7 @@ mod purger_utils {
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
+    use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -20,7 +21,7 @@ mod purger_utils {
     };
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{
@@ -553,14 +554,13 @@ mod purger_utils {
         trove: u64,
         trove_owner: ContractAddress,
     ) {
-        let (rm_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
-        let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
-
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold
+            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
         // Add 1% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
             (RAY_ONE + RAY_PERCENT).into(),
-            (wadray::rmul_rw(rm_threshold, shrine_value)
-                - wadray::rmul_rw(shrine_ltv, shrine_value))
+            (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
         );
 
         // Sanity check that we are able to mint the amount of debt to trigger
