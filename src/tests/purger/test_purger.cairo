@@ -1,5 +1,6 @@
 mod test_purger {
     use cmp::{max, min};
+    use core::option::OptionTrait;
     use debug::PrintTrait;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
@@ -429,7 +430,8 @@ mod test_purger {
                                 }
 
                                 let (penalty, max_close_amt) = purger
-                                    .preview_liquidate(target_trove);
+                                    .preview_liquidate(target_trove)
+                                    .expect('Should be liquidatable');
 
                                 let expected_penalty = if (*is_recovery_mode) {
                                     *expected_rm_penalty.pop_front().unwrap()
@@ -501,7 +503,9 @@ mod test_purger {
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
 
-        let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
+        let (penalty, max_close_amt) = purger
+            .preview_liquidate(target_trove)
+            .expect('Should be liquidatable');
         let searcher: ContractAddress = purger_utils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -616,7 +620,9 @@ mod test_purger {
         // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
-        let (_, max_close_amt) = purger.preview_liquidate(target_trove);
+        let (_, max_close_amt) = purger
+            .preview_liquidate(target_trove)
+            .expect('Should be liquidatable');
 
         let searcher: ContractAddress = purger_utils::searcher();
         set_contract_address(searcher);
@@ -796,7 +802,8 @@ mod test_purger {
                                                 .get_trove_info(target_trove);
 
                                             let (penalty, max_close_amt) = purger
-                                                .preview_liquidate(target_trove);
+                                                .preview_liquidate(target_trove)
+                                                .expect('Should be liquidatable');
 
                                             let searcher: ContractAddress =
                                                 purger_utils::searcher();

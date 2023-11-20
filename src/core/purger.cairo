@@ -164,7 +164,7 @@ mod purger {
         //    Note that the penalty should not be used as a proxy to determine if a
         //    trove is liquidatable or not.
         // 2. the maximum amount of debt that can be liquidated for the trove (Wad)
-        fn preview_liquidate(self: @ContractState, trove_id: u64) -> (Ray, Wad) {
+        fn preview_liquidate(self: @ContractState, trove_id: u64) -> Option<(Ray, Wad)> {
             let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
             preview_liquidate_internal(threshold, ltv, value, debt)
         }
@@ -226,9 +226,8 @@ mod purger {
 
             let (trove_penalty, max_close_amt) = preview_liquidate_internal(
                 trove_threshold, trove_ltv, trove_value, trove_debt
-            );
-
-            assert(max_close_amt.is_non_zero(), 'PU: Not liquidatable');
+            )
+                .expect('PU: not liquidatable');
 
             // Cap the liquidation amount to the trove's maximum close amount
             let purge_amt: Wad = min(amt, max_close_amt);
@@ -603,12 +602,16 @@ mod purger {
     // Helper function to return the following for a trove:
     // 1. liquidation penalty (zero if trove is not liquidatable)
     // 2. maximum liquidation amount (zero if trove is not liquidatable)
-    fn preview_liquidate_internal(threshold: Ray, ltv: Ray, value: Wad, debt: Wad) -> (Ray, Wad) {
+    fn preview_liquidate_internal(
+        threshold: Ray, ltv: Ray, value: Wad, debt: Wad
+    ) -> Option<(Ray, Wad)> {
         match get_liquidation_penalty_internal(threshold, ltv) {
             Option::Some(penalty) => {
-                (penalty, get_max_close_amount_internal(threshold, value, debt, penalty))
+                Option::Some(
+                    (penalty, get_max_close_amount_internal(threshold, value, debt, penalty))
+                )
             },
-            Option::None => (RayZeroable::zero(), WadZeroable::zero()),
+            Option::None => Option::None,
         }
     }
 

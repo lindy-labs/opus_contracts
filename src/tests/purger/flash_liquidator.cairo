@@ -73,7 +73,9 @@ mod flash_liquidator {
             };
 
             let purger: IPurgerDispatcher = self.purger.read();
-            let (_, max_close_amt) = purger.preview_liquidate(trove_id);
+            let (_, max_close_amt) = purger
+                .preview_liquidate(trove_id)
+                .expect('FL: not liquidatable');
             let mut call_data: Array<felt252> = array![trove_id.into()];
 
             self
