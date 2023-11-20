@@ -200,17 +200,14 @@ mod test_purger {
             target_trove_health.ltv, target_ltv, error_margin, 'LTV sanity check'
         );
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
-        let expected_penalty: Ray = RayZeroable::zero();
-        assert(penalty.is_zero(), 'should not be absorbable #1');
+        assert(purger.preview_absorb(target_trove).is_none(), 'should not be absorbable #1');
 
         // Set scalar to 1.06 and check the trove is still not absorbable.
         set_contract_address(purger_utils::admin());
         let penalty_scalar: Ray = purger_contract::MAX_PENALTY_SCALAR.into();
         purger.set_penalty_scalar(penalty_scalar);
 
-        let (penalty, _, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
-        assert(penalty.is_zero(), 'should not be absorbable #2');
+        assert(purger.preview_absorb(target_trove).is_none(), 'should not be absorbable #2');
     }
 
     #[test]
