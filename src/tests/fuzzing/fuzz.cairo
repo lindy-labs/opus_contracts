@@ -57,6 +57,9 @@ mod fuzz {
         let user1 = common::trove1_owner_addr();
         let user2 = common::trove2_owner_addr();
 
+        common::fund_user(user1, yangs, purger_utils::target_trove_yang_asset_amts());
+        common::fund_user(user2, yangs, purger_utils::target_trove_yang_asset_amts());
+
         assert_invariants(shrine, abbot, yangs);
     }
 

@@ -36,7 +36,6 @@ impl<'a> Func<'a> {
         // Randomly select a caller from `canonical_callers`
         let mut rng = rand::thread_rng();
         self.canonical_callers.choose(&mut rng).unwrap()
-
     }
 }
 

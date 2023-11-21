@@ -4,39 +4,40 @@ mod fuzz_generator;
 
 use std::rc::Rc;
 
-use arg::{BoolArg, Domain, RayArg, TupleArg, WadArg};
+use arg::{
+    AssetBalanceArg, BoolArg, Domain, RayArg, SpanArg, TupleArg, U128Arg, WadArg, RAY_ONE, WAD_ONE,
+};
 use function::Func;
 use fuzz_generator::FuzzGenerator;
 
 fn main() {
-    let wad = Rc::new(WadArg::new(Domain::Range(0..100)));
-    let ray = Rc::new(RayArg::new(Domain::Range(0..100)));
-    let some_bool = Rc::new(BoolArg::new(None));
-
-    let tuple = Rc::new(TupleArg::new(vec![
-        some_bool.clone(),
-        ray.clone(),
-        wad.clone(),
-    ]));
-
-    let func = Func::new(
-        "shrine.deposit",
-        vec![wad.clone(), ray.clone(), some_bool.clone(), tuple.clone()],
-        vec!["account1"],
-    );
-
-    let func2 = Func::new(
-        "shrine.withdraw",
-        vec![tuple],
-        vec!["account2", "account1"],
-    );
+    let funcs = vec![
+        // Abbot.open_trove
+        Func::new(
+            "abbot.open_trove",
+            vec![Rc::new(SpanArg::new(
+                2,
+                AssetBalanceArg::new(
+                    vec!["*yangs[0]", "*yangs[1]"],
+                    Domain::Range(0..2 * WAD_ONE),
+                ),
+            ))],
+            vec!["user1", "user2"],
+        ),
+        // Abbot.close_trove
+        Func::new(
+            "abbot.close_trove",
+            vec![Rc::new(U128Arg::new(Domain::Range(0..10)))],
+            vec!["user1", "user2"],
+        ),
+    ];
 
     let fuzzerator = FuzzGenerator::new(
-        "assert_invariants",
+        "assert_invariants(shrine, abbot, yangs);",
         "set_block_timestamp",
         "set_caller",
         3600,
-        vec![func, func2],
+        funcs,
     );
 
     println!("{}", fuzzerator.generate_sequence(10));

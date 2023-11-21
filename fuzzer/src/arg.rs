@@ -2,6 +2,9 @@ use std::rc::Rc;
 
 use rand::{seq::SliceRandom, Rng};
 
+pub const RAY_ONE: u128 = 10_u128.pow(27);
+pub const WAD_ONE: u128 = 10_u128.pow(18);
+
 pub enum Domain {
     Range(std::ops::Range<u128>),
     Set(Vec<u128>),
@@ -115,6 +118,54 @@ impl Arg for TupleArg {
             result.push_str(&arg.generate());
         }
         result.push_str(")");
+        result
+    }
+}
+
+pub struct AssetBalanceArg<'a> {
+    address_domain: Vec<&'a str>,
+    amount_domain: Domain,
+}
+
+impl AssetBalanceArg<'_> {
+    pub fn new<'a>(address_domain: Vec<&'a str>, amount_domain: Domain) -> AssetBalanceArg<'a> {
+        AssetBalanceArg {
+            address_domain,
+            amount_domain,
+        }
+    }
+}
+
+impl<'a> Arg for AssetBalanceArg<'a> {
+    fn generate(&self) -> String {
+        let mut rng = rand::thread_rng();
+        let address = self.address_domain.choose(&mut rng).unwrap();
+        let amount = generate_u128(&self.amount_domain);
+        format!("AssetBalance{{address: {}, amount: {}}}", address, amount)
+    }
+}
+
+pub struct SpanArg<T: Arg> {
+    len: usize,
+    arg: T,
+}
+
+impl<T: Arg> SpanArg<T> {
+    pub fn new(len: usize, arg: T) -> SpanArg<T> {
+        SpanArg { len, arg }
+    }
+}
+
+impl<T: Arg> Arg for SpanArg<T> {
+    fn generate(&self) -> String {
+        let mut result = String::from("array![");
+        for i in 0..self.len {
+            if i > 0 {
+                result.push_str(", ");
+            }
+            result.push_str(&self.arg.generate());
+        }
+        result.push_str("].span()");
         result
     }
 }
