@@ -7,7 +7,7 @@ mod test_shrine {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Trove, YangSuspensionStatus};
+    use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable,
@@ -136,15 +136,11 @@ mod test_shrine {
         };
 
         // Check shrine threshold and value
-        let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold.is_zero(), 'wrong shrine threshold');
-        assert(value.is_zero(), 'wrong shrine value');
-
-        // Check that initial recovery mode values are correct
-        let (recovery_mode_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
-
-        assert(recovery_mode_threshold.is_zero(), 'wrong recovery mode threshold');
-        assert(shrine_ltv == BoundedRay::max(), 'wrong shrine LTV');
+        let shrine_health: Health = shrine.get_shrine_health();
+        // recovery mode threshold will be zero if threshold is zero
+        assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
+        assert(shrine_health.value.is_zero(), 'wrong shrine value');
+        assert(shrine_health.ltv == BoundedRay::max(), 'wrong shrine LTV');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -790,8 +786,8 @@ mod test_shrine {
         assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
         assert(shrine.get_deposit(yang1_addr, trove_id) == remaining_amt, 'incorrect yang deposit');
 
-        let (_, ltv, _, _) = shrine.get_trove_info(trove_id);
-        assert(ltv.is_zero(), 'LTV should be zero');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.ltv.is_zero(), 'LTV should be zero');
 
         assert(shrine.is_healthy(trove_id), 'trove should be healthy');
 
@@ -856,8 +852,8 @@ mod test_shrine {
         let expected_ltv: Ray = wadray::rdiv_ww(
             shrine_utils::TROVE1_FORGE_AMT.into(), (yang1_price * remaining_amt)
         );
-        let (_, ltv, _, _) = shrine.get_trove_info(common::TROVE_1);
-        assert(ltv == expected_ltv, 'incorrect LTV');
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
+        assert(trove_health.ltv == expected_ltv, 'incorrect LTV');
     }
 
     #[test]
@@ -932,16 +928,16 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        let (threshold, _, trove_value, debt) = shrine.get_trove_info(common::TROVE_1);
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         let (yang1_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
 
         // Value of trove needed for existing forged amount to be safe
         let unsafe_trove_value: Wad = wadray::rdiv_wr(
-            shrine_utils::TROVE1_FORGE_AMT.into(), threshold
+            shrine_utils::TROVE1_FORGE_AMT.into(), trove_health.threshold
         );
         // Amount of yang to be withdrawn to decrease the trove's value to unsafe
         // `WAD_SCALE` is added to account for loss of precision from fixed point division
-        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price
+        let unsafe_withdraw_yang_amt: Wad = (trove_health.value - unsafe_trove_value) / yang1_price
             + WAD_SCALE.into();
         set_contract_address(shrine_utils::admin());
         shrine.withdraw(shrine_utils::yang1_addr(), common::TROVE_1, unsafe_withdraw_yang_amt);
@@ -966,15 +962,16 @@ mod test_shrine {
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        assert(shrine.get_total_debt() == forge_amt, 'incorrect system debt');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == forge_amt, 'incorrect system debt');
 
-        let (_, ltv, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt == forge_amt, 'incorrect trove debt');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.debt == forge_amt, 'incorrect trove debt');
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_value: Wad = yang1_price * shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
-        assert(ltv == expected_ltv, 'incorrect ltv');
+        assert(trove_health.ltv == expected_ltv, 'incorrect ltv');
 
         assert(shrine.is_healthy(trove_id), 'trove should be healthy');
 
@@ -984,7 +981,7 @@ mod test_shrine {
         let yin = shrine_utils::yin(shrine.contract_address);
         let trove1_owner_addr: ContractAddress = common::trove1_owner_addr();
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
-        assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
+        assert(yin.total_supply() == forge_amt.into(), 'incorrect ERC-20 balance');
 
         shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
 
@@ -1134,9 +1131,9 @@ mod test_shrine {
 
         shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
-        let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
-        let fee = debt - forge_amt;
-        assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
+        let fee = trove_health.debt - forge_amt;
+        assert(trove_health.debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1150,9 +1147,12 @@ mod test_shrine {
         let fee_pct: Wad = shrine.get_forge_fee_pct();
         shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
-        let (_, _, _, new_debt) = shrine.get_trove_info(common::TROVE_1);
-        let fee = new_debt - debt - forge_amt;
-        assert(new_debt - debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2');
+        let new_trove_health: Health = shrine.get_trove_health(common::TROVE_1);
+        let fee = new_trove_health.debt - trove_health.debt - forge_amt;
+        assert(
+            new_trove_health.debt - trove_health.debt - forge_amt == fee_pct * forge_amt,
+            'wrong forge fee charged #2'
+        );
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1210,8 +1210,9 @@ mod test_shrine {
         let trove_id: u64 = common::TROVE_1;
         let trove1_owner_addr = common::trove1_owner_addr();
 
-        let before_total_debt: Wad = shrine.get_total_debt();
-        let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
+        let shrine_health: Health = shrine.get_shrine_health();
+        let before_total_debt: Wad = shrine_health.debt;
+        let before_trove_health: Health = shrine.get_trove_health(trove_id);
         let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         let melt_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT / 3_u128).into();
@@ -1220,17 +1221,20 @@ mod test_shrine {
         set_contract_address(shrine_utils::admin());
         shrine.melt(trove1_owner_addr, trove_id, melt_amt);
 
-        assert(shrine.get_total_debt() == before_total_debt - melt_amt, 'incorrect total debt');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == before_total_debt - melt_amt, 'incorrect total debt');
 
-        let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == before_trove_debt - melt_amt, 'incorrect trove debt');
+        let after_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(
+            after_trove_health.debt == before_trove_health.debt - melt_amt, 'incorrect trove debt'
+        );
 
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         assert(after_yin_bal == before_yin_bal - melt_amt.into(), 'incorrect yin balance');
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
-        assert(after_ltv == expected_ltv, 'incorrect LTV');
+        assert(after_trove_health.ltv == expected_ltv, 'incorrect LTV');
 
         assert(shrine.is_healthy(trove_id), 'trove should be healthy');
 
@@ -1243,14 +1247,14 @@ mod test_shrine {
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
-                shrine_contract::DebtTotalUpdated { total: after_trove_debt }
+                shrine_contract::DebtTotalUpdated { total: after_trove_health.debt }
             ),
             shrine_contract::Event::TroveUpdated(
                 shrine_contract::TroveUpdated {
                     trove_id,
                     trove: Trove {
                         charge_from: shrine_utils::current_interval(),
-                        debt: after_trove_debt,
+                        debt: after_trove_health.debt,
                         last_rate_era: 1
                     },
                 }
@@ -1521,9 +1525,9 @@ mod test_shrine {
 
         shrine_utils::trove1_melt(shrine, melt_amt);
 
-        let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         let expected_debt: Wad = forge_amt - melt_amt;
-        assert(debt == expected_debt, 'wrong debt after melt');
+        assert(trove_health.debt == expected_debt, 'wrong debt after melt');
 
         assert(
             shrine.get_yin(trove1_owner) == forge_amt - melt_amt - transfer_amt, 'wrong balance'
@@ -1751,9 +1755,11 @@ mod test_shrine {
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
 
-        let unsafe_price: Wad = wadray::rdiv_wr(debt, shrine_utils::YANG1_THRESHOLD.into())
+        let unsafe_price: Wad = wadray::rdiv_wr(
+            trove_health.debt, shrine_utils::YANG1_THRESHOLD.into()
+        )
             / deposit_amt;
 
         set_contract_address(shrine_utils::admin());
@@ -1764,7 +1770,7 @@ mod test_shrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_trove_info() {
+    fn test_get_trove_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         let yang1_addr: ContractAddress = shrine_utils::yang1_addr();
@@ -1804,14 +1810,14 @@ mod test_shrine {
             shrine_utils::calculate_trove_threshold_and_value(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
-        let (threshold, _, value, _) = shrine.get_trove_info(common::TROVE_1);
-        assert(threshold == expected_threshold, 'wrong threshold');
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
+        assert(trove_health.threshold == expected_threshold, 'wrong threshold');
 
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
-        let (_, ltv, _, _) = shrine.get_trove_info(common::TROVE_1);
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
-        assert(ltv == expected_ltv, 'wrong LTV');
+        assert(trove_health.ltv == expected_ltv, 'wrong LTV');
     }
 
     #[test]
@@ -1819,11 +1825,11 @@ mod test_shrine {
     fn test_zero_value_trove() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
-        let (threshold, ltv, value, debt) = shrine.get_trove_info(common::TROVE_3);
-        assert(threshold.is_zero(), 'threshold should be 0');
-        assert(ltv.is_zero(), 'LTV should be 0');
-        assert(value.is_zero(), 'value should be 0');
-        assert(debt.is_zero(), 'debt should be 0');
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_3);
+        assert(trove_health.threshold.is_zero(), 'threshold should be 0');
+        assert(trove_health.ltv.is_zero(), 'LTV should be 0');
+        assert(trove_health.value.is_zero(), 'value should be 0');
+        assert(trove_health.debt.is_zero(), 'debt should be 0');
     }
 
     //
@@ -1832,7 +1838,7 @@ mod test_shrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_shrine_info() {
+    fn test_get_shrine_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
 
         let yang1_addr: ContractAddress = shrine_utils::yang1_addr();
@@ -1884,9 +1890,9 @@ mod test_shrine {
             shrine_utils::calculate_trove_threshold_and_value(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
-        let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold == expected_threshold, 'wrong threshold');
-        assert(value == expected_value, 'wrong value');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.threshold == expected_threshold, 'wrong threshold');
+        assert(shrine_health.value == expected_value, 'wrong value');
     }
 
     // Tests - Getter for forge fee
@@ -2285,7 +2291,9 @@ mod test_shrine {
         // Increasing the whale trove's LTV to just above the recovery mode threshold
         // Since it makes up the vast majority of collateral (and debt), the global
         // LTV will be almost equal to the whale trove's LTV
-        let (rm_threshold, _) = shrine.get_recovery_mode_threshold();
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold
+            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
         //  whale_trove_forge_amt / (whale_trove_deposit_value - x) = rm_threshold * 1.01
         //  whale_trove_forge_amt = rm_threshold * 1.01 * whale_trove_deposit_value - rm_threshold * 1.01 * x
@@ -2332,8 +2340,10 @@ mod test_shrine {
         );
         let trove1_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
-        let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
-        let shrine_ltv: Ray = wadray::rdiv_ww(shrine.get_total_debt(), shrine_value);
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold
+            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+        let shrine_ltv: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
 
         let total_collateral_value_to_withdraw = whale_trove_deposit_value
             - wadray::rdiv_wr(
@@ -2379,7 +2389,7 @@ mod test_shrine {
         assert(threshold < shrine_utils::YANG1_THRESHOLD.into(), 'recovery mode not active');
 
         // Getting the trove threshold as calculated by Shrine
-        let (trove_threshold, _, _, _) = shrine.get_trove_info(common::TROVE_1);
+        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
 
         // Getting the trove threshold as calculated by scaling each yang threshold individually
 
@@ -2396,6 +2406,6 @@ mod test_shrine {
             yang1_deposit_value + yang2_deposit_value
         );
 
-        assert(trove_threshold == alternative_threshold, 'invariant did not hold');
+        assert(trove_health.threshold == alternative_threshold, 'invariant did not hold');
     }
 }

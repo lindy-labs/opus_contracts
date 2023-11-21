@@ -3,7 +3,7 @@ mod test_shrine_compound {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::Trove;
+    use opus::types::{Health, Trove};
     use opus::utils::exp::exp;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
     use opus::utils::wadray;
@@ -36,7 +36,7 @@ mod test_shrine_compound {
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let yang_prices: Span<Wad> = shrine_utils::get_yang_prices(shrine, yangs);
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
 
         shrine_utils::advance_prices_and_set_multiplier(
             shrine, shrine_utils::FEED_LEN, yangs, yang_prices
@@ -56,16 +56,18 @@ mod test_shrine_compound {
             expected_avg_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
-        assert(estimated_debt == expected_debt, 'wrong compounded debt');
+        let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(estimated_trove_health.debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
         set_contract_address(shrine_utils::admin());
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -109,7 +111,7 @@ mod test_shrine_compound {
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let yang_prices: Span<Wad> = shrine_utils::get_yang_prices(shrine, yangs);
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
 
         let num_intervals_before_skip: u64 = 5;
         shrine_utils::advance_prices_and_set_multiplier(
@@ -158,15 +160,16 @@ mod test_shrine_compound {
             expected_avg_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
-        let (_, _, _, estimated_debt) = shrine.get_trove_info(trove_id);
-        assert(estimated_debt == expected_debt, 'wrong compounded debt');
+        let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(estimated_trove_health.debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
         set_contract_address(shrine_utils::admin());
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -227,8 +230,8 @@ mod test_shrine_compound {
         shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
 
         // sanity check that some interest has accrued
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt > forge_amt, '!(starting debt > forged)');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.debt > forge_amt, '!(starting debt > forged)');
 
         // Advance timestamp to `T+END`, assuming price is still not updated since `T+LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+END`.
@@ -250,14 +253,15 @@ mod test_shrine_compound {
             start_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(expected_debt == debt, 'wrong compounded debt');
+        let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(estimated_trove_health.debt == expected_debt, 'wrong compounded debt');
 
         shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -311,8 +315,8 @@ mod test_shrine_compound {
         shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
 
         // sanity check that some interest has accrued
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt > forge_amt, '!(starting debt > forged)');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.debt > forge_amt, '!(starting debt > forged)');
 
         // Advance timestamp to `T+END`, to mock lack of price updates since `T+START/LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+END`.
@@ -337,14 +341,15 @@ mod test_shrine_compound {
             start_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(expected_debt == debt, 'wrong compounded debt');
+        let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(expected_debt == estimated_trove_health.debt, 'wrong compounded debt');
 
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -383,7 +388,7 @@ mod test_shrine_compound {
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
         let yang1_addr = *yangs.at(0);
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
         let start_interval: u64 = shrine_utils::current_interval();
 
         // Advance one interval to avoid overwriting the last price
@@ -429,15 +434,16 @@ mod test_shrine_compound {
             expected_avg_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(expected_debt == debt, 'wrong compounded debt');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         set_contract_address(shrine_utils::admin());
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -496,7 +502,7 @@ mod test_shrine_compound {
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
 
         // Advance timestamp to `T+LAST_UPDATED_AFTER_START` and set the price
         let intervals_to_last_update_after_start: u64 = 5;
@@ -560,14 +566,15 @@ mod test_shrine_compound {
             expected_avg_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(expected_debt == debt, 'wrong compounded debt');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -625,7 +632,7 @@ mod test_shrine_compound {
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
 
         // Advance timestamp by given intervals to `T+END`, to mock missed updates.
         let intervals_from_start_to_end: u64 = 13;
@@ -666,15 +673,16 @@ mod test_shrine_compound {
             expected_avg_multiplier,
             start_interval,
             end_interval,
-            debt,
+            trove_health.debt,
         );
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(expected_debt == debt, 'wrong compounded debt');
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         set_contract_address(shrine_utils::admin());
         shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::DebtTotalUpdated(
@@ -921,7 +929,7 @@ mod test_shrine_compound {
             era_start_interval = era_end_interval;
         };
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        let trove_health: Health = shrine.get_trove_health(trove_id);
         let expected_debt: Wad = shrine_utils::compound(
             yang_base_rates_history_to_compound.span(),
             rate_update_intervals.span(),
@@ -933,11 +941,12 @@ mod test_shrine_compound {
             forge_amt,
         );
 
-        assert(debt == expected_debt, 'wrong compounded debt');
+        assert(trove_health.debt == expected_debt, 'wrong compounded debt');
 
         set_contract_address(shrine_utils::admin());
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.debt == expected_debt, 'debt not updated');
 
         expected_events
             .append(
