@@ -162,7 +162,7 @@ mod shrine_roles {
 
     #[inline(always)]
     fn flash_mint() -> u128 {
-        INJECT + EJECT
+        INJECT + EJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]

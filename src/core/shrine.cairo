@@ -118,7 +118,7 @@ mod shrine {
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued for troves
-        // This includes the `surplus_debt`.
+        // This includes any debt surplus already accounted for in the budget.
         total_troves_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
@@ -970,6 +970,12 @@ mod shrine {
             self.access_control.assert_has_role(shrine_roles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
+
+            let new_total_yin: Wad = self.total_yin.read() + amount;
+            let new_equilibrium: SignedWad = new_total_yin.into() + self.budget.read();
+            let ceiling: SignedWad = self.debt_ceiling.read().into();
+            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
+
             self.forge_helper(receiver, amount);
         }
 
