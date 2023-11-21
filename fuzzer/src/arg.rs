@@ -108,9 +108,11 @@ impl TupleArg {
 impl Arg for TupleArg {
     fn generate(&self) -> String {
         let mut result = String::from("(");
-        for arg in &self.args {
+        for (i, arg) in self.args.iter().enumerate() {
+            if i > 0 {
+                result.push_str(", ");
+            }
             result.push_str(&arg.generate());
-            result.push_str(", ");
         }
         result.push_str(")");
         result
