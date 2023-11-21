@@ -1,4 +1,7 @@
-use rand::{Rng, seq::SliceRandom};
+use std::rc::Rc;
+
+use rand::{seq::SliceRandom, Rng};
+
 pub enum Domain {
     Range(std::ops::Range<u128>),
     Set(Vec<u128>),
@@ -71,10 +74,45 @@ fn generate_u128(domain: &Domain) -> String {
     }
 }
 
-pub struct BoolArg {}
+pub struct BoolArg {
+    domain: Option<bool>,
+}
+
+impl BoolArg {
+    pub fn new(domain: Option<bool>) -> Self {
+        Self { domain }
+    }
+}
 
 impl Arg for BoolArg {
     fn generate(&self) -> String {
-        true.to_string()
+        self.domain
+            .unwrap_or_else(|| {
+                let mut rng = rand::thread_rng();
+                rng.gen_bool(0.5)
+            })
+            .to_string()
+    }
+}
+
+pub struct TupleArg {
+    args: Vec<Rc<dyn Arg>>,
+}
+
+impl TupleArg {
+    pub fn new(args: Vec<Rc<dyn Arg>>) -> Self {
+        Self { args }
+    }
+}
+
+impl Arg for TupleArg {
+    fn generate(&self) -> String {
+        let mut result = String::from("(");
+        for arg in &self.args {
+            result.push_str(&arg.generate());
+            result.push_str(", ");
+        }
+        result.push_str(")");
+        result
     }
 }

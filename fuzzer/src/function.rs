@@ -1,12 +1,13 @@
-use std::fmt;
 use crate::arg::Arg;
+use std::fmt;
+use std::rc::Rc;
 pub struct Func {
     name: String,
-    args: Vec<Box<dyn Arg>>,
+    args: Vec<Rc<dyn Arg>>,
 }
 
 impl Func {
-    pub fn new(name: &str, args: Vec<Box<dyn Arg>>) -> Self {
+    pub fn new(name: &str, args: Vec<Rc<dyn Arg>>) -> Self {
         Self {
             name: name.to_string(),
             args,
@@ -25,17 +26,4 @@ impl fmt::Display for Func {
         }
         write!(f, ");")
     }
-}
-
-#[macro_export]
-macro_rules! vec_args {
-    ($($type:expr),*) => {
-        {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push(Box::new($type) as Box<dyn Arg>);
-            )*
-            temp_vec
-        }
-    };
 }
