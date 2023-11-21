@@ -88,6 +88,9 @@ mod tests {
         mod test_flash_mint;
         mod utils;
     }
+    mod fuzzing {
+        mod fuzz;
+    }
     mod gate {
         mod test_gate;
         mod utils;

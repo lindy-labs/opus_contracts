@@ -486,7 +486,7 @@ mod test_purger {
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
         let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             searcher_start_yin
         );
