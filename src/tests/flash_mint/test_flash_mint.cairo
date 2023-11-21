@@ -69,6 +69,19 @@ mod test_flash_mint {
         flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
 
+        // check that flash loan still functions normally when yin supply is at debt ceiling
+        set_contract_address(shrine_utils::admin());
+        let debt_ceiling: Wad = shrine_utils::shrine(shrine).get_debt_ceiling();
+        let debt_to_ceiling: Wad = debt_ceiling - shrine_utils::shrine(shrine).get_total_yin();
+        shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
+
+        set_contract_address(flash_mint_caller);
+        let fourth_loan_amt: u256 = (debt_ceiling
+            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
+            .into();
+        flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
+
         let mut expected_events: Span<flash_mint_contract::Event> = array![
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
@@ -92,6 +105,14 @@ mod test_flash_mint {
                     receiver: borrower,
                     token: shrine,
                     amount: third_loan_amt
+                }
+            ),
+            flash_mint_contract::Event::FlashMint(
+                flash_mint_contract::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: fourth_loan_amt
                 }
             ),
         ]
@@ -122,6 +143,15 @@ mod test_flash_mint {
                     initiator: flash_mint_caller,
                     token: shrine,
                     amount: third_loan_amt,
+                    fee: 0,
+                    call_data: calldata,
+                }
+            ),
+            flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                flash_borrower_contract::FlashLoancall_dataReceived {
+                    initiator: flash_mint_caller,
+                    token: shrine,
+                    amount: fourth_loan_amt,
                     fee: 0,
                     call_data: calldata,
                 }
