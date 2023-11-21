@@ -852,11 +852,10 @@ mod shrine {
             let forge_fee = amount * forge_fee_pct;
             let debt_amount = amount + forge_fee;
 
-            let new_total_yin: Wad = self.total_yin.read() + amount;
-            let new_budget: SignedWad = self.budget.read() + forge_fee.into();
-            let new_equilibrium: SignedWad = new_total_yin.into() + new_budget;
-            let ceiling: SignedWad = self.debt_ceiling.read().into();
-            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
+            self
+                .assert_le_debt_ceiling(
+                    self.total_yin.read() + amount, self.budget.read() + forge_fee.into()
+                );
 
             let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
             self.total_troves_debt.write(new_total_troves_debt);
@@ -971,10 +970,7 @@ mod shrine {
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
 
-            let new_total_yin: Wad = self.total_yin.read() + amount;
-            let new_equilibrium: SignedWad = new_total_yin.into() + self.budget.read();
-            let ceiling: SignedWad = self.debt_ceiling.read().into();
-            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
+            self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read());
 
             self.forge_helper(receiver, amount);
         }
@@ -1150,6 +1146,12 @@ mod shrine {
 
         fn assert_healthy(self: @ContractState, trove_id: u64) {
             assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
+        }
+
+        fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
+            let new_total_debt: SignedWad = new_total_yin.into() + new_budget;
+            let ceiling: SignedWad = self.debt_ceiling.read().into();
+            assert(new_total_debt <= ceiling, 'SH: Debt ceiling reached');
         }
 
         //
@@ -1422,7 +1424,7 @@ mod shrine {
 
         // Adds the accumulated interest as debt to the trove
         fn charge(ref self: ContractState, trove_id: u64) {
-            // Do not charge accrued interest once Shrine is killed because total system debt
+            // Do not charge accrued interest once Shrine is killed because total troves' debt
             // and individual trove's debt are fixed at the time of shutdown.
             if !self.is_live.read() {
                 return;
@@ -1467,12 +1469,11 @@ mod shrine {
             self.troves.write(trove_id, updated_trove);
             self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
 
-            // Get new system debt
-            // This adds the interest charged on the trove's debt to the total debt.
-            // This should not include redistributed debt, as that is already included in the total.
             let charged: Wad = compounded_trove_debt - trove.debt;
 
-            // Emit only if there is a change in the trove's debt
+            // Add the interest charged on the trove's debt to the total troves' debt and 
+            // budget only if there is a change in the trove's debt. This should not include
+            // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
                 let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
                 self.total_troves_debt.write(new_total_troves_debt);

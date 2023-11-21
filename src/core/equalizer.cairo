@@ -10,7 +10,7 @@ mod equalizer {
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
-    use opus::utils::wadray_signed::{Signable, SignedWad};
+    use opus::utils::wadray_signed::{Signed, SignedWad};
     use opus::utils::wadray_signed;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
 

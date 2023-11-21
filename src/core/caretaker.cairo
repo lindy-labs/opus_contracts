@@ -57,10 +57,8 @@ mod caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
-        // Amount of yin backed by this Caretaker's assets after shutdown
-        backed_yin: Wad,
-        // Amount of yin already claimed via this Caretaker after shutdown
-        claimed_yin: Wad,
+        // Amount of yin remaining to be backed by this Caretaker's assets after shutdown
+        reclaimable_yin: Wad,
     }
 
     //
@@ -171,8 +169,7 @@ mod caretaker {
 
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
-            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
-            let remaining_reclaimable_yin: Wad = self.backed_yin.read() - self.claimed_yin.read();
+            let remaining_reclaimable_yin: Wad = self.reclaimable_yin.read();
             let capped_yin: Wad = min(yin, remaining_reclaimable_yin);
             let pct_to_reclaim: Ray = wadray::rdiv_ww(capped_yin, remaining_reclaimable_yin);
 
@@ -228,7 +225,7 @@ mod caretaker {
             // we would have minted any surplus budget via `Equalizer.equalize` in the preceding step.
             let shrine_health: Health = shrine.get_shrine_health();
             let backing_pct: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
-            self.backed_yin.write(shrine_health.debt);
+            self.reclaimable_yin.write(shrine_health.debt);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
@@ -352,6 +349,7 @@ mod caretaker {
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
             let (reclaimable_yin, reclaimable_assets) = self.preview_reclaim(yin);
+            self.reclaimable_yin.write(self.reclaimable_yin.read() + reclaimable_yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
             shrine.eject(caller, reclaimable_yin);

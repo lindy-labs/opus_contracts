@@ -6,7 +6,7 @@ use opus::utils::wadray;
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
 
-trait Signable<T> {
+trait Signed<T> {
     fn is_negative(self: T) -> bool;
     fn is_positive(self: T) -> bool;
 }
@@ -17,7 +17,7 @@ struct SignedWad {
     sign: bool
 }
 
-impl SignedWadSignable of Signable<SignedWad> {
+impl SignedWadSigned of Signed<SignedWad> {
     fn is_negative(self: SignedWad) -> bool {
         self.val > 0 && self.sign
     }
@@ -197,7 +197,7 @@ struct SignedRay {
     sign: bool
 }
 
-impl SignedRaySignable of Signable<SignedRay> {
+impl SignedRaySigned of Signed<SignedRay> {
     fn is_negative(self: SignedRay) -> bool {
         self.val > 0 && self.sign
     }
