@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use rand::{seq::SliceRandom, Rng};
 
 pub const RAY_ONE: u128 = 10_u128.pow(27);
@@ -99,11 +97,11 @@ impl Arg for BoolArg {
 }
 
 pub struct TupleArg {
-    args: Vec<Rc<dyn Arg>>,
+    args: Vec<Box<dyn Arg>>,
 }
 
 impl TupleArg {
-    pub fn new(args: Vec<Rc<dyn Arg>>) -> Self {
+    pub fn new(args: Vec<Box<dyn Arg>>) -> Self {
         Self { args }
     }
 }

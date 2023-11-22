@@ -1,17 +1,16 @@
 use crate::arg::Arg;
-use std::rc::Rc;
-use std::{fmt, result};
+use std::fmt;
 
-use rand::{seq::SliceRandom, Rng};
+use rand::seq::SliceRandom;
 
 pub struct Func<'a> {
     name: String,
-    args: Vec<Rc<dyn Arg>>,
+    args: Vec<Box<dyn Arg>>,
     canonical_callers: Vec<&'a str>, // Vec of addresses that 'should'/could be calling this function
 }
 
 impl<'a> Func<'a> {
-    pub fn new(name: &str, args: Vec<Rc<dyn Arg>>, canonical_callers: Vec<&'a str>) -> Self {
+    pub fn new(name: &str, args: Vec<Box<dyn Arg>>, canonical_callers: Vec<&'a str>) -> Self {
         Self {
             name: name.to_string(),
             args,
@@ -43,4 +42,19 @@ impl fmt::Display for Func<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.generate_call())
     }
+}
+
+#[macro_export]
+macro_rules! vec_boxed {
+    ($($type:expr),*) => {
+        {
+            let vb: Vec<Box<dyn Arg>> = vec![
+            $(
+                Box::new($type),
+            )*
+            ];
+
+            vb
+        }
+    };
 }
