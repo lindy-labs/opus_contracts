@@ -349,7 +349,7 @@ mod caretaker {
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
             let (reclaimable_yin, reclaimable_assets) = self.preview_reclaim(yin);
-            self.reclaimable_yin.write(self.reclaimable_yin.read() + reclaimable_yin);
+            self.reclaimable_yin.write(self.reclaimable_yin.read() - reclaimable_yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
             shrine.eject(caller, reclaimable_yin);

@@ -437,6 +437,20 @@ mod test_caretaker {
         ]
             .span();
         common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+
+        // assert that caretaker has no assets remaining
+        let mut caretaker_assets: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![caretaker.contract_address].span()
+        );
+        loop {
+            match caretaker_assets.pop_front() {
+                Option::Some(caretaker_asset_arr) => {
+                    let caretaker_asset: u128 = *caretaker_asset_arr[0];
+                    assert(caretaker_asset.is_zero(), 'caretaker asset should be 0');
+                },
+                Option::None => { break; }
+            };
+        };
     }
 
     #[test]
