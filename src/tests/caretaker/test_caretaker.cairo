@@ -530,7 +530,7 @@ mod test_caretaker {
 
     #[test]
     #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: owner should not be zero', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: Owner should not be zero', 'ENTRYPOINT_FAILED'))]
     fn test_release_foreign_trove_reverts() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         set_contract_address(caretaker_utils::admin());

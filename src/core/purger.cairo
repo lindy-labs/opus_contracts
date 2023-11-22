@@ -1,6 +1,7 @@
 #[starknet::contract]
 mod purger {
     use cmp::min;
+    use core::math::Oneable;
     use core::zeroable::Zeroable;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
@@ -193,7 +194,7 @@ mod purger {
             let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
 
             match self.preview_absorb_internal(trove_health) {
-                Option::Some((_, _, _, _, _, _,)) => true,
+                Option::Some((_, _, _, _, _, _)) => true,
                 Option::None => false,
             }
         }
@@ -617,7 +618,7 @@ mod purger {
                     trove_health.threshold, trove_health.value, trove_health.debt, penalty
                 );
 
-                if max_close_amt > WadZeroable::zero() {
+                if max_close_amt.is_non_zero() {
                     Option::Some((penalty, max_close_amt))
                 } else {
                     Option::None

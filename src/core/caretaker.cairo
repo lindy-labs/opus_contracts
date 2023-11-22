@@ -274,7 +274,7 @@ mod caretaker {
                 .abbot
                 .read()
                 .get_trove_owner(trove_id)
-                .expect('CA: owner should not be zero');
+                .expect('CA: Owner should not be zero');
             assert(trove_owner == get_caller_address(), 'CA: Not trove owner');
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
