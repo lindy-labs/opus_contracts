@@ -133,6 +133,7 @@ mod flash_mint {
 
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
+
             shrine.set_debt_ceiling(ceiling);
 
             self.emit(FlashMint { initiator, receiver, token, amount });
