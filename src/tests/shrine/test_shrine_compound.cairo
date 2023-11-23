@@ -22,7 +22,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_compound_and_charge_scenario_1() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -102,7 +102,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_1b() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -210,7 +210,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_2() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -307,7 +307,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_3() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -401,7 +401,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_4() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
@@ -500,7 +500,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_5() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove_id: u64 = common::TROVE_1;
         let yang1_addr = shrine_utils::yang1_addr();
 
@@ -636,7 +636,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn setup_charge_scenario_6() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove_id: u64 = common::TROVE_1;
         let yang1_addr = shrine_utils::yang1_addr();
 
@@ -744,7 +744,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_7() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
         shrine_utils::advance_prices_and_set_multiplier(
             shrine, shrine_utils::FEED_LEN, yangs, shrine_utils::three_yang_start_prices(),
