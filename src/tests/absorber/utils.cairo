@@ -90,7 +90,9 @@ mod absorber_utils {
     // Test setup helpers
     //
 
-    fn absorber_deploy() -> (
+    fn absorber_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -98,7 +100,7 @@ mod absorber_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(salt);
 
         let admin: ContractAddress = admin();
 
@@ -229,7 +231,7 @@ mod absorber_utils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(Option::None);
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)

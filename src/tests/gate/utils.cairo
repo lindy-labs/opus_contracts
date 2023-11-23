@@ -77,14 +77,14 @@ mod gate_utils {
     }
 
     fn eth_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
-        let shrine = shrine_utils::shrine_deploy();
+        let shrine = shrine_utils::shrine_deploy(Option::None);
         let eth: ContractAddress = eth_token_deploy();
         let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel());
         (shrine, eth, gate)
     }
 
     fn wbtc_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
-        let shrine = shrine_utils::shrine_deploy();
+        let shrine = shrine_utils::shrine_deploy(Option::None);
         let wbtc: ContractAddress = wbtc_token_deploy();
         let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel());
         (shrine, wbtc, gate)

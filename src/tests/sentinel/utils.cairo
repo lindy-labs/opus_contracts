@@ -46,8 +46,8 @@ mod sentinel_utils {
     // Test setup
     //
 
-    fn deploy_sentinel() -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
+    fn deploy_sentinel(salt: Option<felt252>) -> (ISentinelDispatcher, ContractAddress) {
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(salt);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
@@ -77,10 +77,10 @@ mod sentinel_utils {
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
 
-    fn deploy_sentinel_with_gates() -> (
-        ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>
-    ) {
-        let (sentinel, shrine_addr) = deploy_sentinel();
+    fn deploy_sentinel_with_gates(
+        salt: Option<felt252>
+    ) -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
+        let (sentinel, shrine_addr) = deploy_sentinel(salt);
 
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
         let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr);
@@ -94,7 +94,7 @@ mod sentinel_utils {
     fn deploy_sentinel_with_eth_gate() -> (
         ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher
     ) {
-        let (sentinel, shrine_addr) = deploy_sentinel();
+        let (sentinel, shrine_addr) = deploy_sentinel(Option::None);
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
