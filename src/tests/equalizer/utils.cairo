@@ -109,7 +109,7 @@ mod equalizer_utils {
     }
 
     fn equalizer_deploy() -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         equalizer_deploy_with_shrine(shrine.contract_address)
     }
 

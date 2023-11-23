@@ -44,7 +44,7 @@ mod flash_mint_utils {
     }
 
     fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
-        let shrine: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
 
         let shrine_dispatcher = IShrineDispatcher { contract_address: shrine };
