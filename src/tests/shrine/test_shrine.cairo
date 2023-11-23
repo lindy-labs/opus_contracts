@@ -14,6 +14,8 @@ mod test_shrine {
         WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
     use opus::utils::wadray;
+    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed;
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
@@ -983,11 +985,11 @@ mod test_shrine {
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.into(), 'incorrect ERC-20 balance');
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::DebtTotalUpdated(
-                shrine_contract::DebtTotalUpdated { total: forge_amt }
+            shrine_contract::Event::TotalTrovesDebtUpdated(
+                shrine_contract::TotalTrovesDebtUpdated { total: forge_amt }
             ),
             shrine_contract::Event::TroveUpdated(
                 shrine_contract::TroveUpdated {
@@ -1129,11 +1131,16 @@ mod test_shrine {
             'incorrect max forge amt'
         );
 
+        let before_budget: SignedWad = shrine.get_budget();
+
         shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
         let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         let fee = trove_health.debt - forge_amt;
         assert(trove_health.debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
+
+        let intermediate_budget: SignedWad = shrine.get_budget();
+        assert(intermediate_budget == before_budget + fee.into(), 'wrong budget #1');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1153,6 +1160,7 @@ mod test_shrine {
             new_trove_health.debt - trove_health.debt - forge_amt == fee_pct * forge_amt,
             'wrong forge fee charged #2'
         );
+        assert(shrine.get_budget() == intermediate_budget + fee.into(), 'wrong budget #2');
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::ForgeFeePaid(
@@ -1243,11 +1251,11 @@ mod test_shrine {
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::DebtTotalUpdated(
-                shrine_contract::DebtTotalUpdated { total: after_trove_health.debt }
+            shrine_contract::Event::TotalTrovesDebtUpdated(
+                shrine_contract::TotalTrovesDebtUpdated { total: after_trove_health.debt }
             ),
             shrine_contract::Event::TroveUpdated(
                 shrine_contract::TroveUpdated {
@@ -1700,6 +1708,19 @@ mod test_shrine {
         common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_inject_exceeds_debt_ceiling_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let yin = shrine_utils::yin(shrine.contract_address);
+        let trove1_owner = common::trove1_owner_addr();
+
+        set_contract_address(shrine_utils::admin());
+
+        let inject_amt = shrine.get_debt_ceiling() + 1_u128.into();
+        shrine.inject(trove1_owner, inject_amt);
+    }
 
     //
     // Tests - Price and multiplier

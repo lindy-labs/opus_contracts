@@ -693,11 +693,11 @@ mod shrine_utils {
         };
     }
 
-    // Asserts that the total system debt is less than or equal to the sum of all troves' debt, including
-    // all unpulled redistributions.
-    // We do not check for strict equality because there may be loss of precision when
+    // Asserts that the total troves debt is less than or equal to the sum of all troves' debt, 
+    // including all unpulled redistributions.
+    // We do not check for strict equality because there may be loss of precision when 
     // redistributed debt are pulled into troves.
-    fn assert_total_debt_invariant(
+    fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         let troves_loop_end: u64 = troves_count + 1;
@@ -767,6 +767,6 @@ mod shrine_utils {
         shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
-        assert_total_debt_invariant(shrine, yangs, troves_count);
+        assert_total_troves_debt_invariant(shrine, yangs, troves_count);
     }
 }

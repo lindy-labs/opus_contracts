@@ -1,7 +1,7 @@
 mod equalizer_utils {
     use opus::core::allocator::allocator as allocator_contract;
     use opus::core::equalizer::equalizer as equalizer_contract;
-    use opus::core::roles::shrine_roles;
+    use opus::core::roles::{equalizer_roles, shrine_roles};
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -133,8 +133,12 @@ mod equalizer_utils {
             .unwrap();
         let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
-
+        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
+            contract_address: equalizer_addr
+        };
         set_contract_address(admin);
+        equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
+
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine
         };
