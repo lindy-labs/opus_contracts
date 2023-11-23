@@ -33,7 +33,7 @@ mod test_flash_mint {
     #[test]
     #[available_gas(20000000000)]
     fn test_flash_fee() {
-        let shrine: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flash_mint_utils::flashmint_deploy(shrine);
 
         // Check that flash fee is correct

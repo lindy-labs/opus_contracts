@@ -40,7 +40,7 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_purger_setup() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
         assert(
             purger_ac.get_roles(purger_utils::admin()) == purger_roles::default_admin_role(),
@@ -63,7 +63,9 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_penalty_scalar_pass() {
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy();
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
+            Option::None
+        );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -160,7 +162,9 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_penalty_scalar_lower_bound() {
-        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy();
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
+            Option::None
+        );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -214,7 +218,7 @@ mod test_purger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_low_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         set_contract_address(purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MIN_PENALTY_SCALAR - 1).into());
@@ -224,7 +228,7 @@ mod test_purger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_high_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         set_contract_address(purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MAX_PENALTY_SCALAR + 1).into());
@@ -234,7 +238,7 @@ mod test_purger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_unauthorized_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         set_contract_address(common::badguy());
         purger.set_penalty_scalar(RAY_ONE.into());
@@ -337,6 +341,7 @@ mod test_purger {
 
         let dummy_threshold: Ray = (80 * RAY_PERCENT).into();
 
+        let mut salt: felt252 = 0;
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
@@ -345,7 +350,9 @@ mod test_purger {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
                                 let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-                                    purger_utils::purger_deploy();
+                                    purger_utils::purger_deploy(
+                                    Option::Some(salt)
+                                );
 
                                 if !(*is_recovery_mode) {
                                     purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -471,6 +478,8 @@ mod test_purger {
                                     (WAD_ONE * 2).into(),
                                     'wrong max close amt'
                                 );
+
+                                salt += 1;
                             },
                             Option::None => { break; },
                         };
@@ -487,7 +496,7 @@ mod test_purger {
         let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin
+            searcher_start_yin, Option::None
         );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -613,7 +622,7 @@ mod test_purger {
     fn test_liquidate_with_flashmint_pass() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -699,6 +708,7 @@ mod test_purger {
 
         let dummy_threshold: Ray = (80 * RAY_PERCENT).into();
 
+        let mut salt: felt252 = 0;
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
@@ -739,7 +749,7 @@ mod test_purger {
                                                 shrine, abbot, mock_pragma, _, purger, yangs, gates
                                             ) =
                                                 purger_utils::purger_deploy_with_searcher(
-                                                searcher_start_yin
+                                                searcher_start_yin, Option::Some(salt)
                                             );
 
                                             if !(*is_recovery_mode) {
@@ -920,6 +930,8 @@ mod test_purger {
                                             shrine_utils::assert_shrine_invariants(
                                                 shrine, yangs, abbot.get_troves_count()
                                             );
+
+                                            salt += 1;
                                         },
                                         Option::None => { break; },
                                     };
@@ -945,7 +957,7 @@ mod test_purger {
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -963,7 +975,7 @@ mod test_purger {
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -998,7 +1010,7 @@ mod test_purger {
 
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_yin
+            searcher_yin, Option::None
         );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
         let target_trove: u64 = purger_utils::funded_healthy_trove(
@@ -1069,6 +1081,7 @@ mod test_purger {
         ]
             .span();
 
+        let mut salt: felt252 = 0;
         loop {
             match interesting_thresholds.pop_front() {
                 Option::Some(threshold) => {
@@ -1080,7 +1093,9 @@ mod test_purger {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
                                 let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-                                    purger_utils::purger_deploy();
+                                    purger_utils::purger_deploy(
+                                    Option::Some(salt)
+                                );
 
                                 set_contract_address(shrine_utils::admin());
                                 shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
@@ -1166,6 +1181,8 @@ mod test_purger {
                                     (WAD_ONE / 10).into(),
                                     'wrong max close amt'
                                 );
+
+                                salt += 1;
                             },
                             Option::None => { break; },
                         };
@@ -1181,7 +1198,7 @@ mod test_purger {
     fn test_full_absorb_pass() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(
@@ -1351,6 +1368,7 @@ mod test_purger {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
         let yang_pair_ids = pragma_utils::yang_pair_ids();
+        let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
@@ -1383,7 +1401,9 @@ mod test_purger {
                                                         yangs,
                                                         gates
                                                     ) =
-                                                        purger_utils::purger_deploy();
+                                                        purger_utils::purger_deploy(
+                                                        Option::Some(salt)
+                                                    );
 
                                                     set_contract_address(shrine_utils::admin());
                                                     shrine
@@ -1751,6 +1771,8 @@ mod test_purger {
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count()
                                                     );
+
+                                                    salt += 1;
                                                 },
                                                 Option::None => { break; },
                                             };
@@ -1774,6 +1796,8 @@ mod test_purger {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
         let yang_pair_ids = pragma_utils::yang_pair_ids();
+
+        let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
@@ -1829,7 +1853,9 @@ mod test_purger {
                                                                 yangs,
                                                                 gates
                                                             ) =
-                                                                purger_utils::purger_deploy();
+                                                                purger_utils::purger_deploy(
+                                                                Option::Some(salt)
+                                                            );
 
                                                             let target_trove_owner: ContractAddress =
                                                                 purger_utils::target_trove_owner();
@@ -2416,6 +2442,7 @@ mod test_purger {
                                                             );
 
                                                             absorber_yin_idx += 1;
+                                                            salt += 1;
                                                         };
                                                     },
                                                     Option::None => { break; },
@@ -2443,6 +2470,8 @@ mod test_purger {
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
         let yang_pair_ids = pragma_utils::yang_pair_ids();
+
+        let mut salt: felt252 = 0;
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
@@ -2472,7 +2501,9 @@ mod test_purger {
                                                             yangs,
                                                             gates
                                                         ) =
-                                                            purger_utils::purger_deploy();
+                                                            purger_utils::purger_deploy(
+                                                            Option::Some(salt)
+                                                        );
 
                                                         set_contract_address(shrine_utils::admin());
                                                         shrine
@@ -2777,6 +2808,8 @@ mod test_purger {
                                                         shrine_utils::assert_shrine_invariants(
                                                             shrine, yangs, abbot.get_troves_count(),
                                                         );
+
+                                                        salt += 1;
                                                     },
                                                     Option::None => { break; },
                                                 };
@@ -2809,6 +2842,7 @@ mod test_purger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
 
+        let mut salt: felt252 = 0;
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
@@ -2832,7 +2866,9 @@ mod test_purger {
                                                 yangs,
                                                 gates
                                             ) =
-                                                purger_utils::purger_deploy();
+                                                purger_utils::purger_deploy(
+                                                Option::Some(salt)
+                                            );
 
                                             // Set thresholds to provided value
                                             purger_utils::set_thresholds(shrine, yangs, *threshold);
@@ -3036,6 +3072,8 @@ mod test_purger {
                                             shrine_utils::assert_shrine_invariants(
                                                 shrine, yangs, abbot.get_troves_count()
                                             );
+
+                                            salt += 1;
                                         },
                                         Option::None => { break; },
                                     };
@@ -3084,6 +3122,7 @@ mod test_purger {
         ]
             .span();
 
+        let mut salt: felt252 = 0;
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
@@ -3107,7 +3146,9 @@ mod test_purger {
                                                 yangs,
                                                 gates
                                             ) =
-                                                purger_utils::purger_deploy();
+                                                purger_utils::purger_deploy(
+                                                Option::Some(salt)
+                                            );
 
                                             // Set thresholds to provided value
                                             purger_utils::set_thresholds(shrine, yangs, *threshold);
@@ -3312,6 +3353,8 @@ mod test_purger {
                                             shrine_utils::assert_shrine_invariants(
                                                 shrine, yangs, abbot.get_troves_count()
                                             );
+
+                                            salt += 1;
                                         },
                                         Option::None => { break; },
                                     };
@@ -3332,7 +3375,7 @@ mod test_purger {
     fn test_absorb_trove_healthy_fail() {
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         let trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
@@ -3354,7 +3397,7 @@ mod test_purger {
     fn test_absorb_below_absorbable_ltv_fail() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
@@ -3397,13 +3440,14 @@ mod test_purger {
         let (mut thresholds, mut target_ltvs) =
             purger_utils::interesting_thresholds_and_ltvs_below_absorption_ltv();
 
+        let mut salt: felt252 = 0;
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
                     let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         purger_utils::purger_deploy_with_searcher(
-                        searcher_start_yin
+                        searcher_start_yin, Option::Some(salt)
                     );
 
                     purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -3444,6 +3488,8 @@ mod test_purger {
                         shrine, purger, target_trove, updated_target_trove_start_health.ltv
                     );
                     purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
+
+                    salt += 1;
                 },
                 Option::None => { break; },
             };
@@ -3456,7 +3502,7 @@ mod test_purger {
     fn test_liquidate_suspended_yang() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         // user 1 opens a trove with ETH and BTC that is close to liquidation
@@ -3548,7 +3594,7 @@ mod test_purger {
     fn test_liquidate_suspended_yang_threshold_near_zero() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into()
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         // We run the same tests using both searcher liquidations and absorptions as the liquidation methods.
@@ -3783,7 +3829,7 @@ mod test_purger {
         // by only deploying the contracts once for all parametrizations
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin
+            searcher_start_yin, Option::None
         );
 
         set_contract_address(shrine_utils::admin());
