@@ -30,7 +30,10 @@ mod test_abbot {
         // Check trove ID
         let expected_trove_id: u64 = 1;
         assert(trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
+        assert(
+            abbot.get_trove_owner(expected_trove_id).expect('should not be zero') == trove_owner,
+            'wrong trove owner'
+        );
         assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
 
         let mut expected_user_trove_ids: Array<u64> = array![expected_trove_id];
@@ -84,7 +87,10 @@ mod test_abbot {
 
         let expected_trove_id: u64 = 2;
         assert(second_trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
+        assert(
+            abbot.get_trove_owner(expected_trove_id).expect('should not be zero') == trove_owner,
+            'wrong trove owner'
+        );
         assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
 
         expected_user_trove_ids.append(expected_trove_id);
