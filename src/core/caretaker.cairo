@@ -281,7 +281,11 @@ mod caretaker {
             self.reentrancy_guard.start();
 
             // Assert caller is trove owner
-            let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id);
+            let trove_owner: ContractAddress = self
+                .abbot
+                .read()
+                .get_trove_owner(trove_id)
+                .expect('CA: Owner should not be zero');
             assert(trove_owner == get_caller_address(), 'CA: Not trove owner');
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
