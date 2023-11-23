@@ -2798,6 +2798,8 @@ mod test_purger {
                                                         shrine_utils::assert_shrine_invariants(
                                                             shrine, yangs, abbot.get_troves_count(),
                                                         );
+
+                                                        salt += 1;
                                                     },
                                                     Option::None => { break; },
                                                 };
@@ -3059,6 +3061,8 @@ mod test_purger {
                                             shrine_utils::assert_shrine_invariants(
                                                 shrine, yangs, abbot.get_troves_count()
                                             );
+
+                                            salt += 1;
                                         },
                                         Option::None => { break; },
                                     };
