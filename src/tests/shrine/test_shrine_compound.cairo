@@ -1020,7 +1020,7 @@ mod test_shrine_compound {
     #[test]
     #[available_gas(20000000000)]
     fn test_adjust_budget_pass() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         common::drop_all_events(shrine.contract_address);
 
@@ -1068,7 +1068,7 @@ mod test_shrine_compound {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_adjust_budget_unauthorized() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         set_contract_address(common::badguy());
 
         let surplus: SignedWad = (500 * WAD_ONE).into();

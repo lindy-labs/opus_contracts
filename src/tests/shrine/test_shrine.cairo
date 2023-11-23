@@ -1712,7 +1712,7 @@ mod test_shrine {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_inject_exceeds_debt_ceiling_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let yin = shrine_utils::yin(shrine.contract_address);
         let trove1_owner = common::trove1_owner_addr();
 
