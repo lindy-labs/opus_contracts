@@ -127,12 +127,13 @@ mod shrine_roles {
     const REDISTRIBUTE: u128 = 256;
     const SEIZE: u128 = 512;
     const SET_DEBT_CEILING: u128 = 1024;
-    const SET_MULTIPLIER: u128 = 2048;
-    const SET_THRESHOLD: u128 = 4096;
-    const UPDATE_RATES: u128 = 8192;
-    const UPDATE_YANG_SUSPENSION: u128 = 16384;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 32768;
-    const WITHDRAW: u128 = 65536;
+    const SET_MAX_FLASH_MINT_PCT: u128 = 2048;
+    const SET_MULTIPLIER: u128 = 4096;
+    const SET_THRESHOLD: u128 = 8192;
+    const UPDATE_RATES: u128 = 16384;
+    const UPDATE_YANG_SUSPENSION: u128 = 32768;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 65536;
+    const WITHDRAW: u128 = 131072;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -151,7 +152,13 @@ mod shrine_roles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES + UPDATE_YANG_SUSPENSION
+        ADD_YANG
+            + KILL
+            + SET_DEBT_CEILING
+            + SET_MAX_FLASH_MINT_PCT
+            + SET_THRESHOLD
+            + UPDATE_RATES
+            + UPDATE_YANG_SUSPENSION
     }
 
     #[inline(always)]
@@ -193,6 +200,7 @@ mod shrine_roles {
             + REDISTRIBUTE
             + SEIZE
             + SET_DEBT_CEILING
+            + SET_MAX_FLASH_MINT_PCT
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES

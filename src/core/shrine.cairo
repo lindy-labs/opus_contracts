@@ -13,7 +13,8 @@ mod shrine {
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
     use opus::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_PERCENT,
+        WAD_SCALE
     };
     use opus::utils::wadray;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
@@ -84,6 +85,10 @@ mod shrine {
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
+
+    // Hard cap on the maximum percentage of the yin supply that can be flash minted (wad)
+    const CAPPED_MAX_FLASH_MINT_AMOUNT_PCT: u128 = 1000000000000000000; // 1 (wad)
+    const INITIAL_MAX_FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000; // 0.05 (Wad)
 
     //
     // Storage
@@ -174,6 +179,8 @@ mod shrine {
         yang_to_yang_redistribution: LegacyMap::<(u32, u32, u32), ExceptionalYangRedistribution>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
+        // Maximum percentage of the yin supply that can be flash minted (Wad)
+        max_flash_mint_pct: Wad,
         // Yin storage
         yin_name: felt252,
         yin_symbol: felt252,
@@ -206,6 +213,7 @@ mod shrine {
         DebtCeilingUpdated: DebtCeilingUpdated,
         YangSuspended: YangSuspended,
         YangUnsuspended: YangUnsuspended,
+        MaxFlashMintPctUpdated: MaxFlashMintPctUpdated,
         Killed: Killed,
         Transfer: Transfer,
         Approval: Approval,
@@ -324,6 +332,10 @@ mod shrine {
         timestamp: u64
     }
 
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct MaxFlashMintPctUpdated {
+        pct: Wad
+    }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
@@ -372,6 +384,9 @@ mod shrine {
 
         // Setting initial yin spot price to 1
         self.yin_spot_price.write(WAD_ONE.into());
+
+        // Set default max flash mint pct to 5% (wad)
+        self.set_max_flash_mint_pct_helper(INITIAL_MAX_FLASH_MINT_AMOUNT_PCT.into());
 
         // Emit event
         self
@@ -522,6 +537,10 @@ mod shrine {
             self.is_recovery_mode_helper(shrine_health)
         }
 
+        fn get_max_flash_mint_pct(self: @ContractState) -> Wad {
+            self.max_flash_mint_pct.read()
+        }
+
         fn get_live(self: @ContractState) -> bool {
             self.is_live.read()
         }
@@ -586,6 +605,12 @@ mod shrine {
             // Event emissions
             self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
             self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
+        }
+
+        fn set_max_flash_mint_pct(ref self: ContractState, max_flash_mint_pct: Wad) {
+            self.access_control.assert_has_role(shrine_roles::SET_MAX_FLASH_MINT_PCT);
+
+            self.set_max_flash_mint_pct_helper(max_flash_mint_pct);
         }
 
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
@@ -1314,6 +1339,17 @@ mod shrine {
         //
         // Helpers for setters
         //
+
+        fn set_max_flash_mint_pct_helper(ref self: ContractState, max_flash_mint_pct: Wad) {
+            assert(
+                max_flash_mint_pct <= CAPPED_MAX_FLASH_MINT_AMOUNT_PCT.into(),
+                'SH: Max FM pct > 100%'
+            );
+            self.max_flash_mint_pct.write(max_flash_mint_pct);
+
+            // Event emission
+            self.emit(MaxFlashMintPctUpdated { pct: max_flash_mint_pct });
+        }
 
         fn set_threshold_helper(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
             assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');

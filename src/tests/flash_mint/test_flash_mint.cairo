@@ -24,8 +24,8 @@ mod test_flash_mint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine);
-        let expected_max_loan: u256 = (Wad { val: flash_mint_utils::YIN_TOTAL_SUPPLY }
-            * Wad { val: flash_mint_contract::FLASH_MINT_AMOUNT_PCT })
+        let expected_max_loan: u256 = (flash_mint_utils::YIN_TOTAL_SUPPLY.into()
+            * shrine_utils::shrine(shrine).get_max_flash_mint_pct())
             .into();
         assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }

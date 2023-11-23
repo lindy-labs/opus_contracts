@@ -36,6 +36,7 @@ trait IShrine<TContractState> {
         redistributed_yang: ContractAddress
     ) -> ExceptionalYangRedistribution;
     fn is_recovery_mode(self: @TContractState) -> bool;
+    fn get_max_flash_mint_pct(self: @TContractState) -> Wad;
     fn get_live(self: @TContractState) -> bool;
     // external setters
     fn add_yang(
@@ -46,6 +47,7 @@ trait IShrine<TContractState> {
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
+    fn set_max_flash_mint_pct(ref self: TContractState, max_flash_mint_pct: Wad);
     fn set_threshold(ref self: TContractState, yang: ContractAddress, new_threshold: Ray);
     fn suspend_yang(ref self: TContractState, yang: ContractAddress);
     fn unsuspend_yang(ref self: TContractState, yang: ContractAddress);

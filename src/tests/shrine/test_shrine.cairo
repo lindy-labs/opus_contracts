@@ -41,6 +41,12 @@ mod test_shrine {
         assert(shrine.get_live(), 'not live');
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
+        assert(
+            shrine
+                .get_max_flash_mint_pct() == shrine_contract::INITIAL_MAX_FLASH_MINT_AMOUNT_PCT
+                .into(),
+            'wrong max FM pct'
+        );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine_addr
@@ -54,7 +60,12 @@ mod test_shrine {
                     cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
                     interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
                 }
-            )
+            ),
+            shrine_contract::Event::MaxFlashMintPctUpdated(
+                shrine_contract::MaxFlashMintPctUpdated {
+                    pct: shrine_contract::INITIAL_MAX_FLASH_MINT_AMOUNT_PCT.into()
+                }
+            ),
         ]
             .span();
         common::assert_events_emitted(shrine_addr, expected_events, Option::None);
@@ -557,6 +568,51 @@ mod test_shrine {
                 ]
                     .span()
             );
+    }
+
+    //
+    // Tests - Yin parameters
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_max_flash_mint_pct() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+
+        set_contract_address(shrine_utils::admin());
+        let max_flash_mint_pct: Wad = (25 * WAD_PERCENT).into();
+        shrine.set_max_flash_mint_pct(max_flash_mint_pct);
+        assert(shrine.get_max_flash_mint_pct() == max_flash_mint_pct, 'max FM pct not updated');
+
+        let expected_events: Span<shrine_contract::Event> = array![
+            shrine_contract::Event::MaxFlashMintPctUpdated(
+                shrine_contract::MaxFlashMintPctUpdated { pct: max_flash_mint_pct }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Max FM pct > 100%', 'ENTRYPOINT_FAILED'))]
+    fn test_set_max_flash_mint_pct_exceeds_max() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let invalid_max_flash_mint_pct: Wad = (WAD_ONE + 1).into();
+
+        set_contract_address(shrine_utils::admin());
+        shrine.set_max_flash_mint_pct(invalid_max_flash_mint_pct);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_max_flash_mint_pct_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let max_flash_mint_pct: Wad = (25 * WAD_PERCENT).into();
+
+        set_contract_address(common::badguy());
+        shrine.set_max_flash_mint_pct(max_flash_mint_pct);
     }
 
     //
