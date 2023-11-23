@@ -176,7 +176,9 @@ mod test_absorber {
     #[available_gas(20000000000)]
     fn test_kill_and_remove_pass() {
         let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(absorber_utils::admin());
         absorber.kill();
@@ -250,6 +252,7 @@ mod test_absorber {
 
         let mut percentages_to_drain = percentages_to_drain.span();
 
+        let mut salt: felt252 = 0;
         loop {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
@@ -265,7 +268,9 @@ mod test_absorber {
                         provider,
                         first_provided_amt
                     ) =
-                        absorber_utils::absorber_with_rewards_and_first_provider();
+                        absorber_utils::absorber_with_rewards_and_first_provider(
+                        Option::Some(salt)
+                    );
                     assert(absorber.is_operational(), 'should be operational');
 
                     common::drop_all_events(absorber.contract_address);
@@ -496,6 +501,8 @@ mod test_absorber {
                             'request should be fulfilled'
                         );
                     }
+
+                    salt += 1;
                 },
                 Option::None => { break; },
             };
@@ -507,7 +514,9 @@ mod test_absorber {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_update_unauthorized_fail() {
         let (_, _, absorber, yangs, _, _, _, _, _, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(common::badguy());
         let first_update_assets: Span<AssetBalance> = common::combine_assets_and_amts(
@@ -535,7 +544,9 @@ mod test_absorber {
             provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
 
         let before_provider_info: Provision = absorber.get_provision(provider);
@@ -668,7 +679,9 @@ mod test_absorber {
             first_provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
@@ -937,7 +950,9 @@ mod test_absorber {
             first_provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
         assert(absorber.is_operational(), 'should be operational');
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
@@ -1174,7 +1189,9 @@ mod test_absorber {
             first_provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
@@ -1255,7 +1272,9 @@ mod test_absorber {
             first_provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
@@ -1427,7 +1446,9 @@ mod test_absorber {
                         first_provider,
                         first_provided_amt
                     ) =
-                        absorber_utils::absorber_with_rewards_and_first_provider();
+                        absorber_utils::absorber_with_rewards_and_first_provider(
+                        Option::None
+                    );
 
                     let first_epoch_total_shares: Wad = absorber
                         .get_total_shares_for_current_epoch();
@@ -1539,7 +1560,9 @@ mod test_absorber {
             first_provider,
             first_provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
@@ -1762,7 +1785,9 @@ mod test_absorber {
     #[available_gas(20000000000)]
     fn test_request_pass() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(provider);
         let mut idx = 0;
@@ -1811,7 +1836,9 @@ mod test_absorber {
     #[should_panic(expected: ('ABS: Recovery Mode active', 'ENTRYPOINT_FAILED'))]
     fn test_remove_exceeds_limit_fail() {
         let (shrine, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         // Change ETH price to make Shrine's LTV to threshold above the limit
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -1833,7 +1860,9 @@ mod test_absorber {
     #[should_panic(expected: ('ABS: No request found', 'ENTRYPOINT_FAILED'))]
     fn test_remove_no_request_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(provider);
         absorber.remove(BoundedWad::max());
@@ -1844,7 +1873,9 @@ mod test_absorber {
     #[should_panic(expected: ('ABS: Only 1 removal per request', 'ENTRYPOINT_FAILED'))]
     fn test_remove_fulfilled_request_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(provider);
         absorber.request();
@@ -1861,7 +1892,9 @@ mod test_absorber {
     #[should_panic(expected: ('ABS: Request is not valid yet', 'ENTRYPOINT_FAILED'))]
     fn test_remove_request_not_valid_yet_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(provider);
         absorber.request();
@@ -1875,7 +1908,9 @@ mod test_absorber {
     #[should_panic(expected: ('ABS: Request has expired', 'ENTRYPOINT_FAILED'))]
     fn test_remove_request_expired_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         set_contract_address(provider);
         absorber.request();
@@ -2006,7 +2041,9 @@ mod test_absorber {
             provider,
             provided_amt
         ) =
-            absorber_utils::absorber_with_rewards_and_first_provider();
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None
+        );
 
         let expected_epoch: u32 = absorber_contract::FIRST_EPOCH;
         let opus_addr: ContractAddress = *reward_tokens.at(0);
