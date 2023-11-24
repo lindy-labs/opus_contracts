@@ -22,7 +22,7 @@ mod abbot {
     // Constants
     //
 
-    // Minimum value for a trove before a user can forge any debt.
+    // Minimum value for a trove before a user can forge any debt: 50 (Wad)
     // If a trove has non-zero debt, then a user cannot withdraw collateral such that
     // the trove would fall below this value.
     const MIN_TROVE_VALUE: u128 = 50000000000000000000;
