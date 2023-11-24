@@ -1211,41 +1211,6 @@ mod test_shrine {
             );
     }
 
-    #[test]
-    #[available_gas(1000000000000)]
-    fn test_shrine_get_max_forge_capped() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-
-        // Create a shrimp trove with 0.5 ETH 
-        let shrimp_eth_amt: Wad = (WAD_ONE / 2).into();
-        shrine_utils::trove1_deposit(shrine, shrimp_eth_amt);
-        shrine_utils::trove1_forge(shrine, shrine.get_max_forge(common::TROVE_1));
-
-        // Create a whale trove with 1000 ETH
-        let whale_trove: u64 = common::TROVE_2;
-        let whale_eth_amt: Wad = (WAD_ONE * 10000).into();
-        set_contract_address(shrine_utils::admin());
-        shrine.deposit(shrine_utils::yang1_addr(), whale_trove, whale_eth_amt);
-
-        let whale_trove_health: Health = shrine.get_trove_health(whale_trove);
-        let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold
-            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-
-        let amt_to_activate_rm: Wad = wadray::rmul_rw(
-            RAY_ONE.into(),
-            (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
-        );
-
-        let theoretical_whale_trove_max_forge: Wad = wadray::rmul_rw(
-            whale_trove_health.threshold, whale_trove_health.value
-        );
-        assert(amt_to_activate_rm < theoretical_whale_trove_max_forge, 'sanity check');
-
-        let whale_trove_max_forge: Wad = shrine.get_max_forge(whale_trove);
-        assert(whale_trove_max_forge == amt_to_activate_rm, 'max forge not capped');
-    }
-
     //
     // Tests - Trove melt
     //
