@@ -143,7 +143,6 @@ mod equalizer {
 
             let minted_surplus: Wad = surplus.unwrap();
             shrine.inject(get_contract_address(), minted_surplus);
-
             shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
 
             self.emit(Equalize { yin_amt: minted_surplus });
