@@ -33,7 +33,7 @@ mod caretaker_utils {
     ) {
         set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address
         );

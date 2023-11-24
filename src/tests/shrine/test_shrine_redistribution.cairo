@@ -60,8 +60,8 @@ mod test_shrine_redistribution {
     // Helper function to set up three troves
     // - Trove 1 deposits and forges the amounts specified in `src/tests/shrine/utils.cairo`
     // - Troves 2 and 3 deposits and forges the amounts specified in this file
-    fn redistribution_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+    fn redistribution_setup(salt: Option<felt252>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(salt);
 
         set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
@@ -253,7 +253,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_one_redistribution() {
-        let shrine: IShrineDispatcher = redistribution_setup();
+        let shrine: IShrineDispatcher = redistribution_setup(Option::None);
 
         let before_trove2_health: Health = shrine.get_trove_health(common::TROVE_2);
 
@@ -349,7 +349,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_two_redistributions() {
-        let shrine: IShrineDispatcher = redistribution_setup();
+        let shrine: IShrineDispatcher = redistribution_setup(Option::None);
 
         let redistributed_trove1: u64 = common::TROVE_1;
         let redistributed_trove2: u64 = common::TROVE_2;
@@ -461,13 +461,16 @@ mod test_shrine_redistribution {
         let mut pct_value_to_redistribute_arr = percentages.span();
         let mut pct_debt_to_redistribute_arr = percentages.span();
 
+        let mut salt: felt252 = 0;
         loop {
             match pct_value_to_redistribute_arr.pop_front() {
                 Option::Some(pct_value_to_redistribute) => {
                     loop {
                         match pct_debt_to_redistribute_arr.pop_front() {
                             Option::Some(pct_debt_to_redistribute) => {
-                                let shrine: IShrineDispatcher = redistribution_setup();
+                                let shrine: IShrineDispatcher = redistribution_setup(
+                                    Option::Some(salt)
+                                );
 
                                 let before_trove2_health: Health = shrine
                                     .get_trove_health(common::TROVE_2);
@@ -542,10 +545,11 @@ mod test_shrine_redistribution {
                                 );
 
                                 shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-                            // We are unable to test the trove value in a sensible way here because
-                            // the yang price has not been updated to reflect any rebasing of the
-                            // asset amount per yang wad. Instead, refer to the tests for purger
-                            // for assertions on the redistributed trove's value.
+                                // We are unable to test the trove value in a sensible way here because
+                                // the yang price has not been updated to reflect any rebasing of the
+                                // asset amount per yang wad. Instead, refer to the tests for purger
+                                // for assertions on the redistributed trove's value.
+                                salt += 1;
                             },
                             Option::None => { break; },
                         };
@@ -560,7 +564,7 @@ mod test_shrine_redistribution {
     #[available_gas(20000000000)]
     fn test_shrine_redistribute_dust_yang_rounding() {
         // Manually set up troves so that the redistributed trove has a dust amount of one yang
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
@@ -643,7 +647,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_one_exceptional_redistribution_one_recipient_yang() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (trove 2 and 3) uses only yang 2.
@@ -968,7 +972,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_one_exceptional_redistribution_two_recipient_yangs() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (troves 2 and 3) use only yang2 and yang3
@@ -1400,7 +1404,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_redistribution_after_unpulled_exceptional_redistribution() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (trove 2 and 3) uses only yang 2.
@@ -1631,7 +1635,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_redistribution_only_one_trove_remaining() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         set_contract_address(shrine_utils::admin());
         setup_trove1(shrine);
@@ -1674,7 +1678,7 @@ mod test_shrine_redistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_multi_troves_system_debt_not_exceeded() {
-        let shrine: IShrineDispatcher = redistribution_setup();
+        let shrine: IShrineDispatcher = redistribution_setup(Option::None);
 
         let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs();
         let yang1_addr = *yangs.at(0);
@@ -1712,7 +1716,7 @@ mod test_shrine_redistribution {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: pct_val_to_redistribute > 1', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_redistribution_gt_one_ray_pct_value_to_redistribute_fail() {
-        let shrine: IShrineDispatcher = redistribution_setup();
+        let shrine: IShrineDispatcher = redistribution_setup(Option::None);
 
         set_contract_address(shrine_utils::admin());
         shrine.redistribute(common::TROVE_1, 1_u128.into(), (RAY_ONE + RAY_PERCENT).into());

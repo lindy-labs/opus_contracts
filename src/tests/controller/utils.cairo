@@ -36,7 +36,7 @@ mod controller_utils {
     }
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
         let mut calldata: Array<felt252> = array![

@@ -1,14 +1,18 @@
 #[starknet::contract]
 mod equalizer {
+    use cmp::min;
     use opus::core::roles::equalizer_roles;
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Health;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
-    use starknet::ContractAddress;
+    use opus::utils::wadray_signed::{Signed, SignedWad};
+    use opus::utils::wadray_signed;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     //
     // Components
@@ -45,8 +49,10 @@ mod equalizer {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AccessControlEvent: access_control_component::Event,
+        Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
+        Normalize: Normalize
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -57,6 +63,18 @@ mod equalizer {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Equalize {
+        yin_amt: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Normalize {
+        #[key]
+        caller: ContractAddress,
+        yin_amt: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Allocate {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>,
         amount: Wad
@@ -93,12 +111,6 @@ mod equalizer {
             self.allocator.read().contract_address
         }
 
-        // Returns the amount of surplus debt that can be minted
-        fn get_surplus(self: @ContractState) -> Wad {
-            let (_, surplus) = get_debt_and_surplus(self.shrine.read());
-            surplus
-        }
-
         //
         // Setters
         //
@@ -117,63 +129,85 @@ mod equalizer {
         // Core functions - External
         //
 
-        // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
-        // according to their respective percentage share.
+        // Mint surplus debt to the Equalizer.
+        // Returns the amount of surplus debt minted.
+        fn equalize(ref self: ContractState) -> Wad {
+            let shrine: IShrineDispatcher = self.shrine.read();
+
+            let budget: SignedWad = shrine.get_budget();
+            let surplus: Option<Wad> = budget.try_into();
+
+            if surplus.is_none() {
+                return WadZeroable::zero();
+            }
+
+            let minted_surplus: Wad = surplus.unwrap();
+            shrine.inject(get_contract_address(), minted_surplus);
+            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
+
+            self.emit(Equalize { yin_amt: minted_surplus });
+
+            minted_surplus
+        }
+
+        // Allocate the yin balance of the Equalizer to the recipients in the allocation 
+        // retrieved from the Allocator according to their respective percentage share.
         // Assumes the allocation from the Allocator has already been checked:
         // - both arrays of recipient addresses and percentages are of equal length;
         // - there is at least one recipient;
         // - the percentages add up to one Ray.
-        // Returns the total amount of surplus debt minted.
-        fn equalize(ref self: ContractState) -> Wad {
+        fn allocate(ref self: ContractState) {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
-            if surplus.is_zero() {
-                return WadZeroable::zero();
+            let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+            let balance: Wad = shrine.get_yin(get_contract_address());
+
+            if balance.is_zero() {
+                return;
             }
 
+            // Loop over equalizer's balance and transfer to recipients
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
 
-            let mut minted_surplus: Wad = WadZeroable::zero();
-
+            let mut amount_allocated: Wad = WadZeroable::zero();
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
                         let amount: Wad = wadray::rmul_wr(
-                            surplus, *(percentages_copy.pop_front().unwrap())
+                            balance, *(percentages_copy.pop_front().unwrap())
                         );
 
-                        shrine.inject(*recipient, amount);
-                        minted_surplus += amount;
+                        yin.transfer(*recipient, amount.into());
+                        amount_allocated += amount;
                     },
                     Option::None => { break; }
                 };
             };
 
-            // Safety check to assert yin is less than or equal to total debt after minting surplus
-            // It may not be equal due to rounding errors
-            let updated_total_yin: Wad = shrine.get_total_yin();
-            assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
-
-            self.emit(Equalize { recipients, percentages, amount: minted_surplus });
-
-            minted_surplus
+            self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }
-    }
 
-    //
-    // Internal functions for Equalizer that do not access Equalizer's storage
-    //
+        // Burn yin from the caller's balance to wipe off any budget deficit in Shrine.
+        // Anyone can call this function.
+        // Returns the amount of deficit wiped.
+        fn normalize(ref self: ContractState, yin_amt: Wad) -> Wad {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let budget: SignedWad = shrine.get_budget();
+            if budget.is_negative() {
+                let wipe_amt: Wad = min(yin_amt, budget.val.into());
+                let caller: ContractAddress = get_caller_address();
+                shrine.eject(caller, wipe_amt);
+                shrine.adjust_budget(wipe_amt.into());
 
-    // Helper function to return a tuple of the Shrine's total debt and the surplus
-    // calculated based on the Shrine's total debt and the total minted yin.
-    #[inline(always)]
-    fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
-        let shrine_health: Health = shrine.get_shrine_health();
-        let surplus: Wad = shrine_health.debt - shrine.get_total_yin();
-        (shrine_health.debt, surplus)
+                self.emit(Normalize { caller, yin_amt: wipe_amt });
+
+                wipe_amt
+            } else {
+                WadZeroable::zero()
+            }
+        }
     }
 }

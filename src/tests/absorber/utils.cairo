@@ -90,7 +90,9 @@ mod absorber_utils {
     // Test setup helpers
     //
 
-    fn absorber_deploy() -> (
+    fn absorber_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -98,7 +100,7 @@ mod absorber_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(salt);
 
         let admin: ContractAddress = admin();
 
@@ -108,11 +110,12 @@ mod absorber_utils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
+        let salt: felt252 = salt.unwrap_or(0);
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(
             absorber_contract::TEST_CLASS_HASH
         )
             .unwrap();
-        let (absorber_addr, _) = deploy_syscall(absorber_class_hash, 0, calldata.span(), false)
+        let (absorber_addr, _) = deploy_syscall(absorber_class_hash, salt, calldata.span(), false)
             .unwrap_syscall();
 
         set_contract_address(admin);
@@ -219,7 +222,9 @@ mod absorber_utils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn absorber_with_first_provider() -> (
+    fn absorber_with_first_provider(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -229,7 +234,7 @@ mod absorber_utils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(salt);
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -241,7 +246,9 @@ mod absorber_utils {
     }
 
     // Helper function to deploy Absorber, add rewards and create a trove.
-    fn absorber_with_rewards_and_first_provider() -> (
+    fn absorber_with_rewards_and_first_provider(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
         IAbsorberDispatcher,
@@ -254,7 +261,9 @@ mod absorber_utils {
         Wad, // provided amount
     ) {
         let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
-            absorber_with_first_provider();
+            absorber_with_first_provider(
+            salt
+        );
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();

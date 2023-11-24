@@ -1,5 +1,6 @@
 mod purger_utils {
     use cmp::min;
+    use core::option::OptionTrait;
     use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
@@ -293,7 +294,9 @@ mod purger_utils {
     // Test setup helpers
     //
 
-    fn purger_deploy() -> (
+    fn purger_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
         IMockPragmaDispatcher,
@@ -302,7 +305,9 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+            salt
+        );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
@@ -381,7 +386,7 @@ mod purger_utils {
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad
+        searcher_yin_amt: Wad, salt: Option<felt252>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -391,7 +396,7 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy();
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(salt);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
@@ -624,9 +629,7 @@ mod purger_utils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
-        assert(penalty.is_zero(), 'penalty should be 0');
-        assert(max_liquidation_amt.is_zero(), 'close amount should be 0');
+        assert(purger.preview_liquidate(trove_id).is_none(), 'should not be liquidatable');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -634,9 +637,7 @@ mod purger_utils {
         shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
-
-        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
-        assert(penalty.is_non_zero(), 'close amount should not be 0');
+        let (penalty, _,) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
         if ltv < RAY_ONE.into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -650,8 +651,9 @@ mod purger_utils {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
-        assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
+        let (penalty, _, _) = purger
+            .preview_absorb(trove_id)
+            .expect('preview should be Option::Some');
         if ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -660,9 +662,7 @@ mod purger_utils {
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64,) {
-        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
-        assert(penalty.is_zero(), 'penalty should be 0');
-        assert(max_absorption_amt.is_zero(), 'close amount should be 0');
+        assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
