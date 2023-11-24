@@ -701,6 +701,11 @@ mod test_shrine {
             'incorrect yang deposit'
         );
 
+        shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
+
+        // Avoid recovery mode when checking max forge amt by creating another trove
+        shrine_utils::funded_trove2(shrine);
+
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang);
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
 
@@ -712,8 +717,6 @@ mod test_shrine {
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
-
-        shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TroveUpdated(
@@ -775,17 +778,24 @@ mod test_shrine {
     #[available_gas(1000000000000)]
     fn test_shrine_withdraw_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        shrine_utils::funded_trove2(shrine);
+
         set_contract_address(shrine_utils::admin());
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
+        let yang1_start_total: Wad = shrine.get_yang_total(yang1_addr);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let withdraw_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT / 3).into();
         shrine_utils::trove1_withdraw(shrine, withdraw_amt);
 
         let trove_id: u64 = common::TROVE_1;
-        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
-        let yang1_addr = *yangs.at(0);
         let remaining_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
-        assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
+        assert(
+            shrine.get_yang_total(yang1_addr) == yang1_start_total + remaining_amt,
+            'incorrect yang total'
+        );
         assert(shrine.get_deposit(yang1_addr, trove_id) == remaining_amt, 'incorrect yang deposit');
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
@@ -805,7 +815,7 @@ mod test_shrine {
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
-        shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
+        shrine_utils::assert_total_yang_invariant(shrine, yangs, 2);
 
         let mut expected_events: Span<shrine_contract::Event> = array![
             shrine_contract::Event::TroveUpdated(
@@ -819,7 +829,9 @@ mod test_shrine {
                 }
             ),
             shrine_contract::Event::YangTotalUpdated(
-                shrine_contract::YangTotalUpdated { yang: yang1_addr, total: remaining_amt }
+                shrine_contract::YangTotalUpdated {
+                    yang: yang1_addr, total: yang1_start_total + remaining_amt
+                }
             ),
             shrine_contract::Event::DepositUpdated(
                 shrine_contract::DepositUpdated {
@@ -1035,7 +1047,7 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::funded_trove2(shrine);
 
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
         let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
@@ -1112,6 +1124,8 @@ mod test_shrine {
         let yin_price2: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        shrine_utils::funded_trove2(shrine);
 
         let trove_id: u64 = common::TROVE_1;
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
