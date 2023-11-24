@@ -471,6 +471,8 @@ mod test_abbot {
             WadZeroable::zero()
         );
 
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
+
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         set_contract_address(trove_owner);
         abbot.forge(trove_id, unsafe_forge_amt, WadZeroable::zero());
