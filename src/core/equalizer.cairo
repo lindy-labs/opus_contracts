@@ -1,6 +1,6 @@
 #[starknet::contract]
 mod equalizer {
-    use cmp::min;
+    use cmp::{max, min};
     use opus::core::roles::equalizer_roles;
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -145,11 +145,12 @@ mod equalizer {
 
             // temporarily increase the debt ceiling by the injected amount 
             // so that surplus debt can still be minted when total yin is at
-            // the debt ceiling. Note that we need to adjust the budget first
-            // or the Shrine would double-count the injected amount and revert
-            // because the debt ceiling would be exceeded
+            // or exceeds the debt ceiling. Note that we need to adjust the 
+            // budget first or the Shrine would double-count the injected amount 
+            // and revert because the debt ceiling would be exceeded
             let ceiling: Wad = shrine.get_debt_ceiling();
-            shrine.set_debt_ceiling(ceiling + minted_surplus);
+            let total_yin: Wad = shrine.get_total_yin();
+            shrine.set_debt_ceiling(max(total_yin, ceiling) + minted_surplus);
 
             shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
             shrine.inject(get_contract_address(), minted_surplus);

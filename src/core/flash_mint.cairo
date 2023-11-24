@@ -16,6 +16,7 @@
 
 #[starknet::contract]
 mod flash_mint {
+    use cmp::max;
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -119,9 +120,10 @@ mod flash_mint {
             let amount_wad: Wad = amount.try_into().unwrap();
 
             // temporarily increase the debt ceiling by the loan amount so that
-            // flash loans still work when total yin is at the debt ceiling
+            // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
-            shrine.set_debt_ceiling(ceiling + amount_wad);
+            let total_yin: Wad = shrine.get_total_yin();
+            shrine.set_debt_ceiling(max(total_yin, ceiling) + amount_wad);
             shrine.inject(receiver, amount_wad);
 
             let initiator: ContractAddress = get_caller_address();
