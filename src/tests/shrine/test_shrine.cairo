@@ -579,7 +579,7 @@ mod test_shrine {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_max_flash_mint_pct() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         set_contract_address(shrine_utils::admin());
         let max_flash_mint_pct: Wad = (25 * WAD_PERCENT).into();
@@ -599,7 +599,7 @@ mod test_shrine {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Max FM pct > 100%', 'ENTRYPOINT_FAILED'))]
     fn test_set_max_flash_mint_pct_exceeds_max() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_max_flash_mint_pct: Wad = (WAD_ONE + 1).into();
 
         set_contract_address(shrine_utils::admin());
@@ -610,7 +610,7 @@ mod test_shrine {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_max_flash_mint_pct_unauthorized() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let max_flash_mint_pct: Wad = (25 * WAD_PERCENT).into();
 
         set_contract_address(common::badguy());
