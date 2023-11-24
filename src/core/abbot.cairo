@@ -93,8 +93,13 @@ mod abbot {
         // Getters
         //
 
-        fn get_trove_owner(self: @ContractState, trove_id: u64) -> ContractAddress {
-            self.trove_owner.read(trove_id)
+        fn get_trove_owner(self: @ContractState, trove_id: u64) -> Option<ContractAddress> {
+            let owner = self.trove_owner.read(trove_id);
+            if owner.is_zero() {
+                Option::None
+            } else {
+                Option::Some(owner)
+            }
         }
 
         fn get_user_trove_ids(self: @ContractState, user: ContractAddress) -> Span<u64> {

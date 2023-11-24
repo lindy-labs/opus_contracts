@@ -3,6 +3,7 @@ use opus::types::{
     YangSuspensionStatus
 };
 use opus::utils::wadray::{Ray, Wad};
+use opus::utils::wadray_signed::SignedWad;
 use starknet::ContractAddress;
 
 #[starknet::interface]
@@ -15,6 +16,7 @@ trait IShrine<TContractState> {
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
+    fn get_budget(self: @TContractState) -> SignedWad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, rate_era: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
@@ -53,6 +55,7 @@ trait IShrine<TContractState> {
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TContractState, multiplier: Ray);
     fn set_debt_ceiling(ref self: TContractState, ceiling: Wad);
+    fn adjust_budget(ref self: TContractState, amount: SignedWad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
     fn kill(ref self: TContractState);
     // external core functions

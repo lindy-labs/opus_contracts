@@ -165,7 +165,8 @@ mod shrine_utils {
         array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
-    fn shrine_deploy() -> ContractAddress {
+    fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
+        let salt: felt252 = salt.unwrap_or(0);
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
         let mut calldata: Array<felt252> = array![
@@ -176,7 +177,7 @@ mod shrine_utils {
             shrine_contract::TEST_CLASS_HASH
         )
             .unwrap();
-        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, 0, calldata.span(), false)
+        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false)
             .unwrap_syscall();
 
         shrine_addr
@@ -294,8 +295,8 @@ mod shrine_utils {
     }
 
     #[inline(always)]
-    fn shrine_setup_with_feed() -> IShrineDispatcher {
-        let shrine_addr: ContractAddress = shrine_deploy();
+    fn shrine_setup_with_feed(salt: Option<felt252>) -> IShrineDispatcher {
+        let shrine_addr: ContractAddress = shrine_deploy(salt);
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
@@ -612,8 +613,8 @@ mod shrine_utils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn recovery_mode_test_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy() };
+    fn recovery_mode_test_setup(salt: Option<felt252>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(salt) };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
@@ -692,11 +693,11 @@ mod shrine_utils {
         };
     }
 
-    // Asserts that the total system debt is less than or equal to the sum of all troves' debt, including
-    // all unpulled redistributions.
-    // We do not check for strict equality because there may be loss of precision when
+    // Asserts that the total troves debt is less than or equal to the sum of all troves' debt, 
+    // including all unpulled redistributions.
+    // We do not check for strict equality because there may be loss of precision when 
     // redistributed debt are pulled into troves.
-    fn assert_total_debt_invariant(
+    fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         let troves_loop_end: u64 = troves_count + 1;
@@ -766,6 +767,6 @@ mod shrine_utils {
         shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
-        assert_total_debt_invariant(shrine, yangs, troves_count);
+        assert_total_troves_debt_invariant(shrine, yangs, troves_count);
     }
 }

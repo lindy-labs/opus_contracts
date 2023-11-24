@@ -30,7 +30,10 @@ mod test_abbot {
         // Check trove ID
         let expected_trove_id: u64 = 1;
         assert(trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
+        assert(
+            abbot.get_trove_owner(expected_trove_id).expect('should not be zero') == trove_owner,
+            'wrong trove owner'
+        );
         assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
 
         let mut expected_user_trove_ids: Array<u64> = array![expected_trove_id];
@@ -84,7 +87,10 @@ mod test_abbot {
 
         let expected_trove_id: u64 = 2;
         assert(second_trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
+        assert(
+            abbot.get_trove_owner(expected_trove_id).expect('should not be zero') == trove_owner,
+            'wrong trove owner'
+        );
         assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
 
         expected_user_trove_ids.append(expected_trove_id);
@@ -139,7 +145,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
-        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let yangs: Array<ContractAddress> = ArrayTrait::new();
@@ -158,7 +164,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
-        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
 
         let invalid_yang: ContractAddress = sentinel_utils::dummy_yang_addr();
         let mut yangs: Array<ContractAddress> = array![invalid_yang];
@@ -302,7 +308,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
-        let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy();
+        let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let asset_addr = *yangs.at(0);
@@ -443,7 +449,7 @@ mod test_abbot {
             shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -506,13 +512,13 @@ mod test_abbot {
         let final_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(final_trove_health.debt.is_zero(), 'wrong trove debt');
 
-        shrine_utils::assert_total_debt_invariant(shrine, yangs, abbot.get_troves_count());
+        shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
-        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner1: ContractAddress = common::trove1_owner_addr();
         let trove_owner2: ContractAddress = common::trove2_owner_addr();
 

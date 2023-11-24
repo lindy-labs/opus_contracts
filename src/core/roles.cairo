@@ -117,22 +117,23 @@ mod sentinel_roles {
 
 mod shrine_roles {
     const ADD_YANG: u128 = 1;
-    const ADVANCE: u128 = 2;
-    const DEPOSIT: u128 = 4;
-    const EJECT: u128 = 8;
-    const FORGE: u128 = 16;
-    const INJECT: u128 = 32;
-    const KILL: u128 = 64;
-    const MELT: u128 = 128;
-    const REDISTRIBUTE: u128 = 256;
-    const SEIZE: u128 = 512;
-    const SET_DEBT_CEILING: u128 = 1024;
-    const SET_MULTIPLIER: u128 = 2048;
-    const SET_THRESHOLD: u128 = 4096;
-    const UPDATE_RATES: u128 = 8192;
-    const UPDATE_YANG_SUSPENSION: u128 = 16384;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 32768;
-    const WITHDRAW: u128 = 65536;
+    const ADJUST_BUDGET: u128 = 2;
+    const ADVANCE: u128 = 4;
+    const DEPOSIT: u128 = 8;
+    const EJECT: u128 = 16;
+    const FORGE: u128 = 32;
+    const INJECT: u128 = 64;
+    const KILL: u128 = 128;
+    const MELT: u128 = 256;
+    const REDISTRIBUTE: u128 = 512;
+    const SEIZE: u128 = 1024;
+    const SET_DEBT_CEILING: u128 = 2048;
+    const SET_MULTIPLIER: u128 = 4096;
+    const SET_THRESHOLD: u128 = 8192;
+    const UPDATE_RATES: u128 = 16384;
+    const UPDATE_YANG_SUSPENSION: u128 = 32768;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 65536;
+    const WITHDRAW: u128 = 131072;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -156,12 +157,12 @@ mod shrine_roles {
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        INJECT
+        ADJUST_BUDGET + EJECT + INJECT
     }
 
     #[inline(always)]
     fn flash_mint() -> u128 {
-        INJECT + EJECT
+        INJECT + EJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
@@ -183,6 +184,7 @@ mod shrine_roles {
     #[inline(always)]
     fn all_roles() -> u128 {
         ADD_YANG
+            + ADJUST_BUDGET
             + ADVANCE
             + DEPOSIT
             + EJECT
