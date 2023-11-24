@@ -3986,7 +3986,9 @@ mod test_purger {
                                                                 shrine.is_recovery_mode(),
                                                                 'not recovery mode'
                                                             );
-                                                        } else {
+                                                        } else if (*threshold).is_non_zero() {
+                                                            // skip zero threshold because recovery mode 
+                                                            // is unavoidable
                                                             assert(
                                                                 !shrine.is_recovery_mode(),
                                                                 'recovery mode'
