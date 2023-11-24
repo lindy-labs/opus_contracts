@@ -1026,6 +1026,8 @@ mod shrine {
             health.ltv <= health.threshold
         }
 
+        // Returns the maximum amount of yin that a trove can forge based on its current health.
+        // Note that this does account for the debt ceiling, which should be checked separately.
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
             let health: Health = self.get_trove_health(trove_id);
 
@@ -1038,14 +1040,14 @@ mod shrine {
 
                 let shrine_health: Health = self.get_shrine_health();
                 if self.is_recovery_mode_helper(shrine_health) {
-                    // If recovery mode is not triggered, then `health.threshold`
-                    // already takes into account recovery mode, and we can return the 
-                    // `max_forge_amt` directly
+                    // If the Shrine is in recovery mode, then `Health.threshold` has already 
+                    // been adjusted, and we can return the `max_forge_amt` directly
                     max_forge_amt
                 } else {
-                    // Otherwise, cap the amount to what would trigger recovery mode. 
-                    // so that a subsequent forge transaction using the return value
-                    // of this function would not revert
+                    // Otherwise, cap the amount to what would trigger recovery mode,
+                    // because any amount greater than this would result in a lower threshold
+                    // such that forging this amount would then revert because the trove
+                    // would be unhealthy.
                     let rm_threshold: Ray = shrine_health.threshold
                         * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
                     let amt_to_activate_rm: Wad = wadray::rmul_rw(rm_threshold, shrine_health.value)
