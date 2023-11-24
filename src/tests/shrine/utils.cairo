@@ -598,13 +598,6 @@ mod shrine_utils {
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
 
-    // setup another trove to prevent recovery mode
-    fn funded_trove2(shrine: IShrineDispatcher) {
-        set_contract_address(admin());
-        shrine.deposit(yang1_addr(), common::TROVE_2, WHALE_TROVE_YANG1_DEPOSIT.into());
-        set_contract_address(ContractAddressZeroable::zero());
-    }
-
     fn create_whale_trove(shrine: IShrineDispatcher) {
         set_contract_address(admin());
         // Deposit 1000 of yang1
