@@ -1200,7 +1200,7 @@ mod test_shrine {
     #[test]
     #[available_gas(1000000000000)]
     fn test_shrine_get_max_forge_capped() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         // Create a shrimp trove with 0.5 ETH 
         let shrimp_eth_amt: Wad = (WAD_ONE / 2).into();
