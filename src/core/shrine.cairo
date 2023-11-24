@@ -2,7 +2,6 @@
 mod shrine {
     use cmp::{max, min};
     use core::starknet::event::EventEmitter;
-    use debug::PrintTrait;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::IERC20;
