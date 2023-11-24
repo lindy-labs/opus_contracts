@@ -1,15 +1,13 @@
 mod test_wadray_signed {
     use debug::PrintTrait;
     use math::Oneable;
-
-    use opus::utils::wadray_signed;
+    use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::{
-        SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable,
+        Signed, SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable,
         SignedWadZeroable
     };
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
-
+    use opus::utils::wadray_signed;
 
     #[test]
     fn test_add_sub() {
@@ -248,5 +246,49 @@ mod test_wadray_signed {
         let non_one = SignedRay { val: 200, sign: false };
         assert(!non_one.is_one(), 'Oneable non_one fail');
         assert(non_one.is_non_one(), 'Oneable non_one fail');
+    }
+
+    #[test]
+    fn test_signed() {
+        // Test SignedWadSigned
+        let zero = SignedWadZeroable::zero();
+        let one = SignedWad { val: 1, sign: false };
+        let neg_one = SignedWad { val: 1, sign: true };
+
+        assert(!zero.is_positive() && !zero.is_negative(), 'Signed zero fail');
+        assert(one.is_positive() && !one.is_negative(), 'Signed one fail');
+        assert(!neg_one.is_positive() && neg_one.is_negative(), 'Signed neg one fail');
+
+        // Test SignedRaySigned
+        let zero = SignedRayZeroable::zero();
+        let one = SignedRay { val: 1, sign: false };
+        let neg_one = SignedRay { val: 1, sign: true };
+
+        assert(!zero.is_positive() && !zero.is_negative(), 'Signed zero fail');
+        assert(one.is_positive() && !one.is_negative(), 'Signed one fail');
+        assert(!neg_one.is_positive() && neg_one.is_negative(), 'Signed neg one fail');
+    }
+
+    #[test]
+    fn test_zero_cmp() {
+        let pos_zero = SignedWad { val: 0, sign: false };
+        let neg_zero = SignedWad { val: 0, sign: true };
+
+        assert(pos_zero == neg_zero, 'Zero eq');
+        assert(!(pos_zero != neg_zero), 'Zero neq');
+        assert(pos_zero >= neg_zero, 'Zero ge');
+        assert(pos_zero <= neg_zero, 'Zero le');
+        assert(!(pos_zero > neg_zero), 'Zero gt');
+        assert(!(pos_zero < neg_zero), 'Zero lt');
+
+        let pos_zero = SignedRay { val: 0, sign: false };
+        let neg_zero = SignedRay { val: 0, sign: true };
+
+        assert(pos_zero == neg_zero, 'Zero eq');
+        assert(!(pos_zero != neg_zero), 'Zero neq');
+        assert(pos_zero >= neg_zero, 'Zero ge');
+        assert(pos_zero <= neg_zero, 'Zero le');
+        assert(!(pos_zero > neg_zero), 'Zero gt');
+        assert(!(pos_zero < neg_zero), 'Zero lt');
     }
 }

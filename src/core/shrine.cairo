@@ -1,26 +1,25 @@
 #[starknet::contract]
 mod shrine {
-    use core::starknet::event::EventEmitter;
     use cmp::{max, min};
+    use core::starknet::event::EventEmitter;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
-    use starknet::{get_block_timestamp, get_caller_address};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-
     use opus::core::roles::shrine_roles;
-
     use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
-        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+        ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution,
+        YangSuspensionStatus
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
-    use opus::utils::wadray;
     use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
-    use opus::utils::wadray_signed;
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::{get_block_timestamp, get_caller_address};
 
     //
     // Components
@@ -119,7 +118,7 @@ mod shrine {
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued for troves
-        // This includes the `surplus_debt`.
+        // This includes any debt surplus already accounted for in the budget.
         total_troves_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
@@ -447,10 +446,6 @@ mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
-        fn get_total_troves_debt(self: @ContractState) -> Wad {
-            self.total_troves_debt.read()
-        }
-
         fn get_budget(self: @ContractState) -> SignedWad {
             self.budget.read()
         }
@@ -496,22 +491,21 @@ mod shrine {
             (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
-        // Returns a tuple of
-        // 1. The recovery mode threshold
-        // 2. Shrine's LTV
-        fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
-            let (liq_threshold, value) = self
+        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt;
+        fn get_shrine_health(self: @ContractState) -> Health {
+            let (threshold, value) = self
                 .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_troves_debt.read();
-            let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
-            if value.is_zero() {
-                return (rm_threshold, BoundedRay::max());
-            }
+            let ltv: Ray = if value.is_zero() {
+                BoundedRay::max()
+            } else {
+                wadray::rdiv_ww(debt, value)
+            };
 
-            (rm_threshold, wadray::rdiv_ww(debt, value))
+            Health { threshold, ltv, value, debt }
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -540,6 +534,11 @@ mod shrine {
             self
                 .yang_to_yang_redistribution
                 .read((recipient_yang_id, redistribution_id, redistributed_yang_id))
+        }
+
+        fn is_recovery_mode(self: @ContractState) -> bool {
+            let shrine_health: Health = self.get_shrine_health();
+            self.is_recovery_mode_helper(shrine_health)
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -853,11 +852,10 @@ mod shrine {
             let forge_fee = amount * forge_fee_pct;
             let debt_amount = amount + forge_fee;
 
-            let new_total_yin: Wad = self.total_yin.read() + amount;
-            let new_budget: SignedWad = self.budget.read() + forge_fee.into();
-            let new_equilibrium: SignedWad = new_total_yin.into() + new_budget;
-            let ceiling: SignedWad = self.debt_ceiling.read().into();
-            assert(new_equilibrium <= ceiling, 'SH: Debt ceiling reached');
+            self
+                .assert_le_debt_ceiling(
+                    self.total_yin.read() + amount, self.budget.read() + forge_fee.into()
+                );
 
             let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
             self.total_troves_debt.write(new_total_troves_debt);
@@ -905,7 +903,7 @@ mod shrine {
             // Update user balance
             self.melt_helper(user, melt_amt);
 
-            // Eventss
+            // Events
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
@@ -929,7 +927,7 @@ mod shrine {
             let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
-            // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
+            // The trove's debt is used instead of estimated debt from `get_trove_health` to ensure that
             // system has accounted for the accrued interest.
             let mut trove: Trove = self.troves.read(trove_id);
 
@@ -971,6 +969,9 @@ mod shrine {
             self.access_control.assert_has_role(shrine_roles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
+
+            self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read());
+
             self.forge_helper(receiver, amount);
         }
 
@@ -983,11 +984,6 @@ mod shrine {
         //
         // Core Functions - View
         //
-
-        fn get_shrine_threshold_and_value(self: @ContractState) -> (Ray, Wad) {
-            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
-            self.get_threshold_and_value(yang_totals, now())
-        }
 
         // Get the last updated price for a yang
         fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
@@ -1026,25 +1022,27 @@ mod shrine {
 
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
-            let (threshold, ltv, _, _) = self.get_trove_info(trove_id);
-            ltv <= threshold
+            let health: Health = self.get_trove_health(trove_id);
+            health.ltv <= health.threshold
         }
 
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let (threshold, _, value, debt) = self.get_trove_info(trove_id);
+            let health: Health = self.get_trove_health(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            let max_debt: Wad = wadray::rmul_rw(threshold, value);
+            let max_debt: Wad = wadray::rmul_rw(health.threshold, health.value);
 
-            if debt < max_debt {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+            if health.debt < max_debt {
+                return (max_debt - health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
             WadZeroable::zero()
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
-        fn get_trove_info(self: @ContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad) {
+        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt, 
+        // trove value and compounded debt;
+        fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
 
             // Get threshold and trove value
@@ -1064,11 +1062,13 @@ mod shrine {
                 //   of debt / value will run into a zero division error.
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
                 //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
-                if trove.debt.is_non_zero() {
-                    return (threshold, BoundedRay::max(), value, trove.debt);
+                let ltv: Ray = if trove.debt.is_non_zero() {
+                    BoundedRay::max()
                 } else {
-                    return (threshold, BoundedRay::min(), value, trove.debt);
-                }
+                    BoundedRay::min()
+                };
+
+                return Health { threshold, ltv, value, debt: trove.debt };
             }
 
             // Calculate debt
@@ -1085,7 +1085,7 @@ mod shrine {
 
             let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
 
-            (threshold, ltv, value, compounded_debt_with_redistributed_debt)
+            Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
 
         fn get_redistributions_attributed_to_trove(
@@ -1148,9 +1148,22 @@ mod shrine {
             assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
         }
 
+        fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
+            let new_total_debt: SignedWad = new_total_yin.into() + new_budget;
+            let ceiling: SignedWad = self.debt_ceiling.read().into();
+            assert(new_total_debt <= ceiling, 'SH: Debt ceiling reached');
+        }
+
         //
         // Helpers for getters and view functions
         //
+
+        // Helper function to check if recovery mode is triggered for Shrine
+        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
+            let recovery_mode_threshold: Ray = health.threshold
+                * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+            health.ltv >= recovery_mode_threshold
+        }
 
         // Helper function to get the yang ID given a yang address, and throw an error if
         // yang address has not been added (i.e. yang ID = 0)
@@ -1187,12 +1200,15 @@ mod shrine {
         // if recovery mode is active
         // The maximum threshold decrease is capped to 50% of the "base threshold"
         fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
-            if shrine_ltv >= recovery_mode_threshold {
+            let shrine_health: Health = self.get_shrine_health();
+
+            if self.is_recovery_mode_helper(shrine_health) {
+                let recovery_mode_threshold: Ray = shrine_health.threshold
+                    * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
                 return max(
                     threshold
                         * THRESHOLD_DECREASE_FACTOR.into()
-                        * (recovery_mode_threshold / shrine_ltv),
+                        * (recovery_mode_threshold / shrine_health.ltv),
                     (threshold.val / 2_u128).into()
                 );
             }
@@ -1240,7 +1256,6 @@ mod shrine {
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
             let base_threshold: Ray = self.thresholds.read(yang_id);
-
             match self.get_yang_suspension_status_helper(yang_id) {
                 YangSuspensionStatus::None => { base_threshold },
                 YangSuspensionStatus::Temporary => {
@@ -1312,7 +1327,6 @@ mod shrine {
                         if (*yang_balance.amount).is_non_zero() {
                             let yang_threshold: Ray = self
                                 .get_yang_threshold_helper(*yang_balance.yang_id);
-
                             let (price, _, _) = self
                                 .get_recent_price_from(*yang_balance.yang_id, interval);
 
@@ -1353,8 +1367,7 @@ mod shrine {
         //
 
         fn adjust_budget_helper(ref self: ContractState, amount: SignedWad) {
-            let current_surplus: SignedWad = self.budget.read();
-            self.budget.write(current_surplus + amount);
+            self.budget.write(self.budget.read() + amount);
 
             self.emit(BudgetAdjusted { amount });
         }
@@ -1411,7 +1424,7 @@ mod shrine {
 
         // Adds the accumulated interest as debt to the trove
         fn charge(ref self: ContractState, trove_id: u64) {
-            // Do not charge accrued interest once Shrine is killed because total system debt
+            // Do not charge accrued interest once Shrine is killed because total troves' debt
             // and individual trove's debt are fixed at the time of shutdown.
             if !self.is_live.read() {
                 return;
@@ -1456,12 +1469,11 @@ mod shrine {
             self.troves.write(trove_id, updated_trove);
             self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
 
-            // Get new system debt
-            // This adds the interest charged on the trove's debt to the total debt.
-            // This should not include redistributed debt, as that is already included in the total.
             let charged: Wad = compounded_trove_debt - trove.debt;
 
-            // Emit only if there is a change in the trove's debt
+            // Add the interest charged on the trove's debt to the total troves' debt and 
+            // budget only if there is a change in the trove's debt. This should not include
+            // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
                 let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
                 self.total_troves_debt.write(new_total_troves_debt);

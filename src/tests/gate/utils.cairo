@@ -1,24 +1,22 @@
 mod gate_utils {
     use debug::PrintTrait;
     use integer::BoundedInt;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable};
-
     use opus::tests::common;
     use opus::tests::erc20::ERC20;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
+    };
 
     //
     // Constants
@@ -79,14 +77,14 @@ mod gate_utils {
     }
 
     fn eth_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
-        let shrine = shrine_utils::shrine_deploy();
+        let shrine = shrine_utils::shrine_deploy(Option::None);
         let eth: ContractAddress = eth_token_deploy();
         let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel());
         (shrine, eth, gate)
     }
 
     fn wbtc_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
-        let shrine = shrine_utils::shrine_deploy();
+        let shrine = shrine_utils::shrine_deploy(Option::None);
         let wbtc: ContractAddress = wbtc_token_deploy();
         let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel());
         (shrine, wbtc, gate)

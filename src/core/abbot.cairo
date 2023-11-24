@@ -1,13 +1,12 @@
 #[starknet::contract]
 mod abbot {
-    use starknet::{ContractAddress, get_caller_address};
-
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
+    use starknet::{ContractAddress, get_caller_address};
 
     // 
     // Components 
@@ -94,8 +93,13 @@ mod abbot {
         // Getters
         //
 
-        fn get_trove_owner(self: @ContractState, trove_id: u64) -> ContractAddress {
-            self.trove_owner.read(trove_id)
+        fn get_trove_owner(self: @ContractState, trove_id: u64) -> Option<ContractAddress> {
+            let owner = self.trove_owner.read(trove_id);
+            if owner.is_zero() {
+                Option::None
+            } else {
+                Option::Some(owner)
+            }
         }
 
         fn get_user_trove_ids(self: @ContractState, user: ContractAddress) -> Span<u64> {
@@ -114,6 +118,15 @@ mod abbot {
 
         fn get_troves_count(self: @ContractState) -> u64 {
             self.troves_count.read()
+        }
+
+        fn get_trove_asset_balance(
+            self: @ContractState, trove_id: u64, yang: ContractAddress
+        ) -> u128 {
+            self
+                .sentinel
+                .read()
+                .convert_to_assets(yang, self.shrine.read().get_deposit(yang, trove_id))
         }
 
         //

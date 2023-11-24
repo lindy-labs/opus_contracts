@@ -1,19 +1,18 @@
 #[starknet::contract]
 mod equalizer {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-
     use opus::core::roles::equalizer_roles;
-
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Health;
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use opus::utils::wadray_signed::{Signed, SignedWad};
     use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::SignedWad;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     //
     // Components
@@ -193,18 +192,21 @@ mod equalizer {
 
         // Burn yin from the caller's balance to wipe off any budget deficit in Shrine.
         // Anyone can call this function.
-        fn normalize(ref self: ContractState, yin_amt: Wad) {
+        // Returns the amount of deficit wiped.
+        fn normalize(ref self: ContractState, yin_amt: Wad) -> Wad {
             let shrine: IShrineDispatcher = self.shrine.read();
-
             let budget: SignedWad = shrine.get_budget();
-            let budget_wad: Option<Wad> = budget.try_into();
-            let has_deficit: bool = budget_wad.is_none();
-            if has_deficit {
+            if budget.is_negative() {
                 let wipe_amt: Wad = min(yin_amt, budget.val.into());
                 let caller: ContractAddress = get_caller_address();
                 shrine.eject(caller, wipe_amt);
                 shrine.adjust_budget(wipe_amt.into());
+
                 self.emit(Normalize { caller, yin_amt: wipe_amt });
+
+                wipe_amt
+            } else {
+                WadZeroable::zero()
             }
         }
     }

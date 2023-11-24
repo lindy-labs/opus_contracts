@@ -1,16 +1,30 @@
 use debug::PrintTrait;
 use math::Oneable;
-
-use opus::utils::wadray;
 use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
+use opus::utils::wadray;
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
+
+trait Signed<T> {
+    fn is_negative(self: T) -> bool;
+    fn is_positive(self: T) -> bool;
+}
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct SignedWad {
     val: u128,
     sign: bool
+}
+
+impl SignedWadSigned of Signed<SignedWad> {
+    fn is_negative(self: SignedWad) -> bool {
+        self.val > 0 && self.sign
+    }
+
+    fn is_positive(self: SignedWad) -> bool {
+        self.val > 0 && !self.sign
+    }
 }
 
 impl SignedWadIntoFelt252 of Into<SignedWad, felt252> {
@@ -112,11 +126,16 @@ impl SignedWadOneable of Oneable<SignedWad> {
 
 impl SignedWadPartialEq of PartialEq<SignedWad> {
     fn eq(lhs: @SignedWad, rhs: @SignedWad) -> bool {
-        *lhs.val == *rhs.val && *lhs.sign == *rhs.sign
+        let val_cmp: bool = *lhs.val == *rhs.val;
+        if val_cmp && (*lhs.val).is_zero() {
+            true
+        } else {
+            val_cmp && *lhs.sign == *rhs.sign
+        }
     }
 
     fn ne(lhs: @SignedWad, rhs: @SignedWad) -> bool {
-        *lhs.val != *rhs.val || *lhs.sign != *rhs.sign
+        !(*lhs == *rhs)
     }
 }
 
@@ -130,26 +149,22 @@ impl SignedWadAddEq of AddEq<SignedWad> {
 impl SignedWadPartialOrd of PartialOrd<SignedWad> {
     #[inline(always)]
     fn le(lhs: SignedWad, rhs: SignedWad) -> bool {
-        if lhs.sign != rhs.sign {
-            lhs.sign
-        } else {
-            (lhs.val == rhs.val) || ((lhs.val < rhs.val) ^ lhs.sign)
-        }
+        !(lhs > rhs)
     }
 
     #[inline(always)]
     fn ge(lhs: SignedWad, rhs: SignedWad) -> bool {
-        if lhs.sign != rhs.sign {
-            !lhs.sign
-        } else {
-            (lhs.val == rhs.val) || ((lhs.val > rhs.val) ^ lhs.sign)
-        }
+        !(lhs < rhs)
     }
 
     #[inline(always)]
     fn lt(lhs: SignedWad, rhs: SignedWad) -> bool {
         if lhs.sign != rhs.sign {
-            lhs.sign
+            if lhs.val == rhs.val && lhs.is_zero() {
+                false
+            } else {
+                lhs.sign
+            }
         } else {
             (lhs.val != rhs.val) && ((lhs.val < rhs.val) ^ lhs.sign)
         }
@@ -158,7 +173,11 @@ impl SignedWadPartialOrd of PartialOrd<SignedWad> {
     #[inline(always)]
     fn gt(lhs: SignedWad, rhs: SignedWad) -> bool {
         if lhs.sign != rhs.sign {
-            !lhs.sign
+            if lhs.val == rhs.val && lhs.is_zero() {
+                false
+            } else {
+                !lhs.sign
+            }
         } else {
             (lhs.val != rhs.val) && ((lhs.val > rhs.val) ^ lhs.sign)
         }
@@ -167,8 +186,8 @@ impl SignedWadPartialOrd of PartialOrd<SignedWad> {
 
 
 fn signed_wad_from_felt(val: felt252) -> SignedWad {
-    let ray_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();
-    SignedWad { val: ray_val, sign: _felt_sign(val) }
+    let wad_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();
+    SignedWad { val: wad_val, sign: _felt_sign(val) }
 }
 
 
@@ -176,6 +195,16 @@ fn signed_wad_from_felt(val: felt252) -> SignedWad {
 struct SignedRay {
     val: u128,
     sign: bool
+}
+
+impl SignedRaySigned of Signed<SignedRay> {
+    fn is_negative(self: SignedRay) -> bool {
+        self.val > 0 && self.sign
+    }
+
+    fn is_positive(self: SignedRay) -> bool {
+        self.val > 0 && !self.sign
+    }
 }
 
 impl SignedRayIntoFelt252 of Into<SignedRay, felt252> {
@@ -283,11 +312,16 @@ impl SignedRayOneable of Oneable<SignedRay> {
 
 impl SignedRayPartialEq of PartialEq<SignedRay> {
     fn eq(lhs: @SignedRay, rhs: @SignedRay) -> bool {
-        *lhs.val == *rhs.val && *lhs.sign == *rhs.sign
+        let val_cmp: bool = *lhs.val == *rhs.val;
+        if val_cmp && (*lhs.val).is_zero() {
+            true
+        } else {
+            val_cmp && *lhs.sign == *rhs.sign
+        }
     }
 
     fn ne(lhs: @SignedRay, rhs: @SignedRay) -> bool {
-        *lhs.val != *rhs.val || *lhs.sign != *rhs.sign
+        !(*lhs == *rhs)
     }
 }
 
@@ -301,26 +335,22 @@ impl SignedRayAddEq of AddEq<SignedRay> {
 impl SignedRayPartialOrd of PartialOrd<SignedRay> {
     #[inline(always)]
     fn le(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if lhs.sign != rhs.sign {
-            lhs.sign
-        } else {
-            (lhs.val == rhs.val) || ((lhs.val < rhs.val) ^ lhs.sign)
-        }
+        !(lhs > rhs)
     }
 
     #[inline(always)]
     fn ge(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if lhs.sign != rhs.sign {
-            !lhs.sign
-        } else {
-            (lhs.val == rhs.val) || ((lhs.val > rhs.val) ^ lhs.sign)
-        }
+        !(lhs < rhs)
     }
 
     #[inline(always)]
     fn lt(lhs: SignedRay, rhs: SignedRay) -> bool {
         if lhs.sign != rhs.sign {
-            lhs.sign
+            if lhs.val == rhs.val && lhs.is_zero() {
+                false
+            } else {
+                lhs.sign
+            }
         } else {
             (lhs.val != rhs.val) && ((lhs.val < rhs.val) ^ lhs.sign)
         }
@@ -329,7 +359,11 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
     #[inline(always)]
     fn gt(lhs: SignedRay, rhs: SignedRay) -> bool {
         if lhs.sign != rhs.sign {
-            !lhs.sign
+            if lhs.val == rhs.val && lhs.is_zero() {
+                false
+            } else {
+                !lhs.sign
+            }
         } else {
             (lhs.val != rhs.val) && ((lhs.val > rhs.val) ^ lhs.sign)
         }

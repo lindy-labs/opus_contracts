@@ -1,17 +1,15 @@
 #[starknet::contract]
 mod controller {
-    use starknet::{ContractAddress, contract_address, get_block_timestamp};
-
     use opus::core::roles::controller_roles;
-
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::access_control::access_control_component;
     use opus::utils::math;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Wad, Ray, RAY_ONE};
-    use opus::utils::wadray_signed;
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use opus::utils::wadray_signed;
+    use starknet::{ContractAddress, contract_address, get_block_timestamp};
 
     //
     // Components
@@ -24,7 +22,7 @@ mod controller {
         access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
-    // 
+    //
     // Constants
     //
 
@@ -36,7 +34,7 @@ mod controller {
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
     const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
-    // 
+    //
     // Storage
     //
 

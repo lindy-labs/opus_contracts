@@ -1,25 +1,22 @@
 mod caretaker_utils {
     use debug::PrintTrait;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
-    };
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
-
     use opus::interfaces::IAbbot::IAbbotDispatcher;
     use opus::interfaces::ICaretaker::ICaretakerDispatcher;
     use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
+        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+    };
 
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('caretaker admin').unwrap()
@@ -36,7 +33,7 @@ mod caretaker_utils {
     ) {
         set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address
         );

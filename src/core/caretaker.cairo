@@ -1,21 +1,19 @@
 #[starknet::contract]
 mod caretaker {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-
     use opus::core::roles::caretaker_roles;
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RAY_ONE, Wad};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     //
     // Components
@@ -59,10 +57,8 @@ mod caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
-        // Amount of yin backed by this Caretaker's assets after shutdown
-        backed_yin: Wad,
-        // Amount of yin already claimed via this Caretaker after shutdown
-        claimed_yin: Wad,
+        // Amount of yin remaining to be backed by this Caretaker's assets after shutdown
+        reclaimable_yin: Wad,
     }
 
     //
@@ -111,7 +107,7 @@ mod caretaker {
         shrine: ContractAddress,
         abbot: ContractAddress,
         sentinel: ContractAddress,
-        equalizer: ContractAddress,
+        equalizer: ContractAddress
     ) {
         self.access_control.initializer(admin, Option::Some(caretaker_roles::default_admin_role()));
 
@@ -173,8 +169,7 @@ mod caretaker {
 
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
-            let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
-            let remaining_reclaimable_yin: Wad = self.backed_yin.read() - self.claimed_yin.read();
+            let remaining_reclaimable_yin: Wad = self.reclaimable_yin.read();
             let capped_yin: Wad = min(yin, remaining_reclaimable_yin);
             let pct_to_reclaim: Ray = wadray::rdiv_ww(capped_yin, remaining_reclaimable_yin);
 
@@ -225,13 +220,12 @@ mod caretaker {
             self.equalizer.read().equalize();
 
             // Calculate the percentage of collateral needed to back all troves' yin 1 : 1
-            // based on the last value of all collateral in Shrine. We can use `total_troves_debt`
-            // as a proxy for total yin minted by troves because we would have minted any surplus 
-            // budget via `Equalizer.equalize` in the preceding step.
-            let (_, total_value) = shrine.get_shrine_threshold_and_value();
-            let total_troves_yin: Wad = shrine.get_total_troves_debt();
-            let backing_pct: Ray = wadray::rdiv_ww(total_troves_yin, total_value);
-            self.backed_yin.write(total_troves_yin);
+            // based on the last value of all collateral in Shrine. We can use the total troves' 
+            // debt from the Shrine's Health as a proxy for total yin minted by troves because 
+            // we would have minted any surplus budget via `Equalizer.equalize` in the preceding step.
+            let shrine_health: Health = shrine.get_shrine_health();
+            let backing_pct: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
+            self.reclaimable_yin.write(shrine_health.debt);
 
             // Cap the percentage to 100%
             let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
@@ -287,7 +281,11 @@ mod caretaker {
             self.reentrancy_guard.start();
 
             // Assert caller is trove owner
-            let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id);
+            let trove_owner: ContractAddress = self
+                .abbot
+                .read()
+                .get_trove_owner(trove_id)
+                .expect('CA: Owner should not be zero');
             assert(trove_owner == get_caller_address(), 'CA: Not trove owner');
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
@@ -355,6 +353,7 @@ mod caretaker {
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
             let (reclaimable_yin, reclaimable_assets) = self.preview_reclaim(yin);
+            self.reclaimable_yin.write(self.reclaimable_yin.read() - reclaimable_yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
             shrine.eject(caller, reclaimable_yin);

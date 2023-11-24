@@ -8,18 +8,16 @@
 mod absorber {
     use cmp::min;
     use integer::u256_safe_divmod;
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-
     use opus::core::roles::absorber_roles;
-
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
+    use opus::utils::wadray;
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
 
     //
     // Components
@@ -341,7 +339,7 @@ mod absorber {
         }
 
 
-        // Returns the absorbed assets and rewards that a provider will receive based on 
+        // Returns the absorbed assets and rewards that a provider will receive based on
         // the current on-chain conditions
         fn preview_reap(
             self: @ContractState, provider: ContractAddress
@@ -491,7 +489,7 @@ mod absorber {
             let provision: Provision = self.provisions.read(provider);
             assert_provider(provision);
 
-            let request: Request = self.provider_request.read(provider);
+            let mut request: Request = self.provider_request.read(provider);
             self.assert_can_remove(request);
 
             // Withdraw absorbed collateral before updating shares
@@ -513,16 +511,8 @@ mod absorber {
                         provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() }
                     );
 
-                self
-                    .provider_request
-                    .write(
-                        provider,
-                        Request {
-                            timestamp: request.timestamp,
-                            timelock: request.timelock,
-                            has_removed: true
-                        }
-                    );
+                request.has_removed = true;
+                self.provider_request.write(provider, request);
 
                 // Event emission
                 self.emit(Remove { provider, epoch: current_epoch, yin: WadZeroable::zero() });
@@ -977,11 +967,7 @@ mod absorber {
         //
 
         fn assert_can_remove(self: @ContractState, request: Request) {
-            let (recovery_mode_threshold, shrine_ltv) = self
-                .shrine
-                .read()
-                .get_recovery_mode_threshold();
-            assert(shrine_ltv < recovery_mode_threshold, 'ABS: Recovery Mode active');
+            assert(!self.shrine.read().is_recovery_mode(), 'ABS: Recovery Mode active');
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
             assert(!request.has_removed, 'ABS: Only 1 removal per request');
@@ -1066,7 +1052,7 @@ mod absorber {
         }
 
         // Helper function to loop over all rewards and calculate the amounts for a provider.
-        // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus 
+        // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus
         // pending rewards, depending on the `include_pending_rewards` flag.
         fn get_provider_rewards(
             self: @ContractState,

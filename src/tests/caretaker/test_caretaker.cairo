@@ -1,25 +1,21 @@
 mod test_caretaker {
     use debug::PrintTrait;
-    use starknet::{ContractAddress};
-    use starknet::testing::set_contract_address;
-
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{caretaker_roles, shrine_roles};
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
-
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::caretaker::utils::caretaker_utils;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-
+    use opus::types::{AssetBalance, Health};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::testing::set_contract_address;
+    use starknet::{ContractAddress};
 
     #[test]
     #[available_gas(100000000)]
@@ -91,8 +87,8 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (_, total_value) = shrine.get_shrine_threshold_and_value();
-        let backing: Ray = wadray::rdiv_ww(total_yin, total_value);
+        let shrine_health: Health = shrine.get_shrine_health();
+        let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
@@ -183,8 +179,8 @@ mod test_caretaker {
         );
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
-        let (_, total_value) = shrine.get_shrine_threshold_and_value();
-        let backing: Ray = wadray::rdiv_ww(total_yin, total_value);
+        let shrine_health: Health = shrine.get_shrine_health();
+        let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
@@ -441,6 +437,20 @@ mod test_caretaker {
         ]
             .span();
         common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+
+        // assert that caretaker has no assets remaining
+        let mut caretaker_assets: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![caretaker.contract_address].span()
+        );
+        loop {
+            match caretaker_assets.pop_front() {
+                Option::Some(caretaker_asset_arr) => {
+                    let caretaker_asset: u128 = *caretaker_asset_arr[0];
+                    assert(caretaker_asset.is_zero(), 'caretaker asset should be 0');
+                },
+                Option::None => { break; }
+            };
+        };
     }
 
     #[test]
@@ -538,7 +548,7 @@ mod test_caretaker {
 
     #[test]
     #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: Not trove owner', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: Owner should not be zero', 'ENTRYPOINT_FAILED'))]
     fn test_release_foreign_trove_reverts() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         set_contract_address(caretaker_utils::admin());
@@ -572,17 +582,17 @@ mod test_caretaker {
         );
 
         // Transferring some of user1's yin to someone else
-        // This is because in `shrine.melt_helper`, which is called by `shrine.eject`, which is called by `reclaim`, 
+        // This is because in `shrine.melt_helper`, which is called by `shrine.eject`, which is called by `reclaim`,
         // the yin `amount` is deducted first from the user's balance and only then from the total.
-        // 
+        //
         // This means that if the user attempts to deduct more yin than exists, the transaction will obviously fail
-        // since the user can't have more yin than the total supply. However, if the yin was first deducted from 
-        // `total_yin` in `shrine.melt_helper`, then the transaction would still fail, but this test wouldn't 
-        // actually be testing the correct thing, which is that users shouldn't be able to deduct more yin than they personally 
+        // since the user can't have more yin than the total supply. However, if the yin was first deducted from
+        // `total_yin` in `shrine.melt_helper`, then the transaction would still fail, but this test wouldn't
+        // actually be testing the correct thing, which is that users shouldn't be able to deduct more yin than they personally
         // have.
         //
         // In other words, we do the transfer to ensure that the test still tests the correct thing regardless of the order
-        // of operations in `shrine.melt_helper`. 
+        // of operations in `shrine.melt_helper`.
         let user2 = common::trove2_owner_addr();
         let transfer_amt: u256 = (4000 * WAD_ONE).into();
         set_contract_address(user1);
@@ -593,7 +603,7 @@ mod test_caretaker {
         set_contract_address(caretaker_utils::admin());
         caretaker.shut();
 
-        // User1 attempts to reclaim more yin than they have 
+        // User1 attempts to reclaim more yin than they have
         set_contract_address(user1);
         let user1_yin: Wad = shrine.get_yin(user1);
         // This should revert

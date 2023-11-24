@@ -1,25 +1,22 @@
 mod abbot_utils {
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        deploy_syscall, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
-
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::Wad;
-
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::Wad;
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        deploy_syscall, SyscallResultTrait
+    };
 
     //
     // Constants
@@ -57,14 +54,16 @@ mod abbot_utils {
     // Test setup helpers
     //
 
-    fn abbot_deploy() -> (
+    fn abbot_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates();
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(salt);
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let mut calldata: Array<felt252> = array![
@@ -107,7 +106,7 @@ mod abbot_utils {
         Span<u128>, // deposited yang asset amounts
         Wad, // forge amount
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();

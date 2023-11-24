@@ -1,29 +1,17 @@
 mod purger_utils {
     use cmp::min;
-    use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
+    use core::option::OptionTrait;
+    use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
-
+    use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::types::AssetBalance;
-    use opus::utils::math::pow;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
-
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -33,8 +21,20 @@ mod purger_utils {
     };
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-
-    use debug::PrintTrait;
+    use opus::types::{AssetBalance, Health};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
+    };
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
+    };
 
     //
     // Constants
@@ -45,6 +45,9 @@ mod purger_utils {
 
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+
+
+    const RM_ERROR_MARGIN: u128 = 10000000000000000000000; // 0.001% (Ray)
 
     //
     // Address constants
@@ -82,13 +85,15 @@ mod purger_utils {
     }
 
     fn whale_trove_yang_asset_amts() -> Span<u128> {
-        array![50 * WAD_ONE, // 50 (Wad) - ETH
-         5000000000 // 50 (10 ** 8) - BTC
+        array![700 * WAD_ONE, // 700 (Wad) - ETH
+         70000000000 // 700 (10 ** 8) - BTC
         ].span()
     }
 
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         array![
+            RayZeroable::zero(),
+            RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
             (80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
@@ -99,7 +104,7 @@ mod purger_utils {
             (97 * RAY_PERCENT).into(),
             // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
-            (99 * RAY_PERCENT).into()
+            (99 * RAY_PERCENT).into(),
         ]
             .span()
     }
@@ -289,7 +294,9 @@ mod purger_utils {
     // Test setup helpers
     //
 
-    fn purger_deploy() -> (
+    fn purger_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
         IMockPragmaDispatcher,
@@ -298,7 +305,9 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+            salt
+        );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
@@ -377,7 +386,7 @@ mod purger_utils {
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad
+        searcher_yin_amt: Wad, salt: Option<felt252>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -387,7 +396,7 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy();
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(salt);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
@@ -438,7 +447,7 @@ mod purger_utils {
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
         amt: Wad,
-    ) {
+    ) -> u64 {
         absorber_utils::provide_to_absorber(
             shrine,
             abbot,
@@ -448,7 +457,7 @@ mod purger_utils {
             recipient_trove_yang_asset_amts(),
             gates,
             amt,
-        );
+        )
     }
 
     // Creates a healthy trove and returns the trove ID
@@ -471,7 +480,7 @@ mod purger_utils {
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
-        let yin_amt: Wad = TARGET_TROVE_YIN.into();
+        let yin_amt: Wad = WAD_ONE.into();
         common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
@@ -528,7 +537,7 @@ mod purger_utils {
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
     // yang prices
-    fn adjust_prices_for_trove_ltv(
+    fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
         mock_pragma: IMockPragmaDispatcher,
         yangs: Span<ContractAddress>,
@@ -539,7 +548,32 @@ mod purger_utils {
     ) {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+
         decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
+    }
+
+    fn trigger_recovery_mode(
+        shrine: IShrineDispatcher,
+        abbot: IAbbotDispatcher,
+        trove: u64,
+        trove_owner: ContractAddress,
+    ) {
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold
+            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+        // Add 1% to the amount needed to activate RM
+        let amt_to_activate_rm: Wad = wadray::rmul_rw(
+            (RAY_ONE + RAY_PERCENT).into(),
+            (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
+        );
+
+        // Sanity check that we are able to mint the amount of debt to trigger
+        // recovery mode for the given trove
+        let max_forge_amt: Wad = shrine.get_max_forge(trove);
+        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
+
+        set_contract_address(trove_owner);
+        abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
     }
 
     //
@@ -553,7 +587,7 @@ mod purger_utils {
         common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
     }
 
-    // Returns a tuple of the expected freed percentage of trove value and the 
+    // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
     fn get_expected_liquidation_assets(
         trove_asset_amts: Span<u128>,
@@ -563,6 +597,7 @@ mod purger_utils {
         compensation_value: Option<Wad>
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
+
         let value_offset: Wad = if compensation_value.is_some() {
             compensation_value.unwrap()
         } else {
@@ -594,9 +629,7 @@ mod purger_utils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
-        assert(penalty.is_zero(), 'penalty should be 0');
-        assert(max_liquidation_amt.is_zero(), 'close amount should be 0');
+        assert(purger.preview_liquidate(trove_id).is_none(), 'should not be liquidatable');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -604,9 +637,7 @@ mod purger_utils {
         shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
-
-        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
-        assert(penalty.is_non_zero(), 'close amount should not be 0');
+        let (penalty, _,) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
         if ltv < RAY_ONE.into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -620,8 +651,9 @@ mod purger_utils {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
-        assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
+        let (penalty, _, _) = purger
+            .preview_absorb(trove_id)
+            .expect('preview should be Option::Some');
         if ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -630,9 +662,7 @@ mod purger_utils {
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64,) {
-        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
-        assert(penalty.is_zero(), 'penalty should be 0');
-        assert(max_absorption_amt.is_zero(), 'close amount should be 0');
+        assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
@@ -674,5 +704,22 @@ mod purger_utils {
                 Option::None => { break; },
             };
         };
+    }
+
+    // Helper function to calculate the sum of the value of the given yangs
+    fn get_sum_of_value(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
+    ) -> Wad {
+        let mut sum: Wad = WadZeroable::zero();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    sum = sum + yang_price * *amounts.pop_front().unwrap();
+                },
+                Option::None => { break; },
+            };
+        };
+        sum
     }
 }

@@ -1,20 +1,17 @@
 mod test_flash_mint {
-    use starknet::ContractAddress;
-    use starknet::testing::set_contract_address;
-
     use opus::core::flash_mint::flash_mint as flash_mint_contract;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, WAD_ONE};
-
     use opus::tests::common;
     use opus::tests::flash_mint::flash_borrower::flash_borrower as flash_borrower_contract;
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::wadray::{Wad, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
 
     //
     // Tests
@@ -36,7 +33,7 @@ mod test_flash_mint {
     #[test]
     #[available_gas(20000000000)]
     fn test_flash_fee() {
-        let shrine: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flash_mint_utils::flashmint_deploy(shrine);
 
         // Check that flash fee is correct
@@ -72,6 +69,19 @@ mod test_flash_mint {
         flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
 
+        // check that flash loan still functions normally when yin supply is at debt ceiling
+        set_contract_address(shrine_utils::admin());
+        let debt_ceiling: Wad = shrine_utils::shrine(shrine).get_debt_ceiling();
+        let debt_to_ceiling: Wad = debt_ceiling - shrine_utils::shrine(shrine).get_total_yin();
+        shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
+
+        set_contract_address(flash_mint_caller);
+        let fourth_loan_amt: u256 = (debt_ceiling
+            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
+            .into();
+        flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
+
         let mut expected_events: Span<flash_mint_contract::Event> = array![
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
@@ -95,6 +105,14 @@ mod test_flash_mint {
                     receiver: borrower,
                     token: shrine,
                     amount: third_loan_amt
+                }
+            ),
+            flash_mint_contract::Event::FlashMint(
+                flash_mint_contract::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: fourth_loan_amt
                 }
             ),
         ]
@@ -125,6 +143,15 @@ mod test_flash_mint {
                     initiator: flash_mint_caller,
                     token: shrine,
                     amount: third_loan_amt,
+                    fee: 0,
+                    call_data: calldata,
+                }
+            ),
+            flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                flash_borrower_contract::FlashLoancall_dataReceived {
+                    initiator: flash_mint_caller,
+                    token: shrine,
+                    amount: fourth_loan_amt,
                     fee: 0,
                     call_data: calldata,
                 }

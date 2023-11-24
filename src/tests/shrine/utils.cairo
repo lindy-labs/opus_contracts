@@ -1,29 +1,25 @@
 mod shrine_utils {
+    use debug::PrintTrait;
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
+    use opus::core::roles::shrine_roles;
+    use opus::core::shrine::shrine as shrine_contract;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::common;
+    use opus::types::{Health, YangRedistribution};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::exp::exp;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
         SyscallResultTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
-    use opus::core::shrine::shrine as shrine_contract;
-    use opus::core::roles::shrine_roles;
-
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::YangRedistribution;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::exp::exp;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
-
-    use opus::tests::common;
-
-    use debug::PrintTrait;
 
     //
     // Constants
@@ -169,7 +165,8 @@ mod shrine_utils {
         array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
-    fn shrine_deploy() -> ContractAddress {
+    fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
+        let salt: felt252 = salt.unwrap_or(0);
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
         let mut calldata: Array<felt252> = array![
@@ -180,7 +177,7 @@ mod shrine_utils {
             shrine_contract::TEST_CLASS_HASH
         )
             .unwrap();
-        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, 0, calldata.span(), false)
+        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false)
             .unwrap_syscall();
 
         shrine_addr
@@ -298,8 +295,8 @@ mod shrine_utils {
     }
 
     #[inline(always)]
-    fn shrine_setup_with_feed() -> IShrineDispatcher {
-        let shrine_addr: ContractAddress = shrine_deploy();
+    fn shrine_setup_with_feed(salt: Option<felt252>) -> IShrineDispatcher {
+        let shrine_addr: ContractAddress = shrine_deploy(salt);
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
@@ -616,8 +613,8 @@ mod shrine_utils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn recovery_mode_test_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy() };
+    fn recovery_mode_test_setup(salt: Option<felt252>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(salt) };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
@@ -638,10 +635,10 @@ mod shrine_utils {
     // Invariant helpers
     //
 
-    // Asserts that for each yang, the total yang amount is less than or equal to the sum of 
-    // all troves' deposited amount, including any unpulled exceptional redistributions, and 
+    // Asserts that for each yang, the total yang amount is less than or equal to the sum of
+    // all troves' deposited amount, including any unpulled exceptional redistributions, and
     // the initial yang amount.
-    // We do not check for strict equality because there may be loss of precision when 
+    // We do not check for strict equality because there may be loss of precision when
     // exceptionally redistributed yang are pulled into troves.
     fn assert_total_yang_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
@@ -717,8 +714,8 @@ mod shrine_utils {
             // Accrue interest on trove
             shrine.melt(admin(), trove_id, WadZeroable::zero());
 
-            let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
-            total += trove_debt;
+            let trove_health: Health = shrine.get_trove_health(trove_id);
+            total += trove_health.debt;
 
             trove_id += 1;
         };
@@ -757,11 +754,13 @@ mod shrine_utils {
 
         total += errors;
 
-        let actual_debt: Wad = shrine.get_total_troves_debt();
-        assert(total <= actual_debt, 'debt invariant failed #1');
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(total <= shrine_health.debt, 'debt invariant failed #1');
 
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, actual_debt, error_margin, 'debt invariant failed #2');
+        common::assert_equalish(
+            total, shrine_health.debt, error_margin, 'debt invariant failed #2'
+        );
     }
 
     fn assert_shrine_invariants(

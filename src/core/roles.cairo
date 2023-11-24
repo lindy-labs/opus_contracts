@@ -152,17 +152,17 @@ mod shrine_roles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
+        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES + UPDATE_YANG_SUSPENSION
     }
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        EJECT + INJECT + ADJUST_BUDGET
+        ADJUST_BUDGET + EJECT + INJECT
     }
 
     #[inline(always)]
     fn flash_mint() -> u128 {
-        INJECT + EJECT
+        INJECT + EJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
@@ -178,11 +178,6 @@ mod shrine_roles {
     #[inline(always)]
     fn sentinel() -> u128 {
         ADD_YANG + UPDATE_YANG_SUSPENSION
-    }
-
-    #[inline(always)]
-    fn transmuter() -> u128 {
-        EJECT + INJECT
     }
 
     #[cfg(test)]
@@ -206,56 +201,5 @@ mod shrine_roles {
             + UPDATE_YANG_SUSPENSION
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
-    }
-}
-
-mod transmuter_roles {
-    const ENABLE_RECLAIM: u128 = 1;
-    const KILL: u128 = 2;
-    const SETTLE: u128 = 4;
-    const SET_CARETAKER: u128 = 8;
-    const SET_CEILING: u128 = 16;
-    const SET_EQUALIZER: u128 = 32;
-    const SET_FEES: u128 = 64;
-    const SET_PERCENTAGE_CAP: u128 = 128;
-    const SET_RECEIVER: u128 = 256;
-    const SWEEP: u128 = 512;
-    const TOGGLE_REVERSIBILITY: u128 = 1024;
-
-    #[inline(always)]
-    fn caretaker() -> u128 {
-        KILL
-    }
-
-    #[inline(always)]
-    fn default_admin_role() -> u128 {
-        ENABLE_RECLAIM
-            + KILL
-            + SETTLE
-            + SET_CARETAKER
-            + SET_CEILING
-            + SET_EQUALIZER
-            + SET_FEES
-            + SET_PERCENTAGE_CAP
-            + SET_RECEIVER
-            + SWEEP
-            + TOGGLE_REVERSIBILITY
-    }
-}
-
-mod transmuter_registry_roles {
-    const ADD_TRANSMUTER: u128 = 1;
-    const KILL: u128 = 2;
-    const REMOVE_TRANSMUTER: u128 = 4;
-    const SET_RECEIVER: u128 = 8;
-
-    #[inline(always)]
-    fn default_admin_role() -> u128 {
-        ADD_TRANSMUTER + KILL + REMOVE_TRANSMUTER + SET_RECEIVER
-    }
-
-    #[inline(always)]
-    fn caretaker() -> u128 {
-        KILL
     }
 }

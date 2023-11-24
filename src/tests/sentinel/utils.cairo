@@ -1,29 +1,26 @@
 mod sentinel_utils {
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
-
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, Ray};
-
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Wad, Ray};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
+    };
 
-    const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
-    const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
+    const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
     fn admin() -> ContractAddress {
@@ -49,8 +46,8 @@ mod sentinel_utils {
     // Test setup
     //
 
-    fn deploy_sentinel() -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
+    fn deploy_sentinel(salt: Option<felt252>) -> (ISentinelDispatcher, ContractAddress) {
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(salt);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
@@ -80,10 +77,10 @@ mod sentinel_utils {
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
 
-    fn deploy_sentinel_with_gates() -> (
-        ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>
-    ) {
-        let (sentinel, shrine_addr) = deploy_sentinel();
+    fn deploy_sentinel_with_gates(
+        salt: Option<felt252>
+    ) -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
+        let (sentinel, shrine_addr) = deploy_sentinel(salt);
 
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
         let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr);
@@ -97,7 +94,7 @@ mod sentinel_utils {
     fn deploy_sentinel_with_eth_gate() -> (
         ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher
     ) {
-        let (sentinel, shrine_addr) = deploy_sentinel();
+        let (sentinel, shrine_addr) = deploy_sentinel(Option::None);
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)

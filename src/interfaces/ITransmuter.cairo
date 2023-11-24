@@ -1,6 +1,5 @@
-use starknet::ContractAddress;
-
 use opus::utils::wadray::{Ray, Wad};
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait ITransmuter<TContractState> {

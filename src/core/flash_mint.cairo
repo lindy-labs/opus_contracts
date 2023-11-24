@@ -16,13 +16,12 @@
 
 #[starknet::contract]
 mod flash_mint {
-    use starknet::{ContractAddress, get_caller_address};
-
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::Wad;
+    use starknet::{ContractAddress, get_caller_address};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
@@ -119,6 +118,10 @@ mod flash_mint {
 
             let amount_wad: Wad = amount.try_into().unwrap();
 
+            // temporarily increase the debt ceiling by the loan amount so that
+            // flash loans still work when total yin is at the debt ceiling
+            let ceiling: Wad = shrine.get_debt_ceiling();
+            shrine.set_debt_ceiling(ceiling + amount_wad);
             shrine.inject(receiver, amount_wad);
 
             let initiator: ContractAddress = get_caller_address();
@@ -130,6 +133,8 @@ mod flash_mint {
 
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
+
+            shrine.set_debt_ceiling(ceiling);
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 

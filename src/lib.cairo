@@ -1,3 +1,4 @@
+mod types;
 mod core {
     mod abbot;
     mod absorber;
@@ -11,8 +12,6 @@ mod core {
     mod roles;
     mod sentinel;
     mod shrine;
-    mod transmuter;
-    mod transmuter_registry;
 }
 
 mod external {
@@ -20,14 +19,13 @@ mod external {
 }
 
 mod interfaces {
-    mod external;
     mod IAbbot;
     mod IAbsorber;
     mod IAllocator;
     mod ICaretaker;
     mod IController;
-    mod IEqualizer;
     mod IERC20;
+    mod IEqualizer;
     mod IFlashBorrower;
     mod IFlashMint;
     mod IGate;
@@ -36,14 +34,11 @@ mod interfaces {
     mod IPurger;
     mod ISentinel;
     mod IShrine;
-    mod ITransmuter;
+    mod external;
 }
-
-mod types;
 
 mod utils {
     mod access_control;
-    mod address_registry;
     mod exp;
     mod math;
     mod reentrancy_guard;
@@ -51,8 +46,16 @@ mod utils {
     mod wadray_signed;
 }
 
+// mock used for local devnet deployment
+mod mock {
+    mod erc20;
+    mod oracle;
+}
+
 #[cfg(test)]
 mod tests {
+    mod common;
+    mod erc20;
     mod abbot {
         mod test_abbot;
         mod utils;
@@ -66,12 +69,10 @@ mod tests {
         mod test_caretaker;
         mod utils;
     }
-    mod common;
     mod controller {
         mod test_controller;
         mod utils;
     }
-    mod erc20;
     mod equalizer {
         mod test_allocator;
         mod test_equalizer;
@@ -113,7 +114,7 @@ mod tests {
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;
-        mod test_wadray_signed;
         mod test_wadray;
+        mod test_wadray_signed;
     }
 }

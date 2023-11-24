@@ -1,19 +1,19 @@
 #[starknet::contract]
 mod Transmuter {
     use cmp::min;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     use opus::core::roles::transmuter_roles;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     //
     // Components

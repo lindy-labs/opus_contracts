@@ -1,13 +1,12 @@
-use starknet::ContractAddress;
-
 use opus::types::AssetBalance;
 use opus::utils::wadray::{Ray, Wad};
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait IPurger<TContractState> {
     // view
-    fn preview_liquidate(self: @TContractState, trove_id: u64) -> (Ray, Wad);
-    fn preview_absorb(self: @TContractState, trove_id: u64) -> (Ray, Wad, Wad);
+    fn preview_liquidate(self: @TContractState, trove_id: u64) -> Option<(Ray, Wad)>;
+    fn preview_absorb(self: @TContractState, trove_id: u64) -> Option<(Ray, Wad, Wad)>;
     fn is_absorbable(self: @TContractState, trove_id: u64) -> bool;
     fn get_penalty_scalar(self: @TContractState) -> Ray;
     // external

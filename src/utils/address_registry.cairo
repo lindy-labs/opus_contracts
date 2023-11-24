@@ -1,7 +1,7 @@
 #[starknet::component]
 mod address_registry_component {
-    use starknet::{ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
+    use starknet::{ContractAddress};
 
     #[storage]
     struct Storage {

@@ -1,7 +1,6 @@
-use starknet::ContractAddress;
-
 use opus::types::AssetBalance;
 use opus::utils::wadray::Wad;
+use starknet::ContractAddress;
 
 #[starknet::interface]
 trait ICaretaker<TContractState> {

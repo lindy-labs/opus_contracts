@@ -2,25 +2,22 @@ mod test_equalizer {
     use cmp::min;
     use debug::PrintTrait;
     use integer::BoundedU128;
-    use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
     use opus::core::shrine::shrine;
-
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::SignedWad;
-
+    use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::common;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray;
+    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::wadray_signed;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::{ContractAddress, get_block_timestamp};
 
     #[test]
     #[available_gas(20000000000)]
@@ -178,9 +175,10 @@ mod test_equalizer {
 
                     common::drop_all_events(equalizer.contract_address);
 
-                    equalizer.normalize(*normalize_amt);
+                    let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
                     let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
+                    assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
                     assert(
                         shrine.get_budget() == deficit + expected_normalized_amt.into(),
                         'wrong remaining deficit'

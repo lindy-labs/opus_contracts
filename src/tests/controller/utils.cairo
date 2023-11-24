@@ -1,24 +1,21 @@
 mod controller_utils {
     use debug::PrintTrait;
+    use opus::core::controller::controller as controller_contract;
+    use opus::core::roles::shrine_roles;
+    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Ray, Wad};
+    use opus::utils::wadray;
+    use opus::utils::wadray_signed::SignedRay;
+    use opus::utils::wadray_signed;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-
-    use opus::core::controller::controller as controller_contract;
-    use opus::core::roles::shrine_roles;
-
-    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray_signed;
-    use opus::utils::wadray_signed::SignedRay;
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Ray, Wad};
-
-    use opus::tests::shrine::utils::shrine_utils;
 
     // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
@@ -39,7 +36,7 @@ mod controller_utils {
     }
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
         let mut calldata: Array<felt252> = array![

@@ -1,22 +1,19 @@
 mod flash_mint_utils {
+    use opus::core::flash_mint::flash_mint as flash_mint_contract;
+    use opus::core::roles::shrine_roles;
+    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::flash_mint::flash_borrower::flash_borrower as flash_borrower_contract;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray::{Wad, WAD_ONE};
+    use opus::utils::wadray;
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-
-    use opus::core::flash_mint::flash_mint as flash_mint_contract;
-    use opus::core::roles::shrine_roles;
-
-    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray;
-    use opus::utils::wadray::{Wad, WAD_ONE};
-
-    use opus::tests::flash_mint::flash_borrower::flash_borrower as flash_borrower_contract;
-    use opus::tests::shrine::utils::shrine_utils;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
     const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
@@ -47,7 +44,7 @@ mod flash_mint_utils {
     }
 
     fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
-        let shrine: ContractAddress = shrine_utils::shrine_deploy();
+        let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
 
         let shrine_dispatcher = IShrineDispatcher { contract_address: shrine };
