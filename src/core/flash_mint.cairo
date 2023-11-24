@@ -83,7 +83,7 @@ mod flash_mint {
                 return (supply * shrine.get_max_flash_mint_pct()).into();
             }
 
-            0_u256
+            0
         }
 
         fn flash_fee(self: @ContractState, token: ContractAddress, amount: u256) -> u256 {
@@ -106,8 +106,8 @@ mod flash_mint {
             call_data: Span<felt252>
         ) -> bool {
             // prevents looping which would lead to excessive minting
-            // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
-            // yin to be minted, as per spec
+            // we only allow the maximum percentage of total
+            // yin to be minted as set in Shrine
             self.reentrancy_guard.start();
 
             assert(amount <= self.max_flash_loan(token), 'FM: amount exceeds maximum');
