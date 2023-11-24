@@ -146,7 +146,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_lower_than_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
         common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
 
@@ -421,7 +421,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_below_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
         common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
 
@@ -539,7 +539,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
     fn test_forge_below_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
         common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
 

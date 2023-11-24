@@ -3,7 +3,7 @@ mod abbot {
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::AssetBalance;
+    use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
     use starknet::{ContractAddress, get_caller_address};
@@ -270,9 +270,9 @@ mod abbot {
 
         #[inline(always)]
         fn assert_has_minimum_value(self: @ContractState, trove_id: u64) {
-            let (_, _, value, debt) = self.shrine.read().get_trove_info(trove_id);
-            if debt.is_non_zero() {
-                assert(value >= MIN_TROVE_VALUE.into(), 'ABB: Below min value');
+            let health: Health = self.shrine.read().get_trove_health(trove_id);
+            if health.debt.is_non_zero() {
+                assert(health.value >= MIN_TROVE_VALUE.into(), 'ABB: Below min value');
             }
         }
 
