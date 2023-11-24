@@ -54,14 +54,16 @@ mod abbot_utils {
     // Test setup helpers
     //
 
-    fn abbot_deploy() -> (
+    fn abbot_deploy(
+        salt: Option<felt252>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates();
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(salt);
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let mut calldata: Array<felt252> = array![
@@ -104,7 +106,7 @@ mod abbot_utils {
         Span<u128>, // deposited yang asset amounts
         Wad, // forge amount
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
