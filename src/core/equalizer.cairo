@@ -142,19 +142,9 @@ mod equalizer {
             }
 
             let minted_surplus: Wad = surplus.unwrap();
-
-            // temporarily increase the debt ceiling by the injected amount 
-            // so that surplus debt can still be minted when total yin is at
-            // the debt ceiling. Note that we need to adjust the budget first
-            // or the Shrine would double-count the injected amount and revert
-            // because the debt ceiling would be exceeded
-            let ceiling: Wad = shrine.get_debt_ceiling();
-            shrine.set_debt_ceiling(ceiling + minted_surplus);
-
-            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
             shrine.inject(get_contract_address(), minted_surplus);
 
-            shrine.set_debt_ceiling(ceiling);
+            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
 
             self.emit(Equalize { yin_amt: minted_surplus });
 
