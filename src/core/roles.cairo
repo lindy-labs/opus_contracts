@@ -157,7 +157,7 @@ mod shrine_roles {
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        ADJUST_BUDGET + EJECT + INJECT
+        ADJUST_BUDGET + EJECT + INJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
