@@ -11,11 +11,13 @@ mod controller_utils {
     use opus::utils::wadray_signed::SignedRay;
     use opus::utils::wadray_signed;
 
-    use snforge_std::{start_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
+        get_block_timestamp
     };
 
     // Controller update interval
@@ -40,7 +42,7 @@ mod controller_utils {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
-        let mut calldata: Array<felt252> = array![
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine_addr),
             P_GAIN.into(),
@@ -51,12 +53,8 @@ mod controller_utils {
             BETA_I.into()
         ];
 
-        let controller_class_hash: ClassHash = class_hash_try_from_felt252(
-            controller_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (controller_addr, _) = deploy_syscall(controller_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let controller_class = declare('controller');
+        let controller_addr = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -72,9 +70,9 @@ mod controller_utils {
 
     #[inline(always)]
     fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.update_yin_spot_price(spot_price);
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     #[inline(always)]

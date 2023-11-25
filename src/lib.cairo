@@ -71,7 +71,7 @@ mod tests {
         mod utils;
     }
     mod controller {
-        //mod test_controller;
+        mod test_controller;
         mod utils;
     }
     mod equalizer {
