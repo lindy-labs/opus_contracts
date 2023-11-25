@@ -1,5 +1,4 @@
 mod shrine_utils {
-    use debug::PrintTrait;
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
@@ -14,12 +13,13 @@ mod shrine_utils {
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
 
-    use snforge_std::{start_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        declare, ContractClassTrait, start_prank, start_warp, CheatTarget, PrintTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
+        get_block_timestamp
     };
 
     //
@@ -167,23 +167,15 @@ mod shrine_utils {
     }
 
     fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
-        let salt = match salt {
-            Option::Some(salt) => salt,
-            Option::None => 0,
-        };
+        let shrine_class = declare('shrine');
 
-        start_warp(CheatTarget::All, DEPLOYMENT_TIMESTAMP);
-
-        let mut calldata: Array<felt252> = array![
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
         ];
 
-        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(
-            shrine_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false)
-            .unwrap_syscall();
+        start_warp(CheatTarget::All, DEPLOYMENT_TIMESTAMP);
+
+        let shrine_addr = shrine_class.deploy(@calldata).expect('shrine deploy failed');
 
         shrine_addr
     }

@@ -49,6 +49,7 @@ mod utils {
 // mock used for local devnet deployment
 mod mock {
     mod erc20;
+    mod flash_borrower;
     mod oracle;
 }
 
@@ -84,8 +85,7 @@ mod tests {
         mod utils;
     }
     mod flash_mint {
-        mod flash_borrower;
-        //mod test_flash_mint;
+        mod test_flash_mint;
         mod utils;
     }
     mod gate {
