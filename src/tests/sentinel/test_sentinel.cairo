@@ -14,12 +14,12 @@ mod test_sentinel {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WAD_ONE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
 
     #[test]
-    #[available_gas(10000000000)]
     fn test_deploy_sentinel_and_add_yang() {
         let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None
@@ -127,7 +127,6 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized() {
         let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
@@ -144,11 +143,10 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang cannot be zero address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_yang_zero_addr() {
         let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
                 ContractAddressZeroable::zero(),
@@ -161,11 +159,10 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate cannot be zero address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_gate_zero_addr() {
         let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
                 sentinel_utils::dummy_yang_addr(),
@@ -178,12 +175,11 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang already added', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_yang_already_added() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
                 eth,
@@ -196,13 +192,12 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Asset of gate is not yang', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_gate_yang_mismatch() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
         let wbtc: ContractAddress = gate_utils::wbtc_token_deploy();
 
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
                 wbtc,
@@ -215,13 +210,12 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     fn test_set_yang_asset_max() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
         let new_asset_max = sentinel_utils::ETH_ASSET_MAX * 2;
 
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
 
         // Test increasing the max
         sentinel.set_yang_asset_max(eth, new_asset_max);
@@ -262,27 +256,24 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_non_existent_yang() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .set_yang_asset_max(sentinel_utils::dummy_yang_addr(), sentinel_utils::ETH_ASSET_MAX);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_unauthed() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         sentinel.set_yang_asset_max(eth, sentinel_utils::ETH_ASSET_MAX);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     fn test_enter_exit() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
@@ -293,7 +284,7 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         let preview_yang_amt: Wad = sentinel.convert_to_yang(eth, deposit_amt.val);
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
@@ -332,7 +323,6 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(
         expected: (
             'u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
@@ -347,20 +337,19 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Reduce user's balance to below the deposit amount
-        set_contract_address(user);
+        start_prank(CheatTarget::All, user);
         eth_erc20
             .transfer(
                 common::non_zero_address(),
                 eth_erc20.balance_of(user) - (deposit_amt.val - 1).into()
             );
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_enter_yang_not_added() {
         let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
@@ -368,13 +357,12 @@ mod test_sentinel {
         let user: ContractAddress = gate_utils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         sentinel.enter(sentinel_utils::dummy_yang_addr(), user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Exceeds max amount allowed', 'ENTRYPOINT_FAILED'))]
     fn test_enter_exceeds_max_deposit() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
@@ -383,26 +371,24 @@ mod test_sentinel {
         let deposit_amt: Wad = (sentinel_utils::ETH_ASSET_MAX + 1)
             .into(); // Deposit amount exceeds max deposit
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_exit_yang_not_added() {
         let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
 
         let user: ContractAddress = gate_utils::eth_hoarder();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         sentinel.exit(sentinel_utils::dummy_yang_addr(), user, common::TROVE_1, WAD_ONE.into());
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(
         expected: (
             'u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
@@ -413,7 +399,7 @@ mod test_sentinel {
 
         let user: ContractAddress = gate_utils::eth_hoarder();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         sentinel
             .exit(
@@ -422,7 +408,6 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_enter_unauthorized() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
@@ -431,25 +416,23 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_exit_unauthorized() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = gate_utils::eth_hoarder();
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         let eth_amt: u128 = sentinel.exit(eth, user, common::TROVE_1, WAD_ONE.into());
     }
 
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
     fn test_kill_gate_and_enter() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
@@ -457,18 +440,17 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Kill the gate
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         assert(!sentinel.get_gate_live(eth), 'Gate should be killed');
 
         // Attempt to enter a killed gate should fail
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
         sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     fn test_kill_gate_and_exit() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
 
@@ -480,17 +462,17 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
 
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, common::TROVE_1, yang_amt);
 
         // Killing the gate
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         // Exiting
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
         sentinel.exit(eth, user, common::TROVE_1, yang_amt);
 
         let mut expected_events: Span<sentinel_contract::Event> = array![
@@ -503,7 +485,6 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
     fn test_kill_gate_and_preview_enter() {
         let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate();
@@ -511,20 +492,19 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Kill the gate
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         // Attempt to enter a killed gate should fail
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
         sentinel.convert_to_yang(eth, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     fn test_suspend_unsuspend_yang() {
         let (sentinel, shrine, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate();
-        set_contract_address(sentinel_utils::admin());
-        set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let status = shrine.get_yang_suspension_status(eth);
         assert(status == YangSuspensionStatus::None, 'status 1');
@@ -534,7 +514,7 @@ mod test_sentinel {
         assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
         // move time forward by 1 day
-        set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP + 86400);
+        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP + 86400);
 
         sentinel.unsuspend_yang(eth);
         let status = shrine.get_yang_suspension_status(eth);
@@ -542,35 +522,32 @@ mod test_sentinel {
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang suspended', 'ENTRYPOINT_FAILED'))]
     fn test_try_enter_when_yang_suspended() {
         let (sentinel, shrine, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate();
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel.suspend_yang(eth);
 
         let user: ContractAddress = gate_utils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(sentinel_utils::mock_abbot());
+        start_prank(CheatTarget::All, sentinel_utils::mock_abbot());
         sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_try_suspending_yang_unauthorized() {
         let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate();
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         sentinel.suspend_yang(eth);
     }
 
     #[test]
-    #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_try_unsuspending_yang_unauthorized() {
         let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate();
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         sentinel.unsuspend_yang(eth);
     }
 }

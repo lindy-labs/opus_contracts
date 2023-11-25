@@ -23,8 +23,9 @@ mod absorber_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
@@ -110,7 +111,11 @@ mod absorber_utils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let salt: felt252 = salt.unwrap_or(0);
+        let salt = match salt {
+            Option::Some(salt) => salt,
+            Option::None => 0,
+        };
+
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(
             absorber_contract::TEST_CLASS_HASH
         )
@@ -118,10 +123,10 @@ mod absorber_utils {
         let (absorber_addr, _) = deploy_syscall(absorber_class_hash, salt, calldata.span(), false)
             .unwrap_syscall();
 
-        set_contract_address(admin);
+        start_prank(CheatTarget::All, admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
         absorber_ac.grant_role(absorber_roles::purger(), mock_purger());
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
         (shrine, sentinel, abbot, absorber, yangs, gates)
@@ -208,7 +213,7 @@ mod absorber_utils {
         mut tokens: Span<ContractAddress>,
         mut blessers: Span<ContractAddress>
     ) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::All, admin());
 
         loop {
             match tokens.pop_front() {
@@ -219,7 +224,7 @@ mod absorber_utils {
             };
         };
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     fn absorber_with_first_provider(
@@ -304,12 +309,12 @@ mod absorber_utils {
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
         absorber.provide(amt);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         trove
     }
@@ -366,11 +371,11 @@ mod absorber_utils {
         burn_amt: Wad,
     ) {
         // Simulate burning a percentage of absorber's yin
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.eject(absorber.contract_address, burn_amt);
 
         // Simulate transfer of "freed" assets to absorber
-        set_contract_address(mock_purger());
+        start_prank(CheatTarget::All, mock_purger());
         let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, yang_asset_amts
         );
@@ -387,7 +392,7 @@ mod absorber_utils {
             };
         };
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     //

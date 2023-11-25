@@ -16,11 +16,12 @@ mod test_equalizer {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
+
+    use snforge_std::{start_prank, CheatTarget};
+    use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_equalizer_deploy() {
         let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
@@ -38,12 +39,11 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_equalize_pass() {
         let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
         let surplus: Wad = (500 * WAD_ONE).into();
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.adjust_budget(surplus.into());
         assert(shrine.get_budget() == surplus.into(), 'sanity check');
 
@@ -80,12 +80,11 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_allocate_pass() {
         let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
         // Simulate minted surplus by injecting to Equalizer directly
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let surplus: Wad = (1000 * WAD_ONE + 123).into();
         shrine.inject(equalizer.contract_address, surplus);
 
@@ -136,7 +135,6 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_allocate_zero_amount_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
@@ -146,7 +144,6 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_normalize_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
@@ -160,7 +157,7 @@ mod test_equalizer {
             .span();
 
         let admin: ContractAddress = shrine_utils::admin();
-        set_contract_address(admin);
+        start_prank(CheatTarget::All, admin);
 
         loop {
             match normalize_amts.pop_front() {
@@ -215,14 +212,13 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_allocator_pass() {
         let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
         let new_allocator = equalizer_utils::allocator_deploy(new_recipients, new_percentages);
 
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated
@@ -243,7 +239,6 @@ mod test_equalizer {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocator_fail() {
         let (_, equalizer, _) = equalizer_utils::equalizer_deploy();
@@ -251,7 +246,7 @@ mod test_equalizer {
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages()
         );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         equalizer.set_allocator(new_allocator.contract_address);
     }
 }

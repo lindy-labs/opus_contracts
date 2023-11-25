@@ -13,15 +13,15 @@ mod test_abbot {
     use opus::types::{AssetBalance, Health};
     use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use starknet::testing::set_contract_address;
 
     //
     // Tests
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_open_trove_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt) =
             abbot_utils::deploy_abbot_and_open_trove();
@@ -142,7 +142,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
         let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
@@ -153,7 +152,7 @@ mod test_abbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs.span(), yang_amts.span()
         );
@@ -161,7 +160,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
         let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
@@ -179,12 +177,11 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_close_trove_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
             abbot_utils::deploy_abbot_and_open_trove();
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.close_trove(trove_id);
 
         let mut yangs_copy = yangs;
@@ -210,22 +207,20 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_close_non_owner_fail() {
         let (_, _, abbot, _, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove();
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         abbot.close_trove(trove_id);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_deposit_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, _) =
             abbot_utils::deploy_abbot_and_open_trove();
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         let mut yangs_copy = yangs;
         let mut deposited_amts_copy = deposited_amts;
         loop {
@@ -274,7 +269,7 @@ mod test_abbot {
                         deposit_amt, decimals
                     );
 
-                    set_contract_address(non_owner);
+                    start_prank(CheatTarget::All, non_owner);
                     abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
@@ -290,7 +285,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
@@ -300,12 +294,11 @@ mod test_abbot {
         let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
         let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy(Option::None);
@@ -315,12 +308,11 @@ mod test_abbot {
         let invalid_trove_id: u64 = 0;
         let amount: u128 = 1;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.deposit(invalid_trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
@@ -329,12 +321,11 @@ mod test_abbot {
         let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_non_existent_trove_fail() {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
@@ -343,12 +334,11 @@ mod test_abbot {
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 1;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.deposit(trove_id + 1, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: ('SE: Exceeds max amount allowed', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
@@ -360,24 +350,23 @@ mod test_abbot {
         let gate_addr: ContractAddress = *gates.at(0).contract_address;
         let gate_bal = IERC20Dispatcher { contract_address: asset_addr }.balance_of(gate_addr);
 
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         let new_asset_max: u128 = gate_bal.try_into().unwrap();
         sentinel.set_yang_asset_max(asset_addr, new_asset_max);
 
         let amount: u128 = 1;
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_withdraw_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
             abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
 
         assert(
@@ -391,7 +380,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
@@ -401,12 +389,11 @@ mod test_abbot {
         let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
@@ -415,12 +402,11 @@ mod test_abbot {
         let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_non_owner_fail() {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
@@ -429,18 +415,17 @@ mod test_abbot {
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_forge_pass() {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, forge_amt) =
             abbot_utils::deploy_abbot_and_open_trove();
 
         let additional_forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
@@ -453,7 +438,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
@@ -462,22 +446,20 @@ mod test_abbot {
             abbot_utils::deploy_abbot_and_open_trove();
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.forge(trove_id, unsafe_forge_amt, WadZeroable::zero());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_forge_non_owner_fail() {
         let (_, _, abbot, _, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove();
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         abbot.forge(trove_id, WadZeroable::zero(), WadZeroable::zero());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_melt_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, start_forge_amt) =
             abbot_utils::deploy_abbot_and_open_trove();
@@ -486,7 +468,7 @@ mod test_abbot {
         let before_yin: Wad = shrine.get_yin(trove_owner);
 
         let melt_amt: Wad = (before_yin.val / 2).into();
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.melt(trove_id, melt_amt);
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
@@ -506,7 +488,7 @@ mod test_abbot {
             non_owner_forge_amt
         );
 
-        set_contract_address(non_owner);
+        start_prank(CheatTarget::All, non_owner);
         abbot.melt(trove_id, after_trove_health.debt);
 
         let final_trove_health: Health = shrine.get_trove_health(trove_id);
@@ -516,7 +498,6 @@ mod test_abbot {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
         let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let trove_owner1: ContractAddress = common::trove1_owner_addr();

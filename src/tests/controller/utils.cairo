@@ -10,8 +10,9 @@ mod controller_utils {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedRay;
     use opus::utils::wadray_signed;
+
+    use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
@@ -58,10 +59,10 @@ mod controller_utils {
             .unwrap_syscall();
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (
             IControllerDispatcher { contract_address: controller_addr },
@@ -71,18 +72,18 @@ mod controller_utils {
 
     #[inline(always)]
     fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.update_yin_spot_price(spot_price);
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     #[inline(always)]
     fn fast_forward_1_hour() {
-        set_block_timestamp(get_block_timestamp() + ONE_HOUR);
+        start_warp(CheatTarget::All, get_block_timestamp() + ONE_HOUR);
     }
 
     #[inline(always)]
     fn fast_forward_by_x_minutes(x: u64) {
-        set_block_timestamp(get_block_timestamp() + x * 60);
+        start_warp(CheatTarget::All, get_block_timestamp() + x * 60);
     }
 }

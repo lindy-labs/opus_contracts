@@ -28,8 +28,9 @@ mod purger_utils {
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
     };
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -357,30 +358,30 @@ mod purger_utils {
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
         // Approve Purger in Oracle
         let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         oracle_ac.grant_role(pragma_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
@@ -487,14 +488,14 @@ mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     // Helper function to decrease yang prices by the given percentage
@@ -507,7 +508,7 @@ mod purger_utils {
     ) {
         let current_ts = get_block_timestamp();
         let scale: u128 = pow(10_u128, WAD_DECIMALS - pragma_utils::PRAGMA_DECIMALS);
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -532,7 +533,7 @@ mod purger_utils {
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
@@ -572,7 +573,7 @@ mod purger_utils {
         let max_forge_amt: Wad = shrine.get_max_forge(trove);
         assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::All, trove_owner);
         abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
     }
 

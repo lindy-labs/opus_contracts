@@ -8,7 +8,6 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(9999999)]
     fn test_reentrancy_guard_pass() {
         let mut state = state();
 
@@ -20,7 +19,6 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ('RG: reentrant call',))]
-    #[available_gas(9999999)]
     fn test_reentrancy_guard_fail() {
         let mut state = state();
         // Calling the guarded function from inside itself should fail.

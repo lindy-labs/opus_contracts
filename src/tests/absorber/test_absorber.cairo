@@ -20,16 +20,16 @@ mod test_absorber {
         BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
     };
     use opus::utils::wadray;
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
 
+    use snforge_std::{start_prank, start_warp, CheatTarget};
+
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     //
     // Tests - Setup
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_absorber_setup() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
@@ -52,7 +52,6 @@ mod test_absorber {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_reward_pass() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
@@ -68,7 +67,7 @@ mod test_absorber {
 
         let mut expected_events: Array<absorber_contract::Event> = ArrayTrait::new();
 
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.set_reward(opus_token, opus_blesser, true);
 
         assert(absorber.get_rewards_count() == 1, 'rewards count not updated');
@@ -143,7 +142,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_blesser_zero_address_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
@@ -151,12 +149,11 @@ mod test_absorber {
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
 
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.set_reward(valid_address, invalid_address, true);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_token_zero_address_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
@@ -164,7 +161,7 @@ mod test_absorber {
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
 
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.set_reward(invalid_address, valid_address, true);
     }
 
@@ -173,23 +170,24 @@ mod test_absorber {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_kill_and_remove_pass() {
         let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None
         );
 
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.kill();
 
         assert(!absorber.get_live(), 'should be killed');
 
         // Check provider can remove
         let before_provider_yin_bal: Wad = shrine.get_yin(provider);
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        start_warp(
+            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK
+        );
         absorber.remove(BoundedWad::max());
 
         // Loss of precision
@@ -209,22 +207,20 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_kill_unauthorized_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         absorber.kill();
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
     fn test_provide_after_kill_fail() {
         let (shrine, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.kill();
         absorber.provide(1_u128.into());
     }
@@ -234,7 +230,6 @@ mod test_absorber {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_update_and_subsequent_provider_action() {
         // Parametrization so that the second provider action is performed
         // for each percentage
@@ -392,13 +387,14 @@ mod test_absorber {
 
                     let mut remove_as_second_action: bool = false;
                     let mut provide_as_second_action: bool = false;
-                    set_contract_address(provider);
+                    start_prank(CheatTarget::All, provider);
                     if percentages_to_drain.len() % 3 == 2 {
                         absorber.provide(WAD_SCALE.into());
                         provide_as_second_action = true;
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
-                        set_block_timestamp(
+                        start_warp(
+                            CheatTarget::All,
                             get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK
                         );
                         absorber.remove(BoundedWad::max());
@@ -510,7 +506,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_update_unauthorized_fail() {
         let (_, _, absorber, yangs, _, _, _, _, _, _) =
@@ -518,7 +513,7 @@ mod test_absorber {
             Option::None
         );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         let first_update_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, absorber_utils::first_update_assets()
         );
@@ -530,7 +525,6 @@ mod test_absorber {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_provide_first_epoch() {
         let (
             shrine,
@@ -664,7 +658,6 @@ mod test_absorber {
     // 5. Provider 1 reaps.
     // 6. Provider 2 reaps.
     #[test]
-    #[available_gas(20000000000)]
     fn test_reap_different_epochs() {
         // Setup
         let (
@@ -774,7 +767,7 @@ mod test_absorber {
             yangs, first_provider.into()
         );
 
-        set_contract_address(first_provider);
+        start_prank(CheatTarget::All, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
@@ -855,7 +848,7 @@ mod test_absorber {
             yangs, second_provider.into()
         );
 
-        set_contract_address(second_provider);
+        start_prank(CheatTarget::All, second_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(second_provider);
 
@@ -936,7 +929,6 @@ mod test_absorber {
     // 3. Provider 2 provides, provider 1 receives 1 round of rewards.
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
     #[test]
-    #[available_gas(20000000000)]
     fn test_provide_after_threshold_absorption_above_minimum() {
         let (
             shrine,
@@ -1078,13 +1070,13 @@ mod test_absorber {
         let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
 
-        set_contract_address(first_provider);
+        start_prank(CheatTarget::All, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         let request_timestamp = get_block_timestamp();
         absorber.request();
-        set_block_timestamp(request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
+        start_warp(CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedWad::max());
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1175,7 +1167,6 @@ mod test_absorber {
     //    exactly 1 wei greater than the minimum initial shares.
     // 3. Provider 1 should have zero shares due to loss of precision
     #[test]
-    #[available_gas(20000000000)]
     fn test_provider_shares_after_threshold_absorption_with_minimum_shares() {
         let (
             shrine,
@@ -1222,7 +1213,7 @@ mod test_absorber {
         // Step 3
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
 
-        set_contract_address(first_provider);
+        start_prank(CheatTarget::All, first_provider);
         // Trigger an update of the provider's Provision
         absorber.provide(WadZeroable::zero());
         let first_provider_info: Provision = absorber.get_provision(first_provider);
@@ -1258,7 +1249,6 @@ mod test_absorber {
     // 3. Provider 2 provides, provider 1 receives 1 round of rewards.
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
     #[test]
-    #[available_gas(20000000000)]
     fn test_provide_after_threshold_absorption_below_initial_shares() {
         let (
             shrine,
@@ -1352,12 +1342,14 @@ mod test_absorber {
             yangs, first_provider.into()
         );
 
-        set_contract_address(first_provider);
+        start_prank(CheatTarget::All, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        start_warp(
+            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK
+        );
         absorber.remove(BoundedWad::max());
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1421,7 +1413,6 @@ mod test_absorber {
     //    above initial shares but below minimum shares
     // 3. Provider 1 withdraws, no rewards should be distributed.
     #[test]
-    #[available_gas(20000000000)]
     fn test_after_threshold_absorption_between_initial_and_minimum_shares() {
         let mut remaining_yin_amts: Array<Wad> = array![
             // lower bound for remaining yin without total shares being zeroed
@@ -1493,7 +1484,7 @@ mod test_absorber {
                         reward_tokens, first_provider.into()
                     );
 
-                    set_contract_address(first_provider);
+                    start_prank(CheatTarget::All, first_provider);
                     let (_, preview_reward_assets) = absorber.preview_reap(first_provider);
 
                     // Trigger an update of the provider's Provision
@@ -1546,7 +1537,6 @@ mod test_absorber {
     // 5. Provider 1 reaps, providers share 1 round of rewards
     // 6. Provider 2 reaps, providers share 1 round of rewards
     #[test]
-    #[available_gas(20000000000)]
     fn test_multi_user_reap_same_epoch_multi_absorptions() {
         let (
             shrine,
@@ -1647,7 +1637,7 @@ mod test_absorber {
             yangs, first_provider.into()
         );
 
-        set_contract_address(first_provider);
+        start_prank(CheatTarget::All, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
@@ -1718,7 +1708,7 @@ mod test_absorber {
             yangs, second_provider.into()
         );
 
-        set_contract_address(second_provider);
+        start_prank(CheatTarget::All, second_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(second_provider);
 
@@ -1782,14 +1772,13 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_request_pass() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         let mut idx = 0;
         let mut expected_timelock = absorber_contract::REQUEST_BASE_TIMELOCK;
         let mut expected_events: Array<absorber_contract::Event> = ArrayTrait::new();
@@ -1808,7 +1797,7 @@ mod test_absorber {
             assert(request.timelock == expected_timelock, 'wrong timelock');
 
             let removal_ts = current_ts + expected_timelock;
-            set_block_timestamp(removal_ts);
+            start_warp(CheatTarget::All, removal_ts);
 
             // This should not revert
             absorber.remove(1_u128.into());
@@ -1832,7 +1821,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Recovery Mode active', 'ENTRYPOINT_FAILED'))]
     fn test_remove_exceeds_limit_fail() {
         let (shrine, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
@@ -1844,19 +1832,20 @@ mod test_absorber {
         let eth_addr: ContractAddress = *yangs.at(0);
         let (eth_yang_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let new_eth_yang_price: Wad = (eth_yang_price.val / 5).into(); // 80% drop in price
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.advance(eth_addr, new_eth_yang_price);
 
         assert(shrine.is_recovery_mode(), 'sanity check for RM threshold');
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        start_warp(
+            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK
+        );
         absorber.remove(BoundedWad::max());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: No request found', 'ENTRYPOINT_FAILED'))]
     fn test_remove_no_request_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
@@ -1864,12 +1853,11 @@ mod test_absorber {
             Option::None
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.remove(BoundedWad::max());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Only 1 removal per request', 'ENTRYPOINT_FAILED'))]
     fn test_remove_fulfilled_request_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
@@ -1877,9 +1865,11 @@ mod test_absorber {
             Option::None
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        start_warp(
+            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK
+        );
         // This should succeed
         absorber.remove(1_u128.into());
 
@@ -1888,7 +1878,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Request is not valid yet', 'ENTRYPOINT_FAILED'))]
     fn test_remove_request_not_valid_yet_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
@@ -1896,15 +1885,16 @@ mod test_absorber {
             Option::None
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.request();
         // Early by 1 second
-        set_block_timestamp(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK - 1);
+        start_warp(
+            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK - 1
+        );
         absorber.remove(1_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Request has expired', 'ENTRYPOINT_FAILED'))]
     fn test_remove_request_expired_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
@@ -1912,10 +1902,11 @@ mod test_absorber {
             Option::None
         );
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.request();
         // 1 second after validity period
-        set_block_timestamp(
+        start_warp(
+            CheatTarget::All,
             get_block_timestamp()
                 + absorber_contract::REQUEST_BASE_TIMELOCK
                 + absorber_contract::REQUEST_VALIDITY_PERIOD
@@ -1925,37 +1916,33 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_request_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         absorber.request();
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_remove_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         absorber.remove(0_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_reap_fail() {
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(Option::None);
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         absorber.reap();
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: provision < minimum', 'ENTRYPOINT_FAILED'))]
     fn test_provide_less_than_initial_shares_fail() {
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
@@ -1977,7 +1964,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
@@ -1993,7 +1979,7 @@ mod test_absorber {
         common::fund_user(provider, yangs, yang_asset_amts);
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
 
@@ -2002,7 +1988,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: ('SH: Insufficient yin allowance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
@@ -2018,7 +2003,7 @@ mod test_absorber {
         common::fund_user(provider, yangs, yang_asset_amts);
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.provide(provided_amt);
     }
 
@@ -2027,7 +2012,6 @@ mod test_absorber {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_bestow_inactive_reward() {
         let (
             shrine,
@@ -2057,11 +2041,11 @@ mod test_absorber {
             .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
 
         // Set veopus to inactive
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.set_reward(veopus_addr, veopus_blesser_addr, false);
 
         // Trigger rewards
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.provide(0_u128.into());
 
         let after_opus_distribution: DistributionInfo = absorber
@@ -2100,11 +2084,11 @@ mod test_absorber {
         common::assert_events_emitted(absorber.contract_address, expected_events, Option::None);
 
         // Set OPUS to inactive
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::All, absorber_utils::admin());
         absorber.set_reward(opus_addr, opus_blesser_addr, false);
 
         // Trigger rewards
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.provide(0_u128.into());
 
         let final_opus_distribution: DistributionInfo = absorber
@@ -2127,7 +2111,6 @@ mod test_absorber {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_bestow_depleted_active_reward() {
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None
@@ -2171,7 +2154,7 @@ mod test_absorber {
             .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
 
         // Trigger rewards
-        set_contract_address(provider);
+        start_prank(CheatTarget::All, provider);
         absorber.provide(0_u128.into());
 
         let after_opus_distribution: DistributionInfo = absorber

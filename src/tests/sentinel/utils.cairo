@@ -12,8 +12,9 @@ mod sentinel_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, Ray};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
@@ -62,17 +63,17 @@ mod sentinel_utils {
             .unwrap_syscall();
 
         // Grant `abbot` role to `mock_abbot`
-        set_contract_address(admin());
+        start_prank(CheatTarget::All, admin());
         IAccessControlDispatcher { contract_address: sentinel_addr }
             .grant_role(sentinel_roles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
 
         shrine_ac.grant_role(shrine_roles::sentinel(), sentinel_addr);
         shrine_ac.grant_role(shrine_roles::abbot(), mock_abbot());
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
@@ -111,10 +112,10 @@ mod sentinel_utils {
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
 
         // Transferring the initial deposit amounts to `admin()`
-        set_contract_address(gate_utils::eth_hoarder());
+        start_prank(CheatTarget::All, gate_utils::eth_hoarder());
         eth_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
 
-        set_contract_address(admin());
+        start_prank(CheatTarget::All, admin());
         eth_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         sentinel
             .add_yang(
@@ -125,7 +126,7 @@ mod sentinel_utils {
                 shrine_utils::YANG1_BASE_RATE.into(),
                 eth_gate
             );
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (eth, IGateDispatcher { contract_address: eth_gate })
     }
@@ -141,10 +142,10 @@ mod sentinel_utils {
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         // Transferring the initial deposit amounts to `admin()`
-        set_contract_address(gate_utils::wbtc_hoarder());
+        start_prank(CheatTarget::All, gate_utils::wbtc_hoarder());
         wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
 
-        set_contract_address(admin());
+        start_prank(CheatTarget::All, admin());
         wbtc_erc20
             .approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         sentinel
@@ -156,7 +157,7 @@ mod sentinel_utils {
                 shrine_utils::YANG2_BASE_RATE.into(),
                 wbtc_gate
             );
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (wbtc, IGateDispatcher { contract_address: wbtc_gate })
     }
@@ -164,8 +165,8 @@ mod sentinel_utils {
     fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
         let prev_address: ContractAddress = get_caller_address();
-        set_contract_address(user);
+        start_prank(CheatTarget::All, user);
         token_erc20.approve(gate.contract_address, BoundedU256::max());
-        set_contract_address(prev_address);
+        start_prank(CheatTarget::All, prev_address);
     }
 }

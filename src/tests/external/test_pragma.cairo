@@ -19,8 +19,9 @@ mod test_pragma {
     use opus::utils::math::pow;
     use opus::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
 
     //
@@ -44,7 +45,6 @@ mod test_pragma {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_pragma_setup() {
         let (_, pragma, _, mock_pragma, yangs, _) = pragma_utils::pragma_with_yangs();
 
@@ -100,14 +100,13 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_price_validity_thresholds_pass() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(new_freshness, new_sources);
 
         let mut expected_events: Span<pragma_contract::Event> = array![
@@ -128,7 +127,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_low_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
@@ -136,12 +134,11 @@ mod test_pragma {
         let invalid_freshness: u64 = pragma_contract::LOWER_FRESHNESS_BOUND - 1;
         let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_high_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
@@ -149,12 +146,11 @@ mod test_pragma {
         let invalid_freshness: u64 = pragma_contract::UPPER_FRESHNESS_BOUND + 1;
         let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_low_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
@@ -162,12 +158,11 @@ mod test_pragma {
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = pragma_contract::LOWER_SOURCES_BOUND - 1;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_high_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
@@ -175,12 +170,11 @@ mod test_pragma {
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = pragma_contract::UPPER_SOURCES_BOUND + 1;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_unauthorized_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
@@ -188,18 +182,17 @@ mod test_pragma {
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_oracle_address_pass() {
         let (_, pragma, _, mock_pragma, _, _) = pragma_utils::pragma_with_yangs();
 
         let new_address: ContractAddress = common::non_zero_address();
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_oracle(new_address);
 
         let mut expected_events: Span<pragma_contract::Event> = array![
@@ -214,35 +207,32 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Address cannot be zero', 'ENTRYPOINT_FAILED'))]
     fn test_set_oracle_zero_address_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_oracle(ContractAddressZeroable::zero());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_oracle_address_unauthorized_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let new_address: ContractAddress = common::non_zero_address();
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         pragma.set_oracle(new_address);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_update_frequency_pass() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let new_frequency: u64 = pragma_utils::UPDATE_FREQUENCY * 2;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_update_frequency(new_frequency);
 
         let mut expected_events: Span<pragma_contract::Event> = array![
@@ -257,43 +247,39 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_low_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let invalid_frequency: u64 = pragma_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_update_frequency(invalid_frequency);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_high_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let invalid_frequency: u64 = pragma_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_update_frequency(invalid_frequency);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_unauthorized_fail() {
         let (_, pragma, _, _, _, _) = pragma_utils::pragma_with_yangs();
 
         let new_frequency: u64 = pragma_utils::UPDATE_FREQUENCY * 2;
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
         pragma.set_update_frequency(new_frequency);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_add_yang_pass() {
         let (shrine, pragma, _, mock_pragma) = pragma_utils::pragma_deploy();
 
@@ -309,7 +295,7 @@ mod test_pragma {
         let current_ts: u64 = get_block_timestamp();
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token_pair_id, price, current_ts);
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.add_yang(pepe_token_pair_id, pepe_token);
 
         let expected_events: Span<pragma_contract::Event> = array![
@@ -325,7 +311,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
@@ -333,13 +318,12 @@ mod test_pragma {
             sentinel, shrine.contract_address
         );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::All, common::badguy());
 
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, eth_token_addr);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Yang already present', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_non_unique_address_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
@@ -347,13 +331,12 @@ mod test_pragma {
             sentinel, shrine.contract_address
         );
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, eth_token_addr);
         pragma.add_yang(pragma_utils::WBTC_USD_PAIR_ID, eth_token_addr);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Pair ID already present', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_non_unique_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
@@ -361,13 +344,12 @@ mod test_pragma {
             sentinel, shrine.contract_address
         );
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, eth_token_addr);
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, pepe_token_addr());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
@@ -375,37 +357,34 @@ mod test_pragma {
             sentinel, shrine.contract_address
         );
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
 
         let invalid_pair_id = U256Zeroable::zero();
         pragma.add_yang(invalid_pair_id, eth_token_addr);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid yang address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_yang_address_fail() {
         let (_, pragma, _, _) = pragma_utils::pragma_deploy();
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, invalid_yang_addr);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Unknown pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unknown_pair_id_fail() {
         let (_, pragma, _, _) = pragma_utils::pragma_deploy();
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
 
         pragma.add_yang(PEPE_USD_PAIR_ID, pepe_token_addr());
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Too many decimals', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_too_many_decimals_fail() {
         let (_, pragma, _, mock_pragma, _, _) = pragma_utils::pragma_with_yangs();
@@ -423,7 +402,7 @@ mod test_pragma {
         };
         mock_pragma.next_get_data_median(PEPE_USD_PAIR_ID, pepe_response);
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
 
         pragma.add_yang(PEPE_USD_PAIR_ID, pepe_token_addr());
     }
@@ -433,7 +412,6 @@ mod test_pragma {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_update_prices_pass() {
         let (shrine, pragma, _, mock_pragma, yangs, gates) = pragma_utils::pragma_with_yangs();
 
@@ -447,7 +425,7 @@ mod test_pragma {
 
         // Perform a price update with starting exchange rate of 1 yang to 1 asset
         let first_ts = get_block_timestamp() + 1;
-        set_block_timestamp(first_ts);
+        start_warp(CheatTarget::All, first_ts);
         let mut raw_eth_price: u128 = pragma_utils::ETH_INIT_PRICE;
         pragma_utils::mock_valid_price_update(
             mock_pragma,
@@ -464,7 +442,7 @@ mod test_pragma {
             first_ts
         );
 
-        set_contract_address(common::non_zero_address());
+        start_prank(CheatTarget::All, common::non_zero_address());
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
@@ -483,7 +461,7 @@ mod test_pragma {
             .mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
 
         let next_ts = first_ts + shrine::TIME_INTERVAL;
-        set_block_timestamp(next_ts);
+        start_warp(CheatTarget::All, next_ts);
         raw_eth_price += 10;
         pragma_utils::mock_valid_price_update(
             mock_pragma,
@@ -529,7 +507,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_update_prices_pass_without_yangs() {
         // just to test the module works well even if no yangs were added yet
         let (_, pragma, _, _) = pragma_utils::pragma_deploy();
@@ -539,7 +516,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Too soon to update prices', 'ENTRYPOINT_FAILED'))]
     fn test_update_prices_too_soon_fail() {
         let (_, pragma, _, mock_pragma, _, _) = pragma_utils::pragma_with_yangs();
@@ -549,7 +525,7 @@ mod test_pragma {
         let mut price: u128 = pragma_utils::convert_price_to_pragma_scale(
             pragma_utils::ETH_INIT_PRICE + 10
         );
-        set_block_timestamp(new_ts);
+        start_warp(CheatTarget::All, new_ts);
         pragma_utils::mock_valid_price_update(
             mock_pragma, pragma_utils::ETH_USD_PAIR_ID, price, new_ts
         );
@@ -557,7 +533,7 @@ mod test_pragma {
 
         price += pragma_utils::convert_price_to_pragma_scale(10);
         new_ts += pragma_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
-        set_block_timestamp(new_ts);
+        start_warp(CheatTarget::All, new_ts);
         pragma_utils::mock_valid_price_update(
             mock_pragma, pragma_utils::ETH_USD_PAIR_ID, price, new_ts
         );
@@ -565,7 +541,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_update_prices_insufficient_sources_unchanged() {
         let (shrine, pragma, _, mock_pragma, yangs, _) = pragma_utils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
@@ -598,7 +573,7 @@ mod test_pragma {
         };
         mock_pragma.next_get_data_median(pragma_utils::WBTC_USD_PAIR_ID, wbtc_response);
 
-        set_contract_address(common::non_zero_address());
+        start_prank(CheatTarget::All, common::non_zero_address());
         pragma_oracle.update_prices();
 
         let (after_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
@@ -642,7 +617,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_update_prices_invalid_gate() {
         let (shrine, pragma, _, mock_pragma, yangs, _) = pragma_utils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
@@ -659,7 +633,7 @@ mod test_pragma {
         let current_ts: u64 = get_block_timestamp();
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token_pair_id, price, current_ts);
 
-        set_contract_address(pragma_utils::admin());
+        start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.add_yang(pepe_token_pair_id, pepe_token);
 
         let eth_token_addr = *yangs.at(0);
@@ -669,7 +643,7 @@ mod test_pragma {
         let (before_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_token_addr);
 
         let next_ts: u64 = current_ts + shrine::TIME_INTERVAL;
-        set_block_timestamp(next_ts);
+        start_warp(CheatTarget::All, next_ts);
 
         let pepe_token_raw_price: u128 = pepe_token_init_price + 1;
         let pepe_token_price: u128 = pepe_token_raw_price * pragma_price_scale;
@@ -687,7 +661,7 @@ mod test_pragma {
             mock_pragma, pragma_utils::WBTC_USD_PAIR_ID, price, next_ts
         );
 
-        set_contract_address(common::non_zero_address());
+        start_prank(CheatTarget::All, common::non_zero_address());
         pragma_oracle.update_prices();
 
         let (after_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
@@ -718,7 +692,6 @@ mod test_pragma {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_probe_task() {
         let (_, pragma, _, mock_pragma, _, _) = pragma_utils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
@@ -727,7 +700,7 @@ mod test_pragma {
         assert(pragma.probe_task(), 'should be ready');
 
         let new_ts: u64 = get_block_timestamp() + 1;
-        set_block_timestamp(new_ts);
+        start_warp(CheatTarget::All, new_ts);
         pragma_utils::mock_valid_price_update(
             mock_pragma,
             pragma_utils::ETH_USD_PAIR_ID,
@@ -743,7 +716,7 @@ mod test_pragma {
 
         // moving the block time forward to the next time interval,
         // probe_task should again return true
-        set_block_timestamp(new_ts + shrine::TIME_INTERVAL);
+        start_warp(CheatTarget::All, new_ts + shrine::TIME_INTERVAL);
         assert(pragma.probe_task(), 'should be ready');
     }
 }

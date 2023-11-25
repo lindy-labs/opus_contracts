@@ -16,8 +16,9 @@ mod pragma_utils {
     use opus::utils::math::pow;
     use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
@@ -124,13 +125,13 @@ mod pragma_utils {
 
         // Grant necessary roles
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::oracle(), pragma_addr);
 
         let shrine = IShrineDispatcher { contract_address: shrine_addr };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (shrine, pragma, sentinel, mock_pragma)
     }
@@ -161,13 +162,13 @@ mod pragma_utils {
     }
 
     fn add_yangs_to_pragma(pragma: IPragmaDispatcher, yangs: Span<ContractAddress>) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::All, admin());
 
         // Add yangs to Pragma
         pragma.add_yang(ETH_USD_PAIR_ID, *yangs.at(0));
         pragma.add_yang(WBTC_USD_PAIR_ID, *yangs.at(1));
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     //

@@ -357,7 +357,6 @@ mod test_wadray {
     }
 
     #[test]
-    #[available_gas(2000000)]
     fn test_fixed_point_to_wad_zero() {
         // Test zero amount with varying decimals
         assert(fixed_point_to_wad(0, 0) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
@@ -366,7 +365,6 @@ mod test_wadray {
     }
 
     #[test]
-    #[available_gas(2000000)]
     fn test_fixed_point_to_wad_non_zero() {
         // Test non-zero amount with varying decimals
         assert(fixed_point_to_wad(1, 0) == WAD_SCALE.into(), 'Incorrect fp>wad conversion #4');

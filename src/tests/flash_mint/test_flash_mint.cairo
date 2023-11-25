@@ -10,15 +10,15 @@ mod test_flash_mint {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{Wad, WAD_ONE};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::ContractAddress;
-    use starknet::testing::set_contract_address;
 
     //
     // Tests
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_flashmint_max_loan() {
         let (shrine, flashmint) = flash_mint_utils::flashmint_setup();
 
@@ -31,7 +31,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_flash_fee() {
         let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flash_mint_utils::flashmint_deploy(shrine);
@@ -41,7 +40,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_flashmint_pass() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         let yin = shrine_utils::yin(shrine);
@@ -53,29 +51,29 @@ mod test_flash_mint {
         // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
         let flash_mint_caller: ContractAddress = common::non_zero_address();
-        set_contract_address(flash_mint_caller);
+        start_prank(CheatTarget::All, flash_mint_caller);
 
         let first_loan_amt: u256 = 1;
         flashmint.flash_loan(borrower, shrine, first_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');
 
-        set_contract_address(flash_mint_caller);
+        start_prank(CheatTarget::All, flash_mint_caller);
         let second_loan_amt: u256 = flash_mint_utils::DEFAULT_MINT_AMOUNT;
         flashmint.flash_loan(borrower, shrine, second_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 2');
 
-        set_contract_address(flash_mint_caller);
+        start_prank(CheatTarget::All, flash_mint_caller);
         let third_loan_amt: u256 = (1000 * WAD_ONE).into();
         flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let debt_ceiling: Wad = shrine_utils::shrine(shrine).get_debt_ceiling();
         let debt_to_ceiling: Wad = debt_ceiling - shrine_utils::shrine(shrine).get_total_yin();
         shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
 
-        set_contract_address(flash_mint_caller);
+        start_prank(CheatTarget::All, flash_mint_caller);
         let fourth_loan_amt: u256 = (debt_ceiling
             * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
             .into();
@@ -162,7 +160,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('FM: amount exceeds maximum', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_excess_minting() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
@@ -176,7 +173,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('FM: on_flash_loan failed', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_incorrect_return() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
@@ -190,7 +186,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
@@ -206,7 +201,6 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     #[should_panic(
         expected: (
             'RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'

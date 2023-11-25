@@ -12,8 +12,10 @@ use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
+
+use snforge_std::{start_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
+use starknet::testing::{pop_log_raw};
 use starknet::{
     deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
     contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -106,7 +108,7 @@ impl RewardPartialEq of PartialEq<Reward> {
 // Helper function to advance timestamp by the given intervals
 #[inline(always)]
 fn advance_intervals(intervals: u64) {
-    set_block_timestamp(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
 
 // Helper function to deploy a token
@@ -154,7 +156,7 @@ fn open_trove_helper(
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad
 ) -> u64 {
-    set_contract_address(user);
+    start_prank(CheatTarget::All, user);
     let mut yangs_copy = yangs;
 
     loop {
@@ -168,10 +170,10 @@ fn open_trove_helper(
         };
     };
 
-    set_contract_address(user);
+    start_prank(CheatTarget::All, user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-    set_contract_address(ContractAddressZeroable::zero());
+    start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
     trove_id
 }

@@ -11,8 +11,9 @@ mod abbot_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         deploy_syscall, SyscallResultTrait
@@ -81,16 +82,16 @@ mod abbot_utils {
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
 
         // Grant Sentinel roles to Abbot
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (shrine, sentinel, abbot, yangs, gates)
     }

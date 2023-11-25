@@ -12,7 +12,8 @@ mod caretaker_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use starknet::testing::{set_block_timestamp, set_contract_address};
+
+    use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
         contract_address_to_felt252, deploy_syscall, SyscallResultTrait
@@ -31,7 +32,7 @@ mod caretaker_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
@@ -54,12 +55,12 @@ mod caretaker_utils {
             .unwrap_syscall();
 
         // allow Caretaker to do its business with Shrine
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         IAccessControlDispatcher { contract_address: shrine.contract_address }
             .grant_role(shrine_roles::caretaker(), caretaker);
 
         // allow Caretaker to call exit in Sentinel during shut
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::All, sentinel_utils::admin());
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
 

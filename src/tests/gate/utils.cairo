@@ -11,8 +11,9 @@ mod gate_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
+
+    use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
@@ -61,7 +62,7 @@ mod gate_utils {
     fn gate_deploy(
         token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
     ) -> ContractAddress {
-        set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine),
@@ -91,7 +92,7 @@ mod gate_utils {
     }
 
     fn add_eth_as_yang(shrine: ContractAddress, eth: ContractAddress) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
             .add_yang(
@@ -102,11 +103,11 @@ mod gate_utils {
                 WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::All, shrine_utils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
             .add_yang(
@@ -117,16 +118,16 @@ mod gate_utils {
                 WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     fn approve_gate_for_token(
         gate: ContractAddress, token: ContractAddress, user: ContractAddress
     ) {
         // user no-limit approves gate to handle their share of token
-        set_contract_address(user);
+        start_prank(CheatTarget::All, user);
         IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     fn rebase(gate: ContractAddress, token: ContractAddress, amount: u128) {

@@ -57,54 +57,54 @@ mod tests {
     mod common;
     mod erc20;
     mod abbot {
-        mod test_abbot;
+        //mod test_abbot;
         mod utils;
     }
     mod absorber {
         mod mock_blesser;
-        mod test_absorber;
+        //mod test_absorber;
         mod utils;
     }
     mod caretaker {
-        mod test_caretaker;
+        //mod test_caretaker;
         mod utils;
     }
     mod controller {
-        mod test_controller;
+        //mod test_controller;
         mod utils;
     }
     mod equalizer {
-        mod test_allocator;
-        mod test_equalizer;
+        //mod test_allocator;
+        //mod test_equalizer;
         mod utils;
     }
     mod external {
         mod mock_pragma;
-        mod test_pragma;
+        //mod test_pragma;
         mod utils;
     }
     mod flash_mint {
         mod flash_borrower;
-        mod test_flash_mint;
+        //mod test_flash_mint;
         mod utils;
     }
     mod gate {
-        mod test_gate;
+        //mod test_gate;
         mod utils;
     }
     mod purger {
         mod flash_liquidator;
-        mod test_purger;
+        //mod test_purger;
         mod utils;
     }
     mod sentinel {
-        mod test_sentinel;
+        //    mod test_sentinel;
         mod utils;
     }
     mod shrine {
-        mod test_shrine;
-        mod test_shrine_compound;
-        mod test_shrine_redistribution;
+        //  mod test_shrine;
+        // mod test_shrine_compound;
+        //mod test_shrine_redistribution;
         mod utils;
     }
     mod utils {

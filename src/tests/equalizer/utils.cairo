@@ -8,8 +8,9 @@ mod equalizer_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Ray;
+
+    use snforge_std::{start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
@@ -136,7 +137,7 @@ mod equalizer_utils {
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: equalizer_addr
         };
-        set_contract_address(admin);
+        start_prank(CheatTarget::All, admin);
         equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
@@ -144,7 +145,7 @@ mod equalizer_utils {
         };
         shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
 
         (
             IShrineDispatcher { contract_address: shrine },
