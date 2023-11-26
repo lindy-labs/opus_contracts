@@ -202,6 +202,10 @@ mod transmuter {
             self.asset.read().contract_address
         }
 
+        fn get_total_transmuted(self: @ContractState) -> Wad {
+            self.total_transmuted.read()
+        }
+
         fn get_ceiling(self: @ContractState) -> Wad {
             self.ceiling.read()
         }
@@ -267,7 +271,7 @@ mod transmuter {
         fn set_transmute_fee(ref self: ContractState, fee: Ray) {
             self.access_control.assert_has_role(transmuter_roles::SET_FEES);
 
-            assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+            self.assert_valid_fee(fee);
             let old_fee: Ray = self.transmute_fee.read();
             self.transmute_fee.write(fee);
 
@@ -277,7 +281,7 @@ mod transmuter {
         fn set_reverse_fee(ref self: ContractState, fee: Ray) {
             self.access_control.assert_has_role(transmuter_roles::SET_FEES);
 
-            assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+            self.assert_valid_fee(fee);
             let old_fee: Ray = self.reverse_fee.read();
             self.reverse_fee.write(fee);
 
@@ -356,10 +360,10 @@ mod transmuter {
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
             // Decrement total transmuted amount by yin amount to be reversed 
-            // excluding the fee. The fee is excluded because this transmuter
-            // is still liable to back the amount of CASH representing the fee 
-            // with the corresponding amount of assets in the event of shutdown.
-            self.total_transmuted.write(self.total_transmuted.read() - (yin_amt - fee));
+            // including the fee. The fee os added to the Shrine's budget and will 
+            // eventually be minted via the Equalizer, backed by the assets that is
+            // retained by this Transmuter as fees.
+            self.total_transmuted.write(self.total_transmuted.read() - yin_amt);
 
             // Burn yin from user
             let user: ContractAddress = get_caller_address();
@@ -481,6 +485,11 @@ mod transmuter {
         }
 
         #[inline(always)]
+        fn assert_valid_fee(self: @ContractState, fee: Ray) {
+            assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
+        }
+
+        #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
             let yin_price_ge_peg: bool = shrine.get_yin_spot_price() >= WAD_ONE.into();
@@ -509,12 +518,15 @@ mod transmuter {
         }
 
         fn set_percentage_cap_helper(ref self: ContractState, cap: Ray) {
-            assert(cap <= PERCENTAGE_CAP_UPPER_BOUND.into(), 'TR: Exceeds upper bound of 10%');
+            assert(cap <= PERCENTAGE_CAP_UPPER_BOUND.into(), 'TR: Exceeds upper bound');
             self.percentage_cap.write(cap);
 
             self.emit(PercentageCapUpdated { cap });
         }
 
+        // Returns a tuple of
+        // 1. the total amount of yin that a user is expected to receive less the fee
+        // 2. the amount of yin in Wad charged as fee
         fn preview_transmute_helper(self: @ContractState, asset_amt: u128) -> (Wad, Wad) {
             self.assert_live();
 
@@ -524,9 +536,12 @@ mod transmuter {
 
             let fee: Wad = wadray::rmul_wr(yin_amt, self.transmute_fee.read());
 
-            (yin_amt, fee)
+            (yin_amt - fee, fee)
         }
 
+        // Returns a tuple of:
+        // 1. the amount of asset that a user is expected to receive less the fee
+        // 2. the amount of yin in Wad charged as fee
         fn preview_reverse_helper(self: @ContractState, yin_amt: Wad) -> (u128, Wad) {
             self.assert_live();
 

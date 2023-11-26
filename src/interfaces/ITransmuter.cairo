@@ -5,6 +5,7 @@ use starknet::ContractAddress;
 trait ITransmuter<TContractState> {
     // getters
     fn get_asset(self: @TContractState) -> ContractAddress;
+    fn get_total_transmuted(self: @TContractState) -> Wad;
     fn get_ceiling(self: @TContractState) -> Wad;
     fn get_percentage_cap(self: @TContractState) -> Ray;
     fn get_receiver(self: @TContractState) -> ContractAddress;
