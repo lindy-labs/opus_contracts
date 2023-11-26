@@ -12,6 +12,8 @@ mod core {
     mod roles;
     mod sentinel;
     mod shrine;
+    mod transmuter;
+    mod transmuter_registry;
 }
 
 mod external {
@@ -34,11 +36,13 @@ mod interfaces {
     mod IPurger;
     mod ISentinel;
     mod IShrine;
+    mod ITransmuter;
     mod external;
 }
 
 mod utils {
     mod access_control;
+    mod address_registry;
     mod exp;
     mod math;
     mod reentrancy_guard;
@@ -109,8 +113,10 @@ mod tests {
     }
     mod utils {
         mod mock_access_control;
+        mod mock_address_registry;
         mod mock_reentrancy_guard;
         mod test_access_control;
+        mod test_address_registry;
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;
