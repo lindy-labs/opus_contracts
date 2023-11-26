@@ -111,6 +111,10 @@ mod tests {
         mod test_shrine_redistribution;
         mod utils;
     }
+    mod transmuter {
+        mod test_transmuter;
+        mod utils;
+    }
     mod utils {
         mod mock_access_control;
         mod mock_address_registry;
