@@ -327,9 +327,8 @@ mod transmuter {
         // 1. User has insufficent assets; or
         // 2. Ceiling will be exceeded
         fn transmute(ref self: ContractState, asset_amt: u128) {
-            self.assert_live();
-
             let asset: IERC20Dispatcher = self.asset.read();
+            // `preview_transmute_helper` checks for liveness
             let (yin_amt, fee) = self.preview_transmute_helper(asset_amt);
 
             let user: ContractAddress = get_caller_address();
@@ -353,17 +352,16 @@ mod transmuter {
         // 1. User has insufficient yin; or
         // 2. Transmuter has insufficent assets corresponding to the burnt yin
         fn reverse(ref self: ContractState, yin_amt: Wad) {
-            self.assert_live();
-
-            assert(self.reversibility.read(), 'TR: Reverse is paused');
-
+            // `preview_reverse_helper` checks for liveness and reversibility
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
             // Decrement total transmuted amount by yin amount to be reversed 
-            // including the fee. The fee os added to the Shrine's budget and will 
-            // eventually be minted via the Equalizer, backed by the assets that is
-            // retained by this Transmuter as fees.
-            self.total_transmuted.write(self.total_transmuted.read() - yin_amt);
+            // excluding the fee. The fee is excluded because this transmuter
+            // is still liable to back the amount of yin representing the fee 
+            // (when it is added to the Shrine's budget and eventually minted 
+            // via the Equalizer) with the corresponding amount of assets, 
+            // particularly in the event of shutdown.
+            self.total_transmuted.write(self.total_transmuted.read() - (yin_amt - fee));
 
             // Burn yin from user
             let user: ContractAddress = get_caller_address();
@@ -527,6 +525,7 @@ mod transmuter {
         // Returns a tuple of
         // 1. the total amount of yin that a user is expected to receive less the fee
         // 2. the amount of yin in Wad charged as fee
+        // based on current on-chain conditions
         fn preview_transmute_helper(self: @ContractState, asset_amt: u128) -> (Wad, Wad) {
             self.assert_live();
 
@@ -542,6 +541,7 @@ mod transmuter {
         // Returns a tuple of:
         // 1. the amount of asset that a user is expected to receive less the fee
         // 2. the amount of yin in Wad charged as fee
+        // based on current on-chain conditions
         fn preview_reverse_helper(self: @ContractState, yin_amt: Wad) -> (u128, Wad) {
             self.assert_live();
 
@@ -551,6 +551,11 @@ mod transmuter {
 
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt - fee, asset.decimals());
+
+            assert(
+                self.asset.read().balance_of(get_contract_address()) >= asset_amt.into(),
+                'TR: Insufficient assets'
+            );
 
             (asset_amt, fee)
         }
