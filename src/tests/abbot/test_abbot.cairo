@@ -144,7 +144,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
-        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let yangs: Array<ContractAddress> = ArrayTrait::new();
@@ -162,7 +162,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
-        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
+        let (_, _, abbot, _, _) = abbot_utils::abbot_deploy();
 
         let invalid_yang: ContractAddress = sentinel_utils::dummy_yang_addr();
         let mut yangs: Array<ContractAddress> = array![invalid_yang];
@@ -301,7 +301,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
-        let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy(Option::None);
+        let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let asset_addr = *yangs.at(0);
@@ -499,7 +499,7 @@ mod test_abbot {
 
     #[test]
     fn test_get_user_trove_ids() {
-        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
+        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy();
         let trove_owner1: ContractAddress = common::trove1_owner_addr();
         let trove_owner2: ContractAddress = common::trove2_owner_addr();
 

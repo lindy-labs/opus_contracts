@@ -14,10 +14,10 @@ mod absorber_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::erc20_mintable::ERC20;
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::absorber::mock_blesser::mock_blesser;
     use opus::tests::common;
-    use opus::tests::erc20::ERC20;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Reward};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -101,7 +101,7 @@ mod absorber_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(salt);
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
 
         let admin: ContractAddress = admin();
 

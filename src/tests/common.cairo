@@ -6,20 +6,18 @@ use opus::interfaces::IERC20::{
 };
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-use opus::tests::erc20::ERC20;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
 
-use snforge_std::{start_prank, start_warp, CheatTarget};
+use snforge_std::{declare, ContractClassTrait, start_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{
-    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    SyscallResultTrait
+    ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
+    get_block_timestamp
 };
 
 //
@@ -119,7 +117,7 @@ fn deploy_token(
     initial_supply: u256,
     recipient: ContractAddress,
 ) -> ContractAddress {
-    let mut calldata: Array<felt252> = array![
+    let calldata: Array<felt252> = array![
         name,
         symbol,
         decimals,
@@ -127,11 +125,8 @@ fn deploy_token(
         initial_supply.high.into(), // u256.high
         contract_address_to_felt252(recipient),
     ];
-
-    let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-    let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
-
-    token
+    let token_class = declare('erc20_mintable');
+    token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 
 // Helper function to fund a user account with yang assets

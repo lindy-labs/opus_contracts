@@ -49,6 +49,7 @@ mod utils {
 // mock used for local devnet deployment
 mod mock {
     mod erc20;
+    mod erc20_mintable;
     mod flash_borrower;
     mod oracle;
 }
@@ -56,7 +57,6 @@ mod mock {
 #[cfg(test)]
 mod tests {
     mod common;
-    mod erc20;
     mod abbot {
         //mod test_abbot;
         mod utils;
@@ -89,7 +89,7 @@ mod tests {
         mod utils;
     }
     mod gate {
-        //mod test_gate;
+        mod test_gate;
         mod utils;
     }
     mod purger {
