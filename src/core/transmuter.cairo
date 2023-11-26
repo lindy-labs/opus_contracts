@@ -5,7 +5,6 @@ mod Transmuter {
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::types::AssetBalance;
@@ -51,8 +50,6 @@ mod Transmuter {
         access_control: access_control_component::Storage,
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
-        // The Equalizer associated with the Shrine and this Transmuter
-        equalizer: IEqualizerDispatcher,
         // The asset that can be swapped for yin via this Transmuter
         asset: IERC20Dispatcher,
         // The total yin transmuted 
@@ -86,7 +83,6 @@ mod Transmuter {
     enum Event {
         AccessControlEvent: access_control_component::Event,
         CeilingUpdated: CeilingUpdated,
-        EqualizerUpdated: EqualizerUpdated,
         Killed: Killed,
         PercentageCapUpdated: PercentageCapUpdated,
         ReceiverUpdated: ReceiverUpdated,
@@ -103,12 +99,6 @@ mod Transmuter {
     struct CeilingUpdated {
         old_ceiling: Wad,
         new_ceiling: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct EqualizerUpdated {
-        old_equalizer: ContractAddress,
-        new_equalizer: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -179,7 +169,6 @@ mod Transmuter {
         ref self: ContractState,
         admin: ContractAddress,
         shrine: ContractAddress,
-        equalizer: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress,
         percentage_cap: Ray,
@@ -191,7 +180,6 @@ mod Transmuter {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
 
-        self.set_equalizer_helper(equalizer);
         self.set_receiver_helper(receiver);
         self.set_percentage_cap_helper(percentage_cap);
 
@@ -218,10 +206,6 @@ mod Transmuter {
 
         fn get_percentage_cap(self: @ContractState) -> Ray {
             self.percentage_cap.read()
-        }
-
-        fn get_equalizer(self: @ContractState) -> ContractAddress {
-            self.equalizer.read().contract_address
         }
 
         fn get_receiver(self: @ContractState) -> ContractAddress {
@@ -264,12 +248,6 @@ mod Transmuter {
             self.access_control.assert_has_role(transmuter_roles::SET_PERCENTAGE_CAP);
 
             self.set_percentage_cap_helper(cap);
-        }
-
-        fn set_equalizer(ref self: ContractState, equalizer: ContractAddress) {
-            self.access_control.assert_has_role(transmuter_roles::SET_EQUALIZER);
-
-            self.set_equalizer_helper(equalizer);
         }
 
         fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
@@ -357,7 +335,7 @@ mod Transmuter {
             let shrine: IShrineDispatcher = self.shrine.read();
             let transmuter: ContractAddress = get_contract_address();
             shrine.inject(user, yin_amt);
-            shrine.inject(self.equalizer.read().contract_address, fee);
+            shrine.adjust_budget(fee.into());
 
             // Transfer asset to Transmuter
             let success: bool = asset.transfer_from(user, transmuter, asset_amt.into());
@@ -387,7 +365,7 @@ mod Transmuter {
             let user: ContractAddress = get_caller_address();
             let shrine: IShrineDispatcher = self.shrine.read();
             shrine.eject(user, yin_amt);
-            shrine.inject(self.equalizer.read().contract_address, fee);
+            shrine.adjust_budget(fee.into());
 
             // Transfer asset to user
             // Since the fee is excluded, it is automatically retained in the Transmuter's balance.
@@ -445,12 +423,13 @@ mod Transmuter {
                     .adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
             }
 
-            // Transfer all remaining CASH to Equalizer, and all remaining assets to receiver
+            // Transfer all remaining CASH and all assets to receiver
             let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-            yin.transfer(self.equalizer.read().contract_address, (yin_amt - settle_amt).into());
+            let receiver: ContractAddress = self.receiver.read();
+            yin.transfer(receiver, (yin_amt - settle_amt).into());
 
             let asset: IERC20Dispatcher = self.asset.read();
-            asset.transfer(self.receiver.read(), asset.balance_of(transmuter));
+            asset.transfer(receiver, asset.balance_of(transmuter));
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })
@@ -512,14 +491,6 @@ mod Transmuter {
             let is_lt_cap_and_ceiling: bool = minted + amt_to_mint <= min(cap, ceiling);
 
             assert(yin_price_ge_peg && is_lt_cap_and_ceiling, 'TR: Transmute is paused');
-        }
-
-        fn set_equalizer_helper(ref self: ContractState, equalizer: ContractAddress) {
-            assert(equalizer.is_non_zero(), 'TR: Zero address');
-            let old_equalizer: ContractAddress = self.equalizer.read().contract_address;
-            self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
-
-            self.emit(EqualizerUpdated { old_equalizer, new_equalizer: equalizer });
         }
 
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {

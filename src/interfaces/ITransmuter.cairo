@@ -7,7 +7,6 @@ trait ITransmuter<TContractState> {
     fn get_asset(self: @TContractState) -> ContractAddress;
     fn get_ceiling(self: @TContractState) -> Wad;
     fn get_percentage_cap(self: @TContractState) -> Ray;
-    fn get_equalizer(self: @TContractState) -> ContractAddress;
     fn get_receiver(self: @TContractState) -> ContractAddress;
     fn get_reversibility(self: @TContractState) -> bool;
     fn get_transmute_fee(self: @TContractState) -> Ray;
@@ -17,7 +16,6 @@ trait ITransmuter<TContractState> {
     // setters
     fn set_ceiling(ref self: TContractState, ceiling: Wad);
     fn set_percentage_cap(ref self: TContractState, cap: Ray);
-    fn set_equalizer(ref self: TContractState, equalizer: ContractAddress);
     fn set_receiver(ref self: TContractState, receiver: ContractAddress);
     fn toggle_reversibility(ref self: TContractState);
     fn set_transmute_fee(ref self: TContractState, fee: Ray);
