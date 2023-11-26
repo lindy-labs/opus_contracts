@@ -135,13 +135,11 @@ mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let budget: SignedWad = shrine.get_budget();
-            let surplus: Option<Wad> = budget.try_into();
-
-            if surplus.is_none() {
+            if !budget.is_positive() {
                 return WadZeroable::zero();
             }
 
-            let minted_surplus: Wad = surplus.unwrap();
+            let minted_surplus: Wad = budget.try_into().unwrap();
 
             // temporarily increase the debt ceiling by the injected amount 
             // so that surplus debt can still be minted when total yin is at
