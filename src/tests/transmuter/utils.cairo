@@ -1,4 +1,5 @@
 mod transmuter_utils {
+    use integer::BoundedInt;
     use opus::core::roles::shrine_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
@@ -19,6 +20,9 @@ mod transmuter_utils {
 
     // 1_000_000 (Wad)
     const INITIAL_CEILING: u128 = 1000000000000000000000000;
+
+    // 20_000_000 (Wad)
+    const START_TOTAL_YIN: u128 = 20000000000000000000000000;
 
     // 2_000_000 (Wad)
     const MOCK_WAD_USD_TOTAL: u128 = 2000000000000000000000000;
@@ -98,8 +102,12 @@ mod transmuter_utils {
         shrine.set_debt_ceiling(debt_ceiling);
 
         // mint 20m of debt to let transmuter mint up to 10% i.e. 2m
-        let seed_amt: Wad = 20000000000000000000000000_u128.into();
+        let seed_amt: Wad = START_TOTAL_YIN.into();
         shrine.inject(receiver(), seed_amt);
+
+        // approve transmuter to deal with user's tokens
+        set_contract_address(user());
+        mock_usd_stable.approve(transmuter.contract_address, BoundedInt::max());
 
         (shrine, transmuter, mock_usd_stable)
     }

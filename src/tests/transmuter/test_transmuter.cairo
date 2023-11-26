@@ -434,6 +434,75 @@ mod test_transmuter {
         };
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_exceeds_shrine_ceiling_fail() {
+        let (shrine, transmuter, _) =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        set_contract_address(shrine_utils::admin());
+        let debt_ceiling: Wad = shrine.get_debt_ceiling();
+        shrine.inject(user, debt_ceiling);
+
+        transmuter.transmute(1_u128);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_exceeds_transmuter_ceiling_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        set_contract_address(transmuter_utils::user());
+        let ceiling: Wad = transmuter.get_ceiling();
+        transmuter.transmute(ceiling.val);
+        assert(transmuter.get_total_transmuted() == ceiling, 'sanity check');
+
+        transmuter.transmute(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_exceeds_percentage_cap_fail() {
+        let (shrine, transmuter, _) =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        set_contract_address(shrine_utils::admin());
+
+        // reduce total supply to 1m yin 
+        let target_total_yin: Wad = 1000000000000000000000000_u128.into();
+        shrine
+            .eject(
+                transmuter_utils::receiver(),
+                transmuter_utils::START_TOTAL_YIN.into() - target_total_yin
+            );
+        assert(shrine.get_total_yin() == target_total_yin, 'sanity check #1');
+
+        // now, the cap is at 100_000
+        set_contract_address(transmuter_utils::user());
+        let expected_cap: u128 = 100000 * WAD_ONE;
+        transmuter.transmute(expected_cap + 1);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_yin_spot_price_too_low_fail() {
+        let (shrine, transmuter, _) =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        set_contract_address(shrine_utils::admin());
+        shrine.update_yin_spot_price((WAD_ONE - 1).into());
+
+        transmuter.transmute(1_u128.into());
+    }
+
     //
     // Tests - Reverse
     //
@@ -502,6 +571,7 @@ mod test_transmuter {
                         .span();
 
                     let mut cumulative_asset_fees: u128 = 0;
+                    let mut cumulative_yin_fees = WadZeroable::zero();
                     let mut reverse_fees_copy = reverse_fees;
                     loop {
                         match reverse_fees_copy.pop_front() {
@@ -551,7 +621,8 @@ mod test_transmuter {
                                 assert(shrine.get_budget() == expected_budget, 'wrong budget');
                                 assert(
                                     transmuter.get_total_transmuted() == before_total_transmuted
-                                        - reverse_yin_amt,
+                                        - reverse_yin_amt
+                                        + expected_fee,
                                     'wrong total transmuted'
                                 );
                                 assert(
@@ -580,6 +651,7 @@ mod test_transmuter {
 
                                 cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale)
                                     - preview;
+                                cumulative_yin_fees += expected_fee;
                             },
                             Option::None => { break; }
                         };
@@ -591,15 +663,51 @@ mod test_transmuter {
                             .into(),
                         'wrong cumulative asset fees'
                     );
+                    assert(
+                        transmuter.get_total_transmuted() == cumulative_yin_fees,
+                        'wrong cumulative yin fees'
+                    );
                 },
                 Option::None => { break; },
             };
         };
     }
-// Transmute fails when debt ceiling in shrine is reached
-// Transmute fails when transmuter ceiling is reached
-// Transmute fails when percentage cap is reached.
 
-// Reverse fails when transmuter has no assets
-// Reverse fails when reversibility is disallowed
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Reverse is paused', 'ENTRYPOINT_FAILED'))]
+    fn test_reverse_disabled_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.toggle_reversibility();
+        assert(!transmuter.get_reversibility(), 'sanity check');
+
+        set_contract_address(transmuter_utils::user());
+        let transmute_amt: u128 = 1000 * WAD_ONE;
+        transmuter.transmute(transmute_amt);
+
+        set_contract_address(transmuter_utils::user());
+        transmuter.reverse(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Insufficient assets', 'ENTRYPOINT_FAILED'))]
+    fn test_reverse_zero_assets_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let user: ContractAddress = transmuter_utils::user();
+
+        let user: ContractAddress = transmuter_utils::user();
+        let asset_amt: u128 = WAD_ONE;
+        set_contract_address(user);
+        transmuter.transmute(asset_amt.into());
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.sweep(asset_amt);
+
+        set_contract_address(user);
+        transmuter.reverse(1_u128.into());
+    }
 }
