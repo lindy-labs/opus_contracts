@@ -1063,8 +1063,42 @@ mod test_transmuter {
             };
         };
     }
-// Test transmute after settle
-// Test reverse after settle
-// Test sweep after settle
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_after_settle_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.settle();
+
+        set_contract_address(transmuter_utils::user());
+        transmuter.transmute(1_u128);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_reverse_after_settle_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.settle();
+
+        set_contract_address(transmuter_utils::user());
+        transmuter.transmute(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_sweep_after_settle_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.settle();
+
+        transmuter.sweep(BoundedInt::max());
+    }
 }
