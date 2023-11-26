@@ -387,22 +387,25 @@ mod transmuter {
             let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
             let capped_asset_amt: u128 = min(asset_balance, asset_amt);
 
-            let recipient: ContractAddress = self.receiver.read();
-            asset.transfer(recipient, capped_asset_amt.into());
-
-            self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
+            if capped_asset_amt.is_non_zero() {
+                let recipient: ContractAddress = self.receiver.read();
+                asset.transfer(recipient, capped_asset_amt.into());
+                self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
+            }
         }
 
         // 
         // Isolated deprecation
         // 
 
+        // Irreversibly deprecate this transmuter only by settling its debt and transferring 
+        // all of its yin and asset to the receiver.
         fn settle(ref self: ContractState) {
             self.assert_live();
 
             self.access_control.assert_has_role(transmuter_roles::SETTLE);
 
-            // Pay down the transmuter's debt using the Transmuter's CASH balance,
+            // Pay down the transmuter's debt using the Transmuter's yin balance,
             // capped at the total debt transmuted.
             let transmuter: ContractAddress = get_contract_address();
             let shrine: IShrineDispatcher = self.shrine.read();
@@ -425,7 +428,7 @@ mod transmuter {
                     .adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
             }
 
-            // Transfer all remaining CASH and all assets to receiver
+            // Transfer all remaining yin and all assets to receiver
             let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
