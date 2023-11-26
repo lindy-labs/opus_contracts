@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod Transmuter {
+mod transmuter {
     use cmp::min;
 
     use opus::core::roles::transmuter_roles;
@@ -171,7 +171,7 @@ mod Transmuter {
         shrine: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress,
-        percentage_cap: Ray,
+        ceiling: Wad,
     ) {
         self
             .access_control
@@ -179,9 +179,11 @@ mod Transmuter {
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
+        self.is_live.write(true);
 
+        self.set_ceiling_helper(ceiling);
         self.set_receiver_helper(receiver);
-        self.set_percentage_cap_helper(percentage_cap);
+        self.set_percentage_cap_helper(PERCENTAGE_CAP_UPPER_BOUND.into());
 
         // Reversibility is enabled at deployment
         self.reversibility.write(true);
@@ -238,10 +240,8 @@ mod Transmuter {
 
         fn set_ceiling(ref self: ContractState, ceiling: Wad) {
             self.access_control.assert_has_role(transmuter_roles::SET_CEILING);
-            let old_ceiling: Wad = self.ceiling.read();
-            self.ceiling.write(ceiling);
 
-            self.emit(CeilingUpdated { old_ceiling, new_ceiling: ceiling });
+            self.set_ceiling_helper(ceiling);
         }
 
         fn set_percentage_cap(ref self: ContractState, cap: Ray) {
@@ -491,6 +491,13 @@ mod Transmuter {
             let is_lt_cap_and_ceiling: bool = minted + amt_to_mint <= min(cap, ceiling);
 
             assert(yin_price_ge_peg && is_lt_cap_and_ceiling, 'TR: Transmute is paused');
+        }
+
+        fn set_ceiling_helper(ref self: ContractState, ceiling: Wad) {
+            let old_ceiling: Wad = self.ceiling.read();
+            self.ceiling.write(ceiling);
+
+            self.emit(CeilingUpdated { old_ceiling, new_ceiling: ceiling });
         }
 
         fn set_receiver_helper(ref self: ContractState, receiver: ContractAddress) {

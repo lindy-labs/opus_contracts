@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod TransmuterRegistry {
+mod transmuter_registry {
     use opus::core::roles::transmuter_registry_roles;
 
     use opus::interfaces::ITransmuter::{
