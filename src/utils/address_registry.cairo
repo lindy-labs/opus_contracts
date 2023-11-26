@@ -90,12 +90,12 @@ mod address_registry_component {
 
             // Move last entry ID to removed entry ID
             let last_entry_id: u32 = entries_count;
-            self.entries.write(last_entry_id, ContractAddressZeroable::zero());
             if entry_id != last_entry_id {
                 let last_entry: ContractAddress = self.entries.read(last_entry_id);
                 self.entries.write(entry_id, last_entry);
                 self.entry_ids.write(last_entry, entry_id);
             }
+            self.entries.write(last_entry_id, ContractAddressZeroable::zero());
 
             // Decrement entries count
             self.entries_count.write(entries_count - 1);
