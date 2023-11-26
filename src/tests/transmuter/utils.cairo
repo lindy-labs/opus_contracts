@@ -44,7 +44,10 @@ mod transmuter_utils {
     //
 
     fn transmuter_deploy(
-        shrine: ContractAddress, asset: ContractAddress, receiver: ContractAddress,
+        shrine: ContractAddress,
+        asset: ContractAddress,
+        receiver: ContractAddress,
+        salt: Option<felt252>
     ) -> ITransmuterDispatcher {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine_utils::admin()),
@@ -58,7 +61,9 @@ mod transmuter_utils {
             transmuter_contract::TEST_CLASS_HASH
         )
             .unwrap();
-        let (transmuter_addr, _) = deploy_syscall(transmuter_class_hash, 0, calldata.span(), false)
+        let (transmuter_addr, _) = deploy_syscall(
+            transmuter_class_hash, salt.unwrap_or(0), calldata.span(), false
+        )
             .unwrap_syscall();
 
         set_contract_address(shrine_utils::admin());
@@ -86,6 +91,25 @@ mod transmuter_utils {
         }
     }
 
+    fn setup_shrine_with_transmuter(
+        shrine: IShrineDispatcher,
+        transmuter: ITransmuterDispatcher,
+        shrine_ceiling: Wad,
+        shrine_start_yin: Wad,
+        start_yin_recipient: ContractAddress,
+        user: ContractAddress
+    ) {
+        // set debt ceiling to 30m
+        set_contract_address(shrine_utils::admin());
+        shrine.set_debt_ceiling(shrine_ceiling);
+        shrine.inject(start_yin_recipient, shrine_start_yin);
+
+        // approve transmuter to deal with user's tokens
+        set_contract_address(user);
+        IERC20Dispatcher { contract_address: transmuter.get_asset() }
+            .approve(transmuter.contract_address, BoundedInt::max());
+    }
+
     fn shrine_with_mock_wad_usd_stable_transmuter() -> (
         IShrineDispatcher, ITransmuterDispatcher, IERC20Dispatcher
     ) {
@@ -93,21 +117,14 @@ mod transmuter_utils {
         let mock_usd_stable: IERC20Dispatcher = mock_wad_usd_stable_deploy();
 
         let transmuter: ITransmuterDispatcher = transmuter_deploy(
-            shrine.contract_address, mock_usd_stable.contract_address, receiver(),
+            shrine.contract_address, mock_usd_stable.contract_address, receiver(), Option::None
         );
 
-        // set debt ceiling to 30m
-        set_contract_address(shrine_utils::admin());
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
-        shrine.set_debt_ceiling(debt_ceiling);
-
-        // mint 20m of debt to let transmuter mint up to 10% i.e. 2m
         let seed_amt: Wad = START_TOTAL_YIN.into();
-        shrine.inject(receiver(), seed_amt);
-
-        // approve transmuter to deal with user's tokens
-        set_contract_address(user());
-        mock_usd_stable.approve(transmuter.contract_address, BoundedInt::max());
+        setup_shrine_with_transmuter(
+            shrine, transmuter, debt_ceiling, seed_amt, receiver(), user(),
+        );
 
         (shrine, transmuter, mock_usd_stable)
     }
