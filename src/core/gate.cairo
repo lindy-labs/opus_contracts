@@ -147,7 +147,6 @@ mod gate {
             if yang_amt.is_zero() {
                 return WadZeroable::zero();
             }
-
             let success: bool = self
                 .asset
                 .read()

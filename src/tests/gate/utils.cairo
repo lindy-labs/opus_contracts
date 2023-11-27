@@ -1,12 +1,10 @@
 mod gate_utils {
-    use debug::PrintTrait;
     use integer::BoundedInt;
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::erc20_mintable::ERC20;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
@@ -99,7 +97,7 @@ mod gate_utils {
                 WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
-        stop_prank(CheatTarget::All);
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
@@ -114,7 +112,7 @@ mod gate_utils {
                 WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
-        stop_prank(CheatTarget::All);
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     fn approve_gate_for_token(
@@ -123,7 +121,7 @@ mod gate_utils {
         // user no-limit approves gate to handle their share of token
         start_prank(CheatTarget::One(token), user);
         IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());
-        stop_prank(CheatTarget::All);
+        stop_prank(CheatTarget::One(token));
     }
 
     fn rebase(gate: ContractAddress, token: ContractAddress, amount: u128) {

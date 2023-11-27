@@ -89,7 +89,7 @@ mod tests {
         mod utils;
     }
     mod gate {
-        //mod test_gate;
+        mod test_gate;
         mod utils;
     }
     mod purger {
