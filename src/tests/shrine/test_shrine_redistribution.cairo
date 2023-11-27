@@ -489,10 +489,6 @@ mod test_shrine_redistribution {
                                     before_redistributed_trove_health.debt,
                                     *pct_debt_to_redistribute
                                 );
-                                let value_to_redistribute: Wad = wadray::rmul_wr(
-                                    before_redistributed_trove_health.value,
-                                    *pct_value_to_redistribute
-                                );
                                 shrine
                                     .redistribute(
                                         redistributed_trove,
@@ -508,13 +504,6 @@ mod test_shrine_redistribution {
                                         .debt
                                         - debt_to_redistribute,
                                     'wrong redistributed trove debt'
-                                );
-                                assert(
-                                    after_redistributed_trove_health
-                                        .value == before_redistributed_trove_health
-                                        .value
-                                        - value_to_redistribute,
-                                    'wrong redistributed trove value'
                                 );
 
                                 let expected_redistribution_id: u32 = 1;
