@@ -1,6 +1,5 @@
 mod controller_utils {
     use debug::PrintTrait;
-    use opus::core::controller::controller as controller_contract;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};

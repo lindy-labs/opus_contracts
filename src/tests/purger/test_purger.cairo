@@ -213,7 +213,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_low_fail() {
         let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
@@ -222,7 +222,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_high_fail() {
         let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
@@ -231,7 +231,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_penalty_scalar_unauthorized_fail() {
         let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
@@ -944,7 +944,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
@@ -961,7 +961,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
@@ -989,9 +989,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(
-        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
-    )]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED',))]
     fn test_liquidate_insufficient_yin_fail() {
         let target_trove_yin: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.val / 10).into();
@@ -3358,7 +3356,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Not absorbable',))]
     fn test_absorb_trove_healthy_fail() {
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
@@ -3379,7 +3377,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('PU: Not absorbable',))]
     fn test_absorb_below_absorbable_ltv_fail() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(

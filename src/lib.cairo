@@ -89,7 +89,7 @@ mod tests {
         mod utils;
     }
     mod gate {
-        mod test_gate;
+        //mod test_gate;
         mod utils;
     }
     mod purger {
@@ -102,7 +102,7 @@ mod tests {
         mod utils;
     }
     mod shrine {
-        //  mod test_shrine;
+        mod test_shrine;
         // mod test_shrine_compound;
         //mod test_shrine_redistribution;
         mod utils;

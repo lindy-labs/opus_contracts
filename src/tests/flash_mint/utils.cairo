@@ -1,5 +1,4 @@
 mod flash_mint_utils {
-    use opus::core::flash_mint::flash_mint as flash_mint_contract;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};

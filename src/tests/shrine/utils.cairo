@@ -14,7 +14,7 @@ mod shrine_utils {
     use opus::utils::wadray;
 
     use snforge_std::{
-        declare, ContractClassTrait, start_prank, start_warp, CheatTarget, PrintTrait
+        declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
@@ -200,7 +200,7 @@ mod shrine_utils {
     fn shrine_setup(shrine_addr: ContractAddress) {
         setup_debt_ceiling(shrine_addr);
         let shrine = shrine(shrine_addr);
-        start_prank(CheatTarget::All, admin());
+        start_prank(CheatTarget::One(shrine_addr), admin());
 
         // Add yangs
         shrine
@@ -229,7 +229,7 @@ mod shrine_utils {
             );
 
         // Reset contract address
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine_addr));
     }
 
     // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
