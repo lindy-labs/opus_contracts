@@ -28,7 +28,7 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_transmuter_deploy() {
-        let (shrine, transmuter, mock_usd_stable) =
+        let (_, transmuter, mock_usd_stable) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         // Check Transmuter getters
@@ -485,7 +485,6 @@ mod test_transmuter {
     #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
     fn test_transmute_exceeds_transmuter_ceiling_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let user: ContractAddress = transmuter_utils::user();
 
         set_contract_address(transmuter_utils::user());
         let ceiling: Wad = transmuter.get_ceiling();
@@ -501,7 +500,6 @@ mod test_transmuter {
     fn test_transmute_exceeds_percentage_cap_fail() {
         let (shrine, transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let user: ContractAddress = transmuter_utils::user();
 
         set_contract_address(shrine_utils::admin());
 
@@ -526,7 +524,6 @@ mod test_transmuter {
     fn test_transmute_yin_spot_price_too_low_fail() {
         let (shrine, transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let user: ContractAddress = transmuter_utils::user();
 
         set_contract_address(shrine_utils::admin());
         shrine.update_yin_spot_price((WAD_ONE - 1).into());
@@ -710,7 +707,6 @@ mod test_transmuter {
     #[should_panic(expected: ('TR: Reverse is paused', 'ENTRYPOINT_FAILED'))]
     fn test_reverse_disabled_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let user: ContractAddress = transmuter_utils::user();
 
         set_contract_address(shrine_utils::admin());
         transmuter.toggle_reversibility();
@@ -720,7 +716,6 @@ mod test_transmuter {
         let transmute_amt: u128 = 1000 * WAD_ONE;
         transmuter.transmute(transmute_amt);
 
-        set_contract_address(transmuter_utils::user());
         transmuter.reverse(1_u128.into());
     }
 
@@ -750,9 +745,6 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_sweep_parametrized_pass() {
-        let (shrine, transmuter, mock_wad_usd) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-
         let admin: ContractAddress = shrine_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
@@ -1249,9 +1241,6 @@ mod test_transmuter {
                     let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
                     let reclaimable_yin: Wad = transmuter.get_total_transmuted();
                     let preview: u128 = transmuter.preview_reclaim(third_reclaim_yin_amt);
-                    let remainder_pct: Ray = RAY_ONE.into()
-                        - first_reclaim_pct
-                        - second_reclaim_pct;
                     let expected_third_reclaim_asset_amt: u128 = asset
                         .balance_of(transmuter.contract_address)
                         .try_into()

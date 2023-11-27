@@ -111,7 +111,7 @@ mod test_transmuter_registry {
     fn test_add_duplicate_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (shrine, first_transmuter, _) =
+        let (_, first_transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(shrine_utils::admin());
@@ -127,7 +127,7 @@ mod test_transmuter_registry {
     fn test_remove_nonexistent_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (shrine, first_transmuter, _) =
+        let (_, first_transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(shrine_utils::admin());

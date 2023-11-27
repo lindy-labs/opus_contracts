@@ -127,7 +127,7 @@ mod test_address_registry {
         // order: 1, 2, 3
         state.address_registry.add_entry(entry3(), 'Dummy message');
         assert(state.address_registry.get_entries_count() == 3, 'sanity check #1');
-        pop_log_raw(zero_addr());
+        let _ = pop_log_raw(zero_addr());
 
         // remove entry at first index
         // order: 3, 2
@@ -149,7 +149,7 @@ mod test_address_registry {
         // order: 3, 2, 1
         state.address_registry.add_entry(entry1(), 'Dummy message');
         assert(state.address_registry.get_entries_count() == 3, 'sanity check #2');
-        pop_log_raw(zero_addr());
+        let _ = pop_log_raw(zero_addr());
 
         // remove entry that is not first or last index
         // order: 3, 1
