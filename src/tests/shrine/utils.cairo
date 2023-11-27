@@ -14,7 +14,8 @@ mod shrine_utils {
     use opus::utils::wadray;
 
     use snforge_std::{
-        declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp,
+        CheatTarget, PrintTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
@@ -166,8 +167,15 @@ mod shrine_utils {
         array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
-    fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
-        let shrine_class = declare('shrine');
+    fn declare_shrine() -> ContractClass {
+        declare('shrine')
+    }
+
+    fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {
+        let shrine_class = match shrine_class {
+            Option::Some(class) => class,
+            Option::None => declare_shrine()
+        };
 
         let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
@@ -292,8 +300,8 @@ mod shrine_utils {
     }
 
     #[inline(always)]
-    fn shrine_setup_with_feed(salt: Option<felt252>) -> IShrineDispatcher {
-        let shrine_addr: ContractAddress = shrine_deploy(salt);
+    fn shrine_setup_with_feed(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+        let shrine_addr: ContractAddress = shrine_deploy(shrine_class);
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
@@ -610,8 +618,10 @@ mod shrine_utils {
         start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
-    fn recovery_mode_test_setup(salt: Option<felt252>) -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(salt) };
+    fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher {
+            contract_address: shrine_deploy(shrine_class)
+        };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove

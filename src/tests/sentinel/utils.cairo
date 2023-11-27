@@ -48,7 +48,7 @@ mod sentinel_utils {
     //
 
     fn deploy_sentinel(salt: Option<felt252>) -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(salt);
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
