@@ -44,7 +44,4 @@ trait ITransmuterRegistry<TContractState> {
     // setters
     fn add_transmuter(ref self: TContractState, transmuter: ContractAddress);
     fn remove_transmuter(ref self: TContractState, transmuter: ContractAddress);
-    // convenience wrappers
-    fn set_receiver(ref self: TContractState, receiver: ContractAddress);
-    fn kill(ref self: TContractState);
 }

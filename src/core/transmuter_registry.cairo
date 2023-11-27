@@ -1,7 +1,6 @@
 #[starknet::contract]
 mod transmuter_registry {
     use opus::core::roles::transmuter_registry_roles;
-
     use opus::interfaces::ITransmuter::{
         ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry
     };
@@ -48,6 +47,17 @@ mod transmuter_registry {
     }
 
     //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(ref self: ContractState, admin: ContractAddress) {
+        self
+            .access_control
+            .initializer(admin, Option::Some(transmuter_registry_roles::default_admin_role()));
+    }
+
+    //
     // External Transmuter registry functions
     //
 
@@ -71,48 +81,6 @@ mod transmuter_registry {
             self.access_control.assert_has_role(transmuter_registry_roles::REMOVE_TRANSMUTER);
 
             self.registry.remove_entry(transmuter, 'TRR: Transmuter does not exist');
-        }
-
-        fn set_receiver(ref self: ContractState, receiver: ContractAddress) {
-            self.access_control.assert_has_role(transmuter_registry_roles::SET_RECEIVER);
-
-            let loop_end: u32 = 0;
-
-            let mut transmuter_id: u32 = self.registry.get_entries_count();
-            let self_snap = @self;
-            loop {
-                if transmuter_id == loop_end {
-                    break;
-                }
-
-                ITransmuterDispatcher {
-                    contract_address: self_snap.registry.get_entry(transmuter_id)
-                }
-                    .set_receiver(receiver);
-
-                transmuter_id -= 1;
-            };
-        }
-
-        fn kill(ref self: ContractState) {
-            self.access_control.assert_has_role(transmuter_registry_roles::KILL);
-
-            let loop_end: u32 = 0;
-
-            let mut transmuter_id: u32 = self.registry.get_entries_count();
-            let self_snap = @self;
-            loop {
-                if transmuter_id == loop_end {
-                    break;
-                }
-
-                ITransmuterDispatcher {
-                    contract_address: self_snap.registry.get_entry(transmuter_id)
-                }
-                    .kill();
-
-                transmuter_id -= 1;
-            };
         }
     }
 }

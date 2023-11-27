@@ -1,10 +1,8 @@
 #[starknet::contract]
 mod transmuter {
     use cmp::min;
-
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::types::AssetBalance;
