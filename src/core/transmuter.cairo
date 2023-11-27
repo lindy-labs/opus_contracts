@@ -387,11 +387,13 @@ mod transmuter {
             let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
             let capped_asset_amt: u128 = min(asset_balance, asset_amt);
 
-            if capped_asset_amt.is_non_zero() {
-                let recipient: ContractAddress = self.receiver.read();
-                asset.transfer(recipient, capped_asset_amt.into());
-                self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
+            if capped_asset_amt.is_zero() {
+                return;
             }
+
+            let recipient: ContractAddress = self.receiver.read();
+            asset.transfer(recipient, capped_asset_amt.into());
+            self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
         }
 
         // 
@@ -451,29 +453,26 @@ mod transmuter {
         }
 
         fn preview_reclaim(self: @ContractState, yin: Wad) -> u128 {
-            assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
-
-            let asset_balance: Wad = self
-                .asset
-                .read()
-                .balance_of(get_contract_address())
-                .try_into()
-                .unwrap();
-
-            ((yin / self.total_transmuted.read()) * asset_balance).val
+            let reclaimable_yin: Wad = self.total_transmuted.read();
+            let capped_yin: Wad = min(yin, reclaimable_yin);
+            self.preview_reclaim_helper(capped_yin)
         }
 
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
         // because we do not make any assumptions as to the amount of assets held by the 
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
-            assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
+            // `preview_reclaim` checks that reclaim is enabled
+            let reclaimable_yin: Wad = self.total_transmuted.read();
+            let capped_yin: Wad = min(yin, reclaimable_yin);
+            let asset_amt: u128 = self.preview_reclaim_helper(capped_yin);
+            if asset_amt.is_zero() {
+                return;
+            }
 
-            let asset_amt: u128 = self.preview_reclaim(yin);
-
-            self.total_transmuted.write(self.total_transmuted.read() - yin);
+            self.total_transmuted.write(reclaimable_yin - capped_yin);
             let caller: ContractAddress = get_caller_address();
-            self.shrine.read().eject(caller, yin);
+            self.shrine.read().eject(caller, capped_yin);
             self.asset.read().transfer(caller, asset_amt.into());
         }
     }
@@ -561,6 +560,25 @@ mod transmuter {
             );
 
             (asset_amt, fee)
+        }
+
+        // Returns the amount of asset that a user is expected to receive for `reclaim`
+        // after the Transmuter is killed.
+        fn preview_reclaim_helper(self: @ContractState, yin_amt: Wad) -> u128 {
+            assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
+
+            let asset_balance: Wad = self
+                .asset
+                .read()
+                .balance_of(get_contract_address())
+                .try_into()
+                .unwrap();
+
+            if asset_balance.is_zero() {
+                0
+            } else {
+                ((yin_amt / self.total_transmuted.read()) * asset_balance).val
+            }
         }
     }
 }
