@@ -113,6 +113,7 @@ mod tests {
     }
     mod transmuter {
         mod test_transmuter;
+        mod test_transmuter_registry;
         mod utils;
     }
     mod utils {

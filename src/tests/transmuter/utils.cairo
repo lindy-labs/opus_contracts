@@ -5,7 +5,10 @@ mod transmuter_utils {
     use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
+    use opus::interfaces::ITransmuter::{
+        ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistryDispatcher,
+        ITransmuterRegistryDispatcherTrait
+    };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -129,5 +132,21 @@ mod transmuter_utils {
         );
 
         (shrine, transmuter, mock_usd_stable)
+    }
+
+    fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(shrine_utils::admin())
+        ];
+        let transmuter_registry_class_hash: ClassHash = class_hash_try_from_felt252(
+            transmuter_registry_contract::TEST_CLASS_HASH
+        )
+            .unwrap();
+        let (transmuter_registry_addr, _) = deploy_syscall(
+            transmuter_registry_class_hash, 0, calldata.span(), false
+        )
+            .unwrap_syscall();
+
+        ITransmuterRegistryDispatcher { contract_address: transmuter_registry_addr }
     }
 }
