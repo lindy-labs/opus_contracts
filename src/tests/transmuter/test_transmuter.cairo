@@ -12,7 +12,7 @@ mod test_transmuter {
     use opus::tests::transmuter::utils::transmuter_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable, WAD_ONE};
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{Signed, SignedWad, SignedWadZeroable};
     use opus::utils::wadray_signed;
@@ -1100,5 +1100,272 @@ mod test_transmuter {
         transmuter.settle();
 
         transmuter.sweep(BoundedInt::max());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_sweep_unauthorized() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(common::badguy());
+        transmuter.sweep(BoundedInt::max());
+    }
+
+    //
+    // Tests - Shutdown
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_kill_and_reclaim_parametrized_pass() {
+        let admin: ContractAddress = shrine_utils::admin();
+        let receiver: ContractAddress = transmuter_utils::receiver();
+        let user: ContractAddress = transmuter_utils::user();
+
+        let mut transmuter_ids: Span<u32> = array![0, 1].span();
+
+        let mut salt: felt252 = 0;
+        loop {
+            match transmuter_ids.pop_front() {
+                Option::Some(transmuter_id) => {
+                    // parametrize transmuter and asset
+                    let asset: IERC20Dispatcher = if *transmuter_id == 0 {
+                        transmuter_utils::mock_wad_usd_stable_deploy()
+                    } else {
+                        transmuter_utils::mock_nonwad_usd_stable_deploy()
+                    };
+                    let asset_decimals: u8 = asset.decimals();
+                    let asset_decimal_scale: u128 = pow(10, asset_decimals);
+                    let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
+
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
+                        Option::Some(salt)
+                    );
+
+                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                        shrine.contract_address,
+                        asset.contract_address,
+                        receiver,
+                        Option::Some(salt)
+                    );
+
+                    let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+                    let seed_amt: Wad = (100000 * WAD_ONE).into();
+
+                    transmuter_utils::setup_shrine_with_transmuter(
+                        shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+                    );
+
+                    set_contract_address(user);
+
+                    // transmute some amount
+                    transmuter.transmute(transmute_asset_amt);
+                    let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
+
+                    set_contract_address(admin);
+                    transmuter.kill();
+
+                    assert(!transmuter.get_live(), 'not killed');
+
+                    let expected_events: Span<transmuter_contract::Event> = array![
+                        transmuter_contract::Event::Killed(transmuter_contract::Killed {}),
+                    ]
+                        .span();
+                    common::assert_events_emitted(
+                        transmuter.contract_address, expected_events, Option::None
+                    );
+
+                    transmuter.enable_reclaim();
+
+                    set_contract_address(user);
+                    let asset_error_margin: u128 = asset_decimal_scale / 100;
+
+                    // first reclaim for 10% of original transmuted amount
+                    let before_user_asset_bal: u256 = asset.balance_of(user);
+                    let before_user_yin_bal: Wad = shrine.get_yin(user);
+
+                    let first_reclaim_pct: Ray = (RAY_PERCENT * 10).into();
+                    let first_reclaim_yin_amt: Wad = wadray::rmul_wr(
+                        transmuted_yin_amt, first_reclaim_pct
+                    );
+                    let preview: u128 = transmuter.preview_reclaim(first_reclaim_yin_amt);
+                    let expected_first_reclaim_asset_amt: u128 = wadray::rmul_wr(
+                        transmute_asset_amt.into(), first_reclaim_pct
+                    )
+                        .val;
+                    common::assert_equalish(
+                        preview,
+                        expected_first_reclaim_asset_amt,
+                        asset_error_margin,
+                        'wrong preview reclaim amt #1',
+                    );
+
+                    transmuter.reclaim(first_reclaim_yin_amt);
+                    let first_user_asset_bal: u256 = asset.balance_of(user);
+                    assert(
+                        first_user_asset_bal == before_user_asset_bal + preview.into(),
+                        'wrong reclaim amt #1'
+                    );
+
+                    let first_user_yin_bal: Wad = shrine.get_yin(user);
+                    assert(
+                        first_user_yin_bal == before_user_yin_bal - first_reclaim_yin_amt,
+                        'wrong user yin #1'
+                    );
+
+                    // second reclaim for 35% of original transmuted amount
+                    let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
+                    let second_reclaim_yin_amt: Wad = wadray::rmul_wr(
+                        transmuted_yin_amt, second_reclaim_pct
+                    );
+                    let preview: u128 = transmuter.preview_reclaim(second_reclaim_yin_amt);
+                    let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
+                        transmute_asset_amt.into(), second_reclaim_pct
+                    )
+                        .val;
+                    common::assert_equalish(
+                        preview,
+                        expected_second_reclaim_asset_amt,
+                        asset_error_margin,
+                        'wrong preview reclaim amt #2',
+                    );
+
+                    transmuter.reclaim(second_reclaim_yin_amt);
+                    let second_user_asset_bal: u256 = asset.balance_of(user);
+                    assert(
+                        second_user_asset_bal == first_user_asset_bal + preview.into(),
+                        'wrong reclaim amt #2'
+                    );
+
+                    let second_user_yin_bal: Wad = shrine.get_yin(user);
+                    assert(
+                        second_user_yin_bal == first_user_yin_bal - second_reclaim_yin_amt,
+                        'wrong user yin #2'
+                    );
+
+                    // third reclaim for 100% of original transmuted amount, which should be capped
+                    // to what is remaining
+                    let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
+                    let reclaimable_yin: Wad = transmuter.get_total_transmuted();
+                    let preview: u128 = transmuter.preview_reclaim(third_reclaim_yin_amt);
+                    let remainder_pct: Ray = RAY_ONE.into()
+                        - first_reclaim_pct
+                        - second_reclaim_pct;
+                    let expected_third_reclaim_asset_amt: u128 = asset
+                        .balance_of(transmuter.contract_address)
+                        .try_into()
+                        .unwrap();
+                    common::assert_equalish(
+                        preview,
+                        expected_third_reclaim_asset_amt,
+                        asset_error_margin,
+                        'wrong preview reclaim amt #3',
+                    );
+
+                    transmuter.reclaim(third_reclaim_yin_amt);
+                    let third_user_asset_bal: u256 = asset.balance_of(user);
+                    assert(
+                        third_user_asset_bal == second_user_asset_bal + preview.into(),
+                        'wrong reclaim amt #3'
+                    );
+
+                    let third_user_yin_bal: Wad = shrine.get_yin(user);
+                    assert(
+                        third_user_yin_bal == second_user_yin_bal - reclaimable_yin,
+                        'wrong user yin #3'
+                    );
+
+                    // preview reclaim when transmuter has no assets
+                    assert(
+                        transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(),
+                        'preview should be zero'
+                    );
+
+                    salt += 1;
+                },
+                Option::None => { break; },
+            };
+        };
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_kill_unauthorized() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(common::badguy());
+        transmuter.kill();
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_transmute_after_kill_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.kill();
+
+        set_contract_address(transmuter_utils::user());
+        transmuter.transmute(1_u128);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_reverse_after_kill_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.kill();
+
+        set_contract_address(transmuter_utils::user());
+        transmuter.transmute(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_sweep_after_kill_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.kill();
+
+        transmuter.sweep(BoundedInt::max());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Reclaim unavailable', 'ENTRYPOINT_FAILED'))]
+    fn test_reclaim_disabled_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.kill();
+
+        transmuter.reclaim(BoundedInt::max());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('TR: Transmuter is live', 'ENTRYPOINT_FAILED'))]
+    fn test_enable_reclaim_while_live_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(shrine_utils::admin());
+        transmuter.enable_reclaim();
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_enable_reclaim_unauthorized() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+
+        set_contract_address(common::badguy());
+        transmuter.enable_reclaim();
     }
 }

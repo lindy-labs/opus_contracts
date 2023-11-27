@@ -75,6 +75,7 @@ mod transmuter_utils {
         ITransmuterDispatcher { contract_address: transmuter_addr }
     }
 
+    // mock stable with 18 decimals
     fn mock_wad_usd_stable_deploy() -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
@@ -83,6 +84,7 @@ mod transmuter_utils {
         }
     }
 
+    // mock stable with 6 decimals
     fn mock_nonwad_usd_stable_deploy() -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
