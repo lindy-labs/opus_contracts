@@ -28,7 +28,7 @@ mod test_transmuter_registry {
         let registry_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: registry.contract_address
         };
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = transmuter_utils::admin();
         assert(registry_ac.get_admin() == admin, 'wrong admin');
         assert(
             registry_ac.get_roles(admin) == transmuter_registry_roles::default_admin_role(),
@@ -55,7 +55,7 @@ mod test_transmuter_registry {
             Option::None
         );
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         registry.add_transmuter(first_transmuter.contract_address);
 
         assert(registry.get_transmuters_count() == 1, 'wrong transmuters count #1');
@@ -114,7 +114,7 @@ mod test_transmuter_registry {
         let (_, first_transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         registry.add_transmuter(first_transmuter.contract_address);
         assert(registry.get_transmuters_count() == 1, 'sanity check');
 
@@ -130,7 +130,7 @@ mod test_transmuter_registry {
         let (_, first_transmuter, _) =
             transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         registry.remove_transmuter(first_transmuter.contract_address);
     }
 }

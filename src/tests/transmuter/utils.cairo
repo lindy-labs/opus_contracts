@@ -33,6 +33,10 @@ mod transmuter_utils {
     // 2_000_000 (6 decimals)
     const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;
 
+    fn admin() -> ContractAddress {
+        contract_address_try_from_felt252('transmuter admin').unwrap()
+    }
+
     fn receiver() -> ContractAddress {
         contract_address_try_from_felt252('receiver').unwrap()
     }
@@ -53,7 +57,7 @@ mod transmuter_utils {
         salt: Option<felt252>
     ) -> ITransmuterDispatcher {
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine_utils::admin()),
+            contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine),
             contract_address_to_felt252(asset),
             contract_address_to_felt252(receiver),
@@ -135,9 +139,7 @@ mod transmuter_utils {
     }
 
     fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
-        let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine_utils::admin())
-        ];
+        let mut calldata: Array<felt252> = array![contract_address_to_felt252(admin())];
         let transmuter_registry_class_hash: ClassHash = class_hash_try_from_felt252(
             transmuter_registry_contract::TEST_CLASS_HASH
         )

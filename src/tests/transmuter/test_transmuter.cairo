@@ -54,7 +54,7 @@ mod test_transmuter {
         let transmuter_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: transmuter.contract_address
         };
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = transmuter_utils::admin();
         assert(transmuter_ac.get_admin() == admin, 'wrong admin');
         assert(
             transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(),
@@ -91,7 +91,7 @@ mod test_transmuter {
     fn test_set_ceiling() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
@@ -126,7 +126,7 @@ mod test_transmuter {
     fn test_set_percentage_cap() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
@@ -148,7 +148,7 @@ mod test_transmuter {
     fn test_set_percentage_cap_too_high_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 10% + 1E-27 (Ray)
         let cap: Ray = 100000000000000000000000001_u128.into();
         transmuter.set_percentage_cap(cap);
@@ -171,7 +171,7 @@ mod test_transmuter {
     fn test_set_receiver() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver')
             .unwrap();
         transmuter.set_receiver(new_receiver);
@@ -195,7 +195,7 @@ mod test_transmuter {
     fn test_set_receiver_zero_addr_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.set_receiver(ContractAddressZeroable::zero());
     }
 
@@ -216,7 +216,7 @@ mod test_transmuter {
     fn test_set_transmute_and_reverse_fee() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
 
@@ -253,7 +253,7 @@ mod test_transmuter {
     fn test_set_transmute_fee_exceeds_max_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_transmute_fee(new_fee);
@@ -277,7 +277,7 @@ mod test_transmuter {
     fn test_set_reverse_fee_exceeds_max_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_reverse_fee(new_fee);
@@ -300,7 +300,7 @@ mod test_transmuter {
     fn test_toggle_reversibility_pass() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'reversible');
 
@@ -386,7 +386,7 @@ mod test_transmuter {
                     loop {
                         match transmute_fees_copy.pop_front() {
                             Option::Some(transmute_fee) => {
-                                set_contract_address(shrine_utils::admin());
+                                set_contract_address(transmuter_utils::admin());
                                 transmuter.set_transmute_fee(*transmute_fee);
 
                                 set_contract_address(user);
@@ -605,7 +605,7 @@ mod test_transmuter {
                     loop {
                         match reverse_fees_copy.pop_front() {
                             Option::Some(reverse_fee) => {
-                                set_contract_address(shrine_utils::admin());
+                                set_contract_address(transmuter_utils::admin());
                                 transmuter.set_reverse_fee(*reverse_fee);
 
                                 set_contract_address(user);
@@ -708,7 +708,7 @@ mod test_transmuter {
     fn test_reverse_disabled_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'sanity check');
 
@@ -731,7 +731,7 @@ mod test_transmuter {
         set_contract_address(user);
         transmuter.transmute(asset_amt.into());
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.sweep(asset_amt);
 
         set_contract_address(user);
@@ -745,7 +745,7 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_sweep_parametrized_pass() {
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
 
@@ -873,7 +873,8 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_settle_parametrized_pass() {
-        let admin: ContractAddress = shrine_utils::admin();
+        let transmuter_admin: ContractAddress = transmuter_utils::admin();
+        let shrine_admin: ContractAddress = shrine_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
 
@@ -960,7 +961,7 @@ mod test_transmuter {
                                                 .get_total_transmuted();
 
                                             // set up the transmuter with the necessary yin amt
-                                            set_contract_address(admin);
+                                            set_contract_address(shrine_admin);
                                             shrine
                                                 .inject(
                                                     transmuter.contract_address, *transmuter_yin_amt
@@ -972,6 +973,7 @@ mod test_transmuter {
                                                 .get_yin(receiver);
                                             let before_budget: SignedWad = shrine.get_budget();
 
+                                            set_contract_address(transmuter_admin);
                                             transmuter.settle();
 
                                             let mut expected_budget_adjustment =
@@ -1062,7 +1064,7 @@ mod test_transmuter {
     fn test_transmute_after_settle_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.settle();
 
         set_contract_address(transmuter_utils::user());
@@ -1075,7 +1077,7 @@ mod test_transmuter {
     fn test_reverse_after_settle_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.settle();
 
         set_contract_address(transmuter_utils::user());
@@ -1088,7 +1090,7 @@ mod test_transmuter {
     fn test_sweep_after_settle_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.settle();
 
         transmuter.sweep(BoundedInt::max());
@@ -1111,7 +1113,7 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_kill_and_reclaim_parametrized_pass() {
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
 
@@ -1294,7 +1296,7 @@ mod test_transmuter {
     fn test_transmute_after_kill_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.kill();
 
         set_contract_address(transmuter_utils::user());
@@ -1307,7 +1309,7 @@ mod test_transmuter {
     fn test_reverse_after_kill_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.kill();
 
         set_contract_address(transmuter_utils::user());
@@ -1320,7 +1322,7 @@ mod test_transmuter {
     fn test_sweep_after_kill_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.sweep(BoundedInt::max());
@@ -1332,7 +1334,7 @@ mod test_transmuter {
     fn test_reclaim_disabled_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.reclaim(BoundedInt::max());
@@ -1344,7 +1346,7 @@ mod test_transmuter {
     fn test_enable_reclaim_while_live_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
-        set_contract_address(shrine_utils::admin());
+        set_contract_address(transmuter_utils::admin());
         transmuter.enable_reclaim();
     }
 
