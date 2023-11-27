@@ -295,7 +295,7 @@ mod test_pragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_add_yang_pass() {
-        let (shrine, pragma, _, mock_pragma) = pragma_utils::pragma_deploy();
+        let (_, pragma, _, mock_pragma) = pragma_utils::pragma_deploy();
 
         // PEPE token is not added to sentinel
         let pepe_token: ContractAddress = pepe_token_addr();
@@ -329,9 +329,7 @@ mod test_pragma {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
-            sentinel, shrine.contract_address
-        );
+        let (eth_token_addr, _) = sentinel_utils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(common::badguy());
 
@@ -343,9 +341,7 @@ mod test_pragma {
     #[should_panic(expected: ('PGM: Yang already present', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_non_unique_address_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
-            sentinel, shrine.contract_address
-        );
+        let (eth_token_addr, _) = sentinel_utils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(pragma_utils::admin());
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, eth_token_addr);
@@ -357,9 +353,7 @@ mod test_pragma {
     #[should_panic(expected: ('PGM: Pair ID already present', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_non_unique_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
-            sentinel, shrine.contract_address
-        );
+        let (eth_token_addr, _) = sentinel_utils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(pragma_utils::admin());
         pragma.add_yang(pragma_utils::ETH_USD_PAIR_ID, eth_token_addr);
@@ -371,9 +365,7 @@ mod test_pragma {
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = pragma_utils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
-            sentinel, shrine.contract_address
-        );
+        let (eth_token_addr, _) = sentinel_utils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(pragma_utils::admin());
 

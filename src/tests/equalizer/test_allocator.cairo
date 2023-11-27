@@ -41,9 +41,9 @@ mod test_allocator {
     #[should_panic(expected: ('AL: Array lengths mismatch', 'CONSTRUCTOR_FAILED'))]
     fn test_allocator_deploy_input_arrays_mismatch_fail() {
         let mut recipients = equalizer_utils::initial_recipients();
-        recipients.pop_front();
+        let _ = recipients.pop_front();
 
-        let allocator = equalizer_utils::allocator_deploy(
+        let _ = equalizer_utils::allocator_deploy(
             recipients, equalizer_utils::initial_percentages()
         );
     }
@@ -55,14 +55,14 @@ mod test_allocator {
         let recipients: Array<ContractAddress> = ArrayTrait::new();
         let percentages: Array<Ray> = ArrayTrait::new();
 
-        let allocator = equalizer_utils::allocator_deploy(recipients.span(), percentages.span());
+        let _ = equalizer_utils::allocator_deploy(recipients.span(), percentages.span());
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE', 'CONSTRUCTOR_FAILED'))]
     fn test_allocator_deploy_invalid_percentage_fail() {
-        let allocator = equalizer_utils::allocator_deploy(
+        let _ = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages()
         );
     }
@@ -105,7 +105,7 @@ mod test_allocator {
         set_contract_address(shrine_utils::admin());
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
-        new_percentages.pop_front();
+        let _ = new_percentages.pop_front();
         allocator.set_allocation(new_recipients, new_percentages);
     }
 
@@ -134,7 +134,7 @@ mod test_allocator {
         set_contract_address(shrine_utils::admin());
         let mut new_recipients = equalizer_utils::new_recipients();
         // Pop one off new recipients to set it to same length as invalid percentages
-        new_recipients.pop_front();
+        let _ = new_recipients.pop_front();
         let new_percentages = equalizer_utils::invalid_percentages();
         allocator.set_allocation(new_recipients, new_percentages);
     }
