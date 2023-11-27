@@ -5,7 +5,6 @@ mod transmuter {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
-    use opus::types::AssetBalance;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
@@ -325,21 +324,21 @@ mod transmuter {
         // 1. User has insufficent assets; or
         // 2. Ceiling will be exceeded
         fn transmute(ref self: ContractState, asset_amt: u128) {
-            let asset: IERC20Dispatcher = self.asset.read();
             // `preview_transmute_helper` checks for liveness
             let (yin_amt, fee) = self.preview_transmute_helper(asset_amt);
 
-            let user: ContractAddress = get_caller_address();
-
             self.total_transmuted.write(self.total_transmuted.read() + yin_amt + fee);
 
+            let user: ContractAddress = get_caller_address();
             let shrine: IShrineDispatcher = self.shrine.read();
-            let transmuter: ContractAddress = get_contract_address();
             shrine.inject(user, yin_amt);
             shrine.adjust_budget(fee.into());
 
             // Transfer asset to Transmuter
-            let success: bool = asset.transfer_from(user, transmuter, asset_amt.into());
+            let success: bool = self
+                .asset
+                .read()
+                .transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
             self.emit(Transmute { user, asset_amt, yin_amt, fee });
@@ -361,14 +360,15 @@ mod transmuter {
             // particularly in the event of shutdown.
             self.total_transmuted.write(self.total_transmuted.read() - (yin_amt - fee));
 
-            // Burn yin from user
+            // Burn the entire yin amount from user, and add the fee to the budget
             let user: ContractAddress = get_caller_address();
             let shrine: IShrineDispatcher = self.shrine.read();
             shrine.eject(user, yin_amt);
             shrine.adjust_budget(fee.into());
 
             // Transfer asset to user
-            // Since the fee is excluded, it is automatically retained in the Transmuter's balance.
+            // Note that the assets backing the fee is excluded from the assets transferred
+            //  to the user, and is retained in the Transmuter.
             let success: bool = self.asset.read().transfer(user, asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
@@ -487,6 +487,8 @@ mod transmuter {
             assert(fee <= FEE_UPPER_BOUND.into(), 'TR: Exceeds max fee');
         }
 
+        // Checks it is valid to mint the given amount of yin based on current
+        // on-chain conditions
         #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
@@ -529,8 +531,7 @@ mod transmuter {
         fn preview_transmute_helper(self: @ContractState, asset_amt: u128) -> (Wad, Wad) {
             self.assert_live();
 
-            let asset: IERC20Dispatcher = self.asset.read();
-            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, asset.decimals());
+            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, self.asset.read().decimals());
             self.assert_can_transmute(yin_amt);
 
             let fee: Wad = wadray::rmul_wr(yin_amt, self.transmute_fee.read());
@@ -553,7 +554,7 @@ mod transmuter {
             let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt - fee, asset.decimals());
 
             assert(
-                self.asset.read().balance_of(get_contract_address()) >= asset_amt.into(),
+                asset.balance_of(get_contract_address()) >= asset_amt.into(),
                 'TR: Insufficient assets'
             );
 
