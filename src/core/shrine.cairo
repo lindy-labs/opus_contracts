@@ -1566,9 +1566,6 @@ mod shrine {
             let mut cumulative_yang_value: Wad = WadZeroable::zero();
 
             let mut current_yang_id: u32 = self.yangs_count.read();
-
-            let mut avg_rate: Ray = RayZeroable::zero();
-
             loop {
                 // If all yangs have been iterated over, return the average rate
                 if current_yang_id == 0 {
