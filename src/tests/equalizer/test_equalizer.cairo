@@ -22,7 +22,7 @@ mod test_equalizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_equalizer_deploy() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy();
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
@@ -40,7 +40,7 @@ mod test_equalizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_equalize_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
         let surplus: Wad = (500 * WAD_ONE).into();
         set_contract_address(shrine_utils::admin());
@@ -82,7 +82,7 @@ mod test_equalizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_allocate_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
         // Simulate minted surplus by injecting to Equalizer directly
         set_contract_address(shrine_utils::admin());
@@ -217,7 +217,7 @@ mod test_equalizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_allocator_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy();
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
         let new_allocator = equalizer_utils::allocator_deploy(new_recipients, new_percentages);
