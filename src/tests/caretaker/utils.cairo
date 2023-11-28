@@ -45,7 +45,7 @@ mod caretaker_utils {
             abbot_class, sentinel_class, token_class, gate_class
         );
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
-            shrine.contract_address
+            shrine.contract_address, Option::None
         );
 
         let mut calldata: Array<felt252> = array![

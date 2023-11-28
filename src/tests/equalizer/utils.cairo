@@ -9,11 +9,12 @@ mod equalizer_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Ray;
 
-    use snforge_std::{start_prank, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
     };
 
     //
@@ -73,7 +74,9 @@ mod equalizer_utils {
     //
 
     fn allocator_deploy(
-        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>
+        mut recipients: Span<ContractAddress>,
+        mut percentages: Span<Ray>,
+        allocator_class: Option<ContractClass>
     ) -> IAllocatorDispatcher {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine_utils::admin()), recipients.len().into(),
@@ -99,26 +102,27 @@ mod equalizer_utils {
             };
         };
 
-        let allocator_class_hash: ClassHash = class_hash_try_from_felt252(
-            allocator_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (allocator_addr, _) = deploy_syscall(allocator_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let allocator_class = match allocator_class {
+            Option::Some(class) => class,
+            Option::None => declare('allocator')
+        };
+        let allocator_addr = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
         IAllocatorDispatcher { contract_address: allocator_addr }
     }
 
-    fn equalizer_deploy() -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+    fn equalizer_deploy(
+        allocator_class: Option<ContractClass>
+    ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        equalizer_deploy_with_shrine(shrine.contract_address)
+        equalizer_deploy_with_shrine(shrine.contract_address, allocator_class)
     }
 
     fn equalizer_deploy_with_shrine(
-        shrine: ContractAddress
+        shrine: ContractAddress, allocator_class: Option<ContractClass>
     ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let allocator: IAllocatorDispatcher = allocator_deploy(
-            initial_recipients(), initial_percentages()
+            initial_recipients(), initial_percentages(), allocator_class
         );
         let admin = shrine_utils::admin();
 
@@ -128,16 +132,13 @@ mod equalizer_utils {
             contract_address_to_felt252(allocator.contract_address),
         ];
 
-        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(
-            equalizer_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let equalizer_class = declare('equalizer');
+        let equalizer_addr = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
+
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: equalizer_addr
         };
-        start_prank(CheatTarget::All, admin);
+        start_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]), admin);
         equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
@@ -145,7 +146,7 @@ mod equalizer_utils {
         };
         shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
 
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]));
 
         (
             IShrineDispatcher { contract_address: shrine },

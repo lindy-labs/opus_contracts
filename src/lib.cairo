@@ -76,7 +76,7 @@ mod tests {
     }
     mod equalizer {
         //mod test_allocator;
-        //mod test_equalizer;
+        mod test_equalizer;
         mod utils;
     }
     mod external {
