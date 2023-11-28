@@ -58,9 +58,11 @@ mod test_address_registry {
         // add first entry
         // order: 1
 
-        state.address_registry.add_entry(entry1(), 'Dummy message');
+        let res = state.address_registry.add_entry(entry1());
 
         let expected_entry_id: u32 = 1;
+        assert(res.unwrap() == expected_entry_id, 'error');
+
         let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
         assert(event.entry == entry1(), 'should be entry 1');
         assert(event.entry_id == expected_entry_id, 'should be ID 1');
@@ -75,9 +77,11 @@ mod test_address_registry {
         // add second entry
         // order: 1, 2
 
-        state.address_registry.add_entry(entry2(), 'Dummy message');
+        let res = state.address_registry.add_entry(entry2());
 
         let expected_entry_id: u32 = 2;
+        assert(res.unwrap() == expected_entry_id, 'error');
+
         let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
         assert(event.entry == entry2(), 'should be entry 2');
         assert(event.entry_id == expected_entry_id, 'should be ID 2');
@@ -92,9 +96,11 @@ mod test_address_registry {
         // add third entry
         // order: 1, 2, 3
 
-        state.address_registry.add_entry(entry3(), 'Dummy message');
+        let res = state.address_registry.add_entry(entry3());
 
         let expected_entry_id: u32 = 3;
+        assert(res.unwrap() == expected_entry_id, 'error');
+
         let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
         assert(event.entry == entry3(), 'should be entry 3');
         assert(event.entry_id == expected_entry_id, 'should be ID 3');
@@ -107,9 +113,10 @@ mod test_address_registry {
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #3');
 
         // remove entry at last index 
-        // order: 1, 2
+        // order: 1, 2, _
 
-        state.address_registry.remove_entry(entry3(), 'Dummy message');
+        let res = state.address_registry.remove_entry(entry3());
+        assert(res.unwrap() == entry3(), 'error');
 
         let expected_entry_id: u32 = 3;
         let event = pop_log::<address_registry_component::EntryRemoved>(zero_addr()).unwrap();
@@ -124,14 +131,27 @@ mod test_address_registry {
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #4');
 
         // add back removed entry
-        // order: 1, 2, 3
-        state.address_registry.add_entry(entry3(), 'Dummy message');
-        assert(state.address_registry.get_entries_count() == 3, 'sanity check #1');
-        let _ = pop_log_raw(zero_addr());
+        // order: 1, 2, _, 3
+        let res = state.address_registry.add_entry(entry3());
+
+        let expected_entry_id: u32 = 4;
+        assert(res.unwrap() == expected_entry_id, 'error');
+
+        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
+        assert(event.entry == entry3(), 'should be entry 3');
+        assert(event.entry_id == expected_entry_id, 'should be ID 4');
+
+        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+
+        assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #5');
+        assert(state.address_registry.get_entries_count() == 3, 'should be 2 entries');
+        let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
+        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #5');
 
         // remove entry at first index
-        // order: 3, 2
-        state.address_registry.remove_entry(entry1(), 'Dummy message');
+        // order: _, 2, _, 3
+        let res = state.address_registry.remove_entry(entry1());
+        assert(res.unwrap() == entry1(), 'error');
 
         let expected_entry_id: u32 = 1;
         let event = pop_log::<address_registry_component::EntryRemoved>(zero_addr()).unwrap();
@@ -140,61 +160,58 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #5');
+        assert(state.address_registry.get_entry(expected_entry_id).is_zero(), 'wrong entry #6');
         assert(state.address_registry.get_entries_count() == 2, 'should be 2 entries');
-        let expected_entries: Span<ContractAddress> = array![entry3(), entry2()].span();
-        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #5');
+        let expected_entries: Span<ContractAddress> = array![entry2(), entry3()].span();
+        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #6');
 
         // add back removed entry
-        // order: 3, 2, 1
-        state.address_registry.add_entry(entry1(), 'Dummy message');
-        assert(state.address_registry.get_entries_count() == 3, 'sanity check #2');
-        let _ = pop_log_raw(zero_addr());
+        // order: _, 2, _, 3, 1
+        let res = state.address_registry.add_entry(entry1());
 
-        // remove entry that is not first or last index
-        // order: 3, 1
-        state.address_registry.remove_entry(entry2(), 'Dummy message');
+        let expected_entry_id: u32 = 5;
+        assert(res.unwrap() == expected_entry_id, 'error');
 
-        let expected_entry_id: u32 = 2;
-        let event = pop_log::<address_registry_component::EntryRemoved>(zero_addr()).unwrap();
-        assert(event.entry == entry2(), 'should be entry 2');
-        assert(event.entry_id == expected_entry_id, 'should be ID 2');
+        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
+        assert(event.entry == entry1(), 'should be entry 1');
+        assert(event.entry_id == expected_entry_id, 'should be ID 5');
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #6');
-        assert(state.address_registry.get_entries_count() == 2, 'should be 2 entries');
-        let expected_entries: Span<ContractAddress> = array![entry3(), entry1()].span();
-        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #6');
+        assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #7');
+        assert(state.address_registry.get_entries_count() == 3, 'should be 3 entries');
+        let expected_entries: Span<ContractAddress> = array![entry2(), entry3(), entry1()].span();
+        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #7');
 
         // reset to zero
-        state.address_registry.remove_entry(entry3(), 'Dummy message');
-        state.address_registry.remove_entry(entry1(), 'Dummy message');
+        let _ = state.address_registry.remove_entry(entry1());
+        let _ = state.address_registry.remove_entry(entry2());
+        let _ = state.address_registry.remove_entry(entry3());
 
         assert(state.address_registry.get_entry(1).is_zero(), 'wrong entry #1');
         assert(state.address_registry.get_entries_count().is_zero(), 'should be 0 entries');
         let expected_entries: Span<ContractAddress> = array![].span();
-        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #7');
+        assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #8');
     }
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Dummy message #2',))]
     fn test_add_duplicate_entry_fail() {
         let mut state = state();
 
-        state.address_registry.add_entry(entry1(), 'Dummy message #1');
+        let _ = state.address_registry.add_entry(entry1());
         assert(state.address_registry.get_entries_count() == 1, 'should be 1 entry');
 
-        state.address_registry.add_entry(entry1(), 'Dummy message #2');
+        let res = state.address_registry.add_entry(entry1());
+        assert(res.unwrap_err() == 'AR: Entry already exists', 'wrong error');
     }
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Dummy message #1',))]
     fn test_remove_non_existent_entry_fail() {
         let mut state = state();
 
-        state.address_registry.remove_entry(entry1(), 'Dummy message #1');
+        let res = state.address_registry.remove_entry(entry1());
+        assert(res.unwrap_err() == 'AR: Entry does not exist', 'wrong error');
     }
 }

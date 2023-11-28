@@ -6,6 +6,7 @@ mod address_registry_component {
     #[storage]
     struct Storage {
         entries_count: u32,
+        removed_entries_count: u32,
         entry_ids: LegacyMap::<ContractAddress, u32>,
         entries: LegacyMap::<u32, ContractAddress>,
     }
@@ -38,7 +39,7 @@ mod address_registry_component {
         //
 
         fn get_entries_count(self: @ComponentState<TContractState>) -> u32 {
-            self.entries_count.read()
+            self.entries_count.read() - self.removed_entries_count.read()
         }
 
         fn get_entry(self: @ComponentState<TContractState>, entry_id: u32) -> ContractAddress {
@@ -55,7 +56,10 @@ mod address_registry_component {
                     break entries.span();
                 }
 
-                entries.append(self.entries.read(entry_id));
+                let entry: ContractAddress = self.entries.read(entry_id);
+                if entry.is_non_zero() {
+                    entries.append(self.entries.read(entry_id));
+                }
 
                 entry_id += 1;
             }
@@ -66,9 +70,11 @@ mod address_registry_component {
         //
 
         fn add_entry(
-            ref self: ComponentState<TContractState>, entry: ContractAddress, error: felt252
-        ) {
-            assert(self.entry_ids.read(entry) == 0, error);
+            ref self: ComponentState<TContractState>, entry: ContractAddress
+        ) -> Result<u32, felt252> {
+            if self.entry_ids.read(entry).is_non_zero() {
+                return Result::Err('AR: Entry already exists');
+            }
             let entry_id: u32 = self.entries_count.read() + 1;
 
             self.entries_count.write(entry_id);
@@ -76,31 +82,28 @@ mod address_registry_component {
             self.entries.write(entry_id, entry);
 
             self.emit(EntryAdded { entry, entry_id });
+
+            Result::Ok(entry_id)
         }
 
         fn remove_entry(
-            ref self: ComponentState<TContractState>, entry: ContractAddress, error: felt252
-        ) {
+            ref self: ComponentState<TContractState>, entry: ContractAddress
+        ) -> Result<ContractAddress, felt252> {
             let entry_id: u32 = self.entry_ids.read(entry);
-            assert(entry_id != 0, error);
-            let entries_count: u32 = self.entries_count.read();
-
-            // Reset mapping of entry to entry ID
-            self.entry_ids.write(entry, 0);
-
-            // Move last entry ID to removed entry ID
-            let last_entry_id: u32 = entries_count;
-            if entry_id != last_entry_id {
-                let last_entry: ContractAddress = self.entries.read(last_entry_id);
-                self.entries.write(entry_id, last_entry);
-                self.entry_ids.write(last_entry, entry_id);
+            if entry_id.is_zero() {
+                return Result::Err('AR: Entry does not exist');
             }
-            self.entries.write(last_entry_id, ContractAddressZeroable::zero());
+
+            // Reset entry
+            self.entry_ids.write(entry, 0);
+            self.entries.write(entry_id, ContractAddressZeroable::zero());
 
             // Decrement entries count
-            self.entries_count.write(entries_count - 1);
+            self.removed_entries_count.write(self.removed_entries_count.read() + 1);
 
             self.emit(EntryRemoved { entry, entry_id });
+
+            Result::Ok(entry)
         }
     }
 }

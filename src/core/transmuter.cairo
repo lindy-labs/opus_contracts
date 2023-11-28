@@ -353,7 +353,7 @@ mod transmuter {
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
             // Decrement total transmuted amount by yin amount to be reversed 
-            // excluding the fee. The fee is excluded because this transmuter
+            // excluding the fee. The fee is excluded because this Transmuter
             // is still liable to back the amount of yin representing the fee 
             // (when it is added to the Shrine's budget and eventually minted 
             // via the Equalizer) with the corresponding amount of assets, 
@@ -375,7 +375,7 @@ mod transmuter {
             self.emit(Reverse { user, asset_amt, yin_amt, fee });
         }
 
-        // Transfers assets in the transmuter to the receiver
+        // Transfers assets in the Transmuter to the receiver
         fn sweep(ref self: ContractState, asset_amt: u128) {
             self.assert_live();
 
@@ -398,14 +398,14 @@ mod transmuter {
         // Isolated deprecation
         // 
 
-        // Irreversibly deprecate this transmuter only by settling its debt and transferring 
+        // Irreversibly deprecate this Transmuter only by settling its debt and transferring 
         // all of its yin and asset to the receiver.
         fn settle(ref self: ContractState) {
             self.assert_live();
 
             self.access_control.assert_has_role(transmuter_roles::SETTLE);
 
-            // Pay down the transmuter's debt using the Transmuter's yin balance,
+            // Pay down the Transmuter's debt using the Transmuter's yin balance,
             // capped at the total debt transmuted.
             let transmuter: ContractAddress = get_contract_address();
             let shrine: IShrineDispatcher = self.shrine.read();
