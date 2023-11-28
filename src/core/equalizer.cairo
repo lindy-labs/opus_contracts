@@ -148,12 +148,17 @@ mod equalizer {
             // and revert because the debt ceiling would be exceeded
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
-            shrine.set_debt_ceiling(max(total_yin, ceiling) + minted_surplus);
+            let adjust_ceiling: bool = total_yin + minted_surplus > ceiling;
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(max(total_yin, ceiling) + minted_surplus);
+            }
 
             shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
             shrine.inject(get_contract_address(), minted_surplus);
 
-            shrine.set_debt_ceiling(ceiling);
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(ceiling);
+            }
 
             self.emit(Equalize { yin_amt: minted_surplus });
 

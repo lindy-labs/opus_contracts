@@ -123,7 +123,11 @@ mod flash_mint {
             // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
-            shrine.set_debt_ceiling(max(total_yin, ceiling) + amount_wad);
+            let adjust_ceiling: bool = total_yin + amount_wad > ceiling;
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(max(total_yin, ceiling) + amount_wad);
+            }
+
             shrine.inject(receiver, amount_wad);
 
             let initiator: ContractAddress = get_caller_address();
@@ -136,7 +140,9 @@ mod flash_mint {
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
 
-            shrine.set_debt_ceiling(ceiling);
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(ceiling);
+            }
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 
