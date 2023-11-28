@@ -29,7 +29,7 @@ mod purger_utils {
     };
     use opus::utils::wadray;
 
-    use snforge_std::{start_prank, CheatTarget};
+    use snforge_std::{ContractClass, start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
@@ -296,7 +296,7 @@ mod purger_utils {
     //
 
     fn purger_deploy(
-        salt: Option<felt252>
+        token_class: Option<ContractClass>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -306,11 +306,11 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            salt
-        );
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy();
 
-        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
+        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
+            token_class
+        );
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(
             absorber, reward_tokens, reward_amts_per_blessing
@@ -387,7 +387,7 @@ mod purger_utils {
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, salt: Option<felt252>,
+        searcher_yin_amt: Wad, salt: Option<felt252>, token_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -397,7 +397,9 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(salt);
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(
+            token_class
+        );
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)

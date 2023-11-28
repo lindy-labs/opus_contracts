@@ -60,7 +60,7 @@ mod abbot_utils {
         Span<IGateDispatcher>
     ) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None
+            Option::None, Option::None, Option::None
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 

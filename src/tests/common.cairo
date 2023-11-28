@@ -12,7 +12,7 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
 
-use snforge_std::{declare, ContractClassTrait, start_prank, start_warp, CheatTarget};
+use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{
@@ -116,6 +116,7 @@ fn deploy_token(
     decimals: felt252,
     initial_supply: u256,
     recipient: ContractAddress,
+    token_class: Option<ContractClass>,
 ) -> ContractAddress {
     let calldata: Array<felt252> = array![
         name,
@@ -125,7 +126,12 @@ fn deploy_token(
         initial_supply.high.into(), // u256.high
         contract_address_to_felt252(recipient),
     ];
-    let token_class = declare('erc20_mintable');
+
+    let token_class = match token_class {
+        Option::Some(class) => class,
+        Option::None => declare('erc20_mintable'),
+    };
+
     token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 

@@ -98,7 +98,7 @@ mod tests {
         mod utils;
     }
     mod sentinel {
-        //    mod test_sentinel;
+        mod test_sentinel;
         mod utils;
     }
     mod shrine {

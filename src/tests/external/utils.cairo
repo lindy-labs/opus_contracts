@@ -17,7 +17,7 @@ mod pragma_utils {
     use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
 
-    use snforge_std::{start_prank, CheatTarget};
+    use snforge_std::{declare, ContractClass, start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
@@ -136,7 +136,9 @@ mod pragma_utils {
         (shrine, pragma, sentinel, mock_pragma)
     }
 
-    fn pragma_with_yangs() -> (
+    fn pragma_with_yangs(
+        token_class: Option<ContractClass>
+    ) -> (
         IShrineDispatcher,
         IPragmaDispatcher,
         ISentinelDispatcher,
@@ -146,11 +148,13 @@ mod pragma_utils {
     ) {
         let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
+        let gate_class = declare('gate');
+
         let (eth_token_addr, eth_gate) = sentinel_utils::add_eth_yang(
-            sentinel, shrine.contract_address
+            sentinel, shrine.contract_address, token_class, Option::Some(gate_class)
         );
         let (wbtc_token_addr, wbtc_gate) = sentinel_utils::add_wbtc_yang(
-            sentinel, shrine.contract_address
+            sentinel, shrine.contract_address, token_class, Option::Some(gate_class)
         );
 
         let mut yangs: Array<ContractAddress> = array![eth_token_addr, wbtc_token_addr];

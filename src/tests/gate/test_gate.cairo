@@ -18,7 +18,7 @@ mod test_gate {
 
     #[test]
     fn test_eth_gate_deploy() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         let gate = IGateDispatcher { contract_address: gate };
 
         assert(gate.get_shrine() == shrine, 'get_shrine');
@@ -35,7 +35,7 @@ mod test_gate {
     #[test]
     fn test_wbtc_gate_deploy() {
         // WBTC has different decimals (8) than ETH / opus (18)
-        let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy();
+        let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy(Option::None);
         let gate = IGateDispatcher { contract_address: gate };
 
         assert(gate.get_shrine() == shrine, 'get_shrine');
@@ -51,7 +51,7 @@ mod test_gate {
 
     #[test]
     fn test_eth_gate_enter_pass() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
         let user = gate_utils::eth_hoarder();
@@ -84,7 +84,7 @@ mod test_gate {
 
     #[test]
     fn test_wbtc_gate_enter_pass() {
-        let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy();
+        let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy(Option::None);
         gate_utils::add_wbtc_as_yang(shrine, wbtc);
 
         let user = gate_utils::wbtc_hoarder();
@@ -117,7 +117,7 @@ mod test_gate {
 
     #[test]
     fn test_eth_gate_exit() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
         let user = gate_utils::eth_hoarder();
@@ -157,7 +157,7 @@ mod test_gate {
     #[test]
     #[should_panic(expected: ('GA: Caller is not authorized',))]
     fn test_gate_unauthorized_enter() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
         IGateDispatcher { contract_address: gate }
             .enter(common::badguy(), common::TROVE_1, WAD_SCALE);
@@ -166,7 +166,7 @@ mod test_gate {
     #[test]
     #[should_panic(expected: ('GA: Caller is not authorized',))]
     fn test_gate_unauthorized_exit() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
         IGateDispatcher { contract_address: gate }
             .exit(common::badguy(), common::TROVE_1, WAD_SCALE.into());
@@ -174,7 +174,7 @@ mod test_gate {
 
     #[test]
     fn test_gate_multi_user_enter_exit_with_rebasing() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
         let shrine = IShrineDispatcher { contract_address: shrine };
@@ -354,7 +354,7 @@ mod test_gate {
     #[test]
     #[should_panic(expected: ('u256_sub Overflow',))]
     fn test_gate_enter_insufficient_bags() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
         // Unneeded but helps prevent 'Failed setting up runner' error
@@ -381,7 +381,7 @@ mod test_gate {
     #[test]
     #[should_panic(expected: ('u256_sub Overflow',))]
     fn test_gate_exit_insufficient_bags() {
-        let (shrine, eth, gate) = gate_utils::eth_gate_deploy();
+        let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
         let shrine = IShrineDispatcher { contract_address: shrine };

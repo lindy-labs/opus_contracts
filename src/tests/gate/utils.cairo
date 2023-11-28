@@ -11,7 +11,7 @@ mod gate_utils {
     use opus::utils::wadray;
 
     use snforge_std::{
-        declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
@@ -47,17 +47,20 @@ mod gate_utils {
     // Test setup helpers
     //
 
-    fn eth_token_deploy() -> ContractAddress {
-        common::deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder())
+    fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
     }
 
-    fn wbtc_token_deploy() -> ContractAddress {
-        common::deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder())
+    fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
     }
 
 
     fn gate_deploy(
-        token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
+        token: ContractAddress,
+        shrine: ContractAddress,
+        sentinel: ContractAddress,
+        gate_class: Option<ContractClass>,
     ) -> ContractAddress {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
@@ -67,21 +70,28 @@ mod gate_utils {
             contract_address_to_felt252(sentinel),
         ];
 
-        let gate_class = declare('gate');
+        let gate_class = match gate_class {
+            Option::Some(class) => class,
+            Option::None => declare('gate'),
+        };
         gate_class.deploy(@calldata).expect('gate deploy failed')
     }
 
-    fn eth_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
+    fn eth_gate_deploy(
+        token_class: Option<ContractClass>
+    ) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
-        let eth: ContractAddress = eth_token_deploy();
-        let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel());
+        let eth: ContractAddress = eth_token_deploy(token_class);
+        let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel(), Option::None);
         (shrine, eth, gate)
     }
 
-    fn wbtc_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
+    fn wbtc_gate_deploy(
+        token_class: Option<ContractClass>
+    ) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
-        let wbtc: ContractAddress = wbtc_token_deploy();
-        let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel());
+        let wbtc: ContractAddress = wbtc_token_deploy(token_class);
+        let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel(), Option::None);
         (shrine, wbtc, gate)
     }
 
