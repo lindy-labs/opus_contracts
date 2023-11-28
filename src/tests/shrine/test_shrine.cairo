@@ -191,7 +191,6 @@ mod test_shrine {
         assert(start_cumulative_multiplier == Ray { val: RAY_ONE }, 'wrong start cumulative mul');
         let mut expected_cumulative_multiplier = start_cumulative_multiplier;
 
-        let yangs_count = 3;
         let yang_feed_len = (*yang_feeds.at(0)).len();
         let mut idx = 0;
         let mut expected_yang_cumulative_prices = exp_start_cumulative_prices;
@@ -1018,7 +1017,6 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         set_contract_address(shrine_utils::admin());
 
         shrine
@@ -1063,7 +1061,6 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         set_contract_address(shrine_utils::admin());
 
         // deposit more collateral
@@ -1722,7 +1719,6 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_inject_exceeds_debt_ceiling_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let yin = shrine_utils::yin(shrine.contract_address);
         let trove1_owner = common::trove1_owner_addr();
 
         set_contract_address(shrine_utils::admin());
@@ -1781,7 +1777,6 @@ mod test_shrine {
 
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
@@ -2373,7 +2368,6 @@ mod test_shrine {
         let shrine_health: Health = shrine.get_shrine_health();
         let rm_threshold: Ray = shrine_health.threshold
             * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-        let shrine_ltv: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
 
         let total_collateral_value_to_withdraw = whale_trove_deposit_value
             - wadray::rdiv_wr(

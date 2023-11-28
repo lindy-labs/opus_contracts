@@ -423,8 +423,7 @@ mod test_abbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_non_owner_fail() {
-        let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            abbot_utils::deploy_abbot_and_open_trove();
+        let (_, _, abbot, yangs, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;

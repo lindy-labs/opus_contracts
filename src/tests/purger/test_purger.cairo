@@ -349,7 +349,7 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
                                     Option::Some(salt)
                                 );
@@ -2054,10 +2054,6 @@ mod test_purger {
                                                                 set_contract_address(
                                                                     recipient_trove_owner
                                                                 );
-                                                                let yin = IERC20Dispatcher {
-                                                                    contract_address: shrine
-                                                                        .contract_address
-                                                                };
                                                                 absorber
                                                                     .provide(absorber_start_yin);
                                                             }
@@ -3346,8 +3342,6 @@ mod test_purger {
             target_ltv
         );
 
-        let upated_target_trove_health: Health = shrine.get_trove_health(target_trove);
-
         purger_utils::assert_trove_is_liquidatable(
             shrine, purger, target_trove, target_trove_health.ltv
         );
@@ -3427,8 +3421,7 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_suspended_yang() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-            purger_utils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3519,7 +3512,7 @@ mod test_purger {
     #[ignore]
     #[available_gas(2000000000000)]
     fn test_liquidate_suspended_yang_threshold_near_zero() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
@@ -3754,7 +3747,7 @@ mod test_purger {
         let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
         // Execution time is significantly reduced
         // by only deploying the contracts once for all parametrizations
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             searcher_start_yin, Option::None
         );
