@@ -135,6 +135,9 @@ mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let budget: SignedWad = shrine.get_budget();
+
+            // `is_negative` is an inadequate check for performing an early return
+            // here because it does not catch the case where budget is exactly zero.
             if !budget.is_positive() {
                 return WadZeroable::zero();
             }
