@@ -235,11 +235,10 @@ mod transmuter_roles {
 }
 
 mod transmuter_registry_roles {
-    const ADD_TRANSMUTER: u128 = 1;
-    const REMOVE_TRANSMUTER: u128 = 2;
+    const MODIFY: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_TRANSMUTER + REMOVE_TRANSMUTER
+        MODIFY
     }
 }

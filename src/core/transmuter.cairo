@@ -83,6 +83,7 @@ mod transmuter {
         Killed: Killed,
         PercentageCapUpdated: PercentageCapUpdated,
         ReceiverUpdated: ReceiverUpdated,
+        Reclaim: Reclaim,
         Reverse: Reverse,
         ReverseFeeUpdated: ReverseFeeUpdated,
         ReversibilityToggled: ReversibilityToggled,
@@ -110,6 +111,14 @@ mod transmuter {
     struct ReceiverUpdated {
         old_receiver: ContractAddress,
         new_receiver: ContractAddress
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct Reclaim {
+        #[key]
+        user: ContractAddress,
+        asset_amt: u128,
+        yin_amt: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -287,7 +296,7 @@ mod transmuter {
 
         // One way function to enable `reclaim` after Transmuter is killed.
         // This should be called after the assets backing the total transmuted amount
-        //  has been transferred back to the  Transmuter after shutdown.
+        // have been transferred back to the Transmuter after shutdown.
         fn enable_reclaim(ref self: ContractState) {
             self.access_control.assert_has_role(transmuter_roles::ENABLE_RECLAIM);
 
@@ -321,8 +330,11 @@ mod transmuter {
         // Deducts the transmute fee, if any, from the asset amount to be transmuted,
         // and converts the remainder to yin at a ratio of 1 : 1, scaled to Wad precision.
         // Reverts if:
-        // 1. User has insufficent assets; or
-        // 2. Ceiling will be exceeded
+        // 1. User has insufficent assets;
+        // 2. Transmuter's ceiling will be exceeded;
+        // 3. Transmuter's cap as a percentage of total yin will be exceeded;
+        // 4. Yin's price is below 1; or
+        // 5. Shrine's ceiling will be exceeded.
         fn transmute(ref self: ContractState, asset_amt: u128) {
             // `preview_transmute_helper` checks for liveness
             let (yin_amt, fee) = self.preview_transmute_helper(asset_amt);
@@ -332,7 +344,10 @@ mod transmuter {
             let user: ContractAddress = get_caller_address();
             let shrine: IShrineDispatcher = self.shrine.read();
             shrine.inject(user, yin_amt);
-            shrine.adjust_budget(fee.into());
+
+            if fee.is_non_zero() {
+                shrine.adjust_budget(fee.into());
+            }
 
             // Transfer asset to Transmuter
             let success: bool = self
@@ -346,8 +361,9 @@ mod transmuter {
 
         // Swaps yin for the stablecoin asset at a ratio of 1 : 1, scaled down from Wad precision.
         // Reverts if:
-        // 1. User has insufficient yin; or
-        // 2. Transmuter has insufficent assets corresponding to the burnt yin
+        // 1. Reverse is not enabled;
+        // 2. User has insufficient yin; or
+        // 3. Transmuter has insufficent assets corresponding to the burnt yin.
         fn reverse(ref self: ContractState, yin_amt: Wad) {
             // `preview_reverse_helper` checks for liveness and reversibility
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
@@ -358,17 +374,20 @@ mod transmuter {
             // (when it is added to the Shrine's budget and eventually minted 
             // via the Equalizer) with the corresponding amount of assets, 
             // particularly in the event of shutdown.
-            self.total_transmuted.write(self.total_transmuted.read() - (yin_amt - fee));
+            self.total_transmuted.write(self.total_transmuted.read() - yin_amt + fee);
 
             // Burn the entire yin amount from user, and add the fee to the budget
             let user: ContractAddress = get_caller_address();
             let shrine: IShrineDispatcher = self.shrine.read();
             shrine.eject(user, yin_amt);
-            shrine.adjust_budget(fee.into());
+
+            if fee.is_non_zero() {
+                shrine.adjust_budget(fee.into());
+            }
 
             // Transfer asset to user
             // Note that the assets backing the fee is excluded from the assets transferred
-            //  to the user, and is retained in the Transmuter.
+            // to the user, and is retained in the Transmuter.
             let success: bool = self.asset.read().transfer(user, asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
@@ -451,9 +470,8 @@ mod transmuter {
         }
 
         fn preview_reclaim(self: @ContractState, yin: Wad) -> u128 {
-            let reclaimable_yin: Wad = self.total_transmuted.read();
-            let capped_yin: Wad = min(yin, reclaimable_yin);
-            self.preview_reclaim_helper(capped_yin)
+            let (_, asset_amt) = self.preview_reclaim_helper(yin);
+            asset_amt
         }
 
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
@@ -461,17 +479,17 @@ mod transmuter {
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
             // `preview_reclaim` checks that reclaim is enabled
-            let reclaimable_yin: Wad = self.total_transmuted.read();
-            let capped_yin: Wad = min(yin, reclaimable_yin);
-            let asset_amt: u128 = self.preview_reclaim_helper(capped_yin);
+            let (capped_yin, asset_amt) = self.preview_reclaim_helper(yin);
             if asset_amt.is_zero() {
                 return;
             }
 
-            self.total_transmuted.write(reclaimable_yin - capped_yin);
+            self.total_transmuted.write(self.total_transmuted.read() - capped_yin);
             let caller: ContractAddress = get_caller_address();
             self.shrine.read().eject(caller, capped_yin);
             self.asset.read().transfer(caller, asset_amt.into());
+
+            self.emit(Reclaim { user: caller, asset_amt, yin_amt: capped_yin });
         }
     }
 
@@ -561,10 +579,15 @@ mod transmuter {
             (asset_amt, fee)
         }
 
-        // Returns the amount of asset that a user is expected to receive for `reclaim`
-        // after the Transmuter is killed.
-        fn preview_reclaim_helper(self: @ContractState, yin_amt: Wad) -> u128 {
+        // Returns a tuple of:
+        // 1. the amount of yin that can be reclaimed, capped by what is still reclaimable; and
+        // 2. the amount of asset that a user is expected to receive for `reclaim` after the 
+        //    Transmuter is killed.
+        fn preview_reclaim_helper(self: @ContractState, yin_amt: Wad) -> (Wad, u128) {
             assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
+
+            let reclaimable_yin: Wad = self.total_transmuted.read();
+            let capped_yin: Wad = min(yin_amt, reclaimable_yin);
 
             let asset_balance: Wad = self
                 .asset
@@ -574,9 +597,9 @@ mod transmuter {
                 .unwrap();
 
             if asset_balance.is_zero() {
-                0
+                (WadZeroable::zero(), 0)
             } else {
-                ((yin_amt / self.total_transmuted.read()) * asset_balance).val
+                (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
             }
         }
     }

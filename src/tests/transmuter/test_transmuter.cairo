@@ -1174,6 +1174,7 @@ mod test_transmuter {
 
                     set_contract_address(user);
                     let asset_error_margin: u128 = asset_decimal_scale / 100;
+                    let mut expected_events: Array<transmuter_contract::Event> = ArrayTrait::new();
 
                     // first reclaim for 10% of original transmuted amount
                     let before_user_asset_bal: u256 = asset.balance_of(user);
@@ -1208,6 +1209,15 @@ mod test_transmuter {
                         'wrong user yin #1'
                     );
 
+                    expected_events
+                        .append(
+                            transmuter_contract::Event::Reclaim(
+                                transmuter_contract::Reclaim {
+                                    user, asset_amt: preview, yin_amt: first_reclaim_yin_amt,
+                                }
+                            )
+                        );
+
                     // second reclaim for 35% of original transmuted amount
                     let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
                     let second_reclaim_yin_amt: Wad = wadray::rmul_wr(
@@ -1238,6 +1248,15 @@ mod test_transmuter {
                         'wrong user yin #2'
                     );
 
+                    expected_events
+                        .append(
+                            transmuter_contract::Event::Reclaim(
+                                transmuter_contract::Reclaim {
+                                    user, asset_amt: preview, yin_amt: second_reclaim_yin_amt,
+                                }
+                            )
+                        );
+
                     // third reclaim for 100% of original transmuted amount, which should be capped
                     // to what is remaining
                     let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
@@ -1265,6 +1284,18 @@ mod test_transmuter {
                     assert(
                         third_user_yin_bal == second_user_yin_bal - reclaimable_yin,
                         'wrong user yin #3'
+                    );
+
+                    expected_events
+                        .append(
+                            transmuter_contract::Event::Reclaim(
+                                transmuter_contract::Reclaim {
+                                    user, asset_amt: preview, yin_amt: reclaimable_yin,
+                                }
+                            )
+                        );
+                    common::assert_events_emitted(
+                        transmuter.contract_address, expected_events.span(), Option::None
                     );
 
                     // preview reclaim when transmuter has no assets

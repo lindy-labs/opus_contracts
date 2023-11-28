@@ -72,7 +72,7 @@ mod transmuter_registry {
         }
 
         fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            self.access_control.assert_has_role(transmuter_registry_roles::ADD_TRANSMUTER);
+            self.access_control.assert_has_role(transmuter_registry_roles::MODIFY);
 
             match self.registry.add_entry(transmuter) {
                 Result::Ok(_) => { return; },
@@ -81,7 +81,7 @@ mod transmuter_registry {
         }
 
         fn remove_transmuter(ref self: ContractState, transmuter: ContractAddress) {
-            self.access_control.assert_has_role(transmuter_registry_roles::REMOVE_TRANSMUTER);
+            self.access_control.assert_has_role(transmuter_registry_roles::MODIFY);
 
             match self.registry.remove_entry(transmuter) {
                 Result::Ok(_) => { return; },
