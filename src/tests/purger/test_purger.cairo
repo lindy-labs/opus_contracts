@@ -1104,9 +1104,7 @@ mod test_purger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
-                                let other_trove_owner: ContractAddress =
-                                    absorber_utils::provider_1();
-                                let other_trove: u64 = purger_utils::funded_absorber(
+                                purger_utils::funded_absorber(
                                     shrine,
                                     abbot,
                                     absorber,
