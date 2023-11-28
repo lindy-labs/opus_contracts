@@ -12,7 +12,9 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
 
-use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget};
+use snforge_std::{
+    declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
+};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{
@@ -157,7 +159,6 @@ fn open_trove_helper(
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad
 ) -> u64 {
-    start_prank(CheatTarget::All, user);
     let mut yangs_copy = yangs;
 
     loop {
@@ -171,10 +172,10 @@ fn open_trove_helper(
         };
     };
 
-    start_prank(CheatTarget::All, user);
+    start_prank(CheatTarget::One(abbot.contract_address), user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-    start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+    stop_prank(CheatTarget::One(abbot.contract_address));
 
     trove_id
 }

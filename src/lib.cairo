@@ -58,7 +58,7 @@ mod mock {
 mod tests {
     mod common;
     mod abbot {
-        //mod test_abbot;
+        mod test_abbot;
         mod utils;
     }
     mod absorber {

@@ -12,7 +12,9 @@ mod abbot_utils {
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
 
-    use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252,};
 
@@ -52,7 +54,12 @@ mod abbot_utils {
     // Test setup helpers
     //
 
-    fn abbot_deploy() -> (
+    fn abbot_deploy(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -60,7 +67,7 @@ mod abbot_utils {
         Span<IGateDispatcher>
     ) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None
+            sentinel_class, token_class, gate_class
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
@@ -69,7 +76,11 @@ mod abbot_utils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let abbot_class = declare('abbot');
+        let abbot_class = match abbot_class {
+            Option::Some(class) => class,
+            Option::None => declare('abbot'),
+        };
+
         let abbot_addr = abbot_class.deploy(@calldata).expect('abbot deploy failed');
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
@@ -84,12 +95,19 @@ mod abbot_utils {
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
 
-        stop_prank(CheatTarget::All);
+        stop_prank(
+            CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address])
+        );
 
         (shrine, sentinel, abbot, yangs, gates)
     }
 
-    fn deploy_abbot_and_open_trove() -> (
+    fn deploy_abbot_and_open_trove(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -100,7 +118,9 @@ mod abbot_utils {
         Span<u128>, // deposited yang asset amounts
         Wad, // forge amount
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();

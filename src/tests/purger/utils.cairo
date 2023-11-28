@@ -296,7 +296,10 @@ mod purger_utils {
     //
 
     fn purger_deploy(
-        token_class: Option<ContractClass>
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -306,7 +309,9 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
             token_class
@@ -387,7 +392,11 @@ mod purger_utils {
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, salt: Option<felt252>, token_class: Option<ContractClass>,
+        searcher_yin_amt: Wad,
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -398,7 +407,7 @@ mod purger_utils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(
-            token_class
+            abbot_class, sentinel_class, token_class, gate_class
         );
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 

@@ -13,7 +13,9 @@ mod caretaker_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
-    use snforge_std::{start_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget
+    };
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
         contract_address_to_felt252, deploy_syscall, SyscallResultTrait
@@ -24,7 +26,12 @@ mod caretaker_utils {
     }
 
     // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
-    fn caretaker_deploy() -> (
+    fn caretaker_deploy(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
+    ) -> (
         ICaretakerDispatcher,
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -34,7 +41,9 @@ mod caretaker_utils {
     ) {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address
         );

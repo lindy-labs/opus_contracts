@@ -24,7 +24,7 @@ mod absorber_utils {
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
 
-    use snforge_std::{ContractClass, start_prank, CheatTarget};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
@@ -91,7 +91,12 @@ mod absorber_utils {
     // Test setup helpers
     //
 
-    fn absorber_deploy() -> (
+    fn absorber_deploy(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -99,7 +104,9 @@ mod absorber_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy();
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
 
         let admin: ContractAddress = admin();
 
@@ -220,7 +227,12 @@ mod absorber_utils {
         start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
-    fn absorber_with_first_provider() -> (
+    fn absorber_with_first_provider(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -230,7 +242,9 @@ mod absorber_utils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -243,7 +257,10 @@ mod absorber_utils {
 
     // Helper function to deploy Absorber, add rewards and create a trove.
     fn absorber_with_rewards_and_first_provider(
-        token_class: Option<ContractClass>
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -257,7 +274,9 @@ mod absorber_utils {
         Wad, // provided amount
     ) {
         let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
-            absorber_with_first_provider();
+            absorber_with_first_provider(
+            abbot_class, sentinel_class, token_class, gate_class
+        );
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(token_class);
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
