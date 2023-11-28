@@ -35,7 +35,7 @@ mod test_flash_mint {
     #[test]
     #[available_gas(20000000000)]
     fn test_flashmint_debt_ceiling_exceeded_max_loan() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
         let flashmint = flash_mint_utils::flashmint_deploy(shrine.contract_address);
 
         let debt_ceiling: Wad = shrine.get_debt_ceiling();

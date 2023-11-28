@@ -83,7 +83,7 @@ mod test_equalizer {
     #[test]
     #[available_gas(20000000000)]
     fn test_equalize_debt_ceiling_exceeded_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy();
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy();
 
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
 
