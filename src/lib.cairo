@@ -75,7 +75,7 @@ mod tests {
         mod utils;
     }
     mod equalizer {
-        //mod test_allocator;
+        mod test_allocator;
         mod test_equalizer;
         mod utils;
     }
