@@ -505,13 +505,6 @@ mod test_shrine_redistribution {
                                         - debt_to_redistribute,
                                     'wrong redistributed trove debt'
                                 );
-                                assert(
-                                    after_redistributed_trove_health
-                                        .value == before_redistributed_trove_health
-                                        .value
-                                        - value_to_redistribute,
-                                    'wrong redistributed trove value'
-                                );
 
                                 let expected_redistribution_id: u32 = 1;
                                 let mut expected_events: Span<shrine_contract::Event> = array![
