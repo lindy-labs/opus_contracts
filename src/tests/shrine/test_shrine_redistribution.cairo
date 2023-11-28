@@ -489,10 +489,6 @@ mod test_shrine_redistribution {
                                     before_redistributed_trove_health.debt,
                                     *pct_debt_to_redistribute
                                 );
-                                let value_to_redistribute: Wad = wadray::rmul_wr(
-                                    before_redistributed_trove_health.value,
-                                    *pct_value_to_redistribute
-                                );
                                 shrine
                                     .redistribute(
                                         redistributed_trove,
