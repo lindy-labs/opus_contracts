@@ -14,12 +14,9 @@ mod caretaker_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
     };
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_try_from_felt252,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
-    };
+    use starknet::{ContractAddress, contract_address_try_from_felt252, contract_address_to_felt252};
 
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('caretaker admin').unwrap()
@@ -48,7 +45,7 @@ mod caretaker_utils {
             shrine.contract_address, Option::None
         );
 
-        let mut calldata: Array<felt252> = array![
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(abbot.contract_address),
@@ -56,22 +53,22 @@ mod caretaker_utils {
             contract_address_to_felt252(equalizer.contract_address),
         ];
 
-        let caretaker_class_hash: ClassHash = class_hash_try_from_felt252(
-            caretaker_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (caretaker, _) = deploy_syscall(caretaker_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let caretaker_class = declare('caretaker');
+        let caretaker = caretaker_class.deploy(@calldata).expect('failed deploy caretaker');
 
         // allow Caretaker to do its business with Shrine
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         IAccessControlDispatcher { contract_address: shrine.contract_address }
             .grant_role(shrine_roles::caretaker(), caretaker);
 
         // allow Caretaker to call exit in Sentinel during shut
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
+
+        stop_prank(
+            CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address])
+        );
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 

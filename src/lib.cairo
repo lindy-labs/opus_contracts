@@ -67,7 +67,7 @@ mod tests {
         mod utils;
     }
     mod caretaker {
-        //mod test_caretaker;
+        mod test_caretaker;
         mod utils;
     }
     mod controller {
