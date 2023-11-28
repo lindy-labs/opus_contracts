@@ -16,7 +16,6 @@ mod absorber_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::erc20_mintable::erc20_mintable;
     use opus::tests::abbot::utils::abbot_utils;
-    use opus::tests::absorber::mock_blesser::mock_blesser;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Reward};
@@ -24,11 +23,12 @@ mod absorber_utils {
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
 
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
     };
 
     //
@@ -95,7 +95,9 @@ mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
@@ -105,28 +107,28 @@ mod absorber_utils {
         Span<IGateDispatcher>
     ) {
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class
         );
 
         let admin: ContractAddress = admin();
 
-        let mut calldata: Array<felt252> = array![
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let absorber_class_hash: ClassHash = class_hash_try_from_felt252(
-            absorber_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (absorber_addr, _) = deploy_syscall(absorber_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let absorber_class = match absorber_class {
+            Option::Some(class) => class,
+            Option::None => declare('absorber')
+        };
 
-        start_prank(CheatTarget::All, admin);
+        let absorber_addr = absorber_class.deploy(@calldata).expect('absorber deploy failed');
+
+        start_prank(CheatTarget::One(absorber_addr), admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
         absorber_ac.grant_role(absorber_roles::purger(), mock_purger());
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(absorber_addr));
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
         (shrine, sentinel, abbot, absorber, yangs, gates)
@@ -160,7 +162,8 @@ mod absorber_utils {
         absorber: IAbsorberDispatcher,
         asset: ContractAddress,
         bless_amt: u128,
-        mint_to_blesser: bool
+        mint_to_blesser: bool,
+        blesser_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
@@ -169,14 +172,12 @@ mod absorber_utils {
             bless_amt.into(),
         ];
 
-        let mock_blesser_class_hash: ClassHash = class_hash_try_from_felt252(
-            mock_blesser::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (mock_blesser_addr, _) = deploy_syscall(
-            mock_blesser_class_hash, 0, calldata.span(), false
-        )
-            .unwrap_syscall();
+        let blesser_class = match blesser_class {
+            Option::Some(class) => class,
+            Option::None => declare('mock_blesser')
+        };
+
+        let mock_blesser_addr = blesser_class.deploy(@calldata).expect('blesser deploy failed');
 
         if mint_to_blesser {
             let token_minter = IMintableDispatcher { contract_address: asset };
@@ -189,7 +190,10 @@ mod absorber_utils {
     // Wrapper function to deploy blessers for an array of reward tokens and return an array
     // of the blesser contract addresses.
     fn deploy_blesser_for_rewards(
-        absorber: IAbsorberDispatcher, mut assets: Span<ContractAddress>, mut bless_amts: Span<u128>
+        absorber: IAbsorberDispatcher,
+        mut assets: Span<ContractAddress>,
+        mut bless_amts: Span<u128>,
+        blesser_class: ContractClass
     ) -> Span<ContractAddress> {
         let mut blessers: Array<ContractAddress> = ArrayTrait::new();
 
@@ -197,7 +201,11 @@ mod absorber_utils {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let blesser: ContractAddress = deploy_blesser_for_reward(
-                        absorber, *asset, *bless_amts.pop_front().unwrap(), true
+                        absorber,
+                        *asset,
+                        *bless_amts.pop_front().unwrap(),
+                        true,
+                        Option::Some(blesser_class)
                     );
                     blessers.append(blesser);
                 },
@@ -231,7 +239,9 @@ mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
@@ -243,7 +253,7 @@ mod absorber_utils {
         Wad, // provided amount
     ) {
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
         );
 
         let provider = provider_1();
@@ -260,7 +270,10 @@ mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
+        blesser_class: ContractClass,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -275,13 +288,13 @@ mod absorber_utils {
     ) {
         let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
             absorber_with_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
         );
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(token_class);
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
         let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing
+            absorber, reward_tokens, reward_amts_per_blessing, blesser_class
         );
         add_rewards_to_absorber(absorber, reward_tokens, blessers);
 

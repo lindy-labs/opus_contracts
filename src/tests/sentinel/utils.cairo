@@ -49,9 +49,9 @@ mod sentinel_utils {
     //
 
     fn deploy_sentinel(
-        sentinel_class: Option<ContractClass>
+        sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>,
     ) -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(shrine_class);
 
         let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
@@ -83,9 +83,10 @@ mod sentinel_utils {
     fn deploy_sentinel_with_gates(
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
     ) -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
-        let (sentinel, shrine_addr) = deploy_sentinel(sentinel_class);
+        let (sentinel, shrine_addr) = deploy_sentinel(sentinel_class, shrine_class);
 
         let token_class = Option::Some(
             match token_class {
@@ -113,7 +114,7 @@ mod sentinel_utils {
     fn deploy_sentinel_with_eth_gate(
         token_class: Option<ContractClass>
     ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
-        let (sentinel, shrine_addr) = deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = deploy_sentinel(Option::None, Option::None);
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, token_class, Option::None);
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)

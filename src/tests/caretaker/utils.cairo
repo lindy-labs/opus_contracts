@@ -23,12 +23,7 @@ mod caretaker_utils {
     }
 
     // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
-    fn caretaker_deploy(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
-    ) -> (
+    fn caretaker_deploy() -> (
         ICaretakerDispatcher,
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -39,7 +34,7 @@ mod caretaker_utils {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address, Option::None

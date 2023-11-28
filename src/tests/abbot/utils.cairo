@@ -58,7 +58,8 @@ mod abbot_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
@@ -67,7 +68,7 @@ mod abbot_utils {
         Span<IGateDispatcher>
     ) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            sentinel_class, token_class, gate_class
+            sentinel_class, token_class, gate_class, shrine_class
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
@@ -106,7 +107,8 @@ mod abbot_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
@@ -119,7 +121,7 @@ mod abbot_utils {
         Wad, // forge amount
     ) {
         let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class
         );
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 

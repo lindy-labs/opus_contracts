@@ -21,7 +21,7 @@ mod test_sentinel {
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
         let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None
         );
 
         // Checking that sentinel was set up correctly
@@ -128,7 +128,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_add_yang_unauthorized() {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
 
         sentinel
             .add_yang(
@@ -144,7 +144,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang cannot be zero address',))]
     fn test_add_yang_yang_zero_addr() {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
         start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
@@ -160,7 +160,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Gate cannot be zero address',))]
     fn test_add_yang_gate_zero_addr() {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
         start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
             .add_yang(
@@ -365,7 +365,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_enter_yang_not_added() {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
 
         let user: ContractAddress = gate_utils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
@@ -394,7 +394,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_exit_yang_not_added() {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
 
         let user: ContractAddress = gate_utils::eth_hoarder();
 

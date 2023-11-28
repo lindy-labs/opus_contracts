@@ -12,13 +12,13 @@ mod purger_utils {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::flash_liquidator::{
+        flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
+    };
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::external::utils::pragma_utils;
-    use opus::tests::purger::flash_liquidator::{
-        flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
-    };
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
@@ -29,12 +29,13 @@ mod purger_utils {
     };
     use opus::utils::wadray;
 
-    use snforge_std::{ContractClass, start_prank, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
+        get_block_timestamp,
     };
 
     //
@@ -299,7 +300,11 @@ mod purger_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+        purger_class: Option<ContractClass>,
+        blesser_class: ContractClass,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -310,7 +315,7 @@ mod purger_utils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class, sentinel_class, token_class, gate_class, absorber_class, shrine_class
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
@@ -318,7 +323,7 @@ mod purger_utils {
         );
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing
+            absorber, reward_tokens, reward_amts_per_blessing, blesser_class
         );
 
         let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
@@ -344,7 +349,7 @@ mod purger_utils {
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
@@ -352,12 +357,12 @@ mod purger_utils {
             contract_address_to_felt252(oracle.contract_address)
         ];
 
-        let purger_class_hash: ClassHash = class_hash_try_from_felt252(
-            purger_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (purger_addr, _) = deploy_syscall(purger_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let purger_class = match purger_class {
+            Option::Some(class) => class,
+            Option::None => declare('purger'),
+        };
+
+        let purger_addr = purger_class.deploy(@calldata).expect('failed deploy purger');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
@@ -396,7 +401,11 @@ mod purger_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>
+        gate_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+        purger_class: Option<ContractClass>,
+        blesser_class: ContractClass,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -407,7 +416,14 @@ mod purger_utils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(
-            abbot_class, sentinel_class, token_class, gate_class
+            abbot_class,
+            sentinel_class,
+            token_class,
+            gate_class,
+            absorber_class,
+            shrine_class,
+            purger_class,
+            blesser_class
         );
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
@@ -419,6 +435,7 @@ mod purger_utils {
         abbot: ContractAddress,
         flashmint: ContractAddress,
         purger: ContractAddress,
+        fl_class: Option<ContractClass>,
     ) -> IFlashLiquidatorDispatcher {
         let mut calldata = array![
             contract_address_to_felt252(shrine),
@@ -427,14 +444,14 @@ mod purger_utils {
             contract_address_to_felt252(purger)
         ];
 
-        let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(
-            flash_liquidator::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (flash_liquidator_addr, _) = deploy_syscall(
-            flash_liquidator_class_hash, 0, calldata.span(), false
-        )
-            .unwrap_syscall();
+        let fl_class = match fl_class {
+            Option::Some(class) => class,
+            Option::None => declare('flash liquidator'),
+        };
+
+        let flash_liquidator_addr = fl_class
+            .deploy(@calldata)
+            .expect('failed deploy flash liquidator');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }

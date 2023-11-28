@@ -95,7 +95,7 @@ mod pragma_utils {
     fn pragma_deploy() -> (
         IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher,
     ) {
-        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None);
+        let (sentinel, shrine_addr) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
         pragma_deploy_with_shrine(sentinel, shrine_addr)
     }
 
