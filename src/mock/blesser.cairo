@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod mock_blesser {
+mod blesser {
     use opus::core::roles::blesser_roles;
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};

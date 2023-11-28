@@ -48,11 +48,11 @@ mod utils {
 
 // mock used for local devnet deployment
 mod mock {
+    mod blesser;
     mod erc20;
     mod erc20_mintable;
     mod flash_borrower;
     mod flash_liquidator;
-    mod mock_blesser;
     mod oracle;
 }
 
@@ -64,7 +64,7 @@ mod tests {
         mod utils;
     }
     mod absorber {
-        //mod test_absorber;
+        mod test_absorber;
         mod utils;
     }
     mod caretaker {

@@ -221,7 +221,7 @@ mod absorber_utils {
         mut tokens: Span<ContractAddress>,
         mut blessers: Span<ContractAddress>
     ) {
-        start_prank(CheatTarget::All, admin());
+        start_prank(CheatTarget::One(absorber.contract_address), admin());
 
         loop {
             match tokens.pop_front() {
@@ -232,7 +232,7 @@ mod absorber_utils {
             };
         };
 
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(absorber.contract_address));
     }
 
     fn absorber_with_first_provider(
@@ -273,7 +273,7 @@ mod absorber_utils {
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
         absorber_class: Option<ContractClass>,
-        blesser_class: ContractClass,
+        blesser_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -286,6 +286,18 @@ mod absorber_utils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
+        let token_class = Option::Some(
+            match token_class {
+                Option::Some(class) => class,
+                Option::None => declare('erc20_mintable')
+            }
+        );
+
+        let blesser_class = match blesser_class {
+            Option::Some(class) => class,
+            Option::None => declare('blesser')
+        };
+
         let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
             absorber_with_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
@@ -330,12 +342,15 @@ mod absorber_utils {
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
 
-        start_prank(CheatTarget::All, provider);
+        start_prank(
+            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]),
+            provider
+        );
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
+        stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);
-
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(absorber.contract_address));
 
         trove
     }
@@ -392,15 +407,17 @@ mod absorber_utils {
         burn_amt: Wad,
     ) {
         // Simulate burning a percentage of absorber's yin
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.eject(absorber.contract_address, burn_amt);
+        stop_prank(CheatTarget::One(shrine.contract_address));
 
         // Simulate transfer of "freed" assets to absorber
-        start_prank(CheatTarget::All, mock_purger());
+        start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
         let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, yang_asset_amts
         );
         absorber.update(absorbed_assets);
+        stop_prank(CheatTarget::One(absorber.contract_address));
 
         loop {
             match yangs.pop_front() {
@@ -412,8 +429,6 @@ mod absorber_utils {
                 Option::None => { break; },
             };
         };
-
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
     }
 
     //
@@ -708,5 +723,25 @@ mod absorber_utils {
                 Option::None => { break; }
             };
         };
+    }
+
+    fn declare_contracts() -> (
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>
+    ) {
+        (
+            Option::Some(declare('abbot')),
+            Option::Some(declare('sentinel')),
+            Option::Some(declare('erc20_mintable')),
+            Option::Some(declare('gate')),
+            Option::Some(declare('shrine')),
+            Option::Some(declare('absorber')),
+            Option::Some(declare('blesser')),
+        )
     }
 }
