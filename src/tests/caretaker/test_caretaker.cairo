@@ -73,7 +73,7 @@ mod test_caretaker {
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (950 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
-        let trove1_id = common::open_trove_helper(
+        common::open_trove_helper(
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
@@ -82,9 +82,7 @@ mod test_caretaker {
         let trove2_forge_amt: Wad = (50 * WAD_ONE).into();
         common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
         let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
-        let trove2_id = common::open_trove_helper(
-            abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt
-        );
+        common::open_trove_helper(abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt);
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
         let shrine_health: Health = shrine.get_shrine_health();
@@ -125,10 +123,10 @@ mod test_caretaker {
             .try_into()
             .unwrap();
         common::assert_equalish(
-            g0_after_balance, g0_after_balance, tolerance, 'gate 0 balance after shut'
+            g0_after_balance, g0_expected_balance, tolerance, 'gate 0 balance after shut'
         );
         common::assert_equalish(
-            g1_after_balance, g1_after_balance, tolerance, 'gate 1 balance after shut'
+            g1_after_balance, g1_expected_balance, tolerance, 'gate 1 balance after shut'
         );
 
         // assert the balance diff is now in the hands of the Caretaker
@@ -268,14 +266,13 @@ mod test_caretaker {
     #[test]
     #[available_gas(100000000)]
     fn test_preview_reclaim_more_than_total_yin() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            caretaker_utils::caretaker_deploy();
+        let (caretaker, _, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
-        let trove1_id = common::open_trove_helper(
+        common::open_trove_helper(
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
@@ -309,7 +306,7 @@ mod test_caretaker {
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
-        let trove1_id = common::open_trove_helper(
+        common::open_trove_helper(
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
@@ -577,7 +574,7 @@ mod test_caretaker {
         let user1 = common::trove1_owner_addr();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
-        let trove1_id = common::open_trove_helper(
+        common::open_trove_helper(
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 

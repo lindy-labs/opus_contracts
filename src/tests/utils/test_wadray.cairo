@@ -219,13 +219,13 @@ mod test_wadray {
     #[test]
     #[should_panic(expected: ('u256 is 0',))]
     fn test_div_wad_fail() {
-        let a: Wad = Wad { val: WAD_ONE } / Wad { val: 0 };
+        let _: Wad = Wad { val: WAD_ONE } / Wad { val: 0 };
     }
 
     #[test]
     #[should_panic(expected: ('u256 is 0',))]
     fn test_div_ray_fail() {
-        let a: Ray = Ray { val: RAY_ONE } / Ray { val: 0 };
+        let _: Ray = Ray { val: RAY_ONE } / Ray { val: 0 };
     }
 
     #[test]
@@ -286,7 +286,7 @@ mod test_wadray {
     #[test]
     #[should_panic(expected: ('Option::unwrap failed.',))]
     fn test_conversions_fail2() {
-        let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
+        let _: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
     }
 
     // comparison tests are split into 2 fns to overcome a test runner bug
@@ -379,6 +379,6 @@ mod test_wadray {
     #[test]
     #[should_panic(expected: ('More than 18 decimals',))]
     fn test_fixed_point_to_wad_fail() {
-        let x: Wad = fixed_point_to_wad(1, WAD_DECIMALS + 1);
+        let _: Wad = fixed_point_to_wad(1, WAD_DECIMALS + 1);
     }
 }
