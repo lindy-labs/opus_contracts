@@ -73,6 +73,6 @@ mod test_exp {
     #[available_gas(9999999)]
     #[should_panic(expected: ('exp: x is out of bounds',))]
     fn test_exp_fail() {
-        let res = exp(Wad { val: 42600000000000000001 });
+        let _ = exp(Wad { val: 42600000000000000001 });
     }
 }

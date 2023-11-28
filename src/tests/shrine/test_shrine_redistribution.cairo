@@ -266,8 +266,7 @@ mod test_shrine_redistribution {
         let redistributed_trove: u64 = common::TROVE_1;
         let recipient_trove: u64 = common::TROVE_2;
         let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
-        let (trove1_yang_values, expected_unit_debts, expected_errors, expected_remaining_yangs) =
-            preview_trove_redistribution(
+        let (trove1_yang_values, _, _, expected_remaining_yangs) = preview_trove_redistribution(
             shrine, yangs, redistributed_trove
         );
 
@@ -472,27 +471,9 @@ mod test_shrine_redistribution {
                                     Option::Some(salt)
                                 );
 
-                                let before_trove2_health: Health = shrine
-                                    .get_trove_health(common::TROVE_2);
-
-                                // Note order is reversed to match `yangs`
-                                let mut trove2_yang_deposits: Array<Wad> = array![
-                                    TROVE2_YANG2_DEPOSIT.into(), TROVE2_YANG1_DEPOSIT.into(),
-                                ];
-                                let mut trove2_yang_deposits = trove2_yang_deposits.span();
-
                                 let yangs: Span<ContractAddress> =
                                     shrine_utils::two_yang_addrs_reversed();
                                 let redistributed_trove = common::TROVE_1;
-                                let (
-                                    redistributed_trove_yang_values,
-                                    expected_unit_debts,
-                                    _,
-                                    expected_remaining_yangs
-                                ) =
-                                    preview_trove_redistribution(
-                                    shrine, yangs, redistributed_trove
-                                );
 
                                 // Simulate purge with 0 yin to update the trove's debt
                                 set_contract_address(shrine_utils::admin());
@@ -507,10 +488,6 @@ mod test_shrine_redistribution {
                                 let debt_to_redistribute: Wad = wadray::rmul_wr(
                                     before_redistributed_trove_health.debt,
                                     *pct_debt_to_redistribute
-                                );
-                                let value_to_redistribute: Wad = wadray::rmul_wr(
-                                    before_redistributed_trove_health.value,
-                                    *pct_value_to_redistribute
                                 );
                                 shrine
                                     .redistribute(
@@ -1318,20 +1295,6 @@ mod test_shrine_redistribution {
             yang1_debt_redistributed_to_yang2
                 + yang1_debt_redistributed_to_yang3 <= redistributed_yang1_debt,
             'should not exceed'
-        );
-
-        let recipient_trove1_yang2_pct: Ray = wadray::rdiv_ww(
-            TROVE2_YANG2_DEPOSIT.into(), recipient_troves_yang2_amt
-        );
-        let recipient_trove2_yang2_pct: Ray = wadray::rdiv_ww(
-            TROVE3_YANG2_DEPOSIT.into(), recipient_troves_yang2_amt
-        );
-
-        let recipient_trove1_yang3_pct: Ray = wadray::rdiv_ww(
-            TROVE2_YANG3_DEPOSIT.into(), recipient_troves_yang3_amt
-        );
-        let recipient_trove2_yang3_pct: Ray = wadray::rdiv_ww(
-            TROVE3_YANG3_DEPOSIT.into(), recipient_troves_yang3_amt
         );
 
         let expected_recipient_trove1_debt: Wad = before_recipient_trove1_health.debt

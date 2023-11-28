@@ -36,7 +36,6 @@ fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
 
 #[inline(always)]
 fn wmul(lhs: Wad, rhs: Wad) -> Wad {
-    let (lhs_u256, rhs_u256) = cast_to_u256(lhs.val, rhs.val);
     Wad { val: wmul_internal(lhs.val, rhs.val) }
 }
 
