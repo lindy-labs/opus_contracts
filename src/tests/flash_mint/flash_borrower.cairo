@@ -34,7 +34,7 @@ mod flash_borrower {
         self.flashmint.write(IFlashMintDispatcher { contract_address: flashmint });
     }
 
-    #[abi(embed_v0)]
+    #[external(v0)]
     fn on_flash_loan(
         ref self: ContractState,
         initiator: ContractAddress,
