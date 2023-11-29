@@ -20,7 +20,7 @@ mod mock_pragma {
         price_response: LegacyMap::<u256, PricesResponse>,
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IMockPragmaImpl of IMockPragma<ContractState> {
         fn next_get_data_median(
             ref self: ContractState, pair_id: u256, price_response: PricesResponse
@@ -29,7 +29,7 @@ mod mock_pragma {
         }
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
         fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
             match data_type {

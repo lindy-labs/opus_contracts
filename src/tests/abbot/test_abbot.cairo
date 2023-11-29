@@ -457,8 +457,20 @@ mod test_abbot {
         expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_forge_ltv_unsafe_fail() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, _) =
+        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, _) =
             abbot_utils::deploy_abbot_and_open_trove();
+
+        // deploy another trove to prevent recovery mode        
+        common::open_trove_helper(
+            abbot,
+            common::trove1_owner_addr(),
+            yangs,
+            abbot_utils::open_trove_yang_asset_amts(),
+            gates,
+            WadZeroable::zero()
+        );
+
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         set_contract_address(trove_owner);

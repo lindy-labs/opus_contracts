@@ -28,7 +28,7 @@ mod mock_oracle {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl MockImpl of super::MockOracle<ContractState> {
         fn set_token_price(ref self: ContractState, token: ContractAddress, price: Wad) {
             let mut i = self.known_tokens_count.read();
@@ -50,7 +50,7 @@ mod mock_oracle {
         }
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl OracleImpl of opus::interfaces::IOracle::IOracle<ContractState> {
         fn update_prices(ref self: ContractState) {
             let mut i = self.known_tokens_count.read();

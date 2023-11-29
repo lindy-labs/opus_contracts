@@ -46,9 +46,6 @@ mod purger_utils {
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
-
-    const RM_ERROR_MARGIN: u128 = 10000000000000000000000; // 0.001% (Ray)
-
     //
     // Address constants
     //
@@ -570,10 +567,12 @@ mod purger_utils {
         // Sanity check that we are able to mint the amount of debt to trigger
         // recovery mode for the given trove
         let max_forge_amt: Wad = shrine.get_max_forge(trove);
-        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
+        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup #1');
 
         set_contract_address(trove_owner);
         abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
+
+        assert(shrine.is_recovery_mode(), 'recovery mode setup #2');
     }
 
     //
