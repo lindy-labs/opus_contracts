@@ -86,7 +86,7 @@ mod erc20 {
     // External
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl ERC20Impl of super::IERC20<ContractState> {
         fn name(self: @ContractState) -> felt252 {
             self.name.read()

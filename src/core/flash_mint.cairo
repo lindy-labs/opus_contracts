@@ -71,7 +71,7 @@ mod flash_mint {
     }
 
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IFlashMintImpl of IFlashMint<ContractState> {
         //
         // View Functions
