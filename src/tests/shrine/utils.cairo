@@ -167,7 +167,10 @@ mod shrine_utils {
     }
 
     fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
-        let salt: felt252 = salt.unwrap_or(0);
+        let salt: felt252 = match salt {
+            Option::Some(salt) => { salt },
+            Option::None => { 0 }
+        };
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
         let mut calldata: Array<felt252> = array![
