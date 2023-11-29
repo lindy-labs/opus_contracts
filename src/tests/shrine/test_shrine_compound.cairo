@@ -486,7 +486,6 @@ mod test_shrine_compound {
     fn test_charge_scenario_5() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove_id: u64 = common::TROVE_1;
-        let yang1_addr = shrine_utils::yang1_addr();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();

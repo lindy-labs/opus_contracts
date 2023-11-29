@@ -1529,7 +1529,6 @@ mod test_shrine {
         let yin = shrine_utils::yin(shrine.contract_address);
         let yin_user: ContractAddress = shrine_utils::yin_user_addr();
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(trove1_owner);
 
         let transfer_amt: Wad = (forge_amt.val / 2).into();

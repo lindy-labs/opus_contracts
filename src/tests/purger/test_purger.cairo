@@ -1912,12 +1912,7 @@ mod test_purger {
                                                                 target_trove_start_health.ltv
                                                             );
 
-                                                            let (
-                                                                penalty,
-                                                                max_close_amt,
-                                                                expected_compensation_value
-                                                            ) =
-                                                                purger
+                                                            let (_, max_close_amt, _) = purger
                                                                 .preview_absorb(target_trove)
                                                                 .expect('Should be absorbable');
 

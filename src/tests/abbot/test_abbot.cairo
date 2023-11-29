@@ -25,7 +25,6 @@ mod test_abbot {
     fn test_open_trove_pass() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt) =
             abbot_utils::deploy_abbot_and_open_trove();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         // Check trove ID
         let expected_trove_id: u64 = 1;
@@ -297,7 +296,6 @@ mod test_abbot {
             abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
@@ -398,7 +396,6 @@ mod test_abbot {
             abbot_utils::deploy_abbot_and_open_trove();
 
         let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
