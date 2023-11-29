@@ -27,7 +27,6 @@ mod test_abbot {
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         // Check trove ID
         let expected_trove_id: u64 = 1;
@@ -305,7 +304,6 @@ mod test_abbot {
         );
 
         let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -412,7 +410,6 @@ mod test_abbot {
         );
 
         let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -438,8 +435,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_withdraw_non_owner_fail() {
-        let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            abbot_utils::deploy_abbot_and_open_trove(
+        let (_, _, abbot, yangs, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
@@ -474,10 +470,22 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is too high',))]
     fn test_forge_ltv_unsafe_fail() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, _) =
+        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, _) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
+
+        // deploy another trove to prevent recovery mode        
+        common::open_trove_helper(
+            abbot,
+            common::trove1_owner_addr(),
+            yangs,
+            abbot_utils::open_trove_yang_asset_amts(),
+            gates,
+            WadZeroable::zero()
+        );
+
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);

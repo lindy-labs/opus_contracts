@@ -44,7 +44,7 @@ mod blesser {
         self.bless_amt.write(bless_amt);
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IBlesserImpl of IBlesser<ContractState> {
         fn preview_bless(self: @ContractState) -> u128 {
             self.preview_bless_internal(self.asset.read())

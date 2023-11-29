@@ -184,7 +184,7 @@ mod pragma {
     // External Pragma functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IPragmaImpl of IPragma<ContractState> {
         //
         // Setters
@@ -281,7 +281,7 @@ mod pragma {
     // External oracle functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IOracleImpl of IOracle<ContractState> {
         fn update_prices(ref self: ContractState) {
             // check first if an update can happen - under normal circumstances, it means

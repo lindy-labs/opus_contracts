@@ -35,7 +35,7 @@ mod test_shrine_compound {
 
         let trove_id: u64 = common::TROVE_1;
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
-        let yang1_addr = *yangs.at(0);
+
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let yang_prices: Span<Wad> = shrine_utils::get_yang_prices(shrine, yangs);
@@ -157,9 +157,6 @@ mod test_shrine_compound {
             shrine_utils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
-        let expected_avg_price: Wad = shrine_utils::get_avg_yang_price(
-            shrine, yang1_addr, start_interval, end_interval
-        );
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = shrine_utils::compound_for_single_yang(
@@ -420,8 +417,6 @@ mod test_shrine_compound {
         shrine_utils::advance_prices_and_set_multiplier(
             shrine, intervals_to_skip, yangs, shrine_utils::three_yang_start_prices(),
         );
-        // Offset by 1 because of a single call to `advance_prices_and_set_multiplier`
-        let last_updated_interval: u64 = start_interval + intervals_to_skip - 1;
 
         // Advance timestamp to `T+END`, to mock lack of price updates since `T+LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+END`.
@@ -438,18 +433,7 @@ mod test_shrine_compound {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
 
-        // Manually calculate the average since end interval does not have a cumulative value
-        let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
-        let (last_updated_price, last_updated_cumulative_price) = shrine
-            .get_yang_price(yang1_addr, last_updated_interval);
-        let intervals_after_last_update_temp: u128 = intervals_after_last_update.into();
-        let cumulative_diff: Wad = (last_updated_cumulative_price - start_cumulative_price)
-            + (intervals_after_last_update_temp * last_updated_price.val).into();
-
-        let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
-            .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
-
         let expected_debt: Wad = shrine_utils::compound_for_single_yang(
             shrine_utils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
@@ -497,7 +481,6 @@ mod test_shrine_compound {
     fn test_charge_scenario_5() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove_id: u64 = common::TROVE_1;
-        let yang1_addr = shrine_utils::yang1_addr();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -557,9 +540,6 @@ mod test_shrine_compound {
 
         shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
 
-        // Manually calculate the average since end interval does not have a cumulative value
-        let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
-
         // First, we get the cumulative price values available to us
         // `T+LAST_UPDATED_AFTER_START` - `T+LAST_UPDATED_BEFORE_START`
         let (last_updated_price_before_start, last_updated_cumulative_price_before_start) = shrine
@@ -582,8 +562,6 @@ mod test_shrine_compound {
                 * last_updated_price_after_start.val)
             .into();
 
-        let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
-            .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = shrine_utils::compound_for_single_yang(
@@ -673,7 +651,6 @@ mod test_shrine_compound {
             shrine_utils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
-        let end_price: Wad = 2333000000000000000000_u128.into(); // 2_333 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.advance(yang1_addr, start_price);
@@ -693,8 +670,6 @@ mod test_shrine_compound {
             ((start_interval - last_updated_interval).into() * last_updated_price.val)
             .into();
 
-        let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
-            .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = shrine_utils::compound_for_single_yang(
@@ -828,10 +803,8 @@ mod test_shrine_compound {
         // We add one because there is also the time period between
         // the base rates set in `add_yang` and the first base rate update
         let num_eras: u64 = num_base_rate_updates + 1;
-        let current_timestamp: u64 = get_block_timestamp();
         let start_interval: u64 = shrine_utils::current_interval();
         let end_interval: u64 = start_interval + BASE_RATE_UPDATE_SPACING * num_eras;
-        let charging_period: u64 = end_interval - start_interval;
 
         // Generating the list of intervals at which the base rates will be updated (needed for `compound`)
         // Adding zero as the first interval since that's when the initial base rates were first added in `add_yang`

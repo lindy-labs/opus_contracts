@@ -20,7 +20,6 @@ jobs:
       - uses: software-mansion/setup-scarb@v1
         with:
           scarb-version: "2.3.1"
-
       - run: scarb fmt --check
       - run: scarb build
 

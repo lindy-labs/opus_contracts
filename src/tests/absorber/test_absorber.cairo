@@ -235,7 +235,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Not live',))]
     fn test_provide_after_kill_fail() {
-        let (shrine, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
+        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
@@ -283,10 +283,10 @@ mod test_absorber {
                 Option::Some(percentage_to_drain) => {
                     let (
                         shrine,
-                        abbot,
+                        _,
                         absorber,
                         yangs,
-                        gates,
+                        _,
                         reward_tokens,
                         _,
                         reward_amts_per_blessing,
@@ -408,7 +408,6 @@ mod test_absorber {
                     let before_reward_bals = common::get_token_balances(
                         reward_tokens, provider.into()
                     );
-                    let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
 
                     // Perform three different actions
@@ -647,7 +646,6 @@ mod test_absorber {
             second_provided_amt
         );
 
-        let after_provider_info: Provision = absorber.get_provision(provider);
         let after_last_absorption_id: u32 = absorber.get_provider_last_absorption(provider);
         let after_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
         let after_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
@@ -750,7 +748,7 @@ mod test_absorber {
             _,
             reward_amts_per_blessing,
             first_provider,
-            first_provided_amt
+            _
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class,
@@ -1282,16 +1280,7 @@ mod test_absorber {
         ) =
             absorber_utils::declare_contracts();
         let (
-            shrine,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            first_provider,
-            first_provided_amt
+            shrine, _, absorber, yangs, _, reward_tokens, _, _, first_provider, first_provided_amt
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class,
@@ -1302,8 +1291,6 @@ mod test_absorber {
             absorber_class,
             blesser_class
         );
-
-        let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1330,9 +1317,8 @@ mod test_absorber {
         );
 
         // Step 3
-        let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
-
         start_prank(CheatTarget::One(absorber.contract_address), first_provider);
+
         // Trigger an update of the provider's Provision
         absorber.provide(WadZeroable::zero());
         let first_provider_info: Provision = absorber.get_provision(first_provider);
@@ -1573,10 +1559,10 @@ mod test_absorber {
                 Option::Some(remaining_yin_amt) => {
                     let (
                         shrine,
-                        abbot,
+                        _,
                         absorber,
                         yangs,
-                        gates,
+                        _,
                         reward_tokens,
                         _,
                         reward_amts_per_blessing,
@@ -1592,9 +1578,6 @@ mod test_absorber {
                         absorber_class,
                         blesser_class
                     );
-
-                    let first_epoch_total_shares: Wad = absorber
-                        .get_total_shares_for_current_epoch();
 
                     // Step 2
                     let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1722,8 +1705,6 @@ mod test_absorber {
             blesser_class
         );
 
-        let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
-
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
         let burn_pct: Ray = 266700000000000000000000000_u128.into(); // 26.67% (Ray)
@@ -1797,7 +1778,6 @@ mod test_absorber {
         );
 
         // Step 5
-        let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, first_provider.into()
         );
@@ -1868,7 +1848,6 @@ mod test_absorber {
         );
 
         // Step 6
-        let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
         let second_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, second_provider.into()
         );
@@ -2016,7 +1995,7 @@ mod test_absorber {
             blesser_class
         ) =
             absorber_utils::declare_contracts();
-        let (shrine, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, absorber, yangs, _, _, _, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class,
             sentinel_class,
@@ -2261,7 +2240,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('SH: Insufficient yin allowance',))]
     fn test_provide_insufficient_allowance_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+        let (_, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
@@ -2293,18 +2272,7 @@ mod test_absorber {
         ) =
             absorber_utils::declare_contracts();
 
-        let (
-            shrine,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            blessers,
-            reward_amts_per_blessing,
-            provider,
-            provided_amt
-        ) =
+        let (_, _, absorber, _, _, reward_tokens, blessers, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class,
             sentinel_class,
@@ -2406,7 +2374,6 @@ mod test_absorber {
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
             token_class
         );
-        let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
 
         let opus_addr: ContractAddress = *reward_tokens.at(0);
         let veopus_addr: ContractAddress = *reward_tokens.at(1);

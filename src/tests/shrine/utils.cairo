@@ -255,7 +255,7 @@ mod shrine_utils {
         let mut yang_prices_copy = yang_prices;
         loop {
             match yangs_copy.pop_front() {
-                Option::Some(yang) => {
+                Option::Some(_) => {
                     yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
                 },
                 Option::None => { break; },
@@ -365,7 +365,7 @@ mod shrine_utils {
         let price_hash: felt252 = pedersen::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
             U128sFromFelt252Result::Narrow(i) => { i },
-            U128sFromFelt252Result::Wide((i, j)) => { i },
+            U128sFromFelt252Result::Wide((i, _)) => { i },
         };
 
         loop {

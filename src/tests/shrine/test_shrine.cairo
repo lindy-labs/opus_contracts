@@ -191,7 +191,6 @@ mod test_shrine {
         assert(start_cumulative_multiplier == Ray { val: RAY_ONE }, 'wrong start cumulative mul');
         let mut expected_cumulative_multiplier = start_cumulative_multiplier;
 
-        let yangs_count = 3;
         let yang_feed_len = (*yang_feeds.at(0)).len();
         let mut idx = 0;
         let mut expected_yang_cumulative_prices = exp_start_cumulative_prices;
@@ -989,9 +988,8 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Trove LTV is too high',))]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        start_prank(CheatTarget::All, shrine_utils::admin());
 
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine
             .forge(
                 shrine_utils::common::trove3_owner_addr(),
@@ -1007,10 +1005,20 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
+        // prevent recovery mode
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+
+        shrine
+            .deposit(
+                shrine_utils::yang1_addr(),
+                common::TROVE_2,
+                shrine_utils::WHALE_TROVE_YANG1_DEPOSIT.into()
+            );
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
+
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
         let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
 
-        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine
             .forge(
                 common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, WadZeroable::zero()
@@ -1023,7 +1031,6 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         start_prank(CheatTarget::All, shrine_utils::admin());
 
         // deposit more collateral
@@ -1663,7 +1670,6 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Debt ceiling reached',))]
     fn test_shrine_inject_exceeds_debt_ceiling_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let yin = shrine_utils::yin(shrine.contract_address);
         let trove1_owner = common::trove1_owner_addr();
 
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -1718,7 +1724,6 @@ mod test_shrine {
 
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
@@ -2293,7 +2298,6 @@ mod test_shrine {
         let shrine_health: Health = shrine.get_shrine_health();
         let rm_threshold: Ray = shrine_health.threshold
             * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-        let shrine_ltv: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
 
         let total_collateral_value_to_withdraw = whale_trove_deposit_value
             - wadray::rdiv_wr(

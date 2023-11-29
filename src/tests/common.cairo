@@ -231,7 +231,6 @@ fn get_token_balances(
         match tokens.pop_front() {
             Option::Some(token) => {
                 let token: IERC20Dispatcher = IERC20Dispatcher { contract_address: *token };
-                let decimals: u8 = token.decimals();
 
                 let mut yang_balances: Array<u128> = ArrayTrait::new();
                 let mut addresses_copy = addresses;
@@ -383,7 +382,7 @@ fn pop_event_with_indexed_keys<T, impl TDrop: Drop<T>, impl TEvent: starknet::Ev
     let (mut keys, mut data) = pop_log_raw(addr)?;
 
     // Remove the event ID from the keys.
-    keys.pop_front();
+    let _ = keys.pop_front();
 
     let event = starknet::Event::deserialize(ref keys, ref data);
     assert(data.is_empty(), 'Event has extra data');
@@ -456,7 +455,7 @@ fn assert_events_emitted<
 fn drop_all_events(addr: ContractAddress) {
     loop {
         match pop_log_raw(addr) {
-            Option::Some(event) => {},
+            Option::Some(_) => {},
             Option::None => { break; }
         };
     };

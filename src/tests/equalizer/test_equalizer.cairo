@@ -23,7 +23,7 @@ mod test_equalizer {
 
     #[test]
     fn test_equalizer_deploy() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy(Option::None);
+        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(Option::None);
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
@@ -40,7 +40,7 @@ mod test_equalizer {
 
     #[test]
     fn test_equalize_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy(Option::None);
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
 
         let surplus: Wad = (500 * WAD_ONE).into();
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -81,7 +81,7 @@ mod test_equalizer {
 
     #[test]
     fn test_allocate_pass() {
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy(Option::None);
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
 
         // Simulate minted surplus by injecting to Equalizer directly
         start_prank(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
@@ -219,7 +219,8 @@ mod test_equalizer {
     #[test]
     fn test_set_allocator_pass() {
         let allocator_class = Option::Some(declare('allocator'));
-        let (shrine, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
+        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
+
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
         let new_allocator = equalizer_utils::allocator_deploy(

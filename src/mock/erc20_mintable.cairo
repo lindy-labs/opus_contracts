@@ -58,7 +58,7 @@ mod erc20_mintable {
             );
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IERC20Impl of IERC20<ContractState> {
         fn name(self: @ContractState) -> felt252 {
             self.name.read()
@@ -111,7 +111,7 @@ mod erc20_mintable {
         }
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IMintableImpl of IMintable<ContractState> {
         fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
             self.total_supply.write(self.total_supply.read() + amount);

@@ -21,7 +21,7 @@ mod test_controller {
 
     #[test]
     fn test_deploy_controller() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
         assert(p_gain == controller_utils::P_GAIN.into(), 'wrong p gain');
@@ -68,7 +68,7 @@ mod test_controller {
 
     #[test]
     fn test_setters() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -122,7 +122,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_p_gain_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_p_gain(1_u128.into());
     }
@@ -130,7 +130,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_i_gain_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_i_gain(1_u128.into());
     }
@@ -138,7 +138,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_p_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_alpha_p(1);
     }
@@ -146,7 +146,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_i_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_alpha_i(1);
     }
@@ -154,7 +154,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_p_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_beta_p(1);
     }
@@ -162,7 +162,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_i_unauthorized() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let (controller, _) = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, badguy());
         controller.set_beta_i(1);
     }
@@ -545,7 +545,7 @@ mod test_controller {
 
             if gt_update_intervals.len() > 0 {
                 if current_interval == *gt_update_intervals.at(0) {
-                    gt_update_intervals.pop_front();
+                    let _ = gt_update_intervals.pop_front();
                     let price: Wad = prices.pop_front().unwrap();
                     controller_utils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
@@ -589,8 +589,6 @@ mod test_controller {
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
         // Loading our ground truth into arrays for comparison
-        let mut gt_multipliers: Array<Ray> = ArrayTrait::new();
-
         let mut prices: Array<Wad> = array![
             1010000000000000000_u128.into(),
             1009070214084160000_u128.into(),
