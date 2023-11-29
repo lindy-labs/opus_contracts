@@ -110,7 +110,10 @@ mod absorber_utils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let salt: felt252 = salt.unwrap_or(0);
+        let salt: felt252 = match salt {
+            Option::Some(salt) => { salt },
+            Option::None => { 0 }
+        };
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(
             absorber_contract::TEST_CLASS_HASH
         )
