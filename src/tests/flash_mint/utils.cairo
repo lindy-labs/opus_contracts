@@ -8,7 +8,7 @@ mod flash_mint_utils {
     use opus::utils::wadray::{Wad, WAD_ONE};
     use opus::utils::wadray;
 
-    use snforge_std::{declare, ContractClassTrait, start_prank, CheatTarget};
+    use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, SyscallResultTrait};
 
@@ -30,10 +30,10 @@ mod flash_mint_utils {
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
         shrine_accesscontrol.grant_role(shrine_roles::flash_mint(), flashmint_addr);
-
+        stop_prank(CheatTarget::One(shrine));
         flashmint
     }
 

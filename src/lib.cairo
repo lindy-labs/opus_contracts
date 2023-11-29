@@ -53,6 +53,7 @@ mod mock {
     mod erc20_mintable;
     mod flash_borrower;
     mod flash_liquidator;
+    mod mock_pragma;
     mod oracle;
 }
 
@@ -81,7 +82,6 @@ mod tests {
         mod utils;
     }
     mod external {
-        mod mock_pragma;
         //mod test_pragma;
         mod utils;
     }
@@ -94,7 +94,7 @@ mod tests {
         mod utils;
     }
     mod purger {
-        //mod test_purger;
+        mod test_purger;
         mod utils;
     }
     mod sentinel {

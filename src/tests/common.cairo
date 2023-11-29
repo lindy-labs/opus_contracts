@@ -106,7 +106,42 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 
 // Helper function to advance timestamp by the given intervals
-#[inline(always)]
+fn advance_intervals_and_refresh_prices_and_multiplier(
+    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64
+) {
+    // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
+    let (current_multiplier, _, _) = shrine.get_current_multiplier();
+
+    let mut yang_prices = array![];
+    let mut yangs_copy = yangs;
+
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                yang_prices.append(current_yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+
+    // Updating prices and multiplier
+    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+    shrine.set_multiplier(current_multiplier);
+    loop {
+        match yangs.pop_front() {
+            Option::Some(yang) => {
+                let yang_price = yang_prices.pop_front().unwrap();
+                shrine.advance(*yang, yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+    stop_prank(CheatTarget::One(shrine.contract_address));
+}
+
 fn advance_intervals(intervals: u64) {
     start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }

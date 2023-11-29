@@ -15,9 +15,9 @@ mod purger_utils {
     use opus::mock::flash_liquidator::{
         flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
     };
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -292,6 +292,24 @@ mod purger_utils {
             .span()
     }
 
+    fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+        array![
+            // First threshold of 78.75% (Ray)
+            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
+            // Second threshold of 80% (Ray)
+            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
+            // Third threshold of 90% (Ray)
+            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
+            // Fourth threshold of 96% (Ray)
+            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
+            // Fifth threshold of 97% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            // Sixth threshold of 99% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+        ]
+            .span()
+    }
+
     //
     // Test setup helpers
     //
@@ -301,10 +319,12 @@ mod purger_utils {
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
+        absorber_class: Option<ContractClass>,
+        blesser_class: Option<ContractClass>,
         purger_class: Option<ContractClass>,
-        blesser_class: ContractClass,
+        pragma_class: Option<ContractClass>,
+        mock_pragma_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -314,20 +334,33 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
+        let token_class = Option::Some(
+            match token_class {
+                Option::Some(class) => class,
+                Option::None => declare('erc20_mintable'),
+            }
+        );
+
+        let blesser_class = match blesser_class {
+            Option::Some(class) => class,
+            Option::None => declare('blesser'),
+        };
+
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, absorber_class, shrine_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class,
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
             token_class
         );
+
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(
             absorber, reward_tokens, reward_amts_per_blessing, blesser_class
         );
 
         let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
-            sentinel, shrine.contract_address
+            sentinel, shrine.contract_address, pragma_class, mock_pragma_class
         );
         pragma_utils::add_yangs_to_pragma(oracle, yangs);
 
@@ -368,30 +401,29 @@ mod purger_utils {
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
         // Approve Purger in Oracle
         let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
-        start_prank(CheatTarget::All, pragma_utils::admin());
+        start_prank(CheatTarget::One(oracle.contract_address), pragma_utils::admin());
         oracle_ac.grant_role(pragma_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        start_prank(CheatTarget::All, absorber_utils::admin());
+        start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
-        start_prank(CheatTarget::All, shrine_utils::admin());
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::All);
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
@@ -405,7 +437,9 @@ mod purger_utils {
         absorber_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
         purger_class: Option<ContractClass>,
-        blesser_class: ContractClass,
+        blesser_class: Option<ContractClass>,
+        pragma_class: Option<ContractClass>,
+        mock_pragma_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -423,7 +457,9 @@ mod purger_utils {
             absorber_class,
             shrine_class,
             purger_class,
-            blesser_class
+            blesser_class,
+            pragma_class,
+            mock_pragma_class,
         );
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
@@ -437,7 +473,7 @@ mod purger_utils {
         purger: ContractAddress,
         fl_class: Option<ContractClass>,
     ) -> IFlashLiquidatorDispatcher {
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(shrine),
             contract_address_to_felt252(abbot),
             contract_address_to_felt252(flashmint),
@@ -446,7 +482,7 @@ mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare('flash liquidator'),
+            Option::None => declare('flash_liquidator'),
         };
 
         let flash_liquidator_addr = fl_class
@@ -516,14 +552,14 @@ mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
         };
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to decrease yang prices by the given percentage
@@ -536,7 +572,7 @@ mod purger_utils {
     ) {
         let current_ts = get_block_timestamp();
         let scale: u128 = pow(10_u128, WAD_DECIMALS - pragma_utils::PRAGMA_DECIMALS);
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -561,7 +597,7 @@ mod purger_utils {
                 Option::None => { break; },
             };
         };
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
@@ -601,8 +637,9 @@ mod purger_utils {
         let max_forge_amt: Wad = shrine.get_max_forge(trove);
         assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup');
 
-        start_prank(CheatTarget::All, trove_owner);
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
+        stop_prank(CheatTarget::One(abbot.contract_address));
     }
 
     //
@@ -750,5 +787,31 @@ mod purger_utils {
             };
         };
         sum
+    }
+
+    fn declare_contracts() -> (
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>,
+        Option<ContractClass>
+    ) {
+        (
+            Option::Some(declare('abbot')),
+            Option::Some(declare('sentinel')),
+            Option::Some(declare('erc20_mintable')),
+            Option::Some(declare('gate')),
+            Option::Some(declare('shrine')),
+            Option::Some(declare('absorber')),
+            Option::Some(declare('blesser')),
+            Option::Some(declare('purger')),
+            Option::Some(declare('pragma')),
+            Option::Some(declare('mock_pragma')),
+        )
     }
 }
