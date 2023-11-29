@@ -16,7 +16,6 @@
 
 #[starknet::contract]
 mod flash_mint {
-    use cmp::max;
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -125,7 +124,7 @@ mod flash_mint {
             let total_yin: Wad = shrine.get_total_yin();
             let adjust_ceiling: bool = total_yin + amount_wad > ceiling;
             if adjust_ceiling {
-                shrine.set_debt_ceiling(max(total_yin, ceiling) + amount_wad);
+                shrine.set_debt_ceiling(total_yin + amount_wad);
             }
 
             shrine.inject(receiver, amount_wad);

@@ -1,6 +1,6 @@
 #[starknet::contract]
 mod equalizer {
-    use cmp::{max, min};
+    use cmp::min;
     use opus::core::roles::equalizer_roles;
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -153,7 +153,7 @@ mod equalizer {
             let total_yin: Wad = shrine.get_total_yin();
             let adjust_ceiling: bool = total_yin + minted_surplus > ceiling;
             if adjust_ceiling {
-                shrine.set_debt_ceiling(max(total_yin, ceiling) + minted_surplus);
+                shrine.set_debt_ceiling(total_yin + minted_surplus);
             }
 
             shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
