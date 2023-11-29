@@ -154,7 +154,7 @@ mod purger {
         self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into() });
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IPurgerImpl of IPurger<ContractState> {
         //
         // View

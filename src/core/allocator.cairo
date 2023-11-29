@@ -85,7 +85,7 @@ mod allocator {
     // External Allocator functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IAllocatorImpl of IAllocator<ContractState> {
         //
         // Getters
