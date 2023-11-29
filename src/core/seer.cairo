@@ -115,7 +115,7 @@ mod seer {
     // External
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl ISeerImpl of ISeer<ContractState> {
         fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
             let mut oracles: Array<ContractAddress> = Default::default();
@@ -179,7 +179,7 @@ mod seer {
         }
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IYagiImpl of IYagi<ContractState> {
         fn probe_task(self: @ContractState) -> bool {
             let seconds_since_last_update: u64 = get_block_timestamp()
