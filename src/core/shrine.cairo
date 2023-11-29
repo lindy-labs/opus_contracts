@@ -851,10 +851,7 @@ mod shrine {
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
             self.withdraw_helper(yang, trove_id, amount);
-            // If a trove has non-zero debt, then a user cannot withdraw collateral such that
-            // the trove would fall below this value.
-            self.assert_has_minimum_value(trove_id);
-            self.assert_healthy(trove_id);
+            self.assert_valid_trove_action(trove_id);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -888,12 +885,10 @@ mod shrine {
             let mut trove: Trove = self.troves.read(trove_id);
             trove.debt += debt_amount;
             self.troves.write(trove_id, trove);
-            self.assert_healthy(trove_id);
+
+            self.assert_valid_trove_action(trove_id);
 
             self.forge_helper(user, amount);
-
-            // Assert that the trove has at least the minimum value if it is forging some debt
-            self.assert_has_minimum_value(trove_id);
 
             // Events
             if forge_fee.is_non_zero() {
@@ -1050,7 +1045,7 @@ mod shrine {
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
             let health: Health = self.get_trove_health(trove_id);
-            health.ltv <= health.threshold
+            self.is_healthy_helper(health)
         }
 
         // Returns the maximum amount of yin that a trove can forge based on its current health.
@@ -1176,23 +1171,27 @@ mod shrine {
             assert(self.is_live.read(), 'SH: System is not live');
         }
 
-        fn assert_healthy(self: @ContractState, trove_id: u64) {
-            assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
+        fn is_healthy_helper(self: @ContractState, health: Health) -> bool {
+            health.ltv <= health.threshold
+        }
+
+        // Checks that:
+        // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
+        // 2. the trove has at least the minimum value if it has non-zero debt
+        fn assert_valid_trove_action(self: @ContractState, trove_id: u64) {
+            let health: Health = self.get_trove_health(trove_id);
+            assert(self.is_healthy_helper(health), 'SH: Trove LTV is too high');
+            if health.debt.is_non_zero() {
+                assert(
+                    health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value'
+                );
+            }
         }
 
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
             let new_total_debt: SignedWad = new_total_yin.into() + new_budget;
             let ceiling: SignedWad = self.debt_ceiling.read().into();
             assert(new_total_debt <= ceiling, 'SH: Debt ceiling reached');
-        }
-
-        fn assert_has_minimum_value(self: @ContractState, trove_id: u64) {
-            let health: Health = self.get_trove_health(trove_id);
-            if health.debt.is_non_zero() {
-                assert(
-                    health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value'
-                );
-            }
         }
 
         //
