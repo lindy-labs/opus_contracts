@@ -39,9 +39,7 @@ mod test_transmuter {
         assert(transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted');
         assert(transmuter.get_ceiling() == ceiling, 'wrong ceiling');
         assert(
-            transmuter
-                .get_percentage_cap() == transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND
-                .into(),
+            transmuter.get_percentage_cap() == transmuter_contract::INITIAL_PERCENTAGE_CAP.into(),
             'wrong percentage cap'
         );
         assert(transmuter.get_receiver() == receiver, 'wrong receiver');
@@ -74,7 +72,7 @@ mod test_transmuter {
             ),
             transmuter_contract::Event::PercentageCapUpdated(
                 transmuter_contract::PercentageCapUpdated {
-                    cap: transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND.into(),
+                    cap: transmuter_contract::INITIAL_PERCENTAGE_CAP.into(),
                 }
             ),
         ]
@@ -149,8 +147,8 @@ mod test_transmuter {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(transmuter_utils::admin());
-        // 10% + 1E-27 (Ray)
-        let cap: Ray = 100000000000000000000000001_u128.into();
+        // 100% + 1E-27 (Ray)
+        let cap: Ray = (transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND + 1).into();
         transmuter.set_percentage_cap(cap);
     }
 
@@ -1299,6 +1297,7 @@ mod test_transmuter {
                     );
 
                     // preview reclaim when transmuter has no assets
+                    'is zero'.print();
                     assert(
                         transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(),
                         'preview should be zero'

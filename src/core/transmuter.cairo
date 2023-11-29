@@ -27,8 +27,10 @@ mod transmuter {
     //
 
     // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a 
-    // percentage of total yin supply: 10% (Ray)
-    const PERCENTAGE_CAP_UPPER_BOUND: u128 = 100000000000000000000000000;
+    // percentage of total yin supply: 100% (Ray)
+    const PERCENTAGE_CAP_UPPER_BOUND: u128 = 1000000000000000000000000000;
+    // Percentage cap at deployment: 10% (Ray)
+    const INITIAL_PERCENTAGE_CAP: u128 = 100000000000000000000000000;
 
     // Upper bound of the fee as a percentage that can be charged for both: 1% (Ray)
     // 1. swapping yin for the asset when `reverse` is enabled; and
@@ -189,7 +191,7 @@ mod transmuter {
 
         self.set_ceiling_helper(ceiling);
         self.set_receiver_helper(receiver);
-        self.set_percentage_cap_helper(PERCENTAGE_CAP_UPPER_BOUND.into());
+        self.set_percentage_cap_helper(INITIAL_PERCENTAGE_CAP.into());
 
         // Reversibility is enabled at deployment
         self.reversibility.write(true);
