@@ -1063,23 +1063,6 @@ mod test_shrine_redistribution {
         let recipient_troves_yang3_amt: Wad = (TROVE2_YANG3_DEPOSIT + TROVE3_YANG3_DEPOSIT).into();
         let recipient_troves_yang3_value: Wad = recipient_troves_yang3_amt * yang3_price;
 
-        let yang2_unit_debt: Wad = shrine
-            .get_redistribution_for_yang(yang2_addr, expected_redistribution_id)
-            .unit_debt;
-        let yang3_unit_debt: Wad = shrine
-            .get_redistribution_for_yang(yang3_addr, expected_redistribution_id)
-            .unit_debt;
-        let yang1_to_yang2_unit_debt: Wad = shrine
-            .get_exceptional_redistribution_for_yang_to_yang(
-                yang2_addr, expected_redistribution_id, yang1_addr
-            )
-            .unit_debt;
-        let yang1_to_yang3_unit_debt: Wad = shrine
-            .get_exceptional_redistribution_for_yang_to_yang(
-                yang3_addr, expected_redistribution_id, yang1_addr
-            )
-            .unit_debt;
-
         let yang1_debt_redistributed_to_yang2: Wad = wadray::rmul_wr(
             redistributed_yang1_debt,
             wadray::rdiv_ww(recipient_troves_yang2_value, recipient_troves_value),
