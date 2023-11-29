@@ -20,7 +20,8 @@ mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::Wad;
+    use opus::utils::wadray::{Wad, WadZeroable};
+    use opus::utils::wadray_signed;
     use starknet::{ContractAddress, get_caller_address};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -122,9 +123,13 @@ mod flash_mint {
             // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
-            let adjust_ceiling: bool = total_yin + amount_wad > ceiling;
+            let budget_adjustment: Wad = match shrine.get_budget().try_into() {
+                Option::Some(val) => { val },
+                Option::None => { WadZeroable::zero() }
+            };
+            let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {
-                shrine.set_debt_ceiling(total_yin + amount_wad);
+                shrine.set_debt_ceiling(total_yin + amount_wad + budget_adjustment);
             }
 
             shrine.inject(receiver, amount_wad);

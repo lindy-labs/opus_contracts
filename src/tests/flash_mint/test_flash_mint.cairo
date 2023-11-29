@@ -12,6 +12,7 @@ mod test_flash_mint {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
+    use opus::utils::wadray_signed::SignedWad;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
@@ -117,8 +118,34 @@ mod test_flash_mint {
         let fourth_loan_amt: u256 = (debt_ceiling
             * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
             .into();
-        flashmint.flash_loan(borrower, shrine, third_loan_amt, calldata);
+        flashmint.flash_loan(borrower, shrine, fourth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
+
+        // check that flash loan still functions normally when yin supply is at debt ceiling
+        // and the budget has a deficit
+        set_contract_address(shrine_utils::admin());
+        shrine_utils::shrine(shrine)
+            .adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
+
+        set_contract_address(flash_mint_caller);
+        let fifth_loan_amt: u256 = (debt_ceiling
+            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
+            .into();
+        flashmint.flash_loan(borrower, shrine, fifth_loan_amt, calldata);
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 5');
+
+        // check that flash loan still functions normally when yin supply is at debt ceiling
+        // and the budget has a surplus
+        set_contract_address(shrine_utils::admin());
+        shrine_utils::shrine(shrine)
+            .adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
+
+        set_contract_address(flash_mint_caller);
+        let sixth_loan_amt: u256 = (debt_ceiling
+            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
+            .into();
+        flashmint.flash_loan(borrower, shrine, sixth_loan_amt, calldata);
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 6');
 
         let mut expected_events: Span<flash_mint_contract::Event> = array![
             flash_mint_contract::Event::FlashMint(
@@ -151,6 +178,22 @@ mod test_flash_mint {
                     receiver: borrower,
                     token: shrine,
                     amount: fourth_loan_amt
+                }
+            ),
+            flash_mint_contract::Event::FlashMint(
+                flash_mint_contract::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: fifth_loan_amt
+                }
+            ),
+            flash_mint_contract::Event::FlashMint(
+                flash_mint_contract::FlashMint {
+                    initiator: flash_mint_caller,
+                    receiver: borrower,
+                    token: shrine,
+                    amount: sixth_loan_amt
                 }
             ),
         ]
