@@ -1167,8 +1167,11 @@ mod shrine {
         // is less than the debt ceiling. Otherwise, if the budget is negative (i.e. there is a deficit),
         // check that the new total amount of yin is less than the debt ceiling.  
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
-            let new_total_debt: Wad = new_total_yin
-                + new_budget.try_into().unwrap_or(WadZeroable::zero());
+            let budget_adjustment: Wad = match new_budget.try_into() {
+                Option::Some(val) => { val },
+                Option::None => { WadZeroable::zero() }
+            };
+            let new_total_debt: Wad = new_total_yin + budget_adjustment;
             assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
         }
 
