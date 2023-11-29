@@ -722,7 +722,6 @@ mod test_transmuter {
     #[should_panic(expected: ('TR: Insufficient assets', 'ENTRYPOINT_FAILED'))]
     fn test_reverse_zero_assets_fail() {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let user: ContractAddress = transmuter_utils::user();
 
         let user: ContractAddress = transmuter_utils::user();
         let asset_amt: u128 = WAD_ONE;
