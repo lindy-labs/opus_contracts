@@ -124,7 +124,9 @@ mod shrine {
         total_yin: Wad,
         // Current budget
         // - If amount is negative, then there is a deficit i.e. `total_yin` > total debt
+        //   There is more yin in circulation than yin that needs to be repaid.
         // - If amount is positive, then there is a surplus i.e. total debt > `total_yin`
+        //   There is more yin that needs to be repaid than in circulation.
         // based on current on-chain conditions
         budget: SignedWad,
         // Keeps track of the price history of each Yang
@@ -135,8 +137,16 @@ mod shrine {
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
         // Spot price of yin
         yin_spot_price: Wad,
-        // Maximum amount of debt that can exist at any given time.
-        // The amount of debt is given by `total_yin + budget`. 
+        // Maximum amount of yin that can be generated. Once this ceiling is exceeded, the 
+        // creation of new yin by users should be disallowed. 
+        // - If the budget is positive, a user may create new yin only if the resulting total 
+        //   yin amount and any debt surpluses is less than or equal to the ceiling.
+        // - If the budget is neutral or negative, a user may create new yin only if the resulting
+        //   total yin amount is less than the ceiling.
+        //
+        // Note that this does not  prevent interest from accruing or the budget from accruing 
+        // a surplus, and positive budgets can still be minted as yin. Therefore, it is possible 
+        // for the total amount of yin to exceed the debt ceiling.
         debt_ceiling: Wad,
         // Global interest rate multiplier
         // stores both the actual multiplier, and the cumulative multiplier of
@@ -1153,10 +1163,13 @@ mod shrine {
             assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
         }
 
+        // If the budget is positive, check that the new total amount of yin and any debt surpluses 
+        // is less than the debt ceiling. Otherwise, if the budget is negative (i.e. there is a deficit),
+        // check that the new total amount of yin is less than the debt ceiling.  
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
-            let new_total_debt: SignedWad = new_total_yin.into() + new_budget;
-            let ceiling: SignedWad = self.debt_ceiling.read().into();
-            assert(new_total_debt <= ceiling, 'SH: Debt ceiling reached');
+            let new_total_debt: Wad = new_total_yin
+                + new_budget.try_into().unwrap_or(WadZeroable::zero());
+            assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
         }
 
         //
