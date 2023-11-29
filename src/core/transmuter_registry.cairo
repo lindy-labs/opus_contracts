@@ -61,7 +61,7 @@ mod transmuter_registry {
     // External Transmuter registry functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl ITransmuterRegistryImpl of ITransmuterRegistry<ContractState> {
         fn get_transmuters(self: @ContractState) -> Span<ContractAddress> {
             self.registry.get_entries()
