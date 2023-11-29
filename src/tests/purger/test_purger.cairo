@@ -349,7 +349,7 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
                                     Option::Some(salt)
                                 );
@@ -1104,9 +1104,7 @@ mod test_purger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
-                                let other_trove_owner: ContractAddress =
-                                    absorber_utils::provider_1();
-                                let other_trove: u64 = purger_utils::funded_absorber(
+                                purger_utils::funded_absorber(
                                     shrine,
                                     abbot,
                                     absorber,
@@ -1122,8 +1120,15 @@ mod test_purger {
                                 // and therefore that function will always return the recovery mode
                                 // threshold as half of the original threshold.
                                 if (*is_recovery_mode) {
+                                    set_contract_address(shrine_utils::admin());
+                                    shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
+                                    let whale_trove: u64 = purger_utils::create_whale_trove(
+                                        abbot, yangs, gates
+                                    );
+                                    let whale_trove_owner: ContractAddress =
+                                        purger_utils::target_trove_owner();
                                     purger_utils::trigger_recovery_mode(
-                                        shrine, abbot, other_trove, other_trove_owner
+                                        shrine, abbot, whale_trove, whale_trove_owner
                                     );
                                 }
 
@@ -1478,27 +1483,10 @@ mod test_purger {
 
                                                         target_trove_updated_start_health = shrine
                                                             .get_trove_health(target_trove);
-
-                                                        assert(
-                                                            target_trove_updated_start_health
-                                                                .threshold < target_trove_start_health
-                                                                .threshold
-                                                                - purger_utils::RM_ERROR_MARGIN
-                                                                    .into(),
-                                                            'not recovery mode'
-                                                        );
                                                     } else {
-                                                        // Sanity check to ensure recovery mode paramterization is correct
-                                                        // Due to the changes in yang prices, there may be a very slight 
-                                                        // deviation in the threshold. Therefore, we treat the new threshold 
-                                                        // as equal to the previous threshold if it is within 0.1% 
-                                                        // (i.e. recovery mode is not activated)
-                                                        common::assert_equalish(
-                                                            target_trove_updated_start_health
-                                                                .threshold,
-                                                            target_trove_start_health.threshold,
-                                                            purger_utils::RM_ERROR_MARGIN.into(),
-                                                            'in recovery mode'
+                                                        assert(
+                                                            !shrine.is_recovery_mode(),
+                                                            'recovery mode'
                                                         );
                                                     }
 
@@ -2006,29 +1994,10 @@ mod test_purger {
                                                                 target_trove_updated_start_health =
                                                                     shrine
                                                                     .get_trove_health(target_trove);
-
-                                                                assert(
-                                                                    target_trove_updated_start_health
-                                                                        .threshold < target_trove_start_health
-                                                                        .threshold
-                                                                        - purger_utils::RM_ERROR_MARGIN
-                                                                            .into(),
-                                                                    'not recovery mode'
-                                                                );
                                                             } else {
-                                                                // Sanity check to ensure recovery mode paramterization is correct
-                                                                // Due to the changes in yang prices, there may be a very slight 
-                                                                // deviation in the threshold. Therefore, we treat the new threshold 
-                                                                // as equal to the previous threshold if it is within 0.1% 
-                                                                // (i.e. recovery mode is not activated)
-                                                                common::assert_equalish(
-                                                                    target_trove_updated_start_health
-                                                                        .threshold,
-                                                                    target_trove_start_health
-                                                                        .threshold,
-                                                                    purger_utils::RM_ERROR_MARGIN
-                                                                        .into(),
-                                                                    'in recovery mode'
+                                                                assert(
+                                                                    !shrine.is_recovery_mode(),
+                                                                    'recovery mode'
                                                                 );
                                                             }
 
@@ -2083,10 +2052,6 @@ mod test_purger {
                                                                 set_contract_address(
                                                                     recipient_trove_owner
                                                                 );
-                                                                let yin = IERC20Dispatcher {
-                                                                    contract_address: shrine
-                                                                        .contract_address
-                                                                };
                                                                 absorber
                                                                     .provide(absorber_start_yin);
                                                             }
@@ -2608,21 +2573,13 @@ mod test_purger {
                                                         // (i.e. recovery mode is not activated)
                                                         if *is_recovery_mode {
                                                             assert(
-                                                                target_trove_updated_start_health
-                                                                    .threshold < target_trove_start_health
-                                                                    .threshold
-                                                                    - purger_utils::RM_ERROR_MARGIN
-                                                                        .into(),
+                                                                shrine.is_recovery_mode(),
                                                                 'not recovery mode'
-                                                            )
+                                                            );
                                                         } else {
-                                                            common::assert_equalish(
-                                                                target_trove_updated_start_health
-                                                                    .threshold,
-                                                                target_trove_start_health.threshold,
-                                                                purger_utils::RM_ERROR_MARGIN
-                                                                    .into(),
-                                                                'in recovery mode'
+                                                            assert(
+                                                                !shrine.is_recovery_mode(),
+                                                                'recovery mode'
                                                             );
                                                         }
 
@@ -2945,26 +2902,8 @@ mod test_purger {
 
                                                 target_trove_updated_start_health = shrine
                                                     .get_trove_health(target_trove);
-
-                                                assert(
-                                                    target_trove_updated_start_health
-                                                        .threshold < target_trove_start_health
-                                                        .threshold
-                                                        - purger_utils::RM_ERROR_MARGIN.into(),
-                                                    'not recovery mode'
-                                                );
                                             } else {
-                                                // Sanity check to ensure recovery mode paramterization is correct
-                                                // Due to the changes in yang prices, there may be a very slight 
-                                                // deviation in the threshold. Therefore, we treat the new threshold 
-                                                // as equal to the previous threshold if it is within 0.1% 
-                                                // (i.e. recovery mode is not activated)
-                                                common::assert_equalish(
-                                                    target_trove_updated_start_health.threshold,
-                                                    target_trove_start_health.threshold,
-                                                    purger_utils::RM_ERROR_MARGIN.into(),
-                                                    'in recovery mode'
-                                                );
+                                                assert(!shrine.is_recovery_mode(), 'recovery mode');
                                             }
 
                                             purger_utils::assert_trove_is_absorbable(
@@ -3215,26 +3154,8 @@ mod test_purger {
 
                                                 target_trove_updated_start_health = shrine
                                                     .get_trove_health(target_trove);
-
-                                                assert(
-                                                    target_trove_updated_start_health
-                                                        .threshold < target_trove_start_health
-                                                        .threshold
-                                                        - purger_utils::RM_ERROR_MARGIN.into(),
-                                                    'not recovery mode'
-                                                );
                                             } else {
-                                                // Sanity check to ensure recovery mode paramterization is correct
-                                                // Due to the changes in yang prices, there may be a very slight 
-                                                // deviation in the threshold. Therefore, we treat the new threshold 
-                                                // as equal to the previous threshold if it is within 0.1% 
-                                                // (i.e. recovery mode is not activated)
-                                                common::assert_equalish(
-                                                    target_trove_updated_start_health.threshold,
-                                                    target_trove_start_health.threshold,
-                                                    purger_utils::RM_ERROR_MARGIN.into(),
-                                                    'in recovery mode'
-                                                );
+                                                assert(!shrine.is_recovery_mode(), 'recovery mode');
                                             }
 
                                             purger_utils::assert_trove_is_absorbable(
@@ -3419,8 +3340,6 @@ mod test_purger {
             target_ltv
         );
 
-        let upated_target_trove_health: Health = shrine.get_trove_health(target_trove);
-
         purger_utils::assert_trove_is_liquidatable(
             shrine, purger, target_trove, target_trove_health.ltv
         );
@@ -3500,8 +3419,7 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_suspended_yang() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-            purger_utils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3592,7 +3510,7 @@ mod test_purger {
     #[ignore]
     #[available_gas(2000000000000)]
     fn test_liquidate_suspended_yang_threshold_near_zero() {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
@@ -3827,7 +3745,7 @@ mod test_purger {
         let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
         // Execution time is significantly reduced
         // by only deploying the contracts once for all parametrizations
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+        let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
             searcher_start_yin, Option::None
         );
@@ -4056,19 +3974,15 @@ mod test_purger {
                                                         if *is_recovery_mode
                                                             && (*threshold).is_non_zero() {
                                                             assert(
-                                                                target_trove_start_health
-                                                                    .threshold < *threshold
-                                                                    - purger_utils::RM_ERROR_MARGIN
-                                                                        .into(),
+                                                                shrine.is_recovery_mode(),
                                                                 'not recovery mode'
                                                             );
-                                                        } else {
-                                                            common::assert_equalish(
-                                                                target_trove_start_health.threshold,
-                                                                *threshold,
-                                                                purger_utils::RM_ERROR_MARGIN
-                                                                    .into(),
-                                                                'in recovery mode'
+                                                        } else if (*threshold).is_non_zero() {
+                                                            // skip zero threshold because recovery mode 
+                                                            // is unavoidable
+                                                            assert(
+                                                                !shrine.is_recovery_mode(),
+                                                                'recovery mode'
                                                             );
                                                         }
 

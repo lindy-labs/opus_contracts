@@ -1026,6 +1026,11 @@ mod shrine {
             health.ltv <= health.threshold
         }
 
+        // Returns the maximum amount of yin that a trove can forge based on its current health.
+        // Note that forging the return value from this getter may still revert in the following cases:
+        // 1. forging the amount triggers recovery mode, causing the trove to be unsafe based on its
+        //    recovery mode threshold instead of its usual threshold; or
+        // 2. forging the amount causes the debt ceiling to be exceeded.
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
             let health: Health = self.get_trove_health(trove_id);
 
@@ -1566,9 +1571,6 @@ mod shrine {
             let mut cumulative_yang_value: Wad = WadZeroable::zero();
 
             let mut current_yang_id: u32 = self.yangs_count.read();
-
-            let mut avg_rate: Ray = RayZeroable::zero();
-
             loop {
                 // If all yangs have been iterated over, return the average rate
                 if current_yang_id == 0 {
