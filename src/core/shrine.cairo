@@ -850,8 +850,10 @@ mod shrine {
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
-            self.assert_has_minimum_value(trove_id);
             self.withdraw_helper(yang, trove_id, amount);
+            // If a trove has non-zero debt, then a user cannot withdraw collateral such that
+            // the trove would fall below this value.
+            self.assert_has_minimum_value(trove_id);
             self.assert_healthy(trove_id);
         }
 
@@ -889,6 +891,8 @@ mod shrine {
             self.assert_healthy(trove_id);
 
             self.forge_helper(user, amount);
+
+            // Assert that the trove has at least the minimum value if it is forging some debt
             self.assert_has_minimum_value(trove_id);
 
             // Events

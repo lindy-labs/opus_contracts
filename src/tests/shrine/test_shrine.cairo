@@ -909,9 +909,9 @@ mod test_shrine {
 
         set_contract_address(shrine_utils::admin());
 
-        // Set ETH's price to just below the minimum trove value
+        // Set ETH's price to exactly the minimum trove value
         let eth: ContractAddress = shrine_utils::yang1_addr();
-        shrine.advance(eth, (shrine_utils::MINIMUM_TROVE_VALUE - 1).into());
+        shrine.advance(eth, shrine_utils::MINIMUM_TROVE_VALUE.into());
 
         // Withdraw the smallest unit of ETH yang
         shrine.withdraw(eth, trove_id, 1_u128.into());
