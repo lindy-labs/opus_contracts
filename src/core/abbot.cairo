@@ -3,7 +3,7 @@ mod abbot {
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{AssetBalance, Health};
+    use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use opus::utils::wadray::{BoundedWad, Wad};
     use starknet::{ContractAddress, get_caller_address};
@@ -17,19 +17,6 @@ mod abbot {
     );
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
-
-    //
-    // Constants
-    //
-
-    // Minimum value for a trove before a user can forge any debt: 50 (Wad)
-    // If a trove has non-zero debt, then a user cannot withdraw collateral such that
-    // the trove would fall below this value.
-    const MIN_TROVE_VALUE: u128 = 50000000000000000000;
-
-    //
-    // Storage
-    //
 
     #[storage]
     struct Storage {
@@ -180,8 +167,6 @@ mod abbot {
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
 
-            self.assert_has_minimum_value(new_trove_id);
-
             self.emit(TroveOpened { user, trove_id: new_trove_id });
 
             new_trove_id
@@ -239,7 +224,6 @@ mod abbot {
                 .read()
                 .convert_to_yang(yang_asset.address, yang_asset.amount);
             self.withdraw_helper(trove_id, user, yang_asset.address, yang_amt);
-            self.assert_has_minimum_value(trove_id)
         }
 
         // create Yin in a trove
@@ -247,7 +231,6 @@ mod abbot {
             let user = get_caller_address();
             self.assert_trove_owner(user, trove_id);
             self.shrine.read().forge(user, trove_id, amount, max_forge_fee_pct);
-            self.assert_has_minimum_value(trove_id)
         }
 
         // destroy Yin from a trove
@@ -266,14 +249,6 @@ mod abbot {
         #[inline(always)]
         fn assert_trove_owner(self: @ContractState, user: ContractAddress, trove_id: u64) {
             assert(user == self.trove_owner.read(trove_id), 'ABB: Not trove owner')
-        }
-
-        #[inline(always)]
-        fn assert_has_minimum_value(self: @ContractState, trove_id: u64) {
-            let health: Health = self.shrine.read().get_trove_health(trove_id);
-            if health.debt.is_non_zero() {
-                assert(health.value >= MIN_TROVE_VALUE.into(), 'ABB: Below min value');
-            }
         }
 
         #[inline(always)]

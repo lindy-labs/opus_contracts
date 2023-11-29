@@ -38,6 +38,7 @@ mod shrine_utils {
     const YIN_SYMBOL: felt252 = 'CASH';
 
     // Shrine constants
+    const MINIMUM_TROVE_VALUE: u128 = 50000000000000000000; // 50 (Wad)
     const DEBT_CEILING: u128 = 20000000000000000000000; // 20_000 (Wad)
 
     // Yang constants
@@ -230,6 +231,9 @@ mod shrine_utils {
                 YANG3_BASE_RATE.into(),
                 INITIAL_YANG_AMT.into()
             );
+
+        // Set minimum trove value
+        shrine.set_minimum_trove_value(MINIMUM_TROVE_VALUE.into());
 
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());

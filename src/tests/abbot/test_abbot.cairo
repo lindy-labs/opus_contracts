@@ -144,32 +144,6 @@ mod test_abbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_lower_than_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
-        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
-
-        let eth: ContractAddress = *yangs[0];
-        let eth_gate: IGateDispatcher = *gates[0];
-        sentinel_utils::approve_max(eth_gate, eth, trove_owner);
-
-        // Create a trove with less than the minimum value
-        let (eth_price, _, _) = shrine.get_current_yang_price(eth);
-        let eth_amt: u128 = (abbot_contract::MIN_TROVE_VALUE.into() / eth_price).val - 1;
-        let yangs: Span<ContractAddress> = array![*yangs[0]].span();
-        let yang_amts: Span<u128> = array![eth_amt].span();
-
-        let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
-
-        set_contract_address(trove_owner);
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_amts);
-        abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
         let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(Option::None);
@@ -419,38 +393,6 @@ mod test_abbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_below_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
-        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
-
-        let eth: ContractAddress = *yangs[0];
-        let eth_gate: IGateDispatcher = *gates[0];
-        sentinel_utils::approve_max(eth_gate, eth, trove_owner);
-
-        // Create a trove with exactly the minimum value
-        let (eth_price, _, _) = shrine.get_current_yang_price(eth);
-        let eth_amt: u128 = (abbot_contract::MIN_TROVE_VALUE.into() / eth_price).val;
-        let yangs: Span<ContractAddress> = array![*yangs[0]].span();
-        let yang_amts: Span<u128> = array![eth_amt].span();
-
-        let forge_amt: Wad = WadZeroable::zero();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
-
-        set_contract_address(trove_owner);
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_amts);
-        let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
-
-        // Mint the smallest unit of debt
-        abbot.forge(trove_id, 1_u128.into(), max_forge_fee_pct);
-
-        // Withdraw a small amount of ETH
-        abbot.withdraw(trove_id, AssetBalance { address: eth, amount: 100_u128 });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
@@ -544,34 +486,6 @@ mod test_abbot {
 
         set_contract_address(common::badguy());
         abbot.forge(trove_id, WadZeroable::zero(), WadZeroable::zero());
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Below min value', 'ENTRYPOINT_FAILED'))]
-    fn test_forge_below_min_value_fail() {
-        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
-        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
-
-        let eth: ContractAddress = *yangs[0];
-        let eth_gate: IGateDispatcher = *gates[0];
-        sentinel_utils::approve_max(eth_gate, eth, trove_owner);
-
-        // Create a trove with less than the minimum value
-        let (eth_price, _, _) = shrine.get_current_yang_price(eth);
-        let eth_amt: u128 = (abbot_contract::MIN_TROVE_VALUE.into() / eth_price).val - 1;
-        let yangs: Span<ContractAddress> = array![*yangs[0]].span();
-        let yang_amts: Span<u128> = array![eth_amt].span();
-
-        let forge_amt: Wad = WadZeroable::zero();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
-
-        set_contract_address(trove_owner);
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_amts);
-        let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
-
-        abbot.forge(trove_id, 1_u128.into(), max_forge_fee_pct);
     }
 
     #[test]
