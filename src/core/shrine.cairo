@@ -416,7 +416,7 @@ mod shrine {
     // External Shrine functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IShrineImpl of IShrine<ContractState> {
         //
         // Getters
@@ -2397,7 +2397,7 @@ mod shrine {
     // Public ERC20 functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IERC20Impl of IERC20<ContractState> {
         // ERC20 getters
         fn name(self: @ContractState) -> felt252 {

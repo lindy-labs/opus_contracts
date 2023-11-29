@@ -76,7 +76,7 @@ mod gate {
     // External Gate functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IGateImpl of IGate<ContractState> {
         //
         // Getters

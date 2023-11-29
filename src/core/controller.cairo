@@ -122,7 +122,7 @@ mod controller {
         self.emit(ParameterUpdated { name: 'beta_i', value: beta_i });
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IControllerImpl of IController<ContractState> {
         fn get_current_multiplier(self: @ContractState) -> Ray {
             let i_gain = self.i_gain.read();

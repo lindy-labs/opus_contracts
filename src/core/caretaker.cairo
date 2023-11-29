@@ -121,7 +121,7 @@ mod caretaker {
     // External Caretaker functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl ICaretakerImpl of ICaretaker<ContractState> {
         //
         // View functions

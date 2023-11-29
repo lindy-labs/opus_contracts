@@ -52,7 +52,7 @@ mod flash_liquidator {
         self.purger.write(IPurgerDispatcher { contract_address: purger });
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IFlashLiquidatorImpl of super::IFlashLiquidator<ContractState> {
         fn flash_liquidate(
             ref self: ContractState,
@@ -90,7 +90,7 @@ mod flash_liquidator {
         }
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IFlashBorrowerImpl of IFlashBorrower<ContractState> {
         fn on_flash_loan(
             ref self: ContractState,
