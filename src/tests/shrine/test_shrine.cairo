@@ -1035,10 +1035,19 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
+        // prevent recovery mode
+        set_contract_address(shrine_utils::admin());
+        shrine
+            .deposit(
+                shrine_utils::yang1_addr(),
+                common::TROVE_2,
+                shrine_utils::WHALE_TROVE_YANG1_DEPOSIT.into()
+            );
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
+
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
         let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
 
-        set_contract_address(shrine_utils::admin());
         shrine
             .forge(
                 common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, WadZeroable::zero()
