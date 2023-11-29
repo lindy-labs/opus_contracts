@@ -62,7 +62,9 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_penalty_scalar_pass() {
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
+        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(
+            Option::None
+        );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -76,7 +78,9 @@ mod test_purger {
 
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
         let target_ltv: Ray = threshold + RAY_PERCENT.into(); // 92%
-        purger_utils::lower_prices_to_raise_trove_ltv(shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv);
+        purger_utils::lower_prices_to_raise_trove_ltv(
+            shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
+        );
 
         // sanity check that LTV is at the target liquidation LTV
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
@@ -150,7 +154,9 @@ mod test_purger {
     #[test]
     #[available_gas(20000000000)]
     fn test_penalty_scalar_lower_bound() {
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
+        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(
+            Option::None
+        );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -168,7 +174,9 @@ mod test_purger {
         // hand, if a penalty scalar is not applied, then the maximum possible penalty will be
         // reached from 92.09% onwards, so the trove would not be absorbable at this LTV
         let target_ltv: Ray = 910000000000000000000000000_u128.into();
-        purger_utils::lower_prices_to_raise_trove_ltv(shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv);
+        purger_utils::lower_prices_to_raise_trove_ltv(
+            shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
+        );
 
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
         // sanity check that threshold is correct
@@ -323,8 +331,9 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                 let (shrine, abbot, seer, absorber, purger, yangs, gates) =
-                                    purger_utils::purger_deploy(Option::Some(salt)
+                                let (shrine, abbot, seer, absorber, purger, yangs, gates) =
+                                    purger_utils::purger_deploy(
+                                    Option::Some(salt)
                                 );
 
                                 if !(*is_recovery_mode) {
@@ -709,9 +718,7 @@ mod test_purger {
                                         Option::Some(is_recovery_mode) => {
                                             let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN
                                                 .into();
-                                            let (
-                                                shrine, abbot, seer, _, purger, yangs, gates
-                                            ) =
+                                            let (shrine, abbot, seer, _, purger, yangs, gates) =
                                                 purger_utils::purger_deploy_with_searcher(
                                                 searcher_start_yin, Option::Some(salt)
                                             );
@@ -982,12 +989,7 @@ mod test_purger {
 
         let target_ltv: Ray = (target_trove_health.threshold.val + 1).into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine,
-            seer,
-            yangs,
-            target_trove_health.value,
-            target_trove_health.debt,
-            target_ltv
+            shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
         );
 
         // Sanity check that LTV is at the target liquidation LTV
@@ -2755,13 +2757,7 @@ mod test_purger {
                                     match is_recovery_mode_fuzz.pop_front() {
                                         Option::Some(is_recovery_mode) => {
                                             let (
-                                                shrine,
-                                                abbot,
-                                                seer,
-                                                absorber,
-                                                purger,
-                                                yangs,
-                                                gates
+                                                shrine, abbot, seer, absorber, purger, yangs, gates
                                             ) =
                                                 purger_utils::purger_deploy(
                                                 Option::Some(salt)
@@ -3014,13 +3010,7 @@ mod test_purger {
                                     match is_recovery_mode_fuzz.pop_front() {
                                         Option::Some(is_recovery_mode) => {
                                             let (
-                                                shrine,
-                                                abbot,
-                                                seer,
-                                                absorber,
-                                                purger,
-                                                yangs,
-                                                gates
+                                                shrine, abbot, seer, absorber, purger, yangs, gates
                                             ) =
                                                 purger_utils::purger_deploy(
                                                 Option::Some(salt)
@@ -3266,12 +3256,7 @@ mod test_purger {
         let target_trove_health: Health = shrine.get_trove_health(target_trove);
         let target_ltv: Ray = target_trove_health.threshold + RAY_PERCENT.into();
         purger_utils::lower_prices_to_raise_trove_ltv(
-            shrine,
-            seer,
-            yangs,
-            target_trove_health.value,
-            target_trove_health.debt,
-            target_ltv
+            shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
         );
 
         purger_utils::assert_trove_is_liquidatable(

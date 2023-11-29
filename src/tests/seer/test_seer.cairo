@@ -140,7 +140,9 @@ mod test_seer {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_successful() {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             shrine.contract_address, sentinel.contract_address
         );
@@ -267,7 +269,9 @@ mod test_seer {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Unknown yang', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             shrine.contract_address, sentinel.contract_address
         );
@@ -280,7 +284,9 @@ mod test_seer {
     #[available_gas(20000000000)]
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             shrine.contract_address, sentinel.contract_address
         );
@@ -305,7 +311,9 @@ mod test_seer {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_missed_updates() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             shrine.contract_address, sentinel.contract_address
         );
@@ -367,7 +375,9 @@ mod test_seer {
     #[test]
     #[available_gas(20000000000)]
     fn test_probe_task() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             shrine.contract_address, sentinel.contract_address
         );
