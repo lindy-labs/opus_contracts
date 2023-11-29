@@ -56,6 +56,10 @@ mod transmuter_utils {
         receiver: ContractAddress,
         salt: Option<felt252>
     ) -> ITransmuterDispatcher {
+        let salt: felt252 = match salt {
+            Option::Some(salt) => { salt },
+            Option::None => { 0 }
+        };
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine),
@@ -69,7 +73,7 @@ mod transmuter_utils {
         )
             .unwrap();
         let (transmuter_addr, _) = deploy_syscall(
-            transmuter_class_hash, salt.unwrap_or(0), calldata.span(), false
+            transmuter_class_hash, salt, calldata.span(), false
         )
             .unwrap_syscall();
 
