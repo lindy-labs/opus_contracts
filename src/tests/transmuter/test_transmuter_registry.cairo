@@ -22,7 +22,6 @@ mod test_transmuter_registry {
     fn test_transmuter_registry_deploy() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        assert(registry.get_transmuters_count().is_zero(), 'should be zero');
         assert(registry.get_transmuters() == array![].span(), 'should be empty');
 
         let registry_ac: IAccessControlDispatcher = IAccessControlDispatcher {
@@ -58,7 +57,6 @@ mod test_transmuter_registry {
         set_contract_address(transmuter_utils::admin());
         registry.add_transmuter(first_transmuter.contract_address);
 
-        assert(registry.get_transmuters_count() == 1, 'wrong transmuters count #1');
         assert(
             registry.get_transmuters() == array![first_transmuter.contract_address].span(),
             'wrong transmuters #1'
@@ -66,7 +64,6 @@ mod test_transmuter_registry {
 
         registry.add_transmuter(second_transmuter.contract_address);
 
-        assert(registry.get_transmuters_count() == 2, 'wrong transmuters count #2');
         assert(
             registry
                 .get_transmuters() == array![
@@ -78,7 +75,6 @@ mod test_transmuter_registry {
 
         registry.remove_transmuter(first_transmuter.contract_address);
 
-        assert(registry.get_transmuters_count() == 1, 'wrong transmuters count #3');
         assert(
             registry.get_transmuters() == array![second_transmuter.contract_address].span(),
             'wrong transmuters #3'
@@ -86,7 +82,6 @@ mod test_transmuter_registry {
 
         registry.add_transmuter(first_transmuter.contract_address);
 
-        assert(registry.get_transmuters_count() == 2, 'wrong transmuters count #4');
         assert(
             registry
                 .get_transmuters() == array![
@@ -98,7 +93,6 @@ mod test_transmuter_registry {
 
         registry.remove_transmuter(first_transmuter.contract_address);
 
-        assert(registry.get_transmuters_count() == 1, 'wrong transmuters count #5');
         assert(
             registry.get_transmuters() == array![second_transmuter.contract_address].span(),
             'wrong transmuters #5'
@@ -116,8 +110,6 @@ mod test_transmuter_registry {
 
         set_contract_address(transmuter_utils::admin());
         registry.add_transmuter(first_transmuter.contract_address);
-        assert(registry.get_transmuters_count() == 1, 'sanity check');
-
         registry.add_transmuter(first_transmuter.contract_address);
     }
 

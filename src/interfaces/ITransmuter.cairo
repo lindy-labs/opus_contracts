@@ -39,7 +39,6 @@ trait ITransmuter<TContractState> {
 #[starknet::interface]
 trait ITransmuterRegistry<TContractState> {
     // getters
-    fn get_transmuters_count(self: @TContractState) -> u32;
     fn get_transmuters(self: @TContractState) -> Span<ContractAddress>;
     // setters
     fn add_transmuter(ref self: TContractState, transmuter: ContractAddress);

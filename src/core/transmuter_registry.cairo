@@ -63,10 +63,6 @@ mod transmuter_registry {
 
     #[external(v0)]
     impl ITransmuterRegistryImpl of ITransmuterRegistry<ContractState> {
-        fn get_transmuters_count(self: @ContractState) -> u32 {
-            self.registry.get_entries_count()
-        }
-
         fn get_transmuters(self: @ContractState) -> Span<ContractAddress> {
             self.registry.get_entries()
         }

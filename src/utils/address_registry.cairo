@@ -6,7 +6,6 @@ mod address_registry_component {
     #[storage]
     struct Storage {
         entries_count: u32,
-        removed_entries_count: u32,
         entry_ids: LegacyMap::<ContractAddress, u32>,
         entries: LegacyMap::<u32, ContractAddress>,
     }
@@ -37,15 +36,6 @@ mod address_registry_component {
         //
         // getters
         //
-
-        fn get_entries_count(self: @ComponentState<TContractState>) -> u32 {
-            self.entries_count.read() - self.removed_entries_count.read()
-        }
-
-        fn get_entry(self: @ComponentState<TContractState>, entry_id: u32) -> ContractAddress {
-            self.entries.read(entry_id)
-        }
-
         fn get_entries(self: @ComponentState<TContractState>) -> Span<ContractAddress> {
             let mut entries: Array<ContractAddress> = ArrayTrait::new();
 
@@ -97,9 +87,6 @@ mod address_registry_component {
             // Reset entry
             self.entry_ids.write(entry, 0);
             self.entries.write(entry_id, ContractAddressZeroable::zero());
-
-            // Decrement entries count
-            self.removed_entries_count.write(self.removed_entries_count.read() + 1);
 
             self.emit(EntryRemoved { entry, entry_id });
 

@@ -45,7 +45,6 @@ mod test_address_registry {
     fn test_setup() {
         let state = state();
 
-        assert(state.address_registry.get_entries_count().is_zero(), 'should be zero entries');
         let empty_entries: Span<ContractAddress> = array![].span();
         assert(state.address_registry.get_entries() == empty_entries, 'should be empty');
     }
@@ -69,8 +68,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #1');
-        assert(state.address_registry.get_entries_count() == 1, 'should be 1 entry');
         let expected_entries: Span<ContractAddress> = array![entry1()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #1');
 
@@ -88,8 +85,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry2(), 'wrong entry #2');
-        assert(state.address_registry.get_entries_count() == 2, 'should be 2 entries');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #2');
 
@@ -107,8 +102,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #3');
-        assert(state.address_registry.get_entries_count() == 3, 'should be 3 entries');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #3');
 
@@ -125,8 +118,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id).is_zero(), 'wrong entry #4');
-        assert(state.address_registry.get_entries_count() == 2, 'should be 2 entries');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #4');
 
@@ -143,8 +134,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #5');
-        assert(state.address_registry.get_entries_count() == 3, 'should be 2 entries');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #5');
 
@@ -160,8 +149,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id).is_zero(), 'wrong entry #6');
-        assert(state.address_registry.get_entries_count() == 2, 'should be 2 entries');
         let expected_entries: Span<ContractAddress> = array![entry2(), entry3()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #6');
 
@@ -178,8 +165,6 @@ mod test_address_registry {
 
         assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
 
-        assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #7');
-        assert(state.address_registry.get_entries_count() == 3, 'should be 3 entries');
         let expected_entries: Span<ContractAddress> = array![entry2(), entry3(), entry1()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #7');
 
@@ -188,8 +173,6 @@ mod test_address_registry {
         let _ = state.address_registry.remove_entry(entry2());
         let _ = state.address_registry.remove_entry(entry3());
 
-        assert(state.address_registry.get_entry(1).is_zero(), 'wrong entry #1');
-        assert(state.address_registry.get_entries_count().is_zero(), 'should be 0 entries');
         let expected_entries: Span<ContractAddress> = array![].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #8');
     }
@@ -200,8 +183,6 @@ mod test_address_registry {
         let mut state = state();
 
         let _ = state.address_registry.add_entry(entry1());
-        assert(state.address_registry.get_entries_count() == 1, 'should be 1 entry');
-
         let res = state.address_registry.add_entry(entry1());
         assert(res.unwrap_err() == 'AR: Entry already exists', 'wrong error');
     }
