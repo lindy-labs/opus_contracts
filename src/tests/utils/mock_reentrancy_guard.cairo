@@ -25,7 +25,7 @@ mod mock_reentrancy_guard {
         ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IMockReentrancyGuardImpl of super::IMockReentrancyGuard<ContractState> {
         fn guarded_func(ref self: ContractState, recurse_once: bool) {
             self.reentrancy_guard.start();

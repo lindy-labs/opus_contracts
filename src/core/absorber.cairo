@@ -241,7 +241,7 @@ mod absorber {
     // External Absorber functions
     //
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl IAbsorberImpl of IAbsorber<ContractState> {
         //
         // Getters
