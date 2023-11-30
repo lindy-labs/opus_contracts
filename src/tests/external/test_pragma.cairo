@@ -170,7 +170,7 @@ mod test_pragma {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_add_yang_pass() {
+    fn test_set_yang_pari_id_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
@@ -180,15 +180,15 @@ mod test_pragma {
         let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
-        // Seed first price update for PEPE token so that `Pragma.add_yang` passes
+        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
 
         set_contract_address(pragma_utils::admin());
-        pragma.add_yang(pepe_token, pepe_token_pair_id);
+        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
 
         let expected_events: Span<pragma_contract::Event> = array![
-            pragma_contract::Event::YangAdded(
-                pragma_contract::YangAdded { address: pepe_token, pair_id: pepe_token_pair_id },
+            pragma_contract::Event::YangPairIdSet(
+                pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
             ),
         ]
             .span();
@@ -197,7 +197,7 @@ mod test_pragma {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_add_yang_overwrite_pass() {
+    fn test_set_yang_pair_id_overwrite_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
@@ -207,13 +207,13 @@ mod test_pragma {
         let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
-        // Seed first price update for PEPE token so that `Pragma.add_yang` passes
+        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
 
         set_contract_address(pragma_utils::admin());
-        pragma.add_yang(pepe_token, pepe_token_pair_id);
+        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
 
-        // fake data for a second add yang, so its distinct from the first call
+        // fake data for a second set_yang_pair_id, so its distinct from the first call
         let pepe_token_pair_id_2: u256 = 'WILDPEPE/USD'.into();
         let response = PricesResponse {
             price: price.into(),
@@ -223,14 +223,16 @@ mod test_pragma {
         };
         mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
 
-        pragma.add_yang(pepe_token, pepe_token_pair_id_2);
+        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id_2);
 
         let expected_events: Span<pragma_contract::Event> = array![
-            pragma_contract::Event::YangAdded(
-                pragma_contract::YangAdded { address: pepe_token, pair_id: pepe_token_pair_id },
+            pragma_contract::Event::YangPairIdSet(
+                pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
             ),
-            pragma_contract::Event::YangAdded(
-                pragma_contract::YangAdded { address: pepe_token, pair_id: pepe_token_pair_id_2 },
+            pragma_contract::Event::YangPairIdSet(
+                pragma_contract::YangPairIdSet {
+                    address: pepe_token, pair_id: pepe_token_pair_id_2
+                },
             ),
         ]
             .span();
@@ -240,45 +242,45 @@ mod test_pragma {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_unauthorized_fail() {
+    fn test_set_yang_pair_id_unauthorized_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy();
         set_contract_address(common::badguy());
-        pragma.add_yang(mock_eth_token_addr(), pragma_utils::ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_id(mock_eth_token_addr(), pragma_utils::ETH_USD_PAIR_ID);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_invalid_pair_id_fail() {
+    fn test_set_yang_pair_id_invalid_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy();
         set_contract_address(pragma_utils::admin());
         let invalid_pair_id = U256Zeroable::zero();
-        pragma.add_yang(mock_eth_token_addr(), invalid_pair_id);
+        pragma.set_yang_pair_id(mock_eth_token_addr(), invalid_pair_id);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid yang address', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_invalid_yang_address_fail() {
+    fn test_set_yang_pair_id_invalid_yang_address_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy();
         set_contract_address(pragma_utils::admin());
         let invalid_yang_addr = ContractAddressZeroable::zero();
-        pragma.add_yang(invalid_yang_addr, pragma_utils::ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_id(invalid_yang_addr, pragma_utils::ETH_USD_PAIR_ID);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Unknown pair ID', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_unknown_pair_id_fail() {
+    fn test_set_yang_pair_id_unknown_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy();
         set_contract_address(pragma_utils::admin());
-        pragma.add_yang(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Too many decimals', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_too_many_decimals_fail() {
+    fn test_set_yang_pair_id_too_many_decimals_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
 
         let pragma_price_scale: u128 = pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
@@ -294,7 +296,7 @@ mod test_pragma {
         mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_response);
 
         set_contract_address(pragma_utils::admin());
-        pragma.add_yang(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
     }
 
     //

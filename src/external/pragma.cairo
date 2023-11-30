@@ -61,7 +61,7 @@ mod pragma {
         price_validity_thresholds: PriceValidityThresholds,
         // A mapping between a token's address and the ID Pragma uses
         // to identify the price feed
-        // (yang addres) -> (Pragma pair ID)
+        // (yang address) -> (Pragma pair ID)
         yang_pair_ids: LegacyMap::<ContractAddress, u256>
     }
 
@@ -75,7 +75,7 @@ mod pragma {
         AccessControlEvent: access_control_component::Event,
         InvalidPriceUpdate: InvalidPriceUpdate,
         PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
-        YangAdded: YangAdded,
+        YangPairIdSet: YangPairIdSet,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -101,7 +101,7 @@ mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAdded {
+    struct YangPairIdSet {
         address: ContractAddress,
         pair_id: u256
     }
@@ -142,7 +142,7 @@ mod pragma {
 
     #[abi(embed_v0)]
     impl IPragmaImpl of IPragma<ContractState> {
-        fn add_yang(ref self: ContractState, yang: ContractAddress, pair_id: u256) {
+        fn set_yang_pair_id(ref self: ContractState, yang: ContractAddress, pair_id: u256) {
             self.access_control.assert_has_role(pragma_roles::ADD_YANG);
             assert(pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
@@ -159,7 +159,7 @@ mod pragma {
 
             self.yang_pair_ids.write(yang, pair_id);
 
-            self.emit(YangAdded { address: yang, pair_id });
+            self.emit(YangPairIdSet { address: yang, pair_id });
         }
 
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {

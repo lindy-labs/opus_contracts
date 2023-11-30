@@ -103,8 +103,8 @@ mod pragma_utils {
         set_contract_address(admin());
 
         // Add yangs to Pragma
-        pragma.add_yang(eth_yang, ETH_USD_PAIR_ID);
-        pragma.add_yang(wbtc_yang, WBTC_USD_PAIR_ID);
+        pragma.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
 
         set_contract_address(ContractAddressZeroable::zero());
     }
