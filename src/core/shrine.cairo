@@ -137,6 +137,8 @@ mod shrine {
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
         // Spot price of yin
         yin_spot_price: Wad,
+        // Minimum value for a trove before a user can forge any debt
+        minimum_trove_value: Wad,
         // Maximum amount of yin that can be generated. Once this ceiling is exceeded, the 
         // creation of new yin by users should be disallowed. 
         // - If the budget is positive, a user may create new yin only if the resulting total 
@@ -223,6 +225,7 @@ mod shrine {
         DepositUpdated: DepositUpdated,
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
+        MinimumTroveValueUpdated: MinimumTroveValueUpdated,
         DebtCeilingUpdated: DebtCeilingUpdated,
         YangSuspended: YangSuspended,
         YangUnsuspended: YangUnsuspended,
@@ -328,6 +331,11 @@ mod shrine {
     struct YinPriceUpdated {
         old_price: Wad,
         new_price: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct MinimumTroveValueUpdated {
+        value: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -474,6 +482,10 @@ mod shrine {
 
         fn get_current_rate_era(self: @ContractState) -> u64 {
             self.rates_latest_era.read()
+        }
+
+        fn get_minimum_trove_value(self: @ContractState) -> Wad {
+            self.minimum_trove_value.read()
         }
 
         fn get_debt_ceiling(self: @ContractState) -> Wad {
@@ -773,6 +785,15 @@ mod shrine {
             self.emit(MultiplierUpdated { multiplier, cumulative_multiplier, interval });
         }
 
+        fn set_minimum_trove_value(ref self: ContractState, value: Wad) {
+            self.access_control.assert_has_role(shrine_roles::SET_MINIMUM_TROVE_VALUE);
+
+            self.minimum_trove_value.write(value);
+
+            // Event emission
+            self.emit(MinimumTroveValueUpdated { value });
+        }
+
         fn set_debt_ceiling(ref self: ContractState, ceiling: Wad) {
             self.access_control.assert_has_role(shrine_roles::SET_DEBT_CEILING);
             self.debt_ceiling.write(ceiling);
@@ -840,7 +861,7 @@ mod shrine {
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
             self.withdraw_helper(yang, trove_id, amount);
-            self.assert_healthy(trove_id);
+            self.assert_valid_trove_action(trove_id);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -874,7 +895,8 @@ mod shrine {
             let mut trove: Trove = self.troves.read(trove_id);
             trove.debt += debt_amount;
             self.troves.write(trove_id, trove);
-            self.assert_healthy(trove_id);
+
+            self.assert_valid_trove_action(trove_id);
 
             self.forge_helper(user, amount);
 
@@ -1033,7 +1055,7 @@ mod shrine {
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
             let health: Health = self.get_trove_health(trove_id);
-            health.ltv <= health.threshold
+            self.is_healthy_helper(health)
         }
 
         // Returns the maximum amount of yin that a trove can forge based on its current health.
@@ -1159,8 +1181,22 @@ mod shrine {
             assert(self.is_live.read(), 'SH: System is not live');
         }
 
-        fn assert_healthy(self: @ContractState, trove_id: u64) {
-            assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
+        #[inline(always)]
+        fn is_healthy_helper(self: @ContractState, health: Health) -> bool {
+            health.ltv <= health.threshold
+        }
+
+        // Checks that:
+        // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
+        // 2. the trove has at least the minimum value if it has non-zero debt
+        fn assert_valid_trove_action(self: @ContractState, trove_id: u64) {
+            let health: Health = self.get_trove_health(trove_id);
+            assert(self.is_healthy_helper(health), 'SH: Trove LTV is too high');
+            if health.debt.is_non_zero() {
+                assert(
+                    health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value'
+                );
+            }
         }
 
         // If the budget is positive, check that the new total amount of yin and any debt surpluses 
