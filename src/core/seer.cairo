@@ -18,8 +18,7 @@ mod seer {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -28,8 +27,7 @@ mod seer {
 
     const LOOP_START: u32 = 1;
     const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    const UPPER_UPDATE_FREQUENCY_BOUND: u64 =
-        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    const UPPER_UPDATE_FREQUENCY_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
 
     //
     // Storage
@@ -148,12 +146,7 @@ mod seer {
                         // setting the terminating condition for looping
                         self
                             .oracles
-                            .write(
-                                index,
-                                IOracleDispatcher {
-                                    contract_address: ContractAddressZeroable::zero()
-                                }
-                            );
+                            .write(index, IOracleDispatcher { contract_address: ContractAddressZeroable::zero() });
                         break;
                     }
                 }
@@ -163,8 +156,7 @@ mod seer {
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
             self.access_control.assert_has_role(seer_roles::SET_UPDATE_FREQUENCY);
             assert(
-                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
-                    && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
+                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
                 'SEER: Frequency out of bounds'
             );
 
@@ -182,8 +174,7 @@ mod seer {
     #[abi(embed_v0)]
     impl IYagiImpl of IYagi<ContractState> {
         fn probe_task(self: @ContractState) -> bool {
-            let seconds_since_last_update: u64 = get_block_timestamp()
-                - self.last_update_prices_call_timestamp.read();
+            let seconds_since_last_update: u64 = get_block_timestamp() - self.last_update_prices_call_timestamp.read();
             self.update_frequency.read() <= seconds_since_last_update
         }
 
@@ -228,16 +219,10 @@ mod seer {
 
                             match oracle.fetch_price(*yang, force_update) {
                                 Result::Ok(oracle_price) => {
-                                    let asset_amt_per_yang: Wad = sentinel
-                                        .get_asset_amt_per_yang(*yang);
+                                    let asset_amt_per_yang: Wad = sentinel.get_asset_amt_per_yang(*yang);
                                     let price: Wad = oracle_price * asset_amt_per_yang;
                                     shrine.advance(*yang, price);
-                                    self
-                                        .emit(
-                                            PriceUpdate {
-                                                oracle: oracle.contract_address, yang: *yang, price
-                                            }
-                                        );
+                                    self.emit(PriceUpdate { oracle: oracle.contract_address, yang: *yang, price });
                                     break;
                                 },
                                 // try next oracle for this yang

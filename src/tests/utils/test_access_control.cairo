@@ -1,13 +1,9 @@
 mod test_access_control {
     use opus::tests::common;
     use opus::tests::utils::mock_access_control::mock_access_control;
-    use opus::utils::access_control::access_control_component::{
-        AccessControlPublic, AccessControlHelpers
-    };
+    use opus::utils::access_control::access_control_component::{AccessControlPublic, AccessControlHelpers};
     use opus::utils::access_control::access_control_component;
-    use starknet::contract_address::{
-        ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
-    };
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::testing::{pop_log, pop_log_raw, set_caller_address};
 
     //
@@ -50,9 +46,7 @@ mod test_access_control {
     }
 
     fn set_pending_admin(
-        ref state: mock_access_control::ContractState,
-        caller: ContractAddress,
-        pending_admin: ContractAddress
+        ref state: mock_access_control::ContractState, caller: ContractAddress, pending_admin: ContractAddress
     ) {
         set_caller_address(caller);
         state.set_pending_admin(pending_admin);

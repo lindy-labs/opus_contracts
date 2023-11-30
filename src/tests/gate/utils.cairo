@@ -30,9 +30,7 @@ mod gate_utils {
     // Test setup helpers
     //
 
-    fn gate_deploy(
-        token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
-    ) -> ContractAddress {
+    fn gate_deploy(token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
         set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let mut calldata: Array<felt252> = array![
@@ -41,8 +39,7 @@ mod gate_utils {
             contract_address_to_felt252(sentinel),
         ];
 
-        let gate_class_hash: ClassHash = class_hash_try_from_felt252(gate_contract::TEST_CLASS_HASH)
-            .unwrap();
+        let gate_class_hash: ClassHash = class_hash_try_from_felt252(gate_contract::TEST_CLASS_HASH).unwrap();
         let (gate, _) = deploy_syscall(gate_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         gate
@@ -92,9 +89,7 @@ mod gate_utils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn approve_gate_for_token(
-        gate: ContractAddress, token: ContractAddress, user: ContractAddress
-    ) {
+    fn approve_gate_for_token(gate: ContractAddress, token: ContractAddress, user: ContractAddress) {
         // user no-limit approves gate to handle their share of token
         set_contract_address(user);
         IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());

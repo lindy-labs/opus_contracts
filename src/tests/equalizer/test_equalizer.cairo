@@ -27,14 +27,10 @@ mod test_equalizer {
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
-        let equalizer_ac = IAccessControlDispatcher {
-            contract_address: equalizer.contract_address
-        };
+        let equalizer_ac = IAccessControlDispatcher { contract_address: equalizer.contract_address };
         let admin = shrine_utils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
-        assert(
-            equalizer_ac.get_roles(admin) == equalizer_roles::default_admin_role(), 'wrong role'
-        );
+        assert(equalizer_ac.get_roles(admin) == equalizer_roles::default_admin_role(), 'wrong role');
         assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
     }
 
@@ -63,9 +59,7 @@ mod test_equalizer {
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
         let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::Equalize(
-                equalizer_contract::Equalize { yin_amt: surplus.into() }
-            ),
+            equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() }),
         ]
             .span();
         common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
@@ -123,10 +117,7 @@ mod test_equalizer {
             assert(total_yin > start_debt, 'below debt ceiling');
 
             let after_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
-            assert(
-                after_equalizer_yin == before_equalizer_yin + expected_surplus,
-                'surplus not received'
-            );
+            assert(after_equalizer_yin == before_equalizer_yin + expected_surplus, 'surplus not received');
 
             // Check remaining surplus
             assert(shrine.get_budget().is_zero(), 'surplus should be zeroed');
@@ -134,14 +125,10 @@ mod test_equalizer {
             assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
             let mut expected_events: Span<equalizer_contract::Event> = array![
-                equalizer_contract::Event::Equalize(
-                    equalizer_contract::Equalize { yin_amt: expected_surplus.into() }
-                ),
+                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: expected_surplus.into() }),
             ]
                 .span();
-            common::assert_events_emitted(
-                equalizer.contract_address, expected_events, Option::None
-            );
+            common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
 
             start_debt = total_yin;
 
@@ -182,19 +169,14 @@ mod test_equalizer {
 
                     let before_yin_bal = *before_yin_balances.pop_front().unwrap();
                     let after_yin_bal = *after_yin_balances.pop_front().unwrap();
-                    assert(
-                        after_yin_bal == before_yin_bal + expected_increment.val,
-                        'wrong recipient balance'
-                    );
+                    assert(after_yin_bal == before_yin_bal + expected_increment.val, 'wrong recipient balance');
 
                     allocated += expected_increment;
                 },
                 Option::None => { break; }
             };
         };
-        assert(
-            surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch'
-        );
+        assert(surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch');
 
         let mut expected_events: Span<equalizer_contract::Event> = array![
             equalizer_contract::Event::Allocate(
@@ -249,24 +231,17 @@ mod test_equalizer {
 
                     let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
                     assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
-                    assert(
-                        shrine.get_budget() == deficit + expected_normalized_amt.into(),
-                        'wrong remaining deficit'
-                    );
+                    assert(shrine.get_budget() == deficit + expected_normalized_amt.into(), 'wrong remaining deficit');
 
                     // Event is emitted only if non-zero amount of deficit was wiped
                     if expected_normalized_amt.is_non_zero() {
                         let mut expected_events: Span<equalizer_contract::Event> = array![
                             equalizer_contract::Event::Normalize(
-                                equalizer_contract::Normalize {
-                                    caller: admin, yin_amt: expected_normalized_amt
-                                }
+                                equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt }
                             ),
                         ]
                             .span();
-                        common::assert_events_emitted(
-                            equalizer.contract_address, expected_events, Option::None
-                        );
+                        common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
                     }
 
                     // Reset by normalizing all remaining deficit
@@ -296,15 +271,12 @@ mod test_equalizer {
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated
-        assert(
-            equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated'
-        );
+        assert(equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated');
 
         let mut expected_events: Span<equalizer_contract::Event> = array![
             equalizer_contract::Event::AllocatorUpdated(
                 equalizer_contract::AllocatorUpdated {
-                    old_address: allocator.contract_address,
-                    new_address: new_allocator.contract_address
+                    old_address: allocator.contract_address, new_address: new_allocator.contract_address
                 }
             ),
         ]

@@ -69,9 +69,7 @@ mod access_control_component {
             self.roles.read(account)
         }
 
-        fn has_role(
-            self: @ComponentState<TContractState>, role: u128, account: ContractAddress
-        ) -> bool {
+        fn has_role(self: @ComponentState<TContractState>, role: u128, account: ContractAddress) -> bool {
             let roles: u128 = self.roles.read(account);
             // masks roles such that all bits are zero, except the bit(s) representing `role`, which may be zero or one
             let masked_roles: u128 = roles & role;
@@ -91,16 +89,12 @@ mod access_control_component {
         // setters
         //
 
-        fn grant_role(
-            ref self: ComponentState<TContractState>, role: u128, account: ContractAddress
-        ) {
+        fn grant_role(ref self: ComponentState<TContractState>, role: u128, account: ContractAddress) {
             self.assert_admin();
             self.grant_role_helper(role, account);
         }
 
-        fn revoke_role(
-            ref self: ComponentState<TContractState>, role: u128, account: ContractAddress
-        ) {
+        fn revoke_role(ref self: ComponentState<TContractState>, role: u128, account: ContractAddress) {
             self.assert_admin();
             self.revoke_role_helper(role, account);
         }
@@ -131,9 +125,7 @@ mod access_control_component {
     impl AccessControlHelpers<
         TContractState, +HasComponent<TContractState>
     > of AccessControlHelpersTrait<TContractState> {
-        fn initializer(
-            ref self: ComponentState<TContractState>, admin: ContractAddress, roles: Option<u128>
-        ) {
+        fn initializer(ref self: ComponentState<TContractState>, admin: ContractAddress, roles: Option<u128>) {
             self.set_admin_helper(admin);
             if roles.is_some() {
                 self.grant_role_helper(roles.unwrap(), admin);
@@ -163,26 +155,20 @@ mod access_control_component {
             self.emit(AdminChanged { old_admin, new_admin });
         }
 
-        fn set_pending_admin_helper(
-            ref self: ComponentState<TContractState>, new_admin: ContractAddress
-        ) {
+        fn set_pending_admin_helper(ref self: ComponentState<TContractState>, new_admin: ContractAddress) {
             self.pending_admin.write(new_admin);
 
             self.emit(NewPendingAdmin { new_admin });
         }
 
-        fn grant_role_helper(
-            ref self: ComponentState<TContractState>, role: u128, account: ContractAddress
-        ) {
+        fn grant_role_helper(ref self: ComponentState<TContractState>, role: u128, account: ContractAddress) {
             let roles: u128 = self.roles.read(account);
             self.roles.write(account, roles | role);
 
             self.emit(RoleGranted { user: account, role_granted: role });
         }
 
-        fn revoke_role_helper(
-            ref self: ComponentState<TContractState>, role: u128, account: ContractAddress
-        ) {
+        fn revoke_role_helper(ref self: ComponentState<TContractState>, role: u128, account: ContractAddress) {
             let roles: u128 = self.roles.read(account);
             let updated_roles: u128 = roles & (~role);
             self.roles.write(account, updated_roles);

@@ -12,9 +12,7 @@ mod abbot {
     // Components 
     // 
 
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
+    component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
@@ -120,13 +118,8 @@ mod abbot {
             self.troves_count.read()
         }
 
-        fn get_trove_asset_balance(
-            self: @ContractState, trove_id: u64, yang: ContractAddress
-        ) -> u128 {
-            self
-                .sentinel
-                .read()
-                .convert_to_assets(yang, self.shrine.read().get_deposit(yang, trove_id))
+        fn get_trove_asset_balance(self: @ContractState, trove_id: u64, yang: ContractAddress) -> u128 {
+            self.sentinel.read().convert_to_assets(yang, self.shrine.read().get_deposit(yang, trove_id))
         }
 
         //
@@ -136,10 +129,7 @@ mod abbot {
         // create a new trove in the system with Yang deposits,
         // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
         fn open_trove(
-            ref self: ContractState,
-            mut yang_assets: Span<AssetBalance>,
-            forge_amount: Wad,
-            max_forge_fee_pct: Wad
+            ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
@@ -157,9 +147,7 @@ mod abbot {
             // deposit all requested Yangs into the system
             loop {
                 match yang_assets.pop_front() {
-                    Option::Some(yang_asset) => {
-                        self.deposit_helper(new_trove_id, user, *yang_asset);
-                    },
+                    Option::Some(yang_asset) => { self.deposit_helper(new_trove_id, user, *yang_asset); },
                     Option::None => { break; }
                 };
             };
@@ -219,10 +207,7 @@ mod abbot {
             let user = get_caller_address();
             self.assert_trove_owner(user, trove_id);
 
-            let yang_amt: Wad = self
-                .sentinel
-                .read()
-                .convert_to_yang(yang_asset.address, yang_asset.amount);
+            let yang_amt: Wad = self.sentinel.read().convert_to_yang(yang_asset.address, yang_asset.amount);
             self.withdraw_helper(trove_id, user, yang_asset.address, yang_amt);
         }
 
@@ -252,16 +237,11 @@ mod abbot {
         }
 
         #[inline(always)]
-        fn deposit_helper(
-            ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance
-        ) {
+        fn deposit_helper(ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance) {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();
 
-            let yang_amt: Wad = self
-                .sentinel
-                .read()
-                .enter(yang_asset.address, user, trove_id, yang_asset.amount);
+            let yang_amt: Wad = self.sentinel.read().enter(yang_asset.address, user, trove_id, yang_asset.amount);
             self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
 
             self.reentrancy_guard.end();
@@ -269,11 +249,7 @@ mod abbot {
 
         #[inline(always)]
         fn withdraw_helper(
-            ref self: ContractState,
-            trove_id: u64,
-            user: ContractAddress,
-            yang: ContractAddress,
-            yang_amt: Wad
+            ref self: ContractState, trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad
         ) {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();

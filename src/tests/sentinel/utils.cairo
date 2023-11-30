@@ -54,18 +54,13 @@ mod sentinel_utils {
             contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
         ];
 
-        let sentinel_class_hash: ClassHash = class_hash_try_from_felt252(
-            sentinel_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
+        let sentinel_class_hash: ClassHash = class_hash_try_from_felt252(sentinel_contract::TEST_CLASS_HASH).unwrap();
 
-        let (sentinel_addr, _) = deploy_syscall(sentinel_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let (sentinel_addr, _) = deploy_syscall(sentinel_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         // Grant `abbot` role to `mock_abbot`
         set_contract_address(admin());
-        IAccessControlDispatcher { contract_address: sentinel_addr }
-            .grant_role(sentinel_roles::abbot(), mock_abbot());
+        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(shrine_utils::admin());
@@ -92,22 +87,16 @@ mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
     }
 
-    fn deploy_sentinel_with_eth_gate() -> (
-        ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher
-    ) {
+    fn deploy_sentinel_with_eth_gate() -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
         let (sentinel, shrine_addr) = deploy_sentinel(Option::None);
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
     }
 
-    fn add_eth_yang(
-        sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
-    ) -> (ContractAddress, IGateDispatcher) {
+    fn add_eth_yang(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (ContractAddress, IGateDispatcher) {
         let eth: ContractAddress = common::eth_token_deploy();
-        let eth_gate: ContractAddress = gate_utils::gate_deploy(
-            eth, shrine_addr, sentinel.contract_address
-        );
+        let eth_gate: ContractAddress = gate_utils::gate_deploy(eth, shrine_addr, sentinel.contract_address);
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
 
@@ -135,9 +124,7 @@ mod sentinel_utils {
         sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
     ) -> (ContractAddress, IGateDispatcher) {
         let wbtc: ContractAddress = common::wbtc_token_deploy();
-        let wbtc_gate: ContractAddress = gate_utils::gate_deploy(
-            wbtc, shrine_addr, sentinel.contract_address
-        );
+        let wbtc_gate: ContractAddress = gate_utils::gate_deploy(wbtc, shrine_addr, sentinel.contract_address);
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
@@ -146,8 +133,7 @@ mod sentinel_utils {
         wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
 
         set_contract_address(admin());
-        wbtc_erc20
-            .approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        wbtc_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         sentinel
             .add_yang(
                 wbtc,

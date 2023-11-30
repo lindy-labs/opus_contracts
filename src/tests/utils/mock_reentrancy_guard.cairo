@@ -7,9 +7,7 @@ trait IMockReentrancyGuard<TContractState> {
 mod mock_reentrancy_guard {
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
 
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
+    component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 

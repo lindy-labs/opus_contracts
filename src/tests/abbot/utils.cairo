@@ -14,8 +14,8 @@ mod abbot_utils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        deploy_syscall, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, deploy_syscall,
+        SyscallResultTrait
     };
 
     //
@@ -44,9 +44,7 @@ mod abbot_utils {
     }
 
     fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT
-        ];
+        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
@@ -56,13 +54,7 @@ mod abbot_utils {
 
     fn abbot_deploy(
         salt: Option<felt252>
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>
-    ) {
+    ) -> (IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(salt);
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
@@ -71,12 +63,8 @@ mod abbot_utils {
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let abbot_class_hash: ClassHash = class_hash_try_from_felt252(
-            abbot_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (abbot_addr, _) = deploy_syscall(abbot_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let abbot_class_hash: ClassHash = class_hash_try_from_felt252(abbot_contract::TEST_CLASS_HASH).unwrap();
+        let (abbot_addr, _) = deploy_syscall(abbot_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
@@ -112,9 +100,7 @@ mod abbot_utils {
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, yangs, initial_asset_amts());
         let deposited_amts: Span<u128> = open_trove_yang_asset_amts();
-        let trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner, yangs, deposited_amts, gates, forge_amt
-        );
+        let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposited_amts, gates, forge_amt);
 
         (shrine, sentinel, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt)
     }

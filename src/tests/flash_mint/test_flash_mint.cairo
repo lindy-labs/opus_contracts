@@ -63,9 +63,7 @@ mod test_flash_mint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine.contract_address);
-        let expected_max_loan: u256 = (total_yin
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let expected_max_loan: u256 = (total_yin * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }
 
@@ -85,9 +83,7 @@ mod test_flash_mint {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         let yin = shrine_utils::yin(shrine);
 
-        let mut calldata: Span<felt252> = flash_mint_utils::build_calldata(
-            true, flash_borrower_contract::VALID_USAGE
-        );
+        let mut calldata: Span<felt252> = flash_mint_utils::build_calldata(true, flash_borrower_contract::VALID_USAGE);
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
@@ -115,85 +111,59 @@ mod test_flash_mint {
         shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
 
         set_contract_address(flash_mint_caller);
-        let fourth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let fourth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fourth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a deficit
         set_contract_address(shrine_utils::admin());
-        shrine_utils::shrine(shrine)
-            .adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
+        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
 
         set_contract_address(flash_mint_caller);
-        let fifth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let fifth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fifth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 5');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a surplus
         set_contract_address(shrine_utils::admin());
-        shrine_utils::shrine(shrine)
-            .adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
+        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
 
         set_contract_address(flash_mint_caller);
-        let sixth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let sixth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, sixth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 6');
 
         let mut expected_events: Span<flash_mint_contract::Event> = array![
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: first_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: first_loan_amt
                 }
             ),
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: second_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: second_loan_amt
                 }
             ),
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: third_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: third_loan_amt
                 }
             ),
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: fourth_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fourth_loan_amt
                 }
             ),
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: fifth_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fifth_loan_amt
                 }
             ),
             flash_mint_contract::Event::FlashMint(
                 flash_mint_contract::FlashMint {
-                    initiator: flash_mint_caller,
-                    receiver: borrower,
-                    token: shrine,
-                    amount: sixth_loan_amt
+                    initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: sixth_loan_amt
                 }
             ),
         ]
@@ -203,38 +173,22 @@ mod test_flash_mint {
         let mut expected_events: Span<flash_borrower_contract::Event> = array![
             flash_borrower_contract::Event::FlashLoancall_dataReceived(
                 flash_borrower_contract::FlashLoancall_dataReceived {
-                    initiator: flash_mint_caller,
-                    token: shrine,
-                    amount: first_loan_amt,
-                    fee: 0,
-                    call_data: calldata,
+                    initiator: flash_mint_caller, token: shrine, amount: first_loan_amt, fee: 0, call_data: calldata,
                 }
             ),
             flash_borrower_contract::Event::FlashLoancall_dataReceived(
                 flash_borrower_contract::FlashLoancall_dataReceived {
-                    initiator: flash_mint_caller,
-                    token: shrine,
-                    amount: second_loan_amt,
-                    fee: 0,
-                    call_data: calldata,
+                    initiator: flash_mint_caller, token: shrine, amount: second_loan_amt, fee: 0, call_data: calldata,
                 }
             ),
             flash_borrower_contract::Event::FlashLoancall_dataReceived(
                 flash_borrower_contract::FlashLoancall_dataReceived {
-                    initiator: flash_mint_caller,
-                    token: shrine,
-                    amount: third_loan_amt,
-                    fee: 0,
-                    call_data: calldata,
+                    initiator: flash_mint_caller, token: shrine, amount: third_loan_amt, fee: 0, call_data: calldata,
                 }
             ),
             flash_borrower_contract::Event::FlashLoancall_dataReceived(
                 flash_borrower_contract::FlashLoancall_dataReceived {
-                    initiator: flash_mint_caller,
-                    token: shrine,
-                    amount: fourth_loan_amt,
-                    fee: 0,
-                    call_data: calldata,
+                    initiator: flash_mint_caller, token: shrine, amount: fourth_loan_amt, fee: 0, call_data: calldata,
                 }
             ),
         ]
@@ -272,9 +226,7 @@ mod test_flash_mint {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(
-        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
-    )]
+    #[should_panic(expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint
@@ -288,11 +240,7 @@ mod test_flash_mint {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(
-        expected: (
-            'RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
-        )
-    )]
+    #[should_panic(expected: ('RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_reenter() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint

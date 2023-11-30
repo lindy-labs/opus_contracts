@@ -19,8 +19,7 @@ mod sentinel {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -184,9 +183,7 @@ mod sentinel {
             self.access_control.assert_has_role(sentinel_roles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
             assert(gate.is_non_zero(), 'SE: Gate cannot be zero address');
-            assert(
-                self.yang_to_gate.read(yang).contract_address.is_zero(), 'SE: Yang already added'
-            );
+            assert(self.yang_to_gate.read(yang).contract_address.is_zero(), 'SE: Yang already added');
 
             let gate = IGateDispatcher { contract_address: gate };
             assert(gate.get_asset() == yang, 'SE: Asset of gate is not yang');
@@ -201,14 +198,11 @@ mod sentinel {
             // Require an initial deposit when adding a yang to prevent first depositor from front-running
             let yang_erc20 = IERC20Dispatcher { contract_address: yang };
             // scale `asset_amt` up by the difference to match `Wad` precision of yang
-            let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
-                INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
-            );
+            let initial_yang_amt: Wad = wadray::fixed_point_to_wad(INITIAL_DEPOSIT_AMT, yang_erc20.decimals());
             let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
 
             let caller: ContractAddress = get_caller_address();
-            let success: bool = yang_erc20
-                .transfer_from(caller, gate.contract_address, initial_deposit_amt);
+            let success: bool = yang_erc20.transfer_from(caller, gate.contract_address, initial_deposit_amt);
             assert(success, 'SE: Yang transfer failed');
 
             let shrine: IShrineDispatcher = self.shrine.read();
@@ -254,11 +248,7 @@ mod sentinel {
         //
 
         fn enter(
-            ref self: ContractState,
-            yang: ContractAddress,
-            user: ContractAddress,
-            trove_id: u64,
-            asset_amt: u128
+            ref self: ContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128
         ) -> Wad {
             self.access_control.assert_has_role(sentinel_roles::ENTER);
 
@@ -269,11 +259,7 @@ mod sentinel {
         }
 
         fn exit(
-            ref self: ContractState,
-            yang: ContractAddress,
-            user: ContractAddress,
-            trove_id: u64,
-            yang_amt: Wad
+            ref self: ContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad
         ) -> u128 {
             self.access_control.assert_has_role(sentinel_roles::EXIT);
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
@@ -292,15 +278,10 @@ mod sentinel {
         // Helper function to check that `enter` is a valid operation at the current
         // on-chain conditions
         #[inline(always)]
-        fn assert_can_enter(
-            self: @ContractState, yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128
-        ) {
+        fn assert_can_enter(self: @ContractState, yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
             assert(self.yang_is_live.read(yang), 'SE: Gate is not live');
-            let suspension_status: YangSuspensionStatus = self
-                .shrine
-                .read()
-                .get_yang_suspension_status(yang);
+            let suspension_status: YangSuspensionStatus = self.shrine.read().get_yang_suspension_status(yang);
             assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
             let current_total: u128 = gate.get_total_assets();
             let max_amt: u128 = self.yang_asset_max.read(yang);

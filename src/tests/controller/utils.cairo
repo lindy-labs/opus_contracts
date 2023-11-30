@@ -50,12 +50,9 @@ mod controller_utils {
             BETA_I.into()
         ];
 
-        let controller_class_hash: ClassHash = class_hash_try_from_felt252(
-            controller_contract::TEST_CLASS_HASH
-        )
+        let controller_class_hash: ClassHash = class_hash_try_from_felt252(controller_contract::TEST_CLASS_HASH)
             .unwrap();
-        let (controller_addr, _) = deploy_syscall(controller_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let (controller_addr, _) = deploy_syscall(controller_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(shrine_utils::admin());

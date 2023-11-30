@@ -52,9 +52,7 @@ mod test_pragma {
         let admin: ContractAddress = pragma_utils::admin();
 
         assert(pragma_ac.get_admin() == admin, 'wrong admin');
-        assert(
-            pragma_ac.get_roles(admin) == pragma_roles::default_admin_role(), 'wrong admin role'
-        );
+        assert(pragma_ac.get_roles(admin) == pragma_roles::default_admin_role(), 'wrong admin role');
 
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         assert(oracle.get_name() == 'Pragma', 'wrong name');
@@ -65,8 +63,7 @@ mod test_pragma {
                 pragma_contract::PriceValidityThresholdsUpdated {
                     old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
                     new_thresholds: PriceValidityThresholds {
-                        freshness: pragma_utils::FRESHNESS_THRESHOLD,
-                        sources: pragma_utils::SOURCES_THRESHOLD
+                        freshness: pragma_utils::FRESHNESS_THRESHOLD, sources: pragma_utils::SOURCES_THRESHOLD
                     },
                 }
             ),
@@ -90,12 +87,9 @@ mod test_pragma {
             pragma_contract::Event::PriceValidityThresholdsUpdated(
                 pragma_contract::PriceValidityThresholdsUpdated {
                     old_thresholds: PriceValidityThresholds {
-                        freshness: pragma_utils::FRESHNESS_THRESHOLD,
-                        sources: pragma_utils::SOURCES_THRESHOLD
+                        freshness: pragma_utils::FRESHNESS_THRESHOLD, sources: pragma_utils::SOURCES_THRESHOLD
                     },
-                    new_thresholds: PriceValidityThresholds {
-                        freshness: new_freshness, sources: new_sources
-                    },
+                    new_thresholds: PriceValidityThresholds { freshness: new_freshness, sources: new_sources },
                 }
             ),
         ]
@@ -230,9 +224,7 @@ mod test_pragma {
                 pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
             ),
             pragma_contract::Event::YangPairIdSet(
-                pragma_contract::YangPairIdSet {
-                    address: pepe_token, pair_id: pepe_token_pair_id_2
-                },
+                pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id_2 },
             ),
         ]
             .span();
@@ -307,9 +299,7 @@ mod test_pragma {
     #[available_gas(20000000000)]
     fn test_fetch_price_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
-        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None
-        );
+        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
         pragma_utils::add_yangs_to_pragma(pragma, yangs);
 
         let eth_addr = *yangs.at(0);
@@ -349,9 +339,7 @@ mod test_pragma {
     #[available_gas(20000000000)]
     fn test_fetch_price_too_soon() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
-        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None
-        );
+        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
         pragma_utils::add_yangs_to_pragma(pragma, yangs);
 
         let eth_addr = *yangs.at(0);
@@ -394,9 +382,7 @@ mod test_pragma {
     #[available_gas(20000000000)]
     fn test_fetch_price_insufficient_sources() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy();
-        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None
-        );
+        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
         pragma_utils::add_yangs_to_pragma(pragma, yangs);
 
         let eth_addr = *yangs.at(0);

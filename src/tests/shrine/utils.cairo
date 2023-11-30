@@ -1,8 +1,6 @@
 mod shrine_utils {
     use debug::PrintTrait;
-    use integer::{
-        U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
-    };
+    use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,9 +14,8 @@ mod shrine_utils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
     };
 
     //
@@ -141,9 +138,7 @@ mod shrine_utils {
     }
 
     fn three_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![
-            yang1_addr(), yang2_addr(), yang3_addr()
-        ];
+        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr(), yang2_addr(), yang3_addr()];
         yang_addrs.span()
     }
 
@@ -156,9 +151,7 @@ mod shrine_utils {
     }
 
     fn three_yang_addrs_reversed() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![
-            yang3_addr(), yang2_addr(), yang1_addr(),
-        ];
+        let mut yang_addrs: Array<ContractAddress> = array![yang3_addr(), yang2_addr(), yang1_addr(),];
         yang_addrs.span()
     }
 
@@ -173,24 +166,17 @@ mod shrine_utils {
         };
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
-        ];
+        let mut calldata: Array<felt252> = array![contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,];
 
-        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(
-            shrine_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false)
-            .unwrap_syscall();
+        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(shrine_contract::TEST_CLASS_HASH).unwrap();
+        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false).unwrap_syscall();
 
         shrine_addr
     }
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
-        IAccessControlDispatcher { contract_address: shrine_addr }
-            .grant_role(shrine_roles::all_roles(), user);
+        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(shrine_roles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -244,10 +230,7 @@ mod shrine_utils {
 
     // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
     fn advance_prices_and_set_multiplier(
-        shrine: IShrineDispatcher,
-        num_intervals: u64,
-        yangs: Span<ContractAddress>,
-        yang_prices: Span<Wad>,
+        shrine: IShrineDispatcher, num_intervals: u64, yangs: Span<ContractAddress>, yang_prices: Span<Wad>,
     ) -> Span<Span<Wad>> {
         assert(yangs.len() == yang_prices.len(), 'Array lengths mismatch');
 
@@ -257,9 +240,7 @@ mod shrine_utils {
         let mut yang_prices_copy = yang_prices;
         loop {
             match yangs_copy.pop_front() {
-                Option::Some(_) => {
-                    yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
-                },
+                Option::Some(_) => { yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap())); },
                 Option::None => { break; },
             };
         };
@@ -281,9 +262,7 @@ mod shrine_utils {
             let mut yang_feeds_copy = yang_feeds;
             loop {
                 match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
-                    },
+                    Option::Some(yang) => { shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx)); },
                     Option::None => { break; },
                 };
             };
@@ -307,9 +286,7 @@ mod shrine_utils {
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
-        advance_prices_and_set_multiplier(
-            shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),
-        );
+        advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),);
         shrine
     }
 
@@ -350,9 +327,7 @@ mod shrine_utils {
     //
 
     fn consume_first_bit(ref hash: u128) -> bool {
-        let (reduced_hash, remainder) = u128_safe_divmod(
-            hash, u128_try_as_non_zero(2_u128).unwrap()
-        );
+        let (reduced_hash, remainder) = u128_safe_divmod(hash, u128_try_as_non_zero(2_u128).unwrap());
         hash = reduced_hash;
         remainder != 0_u128
     }
@@ -410,9 +385,7 @@ mod shrine_utils {
     fn calculate_max_forge(
         mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>
     ) -> Wad {
-        let (threshold, value) = calculate_trove_threshold_and_value(
-            yang_prices, yang_amts, yang_thresholds
-        );
+        let (threshold, value) = calculate_trove_threshold_and_value(yang_prices, yang_amts, yang_thresholds);
         wadray::rmul_wr(value, threshold)
     }
 
@@ -436,11 +409,7 @@ mod shrine_utils {
                     cumulative_value += value;
                     cumulative_threshold += wadray::wmul_wr(value, threshold);
                 },
-                Option::None => {
-                    break (
-                        wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value
-                    );
-                },
+                Option::None => { break (wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value); },
             };
         }
     }
@@ -488,10 +457,7 @@ mod shrine_utils {
         mut debt: Wad
     ) -> Wad {
         // Sanity check on input array lengths
-        assert(
-            yang_base_rates_history.len() == yang_rate_update_intervals.len(),
-            'array length mismatch'
-        );
+        assert(yang_base_rates_history.len() == yang_rate_update_intervals.len(), 'array length mismatch');
         assert(yang_base_rates_history.len() == yang_avg_prices.len(), 'array length mismatch');
         assert(yang_base_rates_history.len() == avg_multipliers.len(), 'array length mismatch');
         assert((*yang_base_rates_history.at(0)).len() == yang_amts.len(), 'array length mismatch');
@@ -501,9 +467,7 @@ mod shrine_utils {
             match yang_base_rates_history_copy.pop_front() {
                 Option::Some(base_rates_history) => {
                     assert(
-                        (*base_rates_history)
-                            .len() == (*yang_avg_prices_copy.pop_front().unwrap())
-                            .len(),
+                        (*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(),
                         'array length mismatch'
                     );
                 },
@@ -533,9 +497,7 @@ mod shrine_utils {
                 let yang_value: Wad = *yang_amts[j] * *yang_avg_prices.at(i)[j];
                 total_avg_yang_value += yang_value;
 
-                let weighted_rate: Ray = wadray::wmul_rw(
-                    *yang_base_rates_history.at(i)[j], yang_value
-                );
+                let weighted_rate: Ray = wadray::wmul_rw(*yang_base_rates_history.at(i)[j], yang_value);
                 weighted_rate_sum += weighted_rate;
 
                 j += 1;
@@ -580,10 +542,7 @@ mod shrine_utils {
 
     // Helper function to calculate average price of a yang over a period of intervals
     fn get_avg_yang_price(
-        shrine: IShrineDispatcher,
-        yang_addr: ContractAddress,
-        start_interval: u64,
-        end_interval: u64
+        shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64
     ) -> Wad {
         let feed_len: u128 = (end_interval - start_interval).into();
         let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
@@ -594,9 +553,7 @@ mod shrine_utils {
 
     // Helper function to calculate the average multiplier over a period of intervals
     // TODO: Do we need this? Maybe for when the controller is up
-    fn get_avg_multiplier(
-        shrine: IShrineDispatcher, start_interval: u64, end_interval: u64
-    ) -> Ray {
+    fn get_avg_multiplier(shrine: IShrineDispatcher, start_interval: u64, end_interval: u64) -> Ray {
         let feed_len: u128 = (end_interval - start_interval).into();
 
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
@@ -610,13 +567,7 @@ mod shrine_utils {
         // Deposit 1000 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
         // Mint 1 million yin (50% LTV at yang1's start price)
-        shrine
-            .forge(
-                common::trove1_owner_addr(),
-                common::WHALE_TROVE,
-                WHALE_TROVE_FORGE_AMT.into(),
-                0_u128.into()
-            );
+        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -647,9 +598,7 @@ mod shrine_utils {
     // the initial yang amount.
     // We do not check for strict equality because there may be loss of precision when
     // exceptionally redistributed yang are pulled into troves.
-    fn assert_total_yang_invariant(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
-    ) {
+    fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,) {
         let troves_loop_end: u64 = troves_count + 1;
 
         let mut yang_id: u32 = 1;
@@ -666,8 +615,7 @@ mod shrine_utils {
                         }
 
                         let mut trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
-                        let (mut redistributed_yangs, _) = shrine
-                            .get_redistributions_attributed_to_trove(trove_id);
+                        let (mut redistributed_yangs, _) = shrine.get_redistributions_attributed_to_trove(trove_id);
 
                         loop {
                             match redistributed_yangs.pop_front() {
@@ -765,14 +713,10 @@ mod shrine_utils {
         assert(total <= shrine_health.debt, 'debt invariant failed #1');
 
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(
-            total, shrine_health.debt, error_margin, 'debt invariant failed #2'
-        );
+        common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #2');
     }
 
-    fn assert_shrine_invariants(
-        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,
-    ) {
+    fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
         assert_total_troves_debt_invariant(shrine, yangs, troves_count);
     }

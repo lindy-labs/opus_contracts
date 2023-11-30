@@ -21,3 +21,4 @@ ktn = "katana --disable-fee --accounts 6 --seed 0x6f707573"
 
 [tool.fmt]
 sort-module-level-items = true
+max-line-length = 120

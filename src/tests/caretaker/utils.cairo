@@ -34,9 +34,7 @@ mod caretaker_utils {
         set_block_timestamp(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
-        let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
-            shrine.contract_address
-        );
+        let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(shrine.contract_address);
 
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
@@ -46,12 +44,8 @@ mod caretaker_utils {
             contract_address_to_felt252(equalizer.contract_address),
         ];
 
-        let caretaker_class_hash: ClassHash = class_hash_try_from_felt252(
-            caretaker_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (caretaker, _) = deploy_syscall(caretaker_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let caretaker_class_hash: ClassHash = class_hash_try_from_felt252(caretaker_contract::TEST_CLASS_HASH).unwrap();
+        let (caretaker, _) = deploy_syscall(caretaker_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         // allow Caretaker to do its business with Shrine
         set_contract_address(shrine_utils::admin());
