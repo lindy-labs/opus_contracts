@@ -18,7 +18,7 @@ mod test_pragma {
     use opus::types::pragma::{PricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
+    use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
