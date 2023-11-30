@@ -20,6 +20,7 @@ trait IShrine<TContractState> {
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, rate_era: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
+    fn get_minimum_trove_value(self: @TContractState) -> Wad;
     fn get_debt_ceiling(self: @TContractState) -> Wad;
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(
@@ -54,6 +55,7 @@ trait IShrine<TContractState> {
     fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TContractState, multiplier: Ray);
+    fn set_minimum_trove_value(ref self: TContractState, value: Wad);
     fn set_debt_ceiling(ref self: TContractState, ceiling: Wad);
     fn adjust_budget(ref self: TContractState, amount: SignedWad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
