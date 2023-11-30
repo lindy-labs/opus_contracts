@@ -1804,6 +1804,26 @@ mod test_shrine {
         shrine.inject(trove1_owner, inject_amt);
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_inject_exceeds_debt_ceiling_neg_budget_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let trove1_owner = common::trove1_owner_addr();
+
+        set_contract_address(shrine_utils::admin());
+
+        let inject_amt = shrine.get_debt_ceiling().into();
+        shrine.inject(trove1_owner, inject_amt);
+        assert(shrine.get_total_yin() == inject_amt, 'sanity check #1');
+
+        let deficit: SignedWad = SignedWad { val: 1, sign: true };
+        shrine.adjust_budget(deficit);
+        assert(shrine.get_budget() == deficit, 'sanity check #2');
+
+        shrine.inject(trove1_owner, 1_u128.into());
+    }
+
     //
     // Tests - Price and multiplier
     //
