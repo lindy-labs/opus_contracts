@@ -44,6 +44,7 @@ mod test_shrine {
         assert(shrine.get_live(), 'not live');
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
+        assert(shrine.get_minimum_trove_value().is_zero(), 'wrong min trove value');
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine_addr
@@ -64,7 +65,7 @@ mod test_shrine {
     }
 
     // Checks the following functions
-    // - `set_shrine_utils::DEBT_CEILING`
+    // - `set_debt_ceiling`
     // - `add_yang`
     // - initial threshold and value of Shrine
     #[test]
@@ -87,8 +88,12 @@ mod test_shrine {
             .span();
         //common::assert_events_emitted(shrine_addr, expected_events, Option::None);
 
-        // Check debt ceiling
+        // Check debt ceiling and minimum trove value
         let shrine = shrine_utils::shrine(shrine_addr);
+        assert(
+            shrine.get_minimum_trove_value() == shrine_utils::MINIMUM_TROVE_VALUE.into(),
+            'wrong min trove value'
+        );
         assert(
             shrine.get_debt_ceiling() == shrine_utils::DEBT_CEILING.into(), 'wrong debt ceiling'
         );
@@ -264,6 +269,37 @@ mod test_shrine {
             idx += 1;
         };
     //common::assert_s_emitted(shrine_addr, expected_events.span(), Option::None);
+    }
+
+    //
+    // Tests - Trove parameters
+    //
+
+    #[test]
+    fn test_set_trove_minimum_value() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        let new_value: Wad = (100 * WAD_ONE).into();
+        shrine.set_minimum_trove_value(new_value);
+        assert(shrine.get_minimum_trove_value() == new_value, 'wrong min trove value');
+    // let expected_events: Span<shrine_contract::Event> = array![
+    //     shrine_contract::Event::MinimumTroveValueUpdated(
+    //         shrine_contract::MinimumTroveValueUpdated { value: new_value }
+    //     ),
+    // ]
+    //     .span();
+    // common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_trove_minimum_value_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        start_prank(CheatTarget::One(shrine.contract_address), common::badguy());
+        let new_value: Wad = (100 * WAD_ONE).into();
+        shrine.set_minimum_trove_value(new_value);
     }
 
     //
@@ -834,6 +870,26 @@ mod test_shrine {
     }
 
     #[test]
+    #[should_panic(expected: ('SH: Below minimum trove value',))]
+    fn test_shrine_withdraw_trove_below_min_value_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Deposit 1 ETH and forge the smallest unit of debt
+        shrine_utils::trove1_deposit(shrine, WAD_ONE.into());
+        shrine_utils::trove1_forge(shrine, 1_u128.into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+
+        // Set ETH's price to exactly the minimum trove value
+        let eth: ContractAddress = shrine_utils::yang1_addr();
+        shrine.advance(eth, shrine_utils::MINIMUM_TROVE_VALUE.into());
+
+        // Withdraw the smallest unit of ETH yang
+        shrine.withdraw(eth, trove_id, 1_u128.into());
+    }
+
+    #[test]
     #[should_panic(expected: ('SH: Yang does not exist',))]
     fn test_shrine_withdraw_invalid_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -980,6 +1036,23 @@ mod test_shrine {
         ]
             .span();
     //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Below minimum trove value',))]
+    fn test_shrine_forge_trove_below_min_value_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Deposit 1 ETH
+        shrine_utils::trove1_deposit(shrine, WAD_ONE.into());
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+
+        // Set ETH's price to just below the minimum trove value
+        let eth: ContractAddress = shrine_utils::yang1_addr();
+        shrine.advance(eth, (shrine_utils::MINIMUM_TROVE_VALUE - 1).into());
+
+        shrine_utils::trove1_forge(shrine, 1_u128.into());
     }
 
     #[test]
@@ -1674,6 +1747,25 @@ mod test_shrine {
 
         let inject_amt = shrine.get_debt_ceiling() + 1_u128.into();
         shrine.inject(trove1_owner, inject_amt);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Debt ceiling reached',))]
+    fn test_shrine_inject_exceeds_debt_ceiling_neg_budget_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let trove1_owner = common::trove1_owner_addr();
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+
+        let inject_amt = shrine.get_debt_ceiling().into();
+        shrine.inject(trove1_owner, inject_amt);
+        assert(shrine.get_total_yin() == inject_amt, 'sanity check #1');
+
+        let deficit: SignedWad = SignedWad { val: 1, sign: true };
+        shrine.adjust_budget(deficit);
+        assert(shrine.get_budget() == deficit, 'sanity check #2');
+
+        shrine.inject(trove1_owner, 1_u128.into());
     }
 
     //
