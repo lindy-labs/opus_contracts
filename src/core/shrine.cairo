@@ -1181,6 +1181,7 @@ mod shrine {
             assert(self.is_live.read(), 'SH: System is not live');
         }
 
+        #[inline(always)]
         fn is_healthy_helper(self: @ContractState, health: Health) -> bool {
             health.ltv <= health.threshold
         }
