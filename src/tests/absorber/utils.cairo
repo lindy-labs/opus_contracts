@@ -43,7 +43,7 @@ mod absorber_utils {
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![
-            20 * WAD_ONE, // 10 (Wad) - ETH
+            20 * WAD_ONE, // 20 (Wad) - ETH
              100000000, // 1 (10 ** 8) - BTC
         ];
         asset_amts.span()

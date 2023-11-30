@@ -145,7 +145,7 @@ mod flash_liquidator {
     // Copy of `provider_asset_amts` in `absorber_utils`
     fn provider_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![
-            20 * WAD_ONE, // 10 (Wad) - ETH
+            20 * WAD_ONE, // 20 (Wad) - ETH
              100000000, // 1 (10 ** 8) - BTC
         ];
         asset_amts.span()

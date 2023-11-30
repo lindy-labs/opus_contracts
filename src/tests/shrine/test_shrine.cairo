@@ -287,8 +287,6 @@ mod test_shrine {
         let new_yang_start_price: Wad = 5000000000000000000_u128.into(); // 5 (Wad)
         let new_yang_rate: Ray = 60000000000000000000000000_u128.into(); // 6% (Ray)
 
-        // Commenting this out will result in the tests passing
-        // Keeping it here results in a "Failed setting up runner" error
         shrine
             .add_yang(
                 new_yang_address,

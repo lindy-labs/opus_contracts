@@ -5,4 +5,4 @@ workspace.code-workspace
 
 target/
 
-snfoundry_cache/
+.snfoundry_cache/
