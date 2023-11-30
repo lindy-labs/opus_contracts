@@ -36,6 +36,11 @@ mod address_registry_component {
         //
         // getters
         //
+
+        fn get_entry(self: @ComponentState<TContractState>, entry_id: u32) -> ContractAddress {
+            self.entries.read(entry_id)
+        }
+
         fn get_entries(self: @ComponentState<TContractState>) -> Span<ContractAddress> {
             let mut entries: Array<ContractAddress> = ArrayTrait::new();
 
