@@ -24,13 +24,17 @@ use starknet::{
 // Constants
 //
 
+const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
+const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
 const WBTC_DECIMALS: u8 = 8;
+const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
 
 // Trove constants
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
 const WHALE_TROVE: u64 = 0xb17b01;
+
 
 //
 // Constant addresses
@@ -55,6 +59,15 @@ fn trove3_owner_addr() -> ContractAddress {
 fn non_zero_address() -> ContractAddress {
     contract_address_try_from_felt252('nonzero address').unwrap()
 }
+
+fn eth_hoarder() -> ContractAddress {
+    contract_address_try_from_felt252('eth hoarder').unwrap()
+}
+
+fn wbtc_hoarder() -> ContractAddress {
+    contract_address_try_from_felt252('wbtc hoarder').unwrap()
+}
+
 
 //
 // Trait implementations
@@ -108,6 +121,16 @@ impl RewardPartialEq of PartialEq<Reward> {
 fn advance_intervals(intervals: u64) {
     set_block_timestamp(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
+
+
+fn eth_token_deploy() -> ContractAddress {
+    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder())
+}
+
+fn wbtc_token_deploy() -> ContractAddress {
+    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder())
+}
+
 
 // Helper function to deploy a token
 fn deploy_token(

@@ -145,15 +145,8 @@ mod sentinel {
             self.yang_asset_max.read(yang)
         }
 
-        // Returns 0 if the yang is invalid, as opposed to `convert_to_yang` and `convert_to_assets`
-        // Zero value will be handled by the oracle module so as to prevent price updates from failing
         fn get_asset_amt_per_yang(self: @ContractState, yang: ContractAddress) -> Wad {
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
-
-            if gate.contract_address.is_zero() {
-                return WadZeroable::zero();
-            }
-
             gate.get_asset_amt_per_yang()
         }
 

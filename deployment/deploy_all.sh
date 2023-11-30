@@ -58,12 +58,15 @@ SHRINE_ADDR=$(deploy_contract "opus_shrine" $OPUS_ADMIN_ADDR str:Cash str:CASH)
 FLASHMINT_ADDR=$(deploy_contract "opus_flash_mint" $SHRINE_ADDR)
 # Sentinel's constructor args are admin and Shrine addr
 SENTINEL_ADDR=$(deploy_contract "opus_sentinel" $OPUS_ADMIN_ADDR $SHRINE_ADDR)
+# Seer's constructor args are admin, Shrine addr, Sentinel addr, update frequency
+SEER_ADDR=$(deploy_contract "opus_seer" $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR 1800)
 # Abbot's constructor args are Shrine addr and Sentinel addr
 ABBOT_ADDR=$(deploy_contract "opus_abbot" $SHRINE_ADDR $SENTINEL_ADDR)
 # Absorber's constructor args are admin, Shrine addr, Sentinel addr
 ABSORBER_ADDR=$(deploy_contract "opus_absorber" $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR)
 # Mock Oracle's constructor arg is just Shrine addr
-MOCK_ORACLE_ADDR=$(deploy_contract "opus_mock_oracle" $SHRINE_ADDR)
+# MOCK_ORACLE_ADDR=$(deploy_contract "opus_mock_pragma" $SHRINE_ADDR) # TODO: revisit, maybe deploy mock pragma?
+MOCK_ORACLE_ADDR=0
 # Purger's constructor args are admin, Shrine addr, Sentinel addr, Absorber addr and Oracle addr
 PURGER_ADDR=$(deploy_contract "opus_purger" $OPUS_ADMIN_ADDR $SHRINE_ADDR $SENTINEL_ADDR $ABSORBER_ADDR $MOCK_ORACLE_ADDR)
 # Allocator's constructor args are admin, recipients (span of addrs) and percentages (span of Rays)
@@ -117,8 +120,8 @@ starkli invoke $SHRINE_ADDR grant_role 2048 $CONTROLLER_ADDR
 starkli invoke $SHRINE_ADDR grant_role 32 $EQUALIZER_ADDR
 # eject + inject to Flash mint
 starkli invoke $SHRINE_ADDR grant_role $((8 + 32)) $FLASHMINT_ADDR
-# advance to Oracle
-starkli invoke $SHRINE_ADDR grant_role 2 $MOCK_ORACLE_ADDR
+# advance to Seer
+starkli invoke $SHRINE_ADDR grant_role 2 $SEER_ADDR
 # melt + redistribute + seize to Purger
 starkli invoke $SHRINE_ADDR grant_role $((128 + 256 + 512)) $PURGER_ADDR /
 # add yang + update yang suspension to Sentinel
@@ -145,7 +148,7 @@ printf "------------------------------------------------------------------------
 addrs=("Abbot $ABBOT_ADDR" "Absorber $ABSORBER_ADDR" "Allocator $ALLOCATOR_ADDR"
     "Caretaker $CARETAKER_ADDR" "Controller $CONTROLLER_ADDR" "Equalizer $EQUALIZER_ADDR"
     "Gate[BTC] $BTC_GATE_ADDR" "Gate[ETH] $ETH_GATE_ADDR" "Flashmint $FLASHMINT_ADDR"
-    "Oracle $MOCK_ORACLE_ADDR" "Purger $PURGER_ADDR" "Sentinel $SENTINEL_ADDR"
+    "Oracle $MOCK_ORACLE_ADDR" "Purger $PURGER_ADDR" "Seer $SEER_ADDR" "Sentinel $SENTINEL_ADDR"
     "Shrine $SHRINE_ADDR" "Token[BTC] $BTC_ADDR"  "Token[ETH] $ETH_ADDR"
 )
 for tuple in "${addrs[@]}"; do

@@ -762,7 +762,6 @@ mod shrine {
                 + price;
 
             self.yang_prices.write((yang_id, interval), (price, cumulative_price));
-
             self.emit(YangPriceUpdated { yang, price, cumulative_price, interval });
         }
 

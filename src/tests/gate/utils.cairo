@@ -19,16 +19,6 @@ mod gate_utils {
     };
 
     //
-    // Constants
-    //
-
-    const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
-
-    const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
-
-    const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
-
-    //
     // Address constants
     //
 
@@ -36,27 +26,9 @@ mod gate_utils {
         contract_address_try_from_felt252('mock sentinel').unwrap()
     }
 
-    fn eth_hoarder() -> ContractAddress {
-        contract_address_try_from_felt252('eth hoarder').unwrap()
-    }
-
-    fn wbtc_hoarder() -> ContractAddress {
-        contract_address_try_from_felt252('wbtc hoarder').unwrap()
-    }
-
-
     //
     // Test setup helpers
     //
-
-    fn eth_token_deploy() -> ContractAddress {
-        common::deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder())
-    }
-
-    fn wbtc_token_deploy() -> ContractAddress {
-        common::deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder())
-    }
-
 
     fn gate_deploy(
         token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
@@ -78,14 +50,14 @@ mod gate_utils {
 
     fn eth_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
-        let eth: ContractAddress = eth_token_deploy();
+        let eth: ContractAddress = common::eth_token_deploy();
         let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel());
         (shrine, eth, gate)
     }
 
     fn wbtc_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
-        let wbtc: ContractAddress = wbtc_token_deploy();
+        let wbtc: ContractAddress = common::wbtc_token_deploy();
         let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel());
         (shrine, wbtc, gate)
     }
