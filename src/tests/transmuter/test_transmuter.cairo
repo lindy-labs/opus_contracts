@@ -1296,7 +1296,6 @@ mod test_transmuter {
                     );
 
                     // preview reclaim when transmuter has no assets
-                    'is zero'.print();
                     assert(
                         transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(),
                         'preview should be zero'

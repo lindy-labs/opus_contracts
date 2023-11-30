@@ -70,19 +70,13 @@ mod transmuter_registry {
         fn add_transmuter(ref self: ContractState, transmuter: ContractAddress) {
             self.access_control.assert_has_role(transmuter_registry_roles::MODIFY);
 
-            match self.registry.add_entry(transmuter) {
-                Result::Ok(_) => { return; },
-                Result::Err(_) => { panic_with_felt252('TRR: Transmuter already exists'); }
-            };
+            self.registry.add_entry(transmuter).expect('TRR: Transmuter already exists');
         }
 
         fn remove_transmuter(ref self: ContractState, transmuter: ContractAddress) {
             self.access_control.assert_has_role(transmuter_registry_roles::MODIFY);
 
-            match self.registry.remove_entry(transmuter) {
-                Result::Ok(_) => { return; },
-                Result::Err(_) => { panic_with_felt252('TRR: Transmuter does not exist'); }
-            };
+            self.registry.remove_entry(transmuter).expect('TRR: Transmuter does not exist');
         }
     }
 }
