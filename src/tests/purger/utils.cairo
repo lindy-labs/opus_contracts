@@ -48,6 +48,23 @@ mod purger_utils {
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
+
+    // Struct to group together all contract classes
+    // needed for purger tests
+    #[derive(Copy, Drop)]
+    struct PurgerTestClasses {
+        abbot: Option<ContractClass>,
+        sentinel: Option<ContractClass>,
+        token: Option<ContractClass>,
+        gate: Option<ContractClass>,
+        shrine: Option<ContractClass>,
+        absorber: Option<ContractClass>,
+        blesser: ContractClass,
+        purger: ContractClass,
+        pragma: Option<ContractClass>,
+        mock_pragma: Option<ContractClass>,
+    }
+
     //
     // Address constants
     //
@@ -312,16 +329,7 @@ mod purger_utils {
     //
 
     fn purger_deploy(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
-        blesser_class: Option<ContractClass>,
-        purger_class: Option<ContractClass>,
-        pragma_class: Option<ContractClass>,
-        mock_pragma_class: Option<ContractClass>,
+        classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -331,33 +339,31 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let token_class = Option::Some(
-            match token_class {
-                Option::Some(class) => class,
-                Option::None => declare('erc20_mintable'),
-            }
-        );
-
-        let blesser_class = match blesser_class {
-            Option::Some(class) => class,
-            Option::None => declare('blesser'),
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class,
+            classes.abbot,
+            classes.sentinel,
+            classes.token,
+            classes.gate,
+            classes.shrine,
+            classes.absorber,
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(
-            token_class
+            classes.token
         );
 
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing, blesser_class
+            absorber, reward_tokens, reward_amts_per_blessing, classes.blesser
         );
 
         let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
-            sentinel, shrine.contract_address, pragma_class, mock_pragma_class
+            sentinel, shrine.contract_address, classes.pragma, classes.mock_pragma
         );
         pragma_utils::add_yangs_to_pragma(oracle, yangs);
 
@@ -387,12 +393,7 @@ mod purger_utils {
             contract_address_to_felt252(oracle.contract_address)
         ];
 
-        let purger_class = match purger_class {
-            Option::Some(class) => class,
-            Option::None => declare('purger'),
-        };
-
-        let purger_addr = purger_class.deploy(@calldata).expect('failed deploy purger');
+        let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
@@ -426,17 +427,7 @@ mod purger_utils {
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad,
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
-        purger_class: Option<ContractClass>,
-        blesser_class: Option<ContractClass>,
-        pragma_class: Option<ContractClass>,
-        mock_pragma_class: Option<ContractClass>,
+        searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -446,18 +437,7 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            absorber_class,
-            shrine_class,
-            purger_class,
-            blesser_class,
-            pragma_class,
-            mock_pragma_class,
-        );
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(classes);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
@@ -788,29 +768,18 @@ mod purger_utils {
         sum
     }
 
-    fn declare_contracts() -> (
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>
-    ) {
-        (
-            Option::Some(declare('abbot')),
-            Option::Some(declare('sentinel')),
-            Option::Some(declare('erc20_mintable')),
-            Option::Some(declare('gate')),
-            Option::Some(declare('shrine')),
-            Option::Some(declare('absorber')),
-            Option::Some(declare('blesser')),
-            Option::Some(declare('purger')),
-            Option::Some(declare('pragma')),
-            Option::Some(declare('mock_pragma')),
-        )
+    fn declare_contracts() -> PurgerTestClasses {
+        PurgerTestClasses {
+            abbot: Option::Some(declare('abbot')),
+            sentinel: Option::Some(declare('sentinel')),
+            token: Option::Some(declare('erc20_mintable')),
+            gate: Option::Some(declare('gate')),
+            shrine: Option::Some(declare('shrine')),
+            absorber: Option::Some(declare('absorber')),
+            blesser: declare('blesser'),
+            purger: declare('purger'),
+            pragma: Option::Some(declare('pragma')),
+            mock_pragma: Option::Some(declare('mock_pragma')),
+        }
     }
 }

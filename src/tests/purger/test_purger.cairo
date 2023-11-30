@@ -38,18 +38,7 @@ mod test_purger {
 
     #[test]
     fn test_purger_setup() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
-        );
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
         assert(
             purger_ac.get_roles(purger_utils::admin()) == purger_roles::default_admin_role(),
@@ -72,15 +61,6 @@ mod test_purger {
     #[test]
     fn test_set_penalty_scalar_pass() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
             Option::None
         );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
@@ -178,15 +158,6 @@ mod test_purger {
     #[test]
     fn test_penalty_scalar_lower_bound() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
             Option::None
         );
 
@@ -241,18 +212,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_low_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
-        );
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MIN_PENALTY_SCALAR - 1).into());
@@ -261,18 +221,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_high_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
-        );
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MAX_PENALTY_SCALAR + 1).into());
@@ -281,18 +230,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_penalty_scalar_unauthorized_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
-        );
+        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), common::badguy());
         purger.set_penalty_scalar(RAY_ONE.into());
@@ -310,19 +248,7 @@ mod test_purger {
     // value instead. See inline comments for more details.
     #[test]
     fn test_preview_liquidate_parametrized() {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
@@ -417,16 +343,7 @@ mod test_purger {
                             Option::Some(is_recovery_mode) => {
                                 let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
-                                    abbot_class,
-                                    sentinel_class,
-                                    token_class,
-                                    gate_class,
-                                    shrine_class,
-                                    absorber_class,
-                                    blesser_class,
-                                    purger_class,
-                                    pragma_class,
-                                    mock_pragma_class
+                                    classes
                                 );
 
                                 if !(*is_recovery_mode) {
@@ -568,17 +485,7 @@ mod test_purger {
         let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            searcher_start_yin, Option::None
         );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -703,17 +610,7 @@ mod test_purger {
     fn test_liquidate_with_flashmint_pass() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -790,19 +687,7 @@ mod test_purger {
     // 2. trove's debt is reduced by the close amount
     // 3. If it is not a full liquidation, then the post-liquidation LTV is at the target safety margin
     fn test_liquidate(mut thresholds: Span<Ray>, expected_safe_ltv_count: usize) {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
@@ -852,17 +737,7 @@ mod test_purger {
                                                 shrine, abbot, mock_pragma, _, purger, yangs, gates
                                             ) =
                                                 purger_utils::purger_deploy_with_searcher(
-                                                searcher_start_yin,
-                                                abbot_class,
-                                                sentinel_class,
-                                                token_class,
-                                                gate_class,
-                                                shrine_class,
-                                                absorber_class,
-                                                blesser_class,
-                                                purger_class,
-                                                pragma_class,
-                                                mock_pragma_class
+                                                searcher_start_yin, classes
                                             );
 
                                             if !(*is_recovery_mode) {
@@ -1097,17 +972,7 @@ mod test_purger {
     #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -1124,17 +989,7 @@ mod test_purger {
     #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
@@ -1167,17 +1022,7 @@ mod test_purger {
 
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_yin,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            searcher_yin, Option::None
         );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
         let target_trove: u64 = purger_utils::funded_healthy_trove(
@@ -1217,19 +1062,7 @@ mod test_purger {
     // `lower_prices_to_raise_trove_ltv` may not put the trove in the exact LTV as the threshold.
     #[test]
     fn test_preview_absorb_below_trove_debt_parametrized() {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         let mut interesting_thresholds =
@@ -1272,16 +1105,7 @@ mod test_purger {
                             Option::Some(is_recovery_mode) => {
                                 let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
-                                    abbot_class,
-                                    sentinel_class,
-                                    token_class,
-                                    gate_class,
-                                    shrine_class,
-                                    absorber_class,
-                                    blesser_class,
-                                    purger_class,
-                                    pragma_class,
-                                    mock_pragma_class
+                                    classes
                                 );
 
                                 start_prank(
@@ -1395,17 +1219,7 @@ mod test_purger {
     fn test_full_absorb_pass() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(
@@ -1572,19 +1386,7 @@ mod test_purger {
     fn test_partial_absorb_with_redistribution_entire_trove_debt(
         recipient_trove_yang_asset_amts_param: Span<Span<u128>>
     ) {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
@@ -1623,16 +1425,7 @@ mod test_purger {
                                                         gates
                                                     ) =
                                                         purger_utils::purger_deploy(
-                                                        abbot_class,
-                                                        sentinel_class,
-                                                        token_class,
-                                                        gate_class,
-                                                        shrine_class,
-                                                        absorber_class,
-                                                        blesser_class,
-                                                        purger_class,
-                                                        pragma_class,
-                                                        mock_pragma_class
+                                                        classes
                                                     );
 
                                                     start_prank(
@@ -2062,19 +1855,7 @@ mod test_purger {
         is_recovery_mode: bool,
         absorber_yin_idx: usize
     ) {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
@@ -2119,16 +1900,7 @@ mod test_purger {
                                                 gates
                                             ) =
                                                 purger_utils::purger_deploy(
-                                                abbot_class,
-                                                sentinel_class,
-                                                token_class,
-                                                gate_class,
-                                                shrine_class,
-                                                absorber_class,
-                                                blesser_class,
-                                                purger_class,
-                                                pragma_class,
-                                                mock_pragma_class
+                                                classes
                                             );
 
                                             let target_trove_owner: ContractAddress =
@@ -2866,19 +2638,7 @@ mod test_purger {
     // Note that the absorber has zero shares in this test because no provider has
     // provided yin yet.
     fn test_absorb_full_redistribution(recipient_trove_yang_asset_amts_param: Span<Span<u128>>) {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let mut target_trove_yang_asset_amts_cases =
             purger_utils::interesting_yang_amts_for_redistributed_trove();
@@ -2914,16 +2674,7 @@ mod test_purger {
                                                             gates
                                                         ) =
                                                             purger_utils::purger_deploy(
-                                                            abbot_class,
-                                                            sentinel_class,
-                                                            token_class,
-                                                            gate_class,
-                                                            shrine_class,
-                                                            absorber_class,
-                                                            blesser_class,
-                                                            purger_class,
-                                                            pragma_class,
-                                                            mock_pragma_class
+                                                            classes
                                                         );
 
                                                         start_prank(
@@ -3290,19 +3041,7 @@ mod test_purger {
     // 2. trove's debt is reduced by the close amount, which is less than the trove's debt
     #[test]
     fn test_absorb_less_than_trove_debt_parametrized() {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
@@ -3335,16 +3074,7 @@ mod test_purger {
                                                 gates
                                             ) =
                                                 purger_utils::purger_deploy(
-                                                abbot_class,
-                                                sentinel_class,
-                                                token_class,
-                                                gate_class,
-                                                shrine_class,
-                                                absorber_class,
-                                                blesser_class,
-                                                purger_class,
-                                                pragma_class,
-                                                mock_pragma_class
+                                                classes
                                             );
 
                                             // Set thresholds to provided value
@@ -3557,19 +3287,7 @@ mod test_purger {
     // and the LTV at liquidation, and checks that the trove's debt is absorbed in full for thresholds
     // from 78.74% onwards.
     fn test_absorb_trove_debt(is_recovery_mode: bool) {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         let mut thresholds: Span<Ray> =
@@ -3609,16 +3327,7 @@ mod test_purger {
                             Option::Some(target_ltv) => {
                                 let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                                     purger_utils::purger_deploy(
-                                    abbot_class,
-                                    sentinel_class,
-                                    token_class,
-                                    gate_class,
-                                    shrine_class,
-                                    absorber_class,
-                                    blesser_class,
-                                    purger_class,
-                                    pragma_class,
-                                    mock_pragma_class
+                                    classes
                                 );
 
                                 // Set thresholds to provided value
@@ -3816,17 +3525,7 @@ mod test_purger {
     fn test_absorb_trove_healthy_fail() {
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         let trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
@@ -3847,17 +3546,7 @@ mod test_purger {
     fn test_absorb_below_absorbable_ltv_fail() {
         let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
@@ -3892,19 +3581,7 @@ mod test_purger {
     // 0.01% is not absorbable.
     #[test]
     fn test_absorb_marginally_below_absorbable_ltv_not_absorbable() {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class,
-            purger_class,
-            pragma_class,
-            mock_pragma_class
-        ) =
-            purger_utils::declare_contracts();
+        let classes = Option::Some(purger_utils::declare_contracts());
         let yang_pair_ids = pragma_utils::yang_pair_ids();
 
         let (mut thresholds, mut target_ltvs) =
@@ -3916,17 +3593,7 @@ mod test_purger {
                     let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
                     let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         purger_utils::purger_deploy_with_searcher(
-                        searcher_start_yin,
-                        abbot_class,
-                        sentinel_class,
-                        token_class,
-                        gate_class,
-                        shrine_class,
-                        absorber_class,
-                        blesser_class,
-                        purger_class,
-                        pragma_class,
-                        mock_pragma_class
+                        searcher_start_yin, classes
                     );
 
                     purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -3978,17 +3645,7 @@ mod test_purger {
     fn test_liquidate_suspended_yang() {
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         // user 1 opens a trove with ETH and BTC that is close to liquidation
@@ -4081,17 +3738,7 @@ mod test_purger {
     fn test_liquidate_suspended_yang_threshold_near_zero() {
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            purger_utils::SEARCHER_YIN.into(),
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
         // We run the same tests using both searcher liquidations and absorptions as the liquidation methods.
@@ -4357,17 +4004,7 @@ mod test_purger {
         // by only deploying the contracts once for all parametrizations
         let (shrine, abbot, _, absorber, purger, yangs, gates) =
             purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None,
-            Option::None
+            searcher_start_yin, Option::None
         );
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
