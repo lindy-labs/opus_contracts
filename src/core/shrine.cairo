@@ -1168,7 +1168,7 @@ mod shrine {
         // check that the new total amount of yin is less than the debt ceiling.  
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
             let budget_adjustment: Wad = match new_budget.try_into() {
-                Option::Some(val) => { val },
+                Option::Some(surplus) => { surplus },
                 Option::None => { WadZeroable::zero() }
             };
             let new_total_debt: Wad = new_total_yin + budget_adjustment;
