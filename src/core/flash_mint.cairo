@@ -20,7 +20,8 @@ mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::Wad;
+    use opus::utils::wadray::{Wad, WadZeroable};
+    use opus::utils::wadray_signed;
     use starknet::{ContractAddress, get_caller_address};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -119,9 +120,18 @@ mod flash_mint {
             let amount_wad: Wad = amount.try_into().unwrap();
 
             // temporarily increase the debt ceiling by the loan amount so that
-            // flash loans still work when total yin is at the debt ceiling
+            // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
-            shrine.set_debt_ceiling(ceiling + amount_wad);
+            let total_yin: Wad = shrine.get_total_yin();
+            let budget_adjustment: Wad = match shrine.get_budget().try_into() {
+                Option::Some(surplus) => { surplus },
+                Option::None => { WadZeroable::zero() }
+            };
+            let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(total_yin + amount_wad + budget_adjustment);
+            }
+
             shrine.inject(receiver, amount_wad);
 
             let initiator: ContractAddress = get_caller_address();
@@ -134,7 +144,9 @@ mod flash_mint {
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
 
-            shrine.set_debt_ceiling(ceiling);
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(ceiling);
+            }
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 
