@@ -27,9 +27,7 @@ mod test_allocator {
         assert(recipients.len() == 3, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
-        let allocator_ac = IAccessControlDispatcher {
-            contract_address: allocator.contract_address
-        };
+        let allocator_ac = IAccessControlDispatcher { contract_address: allocator.contract_address };
         let admin = shrine_utils::admin();
         assert(allocator_ac.get_admin() == admin, 'wrong admin');
         assert(allocator_ac.get_roles(admin) == allocator_roles::SET_ALLOCATION, 'wrong role');
@@ -43,9 +41,7 @@ mod test_allocator {
         let mut recipients = equalizer_utils::initial_recipients();
         let _ = recipients.pop_front();
 
-        let _ = equalizer_utils::allocator_deploy(
-            recipients, equalizer_utils::initial_percentages()
-        );
+        let _ = equalizer_utils::allocator_deploy(recipients, equalizer_utils::initial_percentages());
     }
 
     #[test]
@@ -148,7 +144,6 @@ mod test_allocator {
         );
 
         set_contract_address(common::badguy());
-        allocator
-            .set_allocation(equalizer_utils::new_recipients(), equalizer_utils::new_percentages());
+        allocator.set_allocation(equalizer_utils::new_recipients(), equalizer_utils::new_percentages());
     }
 }

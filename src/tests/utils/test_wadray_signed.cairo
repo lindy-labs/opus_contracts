@@ -4,8 +4,7 @@ mod test_wadray_signed {
     use opus::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{
-        Signed, SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable,
-        SignedWadZeroable
+        Signed, SignedRay, SignedRayOneable, SignedRayZeroable, SignedWad, SignedWadOneable, SignedWadZeroable
     };
     use opus::utils::wadray_signed;
 

@@ -16,8 +16,8 @@ mod seer_utils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use starknet::{
-        class_hash_try_from_felt252, contract_address_to_felt252, contract_address_try_from_felt252,
-        deploy_syscall, get_block_timestamp, ClassHash, ContractAddress, SyscallResultTrait
+        class_hash_try_from_felt252, contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
+        get_block_timestamp, ClassHash, ContractAddress, SyscallResultTrait
     };
 
     //
@@ -54,11 +54,9 @@ mod seer_utils {
             UPDATE_FREQUENCY.into()
         ];
 
-        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH)
-            .unwrap();
+        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH).unwrap();
 
-        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
@@ -80,11 +78,9 @@ mod seer_utils {
             UPDATE_FREQUENCY.into()
         ];
 
-        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH)
-            .unwrap();
+        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH).unwrap();
 
-        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };

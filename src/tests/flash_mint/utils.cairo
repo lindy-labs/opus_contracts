@@ -11,8 +11,8 @@ mod flash_mint_utils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        SyscallResultTrait
     };
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
@@ -27,12 +27,9 @@ mod flash_mint_utils {
     fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
         let mut calldata = array![contract_address_to_felt252(shrine)];
 
-        let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(
-            flash_mint_contract::TEST_CLASS_HASH
-        )
+        let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(flash_mint_contract::TEST_CLASS_HASH)
             .unwrap();
-        let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false).unwrap_syscall();
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role
@@ -54,8 +51,7 @@ mod flash_mint_utils {
             shrine_dispatcher,
             3,
             shrine_utils::three_yang_addrs(),
-            array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()]
-                .span(),
+            array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()].span(),
         );
 
         // Mint some yin in shrine
@@ -67,13 +63,9 @@ mod flash_mint_utils {
     fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
         let mut calldata = array![contract_address_to_felt252(flashmint)];
 
-        let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(
-            flash_borrower_contract::TEST_CLASS_HASH
-        )
+        let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(flash_borrower_contract::TEST_CLASS_HASH)
             .unwrap();
-        let (flash_borrower_addr, _) = deploy_syscall(
-            flash_borrower_class_hash, 0, calldata.span(), false
-        )
+        let (flash_borrower_addr, _) = deploy_syscall(flash_borrower_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
         flash_borrower_addr
     }

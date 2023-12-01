@@ -51,16 +51,9 @@ mod test_math {
 
         let ERROR_MARGIN = Ray { val: 1000 };
 
-        assert_equalish(
-            (4 * RAY_ONE).into(), pow(sqrt((4 * RAY_ONE).into()), 2), ERROR_MARGIN, 'wrong sqrt #6'
-        );
+        assert_equalish((4 * RAY_ONE).into(), pow(sqrt((4 * RAY_ONE).into()), 2), ERROR_MARGIN, 'wrong sqrt #6');
 
-        assert_equalish(
-            (1000 * RAY_ONE).into(),
-            pow(sqrt((1000 * RAY_ONE).into()), 2),
-            ERROR_MARGIN,
-            'wrong sqrt #7'
-        );
+        assert_equalish((1000 * RAY_ONE).into(), pow(sqrt((1000 * RAY_ONE).into()), 2), ERROR_MARGIN, 'wrong sqrt #7');
 
         // tau
         assert_equalish(
@@ -94,10 +87,7 @@ mod test_math {
         );
 
         assert_equalish(
-            pow::<Ray>(1414213562373095048801688724_u128.into(), 4),
-            (4 * RAY_ONE).into(),
-            ERROR_MARGIN,
-            'wrong pow #6'
+            pow::<Ray>(1414213562373095048801688724_u128.into(), 4), (4 * RAY_ONE).into(), ERROR_MARGIN, 'wrong pow #6'
         );
     }
 }

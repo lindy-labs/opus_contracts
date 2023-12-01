@@ -11,8 +11,6 @@ trait IPurger<TContractState> {
     fn get_penalty_scalar(self: @TContractState) -> Ray;
     // external
     fn set_penalty_scalar(ref self: TContractState, new_scalar: Ray);
-    fn liquidate(
-        ref self: TContractState, trove_id: u64, amt: Wad, recipient: ContractAddress
-    ) -> Span<AssetBalance>;
+    fn liquidate(ref self: TContractState, trove_id: u64, amt: Wad, recipient: ContractAddress) -> Span<AssetBalance>;
     fn absorb(ref self: TContractState, trove_id: u64) -> Span<AssetBalance>;
 }

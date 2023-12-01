@@ -11,8 +11,8 @@ mod equalizer_utils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, SyscallResultTrait
     };
 
     //
@@ -71,18 +71,14 @@ mod equalizer_utils {
     // Test setup helpers
     //
 
-    fn allocator_deploy(
-        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>
-    ) -> IAllocatorDispatcher {
+    fn allocator_deploy(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) -> IAllocatorDispatcher {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine_utils::admin()), recipients.len().into(),
         ];
 
         loop {
             match recipients.pop_front() {
-                Option::Some(recipient) => {
-                    calldata.append(contract_address_to_felt252(*recipient));
-                },
+                Option::Some(recipient) => { calldata.append(contract_address_to_felt252(*recipient)); },
                 Option::None => { break; }
             };
         };
@@ -98,12 +94,8 @@ mod equalizer_utils {
             };
         };
 
-        let allocator_class_hash: ClassHash = class_hash_try_from_felt252(
-            allocator_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (allocator_addr, _) = deploy_syscall(allocator_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let allocator_class_hash: ClassHash = class_hash_try_from_felt252(allocator_contract::TEST_CLASS_HASH).unwrap();
+        let (allocator_addr, _) = deploy_syscall(allocator_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         IAllocatorDispatcher { contract_address: allocator_addr }
     }
@@ -116,9 +108,7 @@ mod equalizer_utils {
     fn equalizer_deploy_with_shrine(
         shrine: ContractAddress
     ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
-        let allocator: IAllocatorDispatcher = allocator_deploy(
-            initial_recipients(), initial_percentages()
-        );
+        let allocator: IAllocatorDispatcher = allocator_deploy(initial_recipients(), initial_percentages());
         let admin = shrine_utils::admin();
 
         let mut calldata: Array<felt252> = array![
@@ -127,21 +117,13 @@ mod equalizer_utils {
             contract_address_to_felt252(allocator.contract_address),
         ];
 
-        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(
-            equalizer_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
-        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: equalizer_addr
-        };
+        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(equalizer_contract::TEST_CLASS_HASH).unwrap();
+        let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };
         set_contract_address(admin);
         equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
-        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: shrine
-        };
+        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
 
         set_contract_address(ContractAddressZeroable::zero());

@@ -51,14 +51,9 @@ mod pragma_utils {
 
     fn mock_pragma_deploy() -> IMockPragmaDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
-        let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
-            mock_pragma_contract::TEST_CLASS_HASH
-        )
+        let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(mock_pragma_contract::TEST_CLASS_HASH)
             .unwrap();
-        let (mock_pragma_addr, _) = deploy_syscall(
-            mock_pragma_class_hash, 0, calldata.span(), false
-        )
-            .unwrap_syscall();
+        let (mock_pragma_addr, _) = deploy_syscall(mock_pragma_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
@@ -72,12 +67,8 @@ mod pragma_utils {
             SOURCES_THRESHOLD.into(),
         ];
 
-        let pragma_class_hash: ClassHash = class_hash_try_from_felt252(
-            pragma_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (pragma_addr, _) = deploy_syscall(pragma_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let pragma_class_hash: ClassHash = class_hash_try_from_felt252(pragma_contract::TEST_CLASS_HASH).unwrap();
+        let (pragma_addr, _) = deploy_syscall(pragma_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
@@ -93,12 +84,8 @@ mod pragma_utils {
         // need to provide a valid mock response for it to pass
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
-        mock_valid_price_update(
-            mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp()
-        );
-        mock_valid_price_update(
-            mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp()
-        );
+        mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
+        mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         set_contract_address(admin());
 
@@ -135,9 +122,7 @@ mod pragma_utils {
 
     // Helper function to add a valid price update to the mock Pragma oracle
     // using default values for decimals and number of sources.
-    fn mock_valid_price_update(
-        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
-    ) {
+    fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
         let response = PricesResponse {
             price: convert_price_to_pragma_scale(price).into(),
             decimals: PRAGMA_DECIMALS.into(),

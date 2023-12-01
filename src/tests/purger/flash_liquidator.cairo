@@ -4,10 +4,7 @@ use starknet::ContractAddress;
 #[starknet::interface]
 trait IFlashLiquidator<TContractState> {
     fn flash_liquidate(
-        ref self: TContractState,
-        trove_id: u64,
-        yangs: Span<ContractAddress>,
-        gates: Span<IGateDispatcher>
+        ref self: TContractState, trove_id: u64, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
     );
 }
 
@@ -55,10 +52,7 @@ mod flash_liquidator {
     #[abi(embed_v0)]
     impl IFlashLiquidatorImpl of super::IFlashLiquidator<ContractState> {
         fn flash_liquidate(
-            ref self: ContractState,
-            trove_id: u64,
-            mut yangs: Span<ContractAddress>,
-            mut gates: Span<IGateDispatcher>
+            ref self: ContractState, trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>
         ) {
             // Approve gate for tokens
             loop {
@@ -73,9 +67,7 @@ mod flash_liquidator {
             };
 
             let purger: IPurgerDispatcher = self.purger.read();
-            let (_, max_close_amt) = purger
-                .preview_liquidate(trove_id)
-                .expect('FL: not liquidatable');
+            let (_, max_close_amt) = purger.preview_liquidate(trove_id).expect('FL: not liquidatable');
             let mut call_data: Array<felt252> = array![trove_id.into()];
 
             self
@@ -123,8 +115,7 @@ mod flash_liquidator {
                             .append(
                                 AssetBalance {
                                     address: *freed_asset.address,
-                                    amount: *freed_asset.amount
-                                        + *provider_assets.pop_front().unwrap()
+                                    amount: *freed_asset.amount + *provider_assets.pop_front().unwrap()
                                 }
                             );
                     },
@@ -135,10 +126,7 @@ mod flash_liquidator {
             // Open a trove with funded and freed assets, and mint the loan amount.
             // This should revert if the contract did not receive the freed assets
             // from the liquidation.
-            self
-                .abbot
-                .read()
-                .open_trove(updated_assets.span(), amount.try_into().unwrap(), WadZeroable::zero());
+            self.abbot.read().open_trove(updated_assets.span(), amount.try_into().unwrap(), WadZeroable::zero());
 
             ON_FLASH_MINT_SUCCESS
         }

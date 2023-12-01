@@ -20,13 +20,10 @@ mod caretaker {
     //
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
+    component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
@@ -150,8 +147,7 @@ mod caretaker {
                             sentinel.convert_to_assets(*yang, deposited_yang)
                         };
 
-                        releasable_assets
-                            .append(AssetBalance { address: *yang, amount: asset_amt });
+                        releasable_assets.append(AssetBalance { address: *yang, amount: asset_amt });
                     },
                     Option::None => { break releasable_assets.span(); },
                 };
@@ -182,15 +178,9 @@ mod caretaker {
                 match yangs_copy.pop_front() {
                     Option::Some(yang) => {
                         let asset = IERC20Dispatcher { contract_address: *yang };
-                        let caretaker_balance: u128 = asset
-                            .balance_of(caretaker)
-                            .try_into()
-                            .unwrap();
-                        let asset_amt: Wad = wadray::rmul_rw(
-                            pct_to_reclaim, caretaker_balance.into()
-                        );
-                        reclaimable_assets
-                            .append(AssetBalance { address: *yang, amount: asset_amt.val });
+                        let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
+                        let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
+                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
                     Option::None => { break (capped_yin, reclaimable_assets.span()); },
                 };
@@ -243,9 +233,7 @@ mod caretaker {
             loop {
                 match yangs_copy.pop_front() {
                     Option::Some(yang) => {
-                        let backed_yang: Wad = wadray::rmul_rw(
-                            capped_backing_pct, shrine.get_yang_total(*yang)
-                        );
+                        let backed_yang: Wad = wadray::rmul_rw(capped_backing_pct, shrine.get_yang_total(*yang));
                         sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
                     },
                     Option::None => { break; },
@@ -302,8 +290,7 @@ mod caretaker {
                         let asset_amt: u128 = if deposited_yang.is_zero() {
                             0
                         } else {
-                            let exit_amt: u128 = sentinel
-                                .exit(*yang, trove_owner, trove_id, deposited_yang);
+                            let exit_amt: u128 = sentinel.exit(*yang, trove_owner, trove_id, deposited_yang);
                             // Seize the collateral only after assets have been
                             // transferred so that the asset amount per yang in Gate
                             // does not change and user receives the correct amount
@@ -368,9 +355,7 @@ mod caretaker {
                             continue;
                         }
 
-                        let success: bool = IERC20Dispatcher {
-                            contract_address: *reclaimable_asset.address
-                        }
+                        let success: bool = IERC20Dispatcher { contract_address: *reclaimable_asset.address }
                             .transfer(caller, (*reclaimable_asset.amount).into());
                         assert(success, 'CA: Asset transfer failed');
                     },
@@ -378,10 +363,7 @@ mod caretaker {
                 };
             };
 
-            self
-                .emit(
-                    Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets }
-                );
+            self.emit(Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets });
 
             self.reentrancy_guard.end();
             (reclaimable_yin, reclaimable_assets)

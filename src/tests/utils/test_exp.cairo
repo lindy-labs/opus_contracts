@@ -12,32 +12,21 @@ mod test_exp {
     fn test_exp_basic() {
         // Basic tests
         assert(exp(Wad { val: 0 }) == Wad { val: WAD_ONE }, 'Incorrect e^0 result');
-        assert(
-            exp(Wad { val: WAD_ONE }) == Wad { val: 2718281828459045235 }, 'Incorrect e^1 result'
-        );
+        assert(exp(Wad { val: WAD_ONE }) == Wad { val: 2718281828459045235 }, 'Incorrect e^1 result');
 
         let res = exp(Wad { val: WAD_PERCENT * 2 });
         assert_equalish(
-            res,
-            Wad { val: 1020201340026755810 },
-            ACCEPTABLE_ERROR.into(),
-            'exp-test: error exceeds bounds'
+            res, Wad { val: 1020201340026755810 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
         );
 
         let res = exp(Wad { val: WAD_ONE * 10 });
         assert_equalish(
-            res,
-            Wad { val: 22026465794806716516957 },
-            ACCEPTABLE_ERROR.into(),
-            'exp-test: error exceeds bounds'
+            res, Wad { val: 22026465794806716516957 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
         );
 
         let res = exp(Wad { val: WAD_ONE * 20 });
         assert_equalish(
-            res,
-            Wad { val: 485165195409790277969106830 },
-            ACCEPTABLE_ERROR.into(),
-            'exp-test: error exceeds bounds'
+            res, Wad { val: 485165195409790277969106830 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
         );
 
         // Highest possible value the function will accept
