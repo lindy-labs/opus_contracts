@@ -124,7 +124,7 @@ mod flash_mint {
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
             let budget_adjustment: Wad = match shrine.get_budget().try_into() {
-                Option::Some(val) => { val },
+                Option::Some(surplus) => { surplus },
                 Option::None => { WadZeroable::zero() }
             };
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
