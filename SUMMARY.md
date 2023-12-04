@@ -1,3 +1,16 @@
 # Table of contents
 
-* [Page](README.md)
+* [Introduction](README.md)
+  * [Glossary](introduction/glossary.md)
+* [Smart Contracts](smart-contracts/README.md)
+  * [Shrine Module](smart-contracts/shrine-module.md)
+  * [Abbot Module](smart-contracts/abbot-module.md)
+  * [Gate Module](smart-contracts/gate-module.md)
+  * [Sentinel Module](smart-contracts/sentinel-module.md)
+  * [Purger Module](smart-contracts/purger-module.md)
+  * [Absorber Module](smart-contracts/absorber-module.md)
+  * [Controller Module](smart-contracts/controller-module.md)
+  * [Equalizer Module](smart-contracts/equalizer-module.md)
+  * [Seer Module](smart-contracts/seer-module.md)
+  * [Flash Mint Module](smart-contracts/flash-mint-module.md)
+  * [Caretaker Module](smart-contracts/caretaker-module.md)
