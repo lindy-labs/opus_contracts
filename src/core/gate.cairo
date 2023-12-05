@@ -62,10 +62,7 @@ mod gate {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
-        shrine: ContractAddress,
-        asset: ContractAddress,
-        sentinel: ContractAddress
+        ref self: ContractState, shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress
     ) {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
@@ -138,19 +135,14 @@ mod gate {
         // Transfers the stipulated amount of assets, in the asset's decimals, from the given
         // user to the Gate and returns the corresponding yang amount in Wad.
         // `asset_amt` is denominated in the decimals of the asset.
-        fn enter(
-            ref self: ContractState, user: ContractAddress, trove_id: u64, asset_amt: u128
-        ) -> Wad {
+        fn enter(ref self: ContractState, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
             self.assert_sentinel();
 
             let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
             if yang_amt.is_zero() {
                 return WadZeroable::zero();
             }
-            let success: bool = self
-                .asset
-                .read()
-                .transfer_from(user, get_contract_address(), asset_amt.into());
+            let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
             self.emit(Enter { user, trove_id, asset_amt, yang_amt });
 
@@ -160,9 +152,7 @@ mod gate {
         // Transfers such amount of assets, in the asset's decimals, corresponding to the
         // stipulated yang amount to the given user.
         // The return value is denominated in the decimals of the asset.
-        fn exit(
-            ref self: ContractState, user: ContractAddress, trove_id: u64, yang_amt: Wad
-        ) -> u128 {
+        fn exit(ref self: ContractState, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
             self.assert_sentinel();
 
             let asset_amt: u128 = self.convert_to_assets_helper(yang_amt);

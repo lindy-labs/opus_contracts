@@ -51,9 +51,7 @@ mod erc20_mintable {
         self
             .emit(
                 Event::Transfer(
-                    Transfer {
-                        from: ContractAddressZeroable::zero(), to: recipient, value: initial_supply
-                    }
+                    Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: initial_supply }
                 )
             );
     }
@@ -80,9 +78,7 @@ mod erc20_mintable {
             self.balances.read(account)
         }
 
-        fn allowance(
-            self: @ContractState, owner: ContractAddress, spender: ContractAddress
-        ) -> u256 {
+        fn allowance(self: @ContractState, owner: ContractAddress, spender: ContractAddress) -> u256 {
             self.allowances.read((owner, spender))
         }
 
@@ -93,10 +89,7 @@ mod erc20_mintable {
         }
 
         fn transfer_from(
-            ref self: ContractState,
-            sender: ContractAddress,
-            recipient: ContractAddress,
-            amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
         ) -> bool {
             let caller = get_caller_address();
             self.spend_allowance(sender, caller, amount);
@@ -117,22 +110,14 @@ mod erc20_mintable {
             self.total_supply.write(self.total_supply.read() + amount);
             let balance = self.balances.read(recipient);
             self.balances.write(recipient, balance + amount);
-            self
-                .emit(
-                    Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: amount }
-                );
+            self.emit(Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: amount });
             true
         }
     }
 
     #[generate_trait]
     impl StorageImpl of StorageTrait {
-        fn transfer_helper(
-            ref self: ContractState,
-            sender: ContractAddress,
-            recipient: ContractAddress,
-            amount: u256
-        ) {
+        fn transfer_helper(ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) {
             assert(!sender.is_zero(), 'ERC20: transfer from 0');
             assert(!recipient.is_zero(), 'ERC20: transfer to 0');
             self.balances.write(sender, self.balances.read(sender) - amount);
@@ -140,21 +125,16 @@ mod erc20_mintable {
             self.emit(Transfer { from: sender, to: recipient, value: amount });
         }
 
-        fn spend_allowance(
-            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
-        ) {
+        fn spend_allowance(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             let current_allowance = self.allowances.read((owner, spender));
             let ONES_MASK = 0xffffffffffffffffffffffffffffffff_u128;
-            let is_unlimited_allowance = current_allowance.low == ONES_MASK
-                && current_allowance.high == ONES_MASK;
+            let is_unlimited_allowance = current_allowance.low == ONES_MASK && current_allowance.high == ONES_MASK;
             if !is_unlimited_allowance {
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
         }
 
-        fn approve_helper(
-            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
-        ) {
+        fn approve_helper(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             assert(!spender.is_zero(), 'ERC20: approve from 0');
             self.allowances.write((owner, spender), amount);
             self.emit(Approval { owner, spender, value: amount });

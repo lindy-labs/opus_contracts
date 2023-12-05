@@ -14,9 +14,7 @@ mod test_allocator {
     #[test]
     fn test_allocator_deploy() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         let expected_recipients = equalizer_utils::initial_recipients();
@@ -29,9 +27,7 @@ mod test_allocator {
         assert(recipients.len() == 3, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
-        let allocator_ac = IAccessControlDispatcher {
-            contract_address: allocator.contract_address
-        };
+        let allocator_ac = IAccessControlDispatcher { contract_address: allocator.contract_address };
         let admin = shrine_utils::admin();
         assert(allocator_ac.get_admin() == admin, 'wrong admin');
         assert(allocator_ac.get_roles(admin) == allocator_roles::SET_ALLOCATION, 'wrong role');
@@ -55,27 +51,21 @@ mod test_allocator {
         let recipients: Array<ContractAddress> = ArrayTrait::new();
         let percentages: Array<Ray> = ArrayTrait::new();
 
-        let _ = equalizer_utils::allocator_deploy(
-            recipients.span(), percentages.span(), Option::None
-        );
+        let _ = equalizer_utils::allocator_deploy(recipients.span(), percentages.span(), Option::None);
     }
 
     #[test]
     #[should_panic(expected: ('failed allocator deploy',))]
     fn test_allocator_deploy_invalid_percentage_fail() {
         let _ = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::invalid_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages(), Option::None
         );
     }
 
     #[test]
     fn test_set_allocation_pass() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -102,9 +92,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: Array lengths mismatch',))]
     fn test_set_allocation_arrays_mismatch_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -118,9 +106,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: No recipients',))]
     fn test_set_allocation_no_recipients_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -133,9 +119,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE',))]
     fn test_set_allocation_invalid_percentage_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -150,13 +134,10 @@ mod test_allocator {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocation_unauthorized_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(),
-            equalizer_utils::initial_percentages(),
-            Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), common::badguy());
-        allocator
-            .set_allocation(equalizer_utils::new_recipients(), equalizer_utils::new_percentages());
+        allocator.set_allocation(equalizer_utils::new_recipients(), equalizer_utils::new_percentages());
     }
 }

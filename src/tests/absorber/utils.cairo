@@ -23,13 +23,9 @@ mod absorber_utils {
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-    };
+    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
 
     //
     // Constants
@@ -42,9 +38,8 @@ mod absorber_utils {
 
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            20 * WAD_ONE, // 20 (Wad) - ETH
-             100000000, // 1 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
+         100000000, // 1 (10 ** 8) - BTC
         ];
         asset_amts.span()
     }
@@ -201,11 +196,7 @@ mod absorber_utils {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let blesser: ContractAddress = deploy_blesser_for_reward(
-                        absorber,
-                        *asset,
-                        *bless_amts.pop_front().unwrap(),
-                        true,
-                        Option::Some(blesser_class)
+                        absorber, *asset, *bless_amts.pop_front().unwrap(), true, Option::Some(blesser_class)
                     );
                     blessers.append(blesser);
                 },
@@ -217,17 +208,13 @@ mod absorber_utils {
     }
 
     fn add_rewards_to_absorber(
-        absorber: IAbsorberDispatcher,
-        mut tokens: Span<ContractAddress>,
-        mut blessers: Span<ContractAddress>
+        absorber: IAbsorberDispatcher, mut tokens: Span<ContractAddress>, mut blessers: Span<ContractAddress>
     ) {
         start_prank(CheatTarget::One(absorber.contract_address), admin());
 
         loop {
             match tokens.pop_front() {
-                Option::Some(token) => {
-                    absorber.set_reward(*token, *blessers.pop_front().unwrap(), true);
-                },
+                Option::Some(token) => { absorber.set_reward(*token, *blessers.pop_front().unwrap(), true); },
                 Option::None => { break; },
             };
         };
@@ -258,9 +245,7 @@ mod absorber_utils {
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
-        provide_to_absorber(
-            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
-        );
+        provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt);
 
         (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt)
     }
@@ -298,8 +283,7 @@ mod absorber_utils {
             Option::None => declare('blesser')
         };
 
-        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
-            absorber_with_first_provider(
+        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
         );
 
@@ -342,10 +326,7 @@ mod absorber_utils {
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
 
-        start_prank(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]),
-            provider
-        );
+        start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -413,9 +394,7 @@ mod absorber_utils {
 
         // Simulate transfer of "freed" assets to absorber
         start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
-        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, yang_asset_amts
-        );
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
         absorber.update(absorbed_assets);
         stop_prank(CheatTarget::One(absorber.contract_address));
 
@@ -470,9 +449,7 @@ mod absorber_utils {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
                     let absorbed_amt: u128 = *absorbed_amts.pop_front().unwrap();
-                    let after_provider_bal: u128 = IERC20Dispatcher {
-                        contract_address: *asset.address
-                    }
+                    let after_provider_bal: u128 = IERC20Dispatcher { contract_address: *asset.address }
                         .balance_of(provider)
                         .try_into()
                         .unwrap();
@@ -480,14 +457,10 @@ mod absorber_utils {
                     let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
                     let expected_bal: u128 = before_bal + absorbed_amt;
 
-                    common::assert_equalish(
-                        after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
-                    );
+                    common::assert_equalish(after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance');
 
                     // Check preview amounts are equal
-                    common::assert_equalish(
-                        absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
-                    );
+                    common::assert_equalish(absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount');
                 },
                 Option::None => { break; },
             };
@@ -533,26 +506,18 @@ mod absorber_utils {
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
-                    let after_provider_bal: u128 = IERC20Dispatcher {
-                        contract_address: *asset.address
-                    }
+                    let after_provider_bal: u128 = IERC20Dispatcher { contract_address: *asset.address }
                         .balance_of(provider)
                         .try_into()
                         .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
-                        + blessed_amt.val;
+                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into() + blessed_amt.val;
 
-                    common::assert_equalish(
-                        after_provider_bal, expected_bal, error_margin, 'wrong reward balance'
-                    );
+                    common::assert_equalish(after_provider_bal, expected_bal, error_margin, 'wrong reward balance');
 
                     // Check preview amounts are equal
                     common::assert_equalish(
-                        blessed_amt.val,
-                        *asset.amount,
-                        error_margin,
-                        'wrong preview rewarded amount'
+                        blessed_amt.val, *asset.amount, error_margin, 'wrong preview rewarded amount'
                     );
                 },
                 Option::None => { break; },
@@ -572,9 +537,7 @@ mod absorber_utils {
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
     fn assert_provider_reward_cumulatives_updated(
-        absorber: IAbsorberDispatcher,
-        provider: ContractAddress,
-        mut asset_addresses: Span<ContractAddress>,
+        absorber: IAbsorberDispatcher, provider: ContractAddress, mut asset_addresses: Span<ContractAddress>,
     ) {
         loop {
             match asset_addresses.pop_front() {
@@ -583,13 +546,9 @@ mod absorber_utils {
                     let current_epoch: u32 = absorber.get_current_epoch();
                     let reward_info: DistributionInfo = absorber
                         .get_cumulative_reward_amt_by_epoch(*asset, current_epoch);
-                    let provider_cumulative: u128 = absorber
-                        .get_provider_last_reward_cumulative(provider, *asset);
+                    let provider_cumulative: u128 = absorber.get_provider_last_reward_cumulative(provider, *asset);
 
-                    assert(
-                        provider_cumulative == reward_info.asset_amt_per_share,
-                        'wrong provider cumulative'
-                    );
+                    assert(provider_cumulative == reward_info.asset_amt_per_share, 'wrong provider cumulative');
                 },
                 Option::None => { break; },
             };
@@ -629,9 +588,7 @@ mod absorber_utils {
                         .get_cumulative_reward_amt_by_epoch(*asset, epoch);
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
-                    let expected_blessed_amt: Wad = wadray::rmul_wr(
-                        reward_amt, blessings_multiplier
-                    );
+                    let expected_blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
                     let expected_amt_per_share: Wad = expected_blessed_amt
                         / (total_shares - absorber_contract::INITIAL_SHARES.into());
 
@@ -657,9 +614,7 @@ mod absorber_utils {
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
     fn assert_reward_errors_propagated_to_next_epoch(
-        absorber: IAbsorberDispatcher,
-        before_epoch: u32,
-        mut asset_addresses: Span<ContractAddress>,
+        absorber: IAbsorberDispatcher, before_epoch: u32, mut asset_addresses: Span<ContractAddress>,
     ) {
         loop {
             match asset_addresses.pop_front() {
@@ -669,14 +624,8 @@ mod absorber_utils {
                     let after_epoch_distribution: DistributionInfo = absorber
                         .get_cumulative_reward_amt_by_epoch(*asset, before_epoch + 1);
 
-                    assert(
-                        before_epoch_distribution.error == after_epoch_distribution.error,
-                        'error not propagated'
-                    );
-                    assert(
-                        after_epoch_distribution.asset_amt_per_share.is_zero(),
-                        'wrong start reward cumulative'
-                    );
+                    assert(before_epoch_distribution.error == after_epoch_distribution.error, 'error not propagated');
+                    assert(after_epoch_distribution.asset_amt_per_share.is_zero(), 'wrong start reward cumulative');
                 },
                 Option::None => { break; }
             };
@@ -698,8 +647,7 @@ mod absorber_utils {
                     } else {
                         absorber.get_asset_absorption(*yang, absorption_id - 1).error.into()
                     };
-                    let actual_distribution: DistributionInfo = absorber
-                        .get_asset_absorption(*yang, absorption_id);
+                    let actual_distribution: DistributionInfo = absorber.get_asset_absorption(*yang, absorption_id);
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
                     let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
@@ -714,8 +662,7 @@ mod absorber_utils {
 
                     // Check update amount = (total_shares * asset_amt per share) - prev_error + error
                     // Convert to Wad for fixed point operations
-                    let distributed_amt: Wad = ((total_shares
-                        - absorber_contract::INITIAL_SHARES.into())
+                    let distributed_amt: Wad = ((total_shares - absorber_contract::INITIAL_SHARES.into())
                         * actual_distribution.asset_amt_per_share.into())
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');

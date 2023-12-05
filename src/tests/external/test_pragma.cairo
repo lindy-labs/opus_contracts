@@ -52,9 +52,7 @@ mod test_pragma {
         let admin: ContractAddress = pragma_utils::admin();
 
         assert(pragma_ac.get_admin() == admin, 'wrong admin');
-        assert(
-            pragma_ac.get_roles(admin) == pragma_roles::default_admin_role(), 'wrong admin role'
-        );
+        assert(pragma_ac.get_roles(admin) == pragma_roles::default_admin_role(), 'wrong admin role');
 
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         assert(oracle.get_name() == 'Pragma', 'wrong name');

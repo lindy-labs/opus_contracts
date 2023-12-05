@@ -13,9 +13,7 @@ mod caretaker_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::{ContractAddress, contract_address_try_from_felt252, contract_address_to_felt252};
 
     fn admin() -> ContractAddress {
@@ -61,9 +59,7 @@ mod caretaker_utils {
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
 
-        stop_prank(
-            CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address])
-        );
+        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 

@@ -24,8 +24,7 @@ mod pragma {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -36,8 +35,7 @@ mod pragma {
     // be set outside of this hardcoded range
     // the range is [lower, upper]
     const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
-    const UPPER_FRESHNESS_BOUND: u64 =
-        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    const UPPER_FRESHNESS_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
     const LOWER_SOURCES_BOUND: u64 = 3;
     const UPPER_SOURCES_BOUND: u64 = 13;
 
@@ -122,16 +120,13 @@ mod pragma {
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
-        let new_thresholds = PriceValidityThresholds {
-            freshness: freshness_threshold, sources: sources_threshold
-        };
+        let new_thresholds = PriceValidityThresholds { freshness: freshness_threshold, sources: sources_threshold };
         self.price_validity_thresholds.write(new_thresholds);
 
         self
             .emit(
                 PriceValidityThresholdsUpdated {
-                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
-                    new_thresholds
+                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 }, new_thresholds
                 }
             );
     }
@@ -149,10 +144,7 @@ mod pragma {
 
             // doing a sanity check if Pragma actually offers a price feed
             // of the requested asset and if it's suitable for our needs
-            let response: PricesResponse = self
-                .oracle
-                .read()
-                .get_data_median(DataType::Spot(pair_id));
+            let response: PricesResponse = self.oracle.read().get_data_median(DataType::Spot(pair_id));
             // Pragma returns 0 decimals for an unknown pair ID
             assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
             assert(response.decimals <= 18, 'PGM: Too many decimals');
@@ -165,13 +157,9 @@ mod pragma {
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
             self.access_control.assert_has_role(pragma_roles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
-                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
-                'PGM: Freshness out of bounds'
+                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND, 'PGM: Freshness out of bounds'
             );
-            assert(
-                LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND,
-                'PGM: Sources out of bounds'
-            );
+            assert(LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND, 'PGM: Sources out of bounds');
 
             let old_thresholds: PriceValidityThresholds = self.price_validity_thresholds.read();
             let new_thresholds = PriceValidityThresholds { freshness, sources };
@@ -195,16 +183,11 @@ mod pragma {
             self.oracle.read().contract_address
         }
 
-        fn fetch_price(
-            ref self: ContractState, yang: ContractAddress, force_update: bool
-        ) -> Result<Wad, felt252> {
+        fn fetch_price(ref self: ContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252> {
             let pair_id: u256 = self.yang_pair_ids.read(yang);
             assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-            let response: PricesResponse = self
-                .oracle
-                .read()
-                .get_data_median(DataType::Spot(pair_id));
+            let response: PricesResponse = self.oracle.read().get_data_median(DataType::Spot(pair_id));
 
             // convert price value to Wad
             let price: Wad = wadray::fixed_point_to_wad(
@@ -241,11 +224,7 @@ mod pragma {
             let required: PriceValidityThresholds = self.price_validity_thresholds.read();
 
             // check if the update is from enough sources
-            let has_enough_sources = required
-                .sources <= update
-                .num_sources_aggregated
-                .try_into()
-                .unwrap();
+            let has_enough_sources = required.sources <= update.num_sources_aggregated.try_into().unwrap();
 
             // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
             // it is from the future from the chain's perspective), because the update timestamp is coming

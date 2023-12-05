@@ -9,13 +9,9 @@ mod equalizer_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Ray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-    };
+    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
 
     //
     // Convenience helpers
@@ -74,9 +70,7 @@ mod equalizer_utils {
     //
 
     fn allocator_deploy(
-        mut recipients: Span<ContractAddress>,
-        mut percentages: Span<Ray>,
-        allocator_class: Option<ContractClass>
+        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>
     ) -> IAllocatorDispatcher {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine_utils::admin()), recipients.len().into(),
@@ -84,9 +78,7 @@ mod equalizer_utils {
 
         loop {
             match recipients.pop_front() {
-                Option::Some(recipient) => {
-                    calldata.append(contract_address_to_felt252(*recipient));
-                },
+                Option::Some(recipient) => { calldata.append(contract_address_to_felt252(*recipient)); },
                 Option::None => { break; }
             };
         };
@@ -135,15 +127,11 @@ mod equalizer_utils {
         let equalizer_class = declare('equalizer');
         let equalizer_addr = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
 
-        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: equalizer_addr
-        };
+        let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };
         start_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]), admin);
         equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
 
-        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: shrine
-        };
+        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
 
         stop_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]));

@@ -12,9 +12,7 @@ mod abbot_utils {
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252,};
 
@@ -44,9 +42,7 @@ mod abbot_utils {
     }
 
     fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT
-        ];
+        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
@@ -60,13 +56,7 @@ mod abbot_utils {
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>
-    ) {
+    ) -> (IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
             sentinel_class, token_class, gate_class, shrine_class
         );
@@ -96,9 +86,7 @@ mod abbot_utils {
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
 
-        stop_prank(
-            CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address])
-        );
+        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
 
         (shrine, sentinel, abbot, yangs, gates)
     }
@@ -128,9 +116,7 @@ mod abbot_utils {
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, yangs, initial_asset_amts());
         let deposited_amts: Span<u128> = open_trove_yang_asset_amts();
-        let trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner, yangs, deposited_amts, gates, forge_amt
-        );
+        let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposited_amts, gates, forge_amt);
 
         (shrine, sentinel, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt)
     }

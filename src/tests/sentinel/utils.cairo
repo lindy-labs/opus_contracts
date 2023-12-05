@@ -13,14 +13,9 @@ mod sentinel_utils {
     use opus::utils::wadray::{Wad, Ray};
     use opus::utils::wadray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_caller_address
-    };
+    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_caller_address};
 
     const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
     const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
@@ -67,8 +62,7 @@ mod sentinel_utils {
 
         // Grant `abbot` role to `mock_abbot`
         start_prank(CheatTarget::One(sentinel_addr), admin());
-        IAccessControlDispatcher { contract_address: sentinel_addr }
-            .grant_role(sentinel_roles::abbot(), mock_abbot());
+        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         start_prank(CheatTarget::One(shrine_addr), shrine_utils::admin());
@@ -176,8 +170,7 @@ mod sentinel_utils {
         start_prank(CheatTarget::One(wbtc), common::wbtc_hoarder());
         wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         start_prank(CheatTarget::One(wbtc), admin());
-        wbtc_erc20
-            .approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        wbtc_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         stop_prank(CheatTarget::One(wbtc));
 
         start_prank(CheatTarget::One(sentinel.contract_address), admin());

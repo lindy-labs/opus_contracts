@@ -18,8 +18,7 @@ mod controller {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -93,9 +92,7 @@ mod controller {
         alpha_i: u8,
         beta_i: u8,
     ) {
-        self
-            .access_control
-            .initializer(admin, Option::Some(controller_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(controller_roles::default_admin_role()));
 
         // Setting `i_term_last_updated` to the current timestamp to
         // ensure that the integral term is correctly updated
@@ -247,10 +244,7 @@ mod controller {
     impl ControllerInternalFunctions of ControllerInternalFunctionsTrait {
         #[inline(always)]
         fn get_p_term_internal(self: @ContractState) -> SignedRay {
-            self.p_gain.read()
-                * nonlinear_transform(
-                    self.get_current_error(), self.alpha_p.read(), self.beta_p.read()
-                )
+            self.p_gain.read() * nonlinear_transform(self.get_current_error(), self.alpha_p.read(), self.beta_p.read())
         }
 
         #[inline(always)]
@@ -258,15 +252,12 @@ mod controller {
             let current_timestamp: u64 = get_block_timestamp();
             let old_i_term = self.i_term.read();
 
-            let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read())
-                .into();
+            let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read()).into();
             let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
                 / (TIME_SCALE * RAY_ONE).into();
 
             old_i_term
-                + nonlinear_transform(
-                    self.get_prev_error(), self.alpha_i.read(), self.beta_i.read()
-                )
+                + nonlinear_transform(self.get_prev_error(), self.alpha_i.read(), self.beta_i.read())
                     * time_since_last_update_scaled
         }
 

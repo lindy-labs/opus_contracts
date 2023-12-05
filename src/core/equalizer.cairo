@@ -21,8 +21,7 @@ mod equalizer {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -86,10 +85,7 @@ mod equalizer {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
-        admin: ContractAddress,
-        shrine: ContractAddress,
-        allocator: ContractAddress
+        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress
     ) {
         self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
 
@@ -194,9 +190,7 @@ mod equalizer {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        let amount: Wad = wadray::rmul_wr(
-                            balance, *(percentages_copy.pop_front().unwrap())
-                        );
+                        let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
 
                         yin.transfer(*recipient, amount.into());
                         amount_allocated += amount;

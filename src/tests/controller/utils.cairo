@@ -10,13 +10,10 @@ mod controller_utils {
     use opus::utils::wadray_signed::SignedRay;
     use opus::utils::wadray_signed;
 
-    use snforge_std::{
-        declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
-    };
+    use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_block_timestamp
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
 
     // Controller update interval

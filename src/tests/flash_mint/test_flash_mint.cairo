@@ -63,9 +63,7 @@ mod test_flash_mint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine.contract_address);
-        let expected_max_loan: u256 = (total_yin
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let expected_max_loan: u256 = (total_yin * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }
 
@@ -83,9 +81,7 @@ mod test_flash_mint {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         let yin = shrine_utils::yin(shrine);
 
-        let mut calldata: Span<felt252> = flash_mint_utils::build_calldata(
-            true, flash_borrower_contract::VALID_USAGE
-        );
+        let mut calldata: Span<felt252> = flash_mint_utils::build_calldata(true, flash_borrower_contract::VALID_USAGE);
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
@@ -112,36 +108,28 @@ mod test_flash_mint {
         shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
 
         start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
-        let fourth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let fourth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fourth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a deficit
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
-        shrine_utils::shrine(shrine)
-            .adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
+        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
         stop_prank(CheatTarget::One(shrine));
 
         start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
-        let fifth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let fifth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fifth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 5');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a surplus
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
-        shrine_utils::shrine(shrine)
-            .adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
+        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
         stop_prank(CheatTarget::One(shrine));
 
-        let sixth_loan_amt: u256 = (debt_ceiling
-            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into())
-            .into();
+        let sixth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, sixth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 6');
     // let mut expected_events: Span<flash_mint_contract::Event> = array![

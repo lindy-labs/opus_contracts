@@ -10,9 +10,7 @@ mod gate_utils {
     use opus::utils::wadray::{Ray, Wad, WadZeroable};
     use opus::utils::wadray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
 
@@ -29,10 +27,7 @@ mod gate_utils {
     //
 
     fn gate_deploy(
-        token: ContractAddress,
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
-        gate_class: Option<ContractClass>,
+        token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress, gate_class: Option<ContractClass>,
     ) -> ContractAddress {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
@@ -49,18 +44,14 @@ mod gate_utils {
         gate_class.deploy(@calldata).expect('gate deploy failed')
     }
 
-    fn eth_gate_deploy(
-        token_class: Option<ContractClass>
-    ) -> (ContractAddress, ContractAddress, ContractAddress) {
+    fn eth_gate_deploy(token_class: Option<ContractClass>) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
         let eth: ContractAddress = common::eth_token_deploy(token_class);
         let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel(), Option::None);
         (shrine, eth, gate)
     }
 
-    fn wbtc_gate_deploy(
-        token_class: Option<ContractClass>
-    ) -> (ContractAddress, ContractAddress, ContractAddress) {
+    fn wbtc_gate_deploy(token_class: Option<ContractClass>) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
         let wbtc: ContractAddress = common::wbtc_token_deploy(token_class);
         let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel(), Option::None);
@@ -97,9 +88,7 @@ mod gate_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    fn approve_gate_for_token(
-        gate: ContractAddress, token: ContractAddress, user: ContractAddress
-    ) {
+    fn approve_gate_for_token(gate: ContractAddress, token: ContractAddress, user: ContractAddress) {
         // user no-limit approves gate to handle their share of token
         start_prank(CheatTarget::One(token), user);
         IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());

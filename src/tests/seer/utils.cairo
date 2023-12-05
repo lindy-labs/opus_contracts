@@ -14,13 +14,10 @@ mod seer_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Wad;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        ContractAddress
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, ContractAddress
     };
 
     //
@@ -49,13 +46,9 @@ mod seer_utils {
     }
 
     fn deploy_seer(
-        seer_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>
+        seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
     ) -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
-        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(
-            sentinel_class, shrine_class
-        );
+        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
         let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine),
@@ -110,9 +103,7 @@ mod seer_utils {
     }
 
     fn add_oracles(
-        pragma_class: Option<ContractClass>,
-        mock_pragma_class: Option<ContractClass>,
-        seer: ISeerDispatcher
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>, seer: ISeerDispatcher
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 

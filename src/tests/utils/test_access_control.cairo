@@ -1,17 +1,11 @@
 mod test_access_control {
     use opus::tests::common;
     use opus::tests::utils::mock_access_control::mock_access_control;
-    use opus::utils::access_control::access_control_component::{
-        AccessControlPublic, AccessControlHelpers
-    };
+    use opus::utils::access_control::access_control_component::{AccessControlPublic, AccessControlHelpers};
     use opus::utils::access_control::access_control_component;
 
-    use snforge_std::{
-        spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, start_prank, CheatTarget
-    };
-    use starknet::contract_address::{
-        ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
-    };
+    use snforge_std::{spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, start_prank, CheatTarget};
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     //
     // Constants
     //
@@ -52,9 +46,7 @@ mod test_access_control {
     }
 
     fn set_pending_admin(
-        ref state: mock_access_control::ContractState,
-        caller: ContractAddress,
-        pending_admin: ContractAddress
+        ref state: mock_access_control::ContractState, caller: ContractAddress, pending_admin: ContractAddress
     ) {
         start_prank(CheatTarget::All, caller);
         state.set_pending_admin(pending_admin);

@@ -73,9 +73,7 @@ mod test_gate {
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
 
         let mut expected_events: Span<gate_contract::Event> = array![
-            gate_contract::Event::Enter(
-                gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
-            ),
+            gate_contract::Event::Enter(gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }),
         ]
             .span();
     //common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
@@ -106,9 +104,7 @@ mod test_gate {
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
 
         let mut expected_events: Span<gate_contract::Event> = array![
-            gate_contract::Event::Enter(
-                gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
-            ),
+            gate_contract::Event::Enter(gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }),
         ]
             .span();
     //common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
@@ -138,15 +134,11 @@ mod test_gate {
         let exit_amt = gate.exit(user, trove_id, exit_yang_amt);
         assert(exit_amt == exit_yang_amt.val, 'exit amount');
         assert(gate.get_total_assets() == remaining_yang_amt, 'get_total_assets');
-        assert(
-            eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance'
-        );
+        assert(eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance');
 
         let mut expected_events: Span<gate_contract::Event> = array![
             gate_contract::Event::Exit(
-                gate_contract::Exit {
-                    user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt,
-                }
+                gate_contract::Exit { user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt, }
             ),
         ]
             .span();
@@ -158,8 +150,7 @@ mod test_gate {
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }
-            .enter(common::badguy(), common::TROVE_1, WAD_SCALE);
+        IGateDispatcher { contract_address: gate }.enter(common::badguy(), common::TROVE_1, WAD_SCALE);
     }
 
     #[test]
@@ -167,8 +158,7 @@ mod test_gate {
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }
-            .exit(common::badguy(), common::TROVE_1, WAD_SCALE.into());
+        IGateDispatcher { contract_address: gate }.exit(common::badguy(), common::TROVE_1, WAD_SCALE.into());
     }
 
     #[test]
@@ -239,10 +229,7 @@ mod test_gate {
 
         assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 1');
         assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 1');
-        assert(
-            shrine.get_deposit(eth.contract_address, trove1) == before_user_yang + expected_yang,
-            'user deposits 1'
-        );
+        assert(shrine.get_deposit(eth.contract_address, trove1) == before_user_yang + expected_yang, 'user deposits 1');
 
         //
         // deposit to trove 2 by user 2 after the previous deposits to trove 1 and rebase
@@ -276,20 +263,12 @@ mod test_gate {
 
         let expected_total_assets: u128 = expected_total_assets + enter3_amt;
         let expected_total_yang: Wad = expected_total_yang + enter3_yang_amt;
-        let expected_trove2_deposit: Wad = before_total_yang
-            * enter3_amt.into()
-            / before_total_assets.into();
+        let expected_trove2_deposit: Wad = before_total_yang * enter3_amt.into() / before_total_assets.into();
 
         assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 2');
         assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 2');
-        assert(
-            shrine.get_deposit(eth.contract_address, trove2) == expected_trove2_deposit,
-            'user deposit 2'
-        );
-        assert(
-            gate.get_asset_amt_per_yang() == before_asset_amt_per_yang,
-            'asset_amt_per_yang deposit 2'
-        );
+        assert(shrine.get_deposit(eth.contract_address, trove2) == expected_trove2_deposit, 'user deposit 2');
+        assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'asset_amt_per_yang deposit 2');
 
         //
         // rebase
@@ -340,14 +319,9 @@ mod test_gate {
 
         let expected_total_assets = expected_total_assets - exit_amt;
 
-        common::assert_equalish::<
-            Wad
-        >(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
+        common::assert_equalish::<Wad>(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
         assert(gate.get_total_assets() == expected_total_assets, 'exit get_total_assets');
-        assert(
-            gate.get_asset_amt_per_yang() == before_asset_amt_per_yang,
-            'exit get_asset_amt_per_yang'
-        );
+        assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'exit get_asset_amt_per_yang');
     }
 
     #[test]

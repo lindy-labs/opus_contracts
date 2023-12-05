@@ -20,13 +20,10 @@ mod pragma_utils {
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
 
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_block_timestamp,
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
 
     //
@@ -99,12 +96,8 @@ mod pragma_utils {
         // need to provide a valid mock response for it to pass
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
-        mock_valid_price_update(
-            mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp()
-        );
-        mock_valid_price_update(
-            mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp()
-        );
+        mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
+        mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
         start_prank(CheatTarget::One(pragma.contract_address), admin());
@@ -139,9 +132,7 @@ mod pragma_utils {
 
     // Helper function to add a valid price update to the mock Pragma oracle
     // using default values for decimals and number of sources.
-    fn mock_valid_price_update(
-        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
-    ) {
+    fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
         let response = PricesResponse {
             price: convert_price_to_pragma_scale(price).into(),
             decimals: PRAGMA_DECIMALS.into(),

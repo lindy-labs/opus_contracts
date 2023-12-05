@@ -48,8 +48,7 @@ mod flash_mint_utils {
             shrine_dispatcher,
             3,
             shrine_utils::three_yang_addrs(),
-            array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()]
-                .span(),
+            array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()].span(),
         );
 
         // Mint some yin in shrine
@@ -60,9 +59,7 @@ mod flash_mint_utils {
 
     fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
         let flash_borrower_class = declare('flash_borrower');
-        flash_borrower_class
-            .deploy(@array![contract_address_to_felt252(flashmint)])
-            .expect('flsh brrwr deploy failed')
+        flash_borrower_class.deploy(@array![contract_address_to_felt252(flashmint)]).expect('flsh brrwr deploy failed')
     }
 
     fn flash_borrower_setup() -> (ContractAddress, IFlashMintDispatcher, ContractAddress) {

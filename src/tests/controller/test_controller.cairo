@@ -183,35 +183,19 @@ mod test_controller {
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
 
-        assert_equalish(
-            controller.get_p_term(),
-            18715000000000000_u128.into(),
-            ERROR_MARGIN.into(),
-            'Wrong p term #2'
-        );
+        assert_equalish(controller.get_p_term(), 18715000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #2');
 
-        assert_equalish(
-            controller.get_i_term(),
-            SignedRayZeroable::zero(),
-            ERROR_MARGIN.into(),
-            'Wrong i term #2'
-        );
+        assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
 
         controller_utils::fast_forward_1_hour();
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE2.into());
         controller.update_multiplier();
 
         assert_equalish(
-            controller.get_p_term(),
-            177156100000000000_u128.into(),
-            ERROR_MARGIN.into(),
-            'Wrong p term #3'
+            controller.get_p_term(), 177156100000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #3'
         );
         assert_equalish(
-            controller.get_i_term(),
-            5720000000000000000_u128.into(),
-            ERROR_MARGIN.into(),
-            'Wrong i term #3'
+            controller.get_i_term(), 5720000000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong i term #3'
         );
     }
 
@@ -449,17 +433,11 @@ mod test_controller {
                     controller.update_multiplier();
 
                     assert_equalish(
-                        controller.get_p_term(),
-                        gt_p_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong p term'
+                        controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
                     );
 
                     assert_equalish(
-                        controller.get_i_term(),
-                        gt_i_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong i term'
+                        controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
                     );
 
                     assert_equalish(
@@ -553,17 +531,11 @@ mod test_controller {
             }
 
             assert_equalish(
-                controller.get_p_term(),
-                gt_p_terms.pop_front().unwrap(),
-                ERROR_MARGIN.into(),
-                'Wrong p term'
+                controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
             );
 
             assert_equalish(
-                controller.get_i_term(),
-                gt_i_terms.pop_front().unwrap(),
-                ERROR_MARGIN.into(),
-                'Wrong i term'
+                controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
             );
 
             assert_equalish(
@@ -692,16 +664,10 @@ mod test_controller {
                     controller.update_multiplier();
 
                     assert_equalish(
-                        controller.get_p_term(),
-                        gt_p_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong p term'
+                        controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
                     );
                     assert_equalish(
-                        controller.get_i_term(),
-                        gt_i_terms.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong i term'
+                        controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
                     );
                     assert_equalish(
                         controller.get_current_multiplier(),
@@ -721,10 +687,7 @@ mod test_controller {
     fn test_frequent_updates() {
         let (controller, shrine) = controller_utils::deploy_controller();
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
-        controller
-            .set_i_gain(
-                100000000000000000000000_u128.into()
-            ); // Ensuring the integral gain is non-zero
+        controller.set_i_gain(100000000000000000000000_u128.into()); // Ensuring the integral gain is non-zero
 
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
@@ -742,9 +705,6 @@ mod test_controller {
         controller.update_multiplier();
         controller.update_multiplier();
 
-        assert(
-            current_multiplier == controller.get_current_multiplier(),
-            'Multiplier should not change'
-        );
+        assert(current_multiplier == controller.get_current_multiplier(), 'Multiplier should not change');
     }
 }

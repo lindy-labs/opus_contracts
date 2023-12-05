@@ -1,9 +1,7 @@
 use debug::PrintTrait;
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-use opus::interfaces::IERC20::{
-    IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
-};
+use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
@@ -12,15 +10,10 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
 
-use snforge_std::{
-    declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget
-};
+use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
-use starknet::{
-    ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-    get_block_timestamp
-};
+use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
 
 //
 // Constants
@@ -200,8 +193,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
-                IMintableDispatcher { contract_address: *yang }
-                    .mint(user, (*asset_amts.pop_front().unwrap()).into());
+                IMintableDispatcher { contract_address: *yang }.mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
             Option::None => { break; }
         };
@@ -245,9 +237,7 @@ fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-fn get_token_balances(
-    mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,
-) -> Span<Span<u128>> {
+fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {
@@ -276,22 +266,15 @@ fn get_token_balances(
 // Fetches the ERC20 asset balance of a given address, and
 // converts it to yang units.
 #[inline(always)]
-fn get_erc20_bal_as_yang(
-    gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress
-) -> Wad {
-    gate
-        .convert_to_yang(
-            IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap()
-        )
+fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress) -> Wad {
+    gate.convert_to_yang(IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap())
 }
 
 //
 // Helpers - Assertions
 //
 
-fn assert_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
->(
+fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(
     a: T, b: T, error: T, message: felt252
 ) {
     if a >= b {
@@ -301,9 +284,7 @@ fn assert_equalish<
     }
 }
 
-fn assert_asset_balances_equalish(
-    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
-) {
+fn assert_asset_balances_equalish(mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -318,9 +299,7 @@ fn assert_asset_balances_equalish(
     };
 }
 
-fn assert_yang_balances_equalish(
-    mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252
-) {
+fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -339,16 +318,13 @@ fn assert_yang_balances_equalish(
 // Helpers - Array functions
 //
 
-fn combine_assets_and_amts(
-    mut assets: Span<ContractAddress>, mut amts: Span<u128>
-) -> Span<AssetBalance> {
+fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
     loop {
         match assets.pop_front() {
             Option::Some(asset) => {
-                asset_balances
-                    .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
+                asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
             Option::None => { break; },
         };
@@ -413,11 +389,7 @@ fn pop_event_with_indexed_keys<T, impl TDrop: Drop<T>, impl TEvent: starknet::Ev
 }
 
 fn assert_events_emitted<
-    T,
-    impl TCopy: Copy<T>,
-    impl TDrop: Drop<T>,
-    impl TEvent: starknet::Event<T>,
-    impl TPartialEq: PartialEq<T>,
+    T, impl TCopy: Copy<T>, impl TDrop: Drop<T>, impl TEvent: starknet::Event<T>, impl TPartialEq: PartialEq<T>,
 >(
     addr: ContractAddress, events: Span<T>, should_not_emit: Option<Span<T>>
 ) {

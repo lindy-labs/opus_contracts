@@ -26,8 +26,7 @@ mod absorber {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -224,10 +223,7 @@ mod absorber {
     //
     #[constructor]
     fn constructor(
-        ref self: ContractState,
-        admin: ContractAddress,
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
+        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress,
     ) {
         self.access_control.initializer(admin, Option::Some(absorber_roles::default_admin_role()));
 
@@ -295,9 +291,7 @@ mod absorber {
             self.provider_request.read(provider)
         }
 
-        fn get_asset_absorption(
-            self: @ContractState, asset: ContractAddress, absorption_id: u32
-        ) -> DistributionInfo {
+        fn get_asset_absorption(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> DistributionInfo {
             self.asset_absorption.read((asset, absorption_id))
         }
 
@@ -341,9 +335,7 @@ mod absorber {
 
         // Returns the absorbed assets and rewards that a provider will receive based on
         // the current on-chain conditions
-        fn preview_reap(
-            self: @ContractState, provider: ContractAddress
-        ) -> (Span<AssetBalance>, Span<AssetBalance>) {
+        fn preview_reap(self: @ContractState, provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>) {
             let provision: Provision = self.provisions.read(provider);
             let current_epoch: u32 = self.current_epoch.read();
 
@@ -353,9 +345,7 @@ mod absorber {
             let include_pending_rewards: bool = is_operational_helper(total_shares)
                 && current_provider_shares.is_non_zero();
             let (absorbed_assets, rewarded_assets) = self
-                .get_absorbed_and_rewarded_assets_for_provider(
-                    provider, provision, include_pending_rewards
-                );
+                .get_absorbed_and_rewarded_assets_for_provider(provider, provision, include_pending_rewards);
 
             // NOTE: both absorbed assets and rewarded assets will be empty arrays
             // if `provision.shares` is zero.
@@ -370,19 +360,12 @@ mod absorber {
         // Note: rewards ID start from index 1. This allows `set_reward` to be used for both
         // adding a new reward and updating an existing reward based on whether the initial
         // reward ID is zero (new reward) or non-zero (existing reward).
-        fn set_reward(
-            ref self: ContractState,
-            asset: ContractAddress,
-            blesser: ContractAddress,
-            is_active: bool
-        ) {
+        fn set_reward(ref self: ContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool) {
             self.access_control.assert_has_role(absorber_roles::SET_REWARD);
 
             assert(asset.is_non_zero() && blesser.is_non_zero(), 'ABS: Address cannot be 0');
 
-            let reward: Reward = Reward {
-                asset, blesser: IBlesserDispatcher { contract_address: blesser }, is_active
-            };
+            let reward: Reward = Reward { asset, blesser: IBlesserDispatcher { contract_address: blesser }, is_active };
 
             // If this reward token hasn't been added yet, add it to the list
             let reward_id: u8 = self.reward_id.read(asset);
@@ -425,8 +408,7 @@ mod absorber {
 
             // If epoch has changed, convert shares in previous epoch to new epoch's shares
             let current_epoch: u32 = self.current_epoch.read();
-            let converted_shares: Wad = self
-                .convert_epoch_shares(provision.epoch, current_epoch, provision.shares);
+            let converted_shares: Wad = self.convert_epoch_shares(provision.epoch, current_epoch, provision.shares);
 
             let new_shares: Wad = converted_shares + new_provision_shares;
             self.provisions.write(provider, Provision { epoch: current_epoch, shares: new_shares });
@@ -470,17 +452,9 @@ mod absorber {
             self
                 .provider_request
                 .write(
-                    provider,
-                    Request {
-                        timestamp: current_timestamp, timelock: capped_timelock, has_removed: false
-                    }
+                    provider, Request { timestamp: current_timestamp, timelock: capped_timelock, has_removed: false }
                 );
-            self
-                .emit(
-                    RequestSubmitted {
-                        provider, timestamp: current_timestamp, timelock: capped_timelock
-                    }
-                );
+            self.emit(RequestSubmitted { provider, timestamp: current_timestamp, timelock: capped_timelock });
         }
 
         // Withdraw yin (if any) and all absorbed collateral assets from the absorber.
@@ -505,11 +479,7 @@ mod absorber {
                 // provider's deposit has been completely absorbed.
                 // Since absorbed collateral have been reaped,
                 // we can update the provision to current epoch and shares.
-                self
-                    .provisions
-                    .write(
-                        provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() }
-                    );
+                self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() });
 
                 request.has_removed = true;
                 self.provider_request.write(provider, request);
@@ -535,21 +505,13 @@ mod absorber {
 
                 // Update provision
                 let new_provider_shares: Wad = current_provider_shares - shares_to_remove;
-                self
-                    .provisions
-                    .write(
-                        provider, Provision { epoch: current_epoch, shares: new_provider_shares }
-                    );
+                self.provisions.write(provider, Provision { epoch: current_epoch, shares: new_provider_shares });
 
                 self
                     .provider_request
                     .write(
                         provider,
-                        Request {
-                            timestamp: request.timestamp,
-                            timelock: request.timelock,
-                            has_removed: true
-                        }
+                        Request { timestamp: request.timestamp, timelock: request.timelock, has_removed: true }
                     );
 
                 let success: bool = self.yin_erc20().transfer(provider, yin_amt.into());
@@ -574,11 +536,7 @@ mod absorber {
             let current_epoch: u32 = self.current_epoch.read();
             let current_provider_shares: Wad = self
                 .convert_epoch_shares(provision.epoch, current_epoch, provision.shares);
-            self
-                .provisions
-                .write(
-                    provider, Provision { epoch: current_epoch, shares: current_provider_shares }
-                );
+            self.provisions.write(provider, Provision { epoch: current_epoch, shares: current_provider_shares });
         }
 
         // Update assets received after an absorption
@@ -605,10 +563,7 @@ mod absorber {
             loop {
                 match asset_balances_copy.pop_front() {
                     Option::Some(asset_balance) => {
-                        self
-                            .update_absorbed_asset(
-                                current_absorption_id, total_recipient_shares, *asset_balance
-                            );
+                        self.update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
                     },
                     Option::None => { break; }
                 };
@@ -636,9 +591,7 @@ mod absorber {
                         yin_balance - INITIAL_SHARES.into(), total_recipient_shares
                     );
 
-                    self
-                        .epoch_share_conversion_rate
-                        .write(current_epoch, epoch_share_conversion_rate);
+                    self.epoch_share_conversion_rate.write(current_epoch, epoch_share_conversion_rate);
                     self.total_shares.write(yin_balance);
                 } else {
                     // Otherwise, set the epoch share conversion rate to 0 and total shares to 0.
@@ -724,8 +677,7 @@ mod absorber {
             let yin_balance: u256 = self.yin_erc20().balance_of(absorber);
 
             let (computed_shares, r, _) = u256_safe_divmod(
-                yin_amt.into() * total_shares.into(),
-                yin_balance.try_into().expect('Division by zero')
+                yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
             );
             let computed_shares: u128 = computed_shares.try_into().unwrap();
             if round_up && r.is_non_zero() {
@@ -751,9 +703,7 @@ mod absorber {
         }
 
         // Convert an epoch's shares to a subsequent epoch's shares
-        fn convert_epoch_shares(
-            self: @ContractState, start_epoch: u32, end_epoch: u32, start_shares: Wad
-        ) -> Wad {
+        fn convert_epoch_shares(self: @ContractState, start_epoch: u32, end_epoch: u32, start_shares: Wad) -> Wad {
             if start_epoch == end_epoch {
                 return start_shares;
             }
@@ -770,17 +720,13 @@ mod absorber {
 
         // Helper function to update each provider's entitlement of an absorbed asset
         fn update_absorbed_asset(
-            ref self: ContractState,
-            absorption_id: u32,
-            total_recipient_shares: Wad,
-            asset_balance: AssetBalance
+            ref self: ContractState, absorption_id: u32, total_recipient_shares: Wad, asset_balance: AssetBalance
         ) {
             if asset_balance.amount.is_zero() {
                 return;
             }
 
-            let last_error: u128 = self
-                .get_recent_asset_absorption_error(asset_balance.address, absorption_id);
+            let last_error: u128 = self.get_recent_asset_absorption_error(asset_balance.address, absorption_id);
             let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
 
             let asset_amt_per_share: u128 = wadray::wdiv_internal(
@@ -793,17 +739,12 @@ mod absorber {
 
             self
                 .asset_absorption
-                .write(
-                    (asset_balance.address, absorption_id),
-                    DistributionInfo { asset_amt_per_share, error }
-                );
+                .write((asset_balance.address, absorption_id), DistributionInfo { asset_amt_per_share, error });
         }
 
         // Returns the last error for an asset at a given `absorption_id` if the `asset_amt_per_share` is non-zero.
         // Otherwise, check `absorption_id - 1` recursively for the last error.
-        fn get_recent_asset_absorption_error(
-            self: @ContractState, asset: ContractAddress, absorption_id: u32
-        ) -> u128 {
+        fn get_recent_asset_absorption_error(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> u128 {
             if absorption_id == 0 {
                 return 0;
             }
@@ -827,13 +768,9 @@ mod absorber {
         // `get_provider_rewards` for re-use by `preview_reap` and
         // `reap_helper`
         fn get_absorbed_and_rewarded_assets_for_provider(
-            self: @ContractState,
-            provider: ContractAddress,
-            provision: Provision,
-            include_pending_rewards: bool
+            self: @ContractState, provider: ContractAddress, provision: Provision, include_pending_rewards: bool
         ) -> (Span<AssetBalance>, Span<AssetBalance>) {
-            let absorbed_assets: Span<AssetBalance> = self
-                .get_absorbed_assets_for_provider_helper(provider, provision);
+            let absorbed_assets: Span<AssetBalance> = self.get_absorbed_assets_for_provider_helper(provider, provision);
             let rewarded_assets: Span<AssetBalance> = self
                 .get_provider_rewards(provider, provision, include_pending_rewards);
 
@@ -912,15 +849,11 @@ mod absorber {
                             }
 
                             start_absorption_id += 1;
-                            let absorption_epoch: u32 = self
-                                .absorption_epoch
-                                .read(start_absorption_id);
+                            let absorption_epoch: u32 = self.absorption_epoch.read(start_absorption_id);
 
                             // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
                             let adjusted_shares: Wad = self
-                                .convert_epoch_shares(
-                                    provision.epoch, absorption_epoch, provision.shares
-                                );
+                                .convert_epoch_shares(provision.epoch, absorption_epoch, provision.shares);
 
                             // Terminate if provider does not have any shares for current epoch
                             if adjusted_shares.is_zero() {
@@ -931,14 +864,10 @@ mod absorber {
                                 .asset_absorption
                                 .read((*asset, start_absorption_id));
 
-                            absorbed_amt +=
-                                wadray::wmul_internal(
-                                    adjusted_shares.val, absorption.asset_amt_per_share
-                                );
+                            absorbed_amt += wadray::wmul_internal(adjusted_shares.val, absorption.asset_amt_per_share);
                         };
 
-                        absorbed_assets
-                            .append(AssetBalance { address: *asset, amount: absorbed_amt });
+                        absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
                     },
                     Option::None => { break absorbed_assets.span(); }
                 };
@@ -946,9 +875,7 @@ mod absorber {
         }
 
         // Helper function to iterate over an array of assets to transfer to an address
-        fn transfer_assets(
-            ref self: ContractState, to: ContractAddress, mut asset_balances: Span<AssetBalance>
-        ) {
+        fn transfer_assets(ref self: ContractState, to: ContractAddress, mut asset_balances: Span<AssetBalance>) {
             loop {
                 match asset_balances.pop_front() {
                     Option::Some(asset_balance) => {
@@ -975,10 +902,7 @@ mod absorber {
             let current_timestamp: u64 = starknet::get_block_timestamp();
             let removal_start_timestamp: u64 = request.timestamp + request.timelock;
             assert(removal_start_timestamp <= current_timestamp, 'ABS: Request is not valid yet');
-            assert(
-                current_timestamp <= removal_start_timestamp + REQUEST_VALIDITY_PERIOD,
-                'ABS: Request has expired'
-            );
+            assert(current_timestamp <= removal_start_timestamp + REQUEST_VALIDITY_PERIOD, 'ABS: Request has expired');
         }
 
         //
@@ -1014,8 +938,7 @@ mod absorber {
                 let blessed_amt = reward.blesser.bless();
 
                 if blessed_amt.is_non_zero() {
-                    blessed_assets
-                        .append(AssetBalance { address: reward.asset, amount: blessed_amt });
+                    blessed_assets.append(AssetBalance { address: reward.asset, amount: blessed_amt });
 
                     let epoch_reward_info: DistributionInfo = self
                         .cumulative_reward_amt_by_epoch
@@ -1030,16 +953,13 @@ mod absorber {
                     );
                     let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
-                    let updated_asset_amt_per_share: u128 = epoch_reward_info.asset_amt_per_share
-                        + asset_amt_per_share;
+                    let updated_asset_amt_per_share: u128 = epoch_reward_info.asset_amt_per_share + asset_amt_per_share;
 
                     self
                         .cumulative_reward_amt_by_epoch
                         .write(
                             (reward.asset, epoch),
-                            DistributionInfo {
-                                asset_amt_per_share: updated_asset_amt_per_share, error
-                            }
+                            DistributionInfo { asset_amt_per_share: updated_asset_amt_per_share, error }
                         );
                 }
 
@@ -1055,10 +975,7 @@ mod absorber {
         // Returns an array of `AssetBalance` struct for accumulated rewards, or accumulated plus
         // pending rewards, depending on the `include_pending_rewards` flag.
         fn get_provider_rewards(
-            self: @ContractState,
-            provider: ContractAddress,
-            provision: Provision,
-            include_pending_rewards: bool
+            self: @ContractState, provider: ContractAddress, provision: Provision, include_pending_rewards: bool
         ) -> Span<AssetBalance> {
             let mut reward_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
@@ -1093,10 +1010,8 @@ mod absorber {
                         .cumulative_reward_amt_by_epoch
                         .read((reward.asset, epoch));
 
-                    let asset_amt_per_share: u128 = if include_pending_rewards
-                        && epoch == current_epoch {
-                        let total_recipient_shares: Wad = self.total_shares.read()
-                            - INITIAL_SHARES.into();
+                    let asset_amt_per_share: u128 = if include_pending_rewards && epoch == current_epoch {
+                        let total_recipient_shares: Wad = self.total_shares.read() - INITIAL_SHARES.into();
                         let pending_amt: u128 = reward.blesser.preview_bless();
                         let pending_amt_per_share: u128 = wadray::wdiv_internal(
                             pending_amt + epoch_reward_info.error, total_recipient_shares.val
@@ -1110,8 +1025,7 @@ mod absorber {
                     // same epoch as the provider's Provision epoch.
                     // This is because the provider's cumulative value may not have been fully updated for that epoch.
                     let rate: u128 = if epoch == provision.epoch {
-                        asset_amt_per_share
-                            - self.provider_last_reward_cumulative.read((provider, reward.asset))
+                        asset_amt_per_share - self.provider_last_reward_cumulative.read((provider, reward.asset))
                     } else {
                         asset_amt_per_share
                     };
@@ -1170,9 +1084,7 @@ mod absorber {
                 let next_epoch_reward_info: DistributionInfo = DistributionInfo {
                     asset_amt_per_share: 0, error: epoch_reward_info.error,
                 };
-                self
-                    .cumulative_reward_amt_by_epoch
-                    .write((reward.asset, epoch + 1), next_epoch_reward_info);
+                self.cumulative_reward_amt_by_epoch.write((reward.asset, epoch + 1), next_epoch_reward_info);
                 current_rewards_id += 1;
             };
         }
