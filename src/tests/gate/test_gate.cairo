@@ -7,7 +7,6 @@ mod test_gate {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::gate::utils::gate_utils::WBTC_SCALE;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{WAD_SCALE, Wad};
@@ -54,7 +53,7 @@ mod test_gate {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
-        let user = gate_utils::eth_hoarder();
+        let user = common::eth_hoarder();
         let trove_id = common::TROVE_1;
         gate_utils::approve_gate_for_token(gate, eth, user);
 
@@ -87,11 +86,11 @@ mod test_gate {
         let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy(Option::None);
         gate_utils::add_wbtc_as_yang(shrine, wbtc);
 
-        let user = gate_utils::wbtc_hoarder();
+        let user = common::wbtc_hoarder();
         let trove_id = common::TROVE_1;
         gate_utils::approve_gate_for_token(gate, wbtc, user);
 
-        let asset_amt = 3_u128 * WBTC_SCALE;
+        let asset_amt = 3_u128 * common::WBTC_SCALE;
 
         // a gate can only be called from a sentinel
         start_prank(CheatTarget::One(gate), gate_utils::mock_sentinel());
@@ -102,7 +101,7 @@ mod test_gate {
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
         // check exchange rate and gate asset balance
-        assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / WBTC_SCALE), 'enter amount');
+        assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / common::WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
 
@@ -120,7 +119,7 @@ mod test_gate {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
-        let user = gate_utils::eth_hoarder();
+        let user = common::eth_hoarder();
         gate_utils::approve_gate_for_token(gate, eth, user);
 
         let eth = IERC20Dispatcher { contract_address: eth };
@@ -189,7 +188,7 @@ mod test_gate {
         gate_utils::approve_gate_for_token(gate.contract_address, eth.contract_address, user1);
 
         // fund user1
-        start_prank(CheatTarget::One(eth.contract_address), gate_utils::eth_hoarder());
+        start_prank(CheatTarget::One(eth.contract_address), common::eth_hoarder());
         eth.transfer(user1, (enter1_amt + enter2_amt).into());
         stop_prank(CheatTarget::One(eth.contract_address));
         //
@@ -255,7 +254,7 @@ mod test_gate {
         let enter4_amt = 8_u128 * WAD_SCALE;
 
         gate_utils::approve_gate_for_token(gate.contract_address, eth.contract_address, user2);
-        start_prank(CheatTarget::One(eth.contract_address), gate_utils::eth_hoarder());
+        start_prank(CheatTarget::One(eth.contract_address), common::eth_hoarder());
         eth.transfer(user2, (enter3_amt + enter4_amt).into());
         stop_prank(CheatTarget::One(eth.contract_address));
 
@@ -369,7 +368,7 @@ mod test_gate {
         // make funds available and fund user
         gate_utils::approve_gate_for_token(gate.contract_address, eth.contract_address, user);
 
-        start_prank(CheatTarget::One(eth.contract_address), gate_utils::eth_hoarder());
+        start_prank(CheatTarget::One(eth.contract_address), common::eth_hoarder());
         eth.transfer(user, (enter_amt - 1).into());
         stop_prank(CheatTarget::One(eth.contract_address));
 
@@ -395,7 +394,7 @@ mod test_gate {
 
         // make funds available and fund user
         gate_utils::approve_gate_for_token(gate.contract_address, eth.contract_address, user);
-        start_prank(CheatTarget::One(eth.contract_address), gate_utils::eth_hoarder());
+        start_prank(CheatTarget::One(eth.contract_address), common::eth_hoarder());
         eth.transfer(user, enter_amt.into());
         stop_prank(CheatTarget::One(eth.contract_address));
 

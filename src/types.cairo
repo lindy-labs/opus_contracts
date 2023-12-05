@@ -78,9 +78,9 @@ struct YangRedistribution {
     unit_debt: Wad,
     // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
     // This is packed into bits 128 to 250.
-    // Note that the error should never approach close to 2 ** 122, but it is capped to this 
-    // value anyway to prevent redistributions from failing in this unlikely scenario, at the 
-    // expense of some amount of redistributed debt not being attributed to troves. These 
+    // Note that the error should never approach close to 2 ** 122, but it is capped to this
+    // value anyway to prevent redistributions from failing in this unlikely scenario, at the
+    // expense of some amount of redistributed debt not being attributed to troves. These
     // unattributed amounts will be backed by the initial yang amounts instead.
     error: Wad,
     // Whether the exception flow is triggered to redistribute the yang across all yangs
@@ -132,9 +132,9 @@ struct DistributionInfo {
     // This is packed into bits 0 to 127.
     asset_amt_per_share: u128,
     // Error to be added to next absorption
-    // This is packed into bits 128 to 251. 
+    // This is packed into bits 128 to 251.
     // Note that the error should never approach close to 2 ** 123, but it is capped to this value anyway
-    // to prevent redistributions from failing in this unlikely scenario, at the expense of providers 
+    // to prevent redistributions from failing in this unlikely scenario, at the expense of providers
     // losing out on some absorbed assets.
     error: u128,
 }
@@ -244,13 +244,5 @@ mod pragma {
         // the minimum number of data publishers used to aggregate the
         // price value
         sources: u64
-    }
-
-    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
-    struct YangSettings {
-        // a Pragma value identifying a certain feed, e.g. `ETH/USD`
-        pair_id: u256,
-        // address of the Yang (token) corresponding to the pair ID
-        yang: starknet::ContractAddress
     }
 }

@@ -11,6 +11,7 @@ mod test_equalizer {
     use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::Health;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
@@ -77,6 +78,75 @@ mod test_equalizer {
         shrine.adjust_budget(deficit);
 
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
+    }
+
+    #[test]
+    fn test_equalize_debt_ceiling_exceeded_pass() {
+        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(),].span();
+        let debt_ceiling: Wad = shrine.get_debt_ceiling();
+
+        // deposit 1000 ETH and forge the debt ceiling
+        shrine_utils::trove1_deposit(shrine, (1000 * WAD_ONE).into());
+        shrine_utils::trove1_forge(shrine, debt_ceiling);
+        let eth: ContractAddress = shrine_utils::yang1_addr();
+        let (eth_price, _, _) = shrine.get_current_yang_price(eth);
+
+        let mut loop_id = 5;
+        let mut start_debt = debt_ceiling;
+        loop {
+            if loop_id.is_zero() {
+                break;
+            }
+
+            // accrue interest to exceed the debt ceiling
+            common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+
+            // update price to speed up calculation
+            start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+            shrine.advance(eth, eth_price);
+            stop_prank(CheatTarget::One(shrine.contract_address));
+
+            shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
+            let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
+            let expected_surplus: Wad = trove_health.debt - start_debt;
+
+            assert(shrine.get_budget() == expected_surplus.into(), 'sanity check');
+
+            let before_total_yin = shrine.get_total_yin();
+            let before_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
+
+            let minted_surplus: Wad = equalizer.equalize();
+            assert(minted_surplus == expected_surplus, 'surplus mismatch');
+
+            let total_yin: Wad = shrine.get_total_yin();
+            assert(total_yin > start_debt, 'below debt ceiling');
+
+            let after_equalizer_yin: Wad = shrine.get_yin(equalizer.contract_address);
+            assert(
+                after_equalizer_yin == before_equalizer_yin + expected_surplus,
+                'surplus not received'
+            );
+
+            // Check remaining surplus
+            assert(shrine.get_budget().is_zero(), 'surplus should be zeroed');
+
+            assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
+
+            let mut expected_events: Span<equalizer_contract::Event> = array![
+                equalizer_contract::Event::Equalize(
+                    equalizer_contract::Equalize { yin_amt: expected_surplus.into() }
+                ),
+            ]
+                .span();
+            // common::assert_events_emitted(
+            //     equalizer.contract_address, expected_events, Option::None
+            // );
+
+            start_debt = total_yin;
+
+            loop_id -= 1;
+        }
     }
 
     #[test]

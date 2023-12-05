@@ -4,13 +4,14 @@ mod purger_utils {
     use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
-    use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
+    use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_liquidator::{
         flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
@@ -18,7 +19,8 @@ mod purger_utils {
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::external::utils::pragma_utils;
+    use opus::tests::seer::utils::seer_utils;
+
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
@@ -63,6 +65,7 @@ mod purger_utils {
         purger: ContractClass,
         pragma: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
+        seer: Option<ContractClass>,
     }
 
     //
@@ -333,7 +336,7 @@ mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        IMockPragmaDispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -362,26 +365,15 @@ mod purger_utils {
             absorber, reward_tokens, reward_amts_per_blessing, classes.blesser
         );
 
-        let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
-            sentinel, shrine.contract_address, classes.pragma, classes.mock_pragma
+        let seer = seer_utils::deploy_seer_using(
+            classes.seer, shrine.contract_address, sentinel.contract_address
         );
-        pragma_utils::add_yangs_to_pragma(oracle, yangs);
+        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
+        seer_utils::add_yangs(seer, yangs);
 
-        // Seed initial prices for ETH and WBTC in Pragma
-        let current_ts = get_block_timestamp();
-        pragma_utils::mock_valid_price_update(
-            mock_pragma,
-            pragma_utils::ETH_USD_PAIR_ID,
-            pragma_utils::convert_price_to_pragma_scale(pragma_utils::ETH_INIT_PRICE),
-            current_ts
-        );
-        pragma_utils::mock_valid_price_update(
-            mock_pragma,
-            pragma_utils::WBTC_USD_PAIR_ID,
-            pragma_utils::convert_price_to_pragma_scale(pragma_utils::WBTC_INIT_PRICE),
-            current_ts
-        );
-        IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.update_prices();
+        stop_prank(CheatTarget::One(seer.contract_address));
 
         let admin: ContractAddress = admin();
 
@@ -390,7 +382,7 @@ mod purger_utils {
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
             contract_address_to_felt252(absorber.contract_address),
-            contract_address_to_felt252(oracle.contract_address)
+            contract_address_to_felt252(seer.contract_address)
         ];
 
         let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
@@ -407,10 +399,10 @@ mod purger_utils {
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
-        // Approve Purger in Oracle
-        let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
-        start_prank(CheatTarget::One(oracle.contract_address), pragma_utils::admin());
-        oracle_ac.grant_role(pragma_roles::purger(), purger_addr);
+        // Approve Purger in Seer
+        let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        oracle_ac.grant_role(seer_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
@@ -423,7 +415,7 @@ mod purger_utils {
 
         stop_prank(CheatTarget::All);
 
-        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
+        (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn purger_deploy_with_searcher(
@@ -431,16 +423,16 @@ mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        IMockPragmaDispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(classes);
+        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(classes);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
-        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
+        (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn flash_liquidator_deploy(
@@ -542,13 +534,10 @@ mod purger_utils {
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher,
-        mock_pragma: IMockPragmaDispatcher,
+        seer: ISeerDispatcher,
         mut yangs: Span<ContractAddress>,
-        mut yang_pair_ids: Span<u256>,
         pct_decrease: Ray,
     ) {
-        let current_ts = get_block_timestamp();
-        let scale: u128 = pow(10_u128, WAD_DECIMALS - pragma_utils::PRAGMA_DECIMALS);
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
@@ -557,19 +546,8 @@ mod purger_utils {
                     let new_price: Wad = wadray::rmul_wr(
                         yang_price, (RAY_ONE.into() - pct_decrease)
                     );
-                    let new_pragma_price: u128 = new_price.val / scale;
-                    // Note that `new_price` is more precise than `new_pragma_price` so
-                    // the `new_pragma_price` is a rounded down value of `new_price`.
-                    // `new_price` is used so that there is more control over the precision of
-                    // the target LTV.
                     shrine.advance(*yang, new_price);
-
-                    pragma_utils::mock_valid_price_update(
-                        mock_pragma,
-                        *yang_pair_ids.pop_front().unwrap(),
-                        new_pragma_price,
-                        current_ts
-                    );
+                    seer_utils::mock_valid_price_update(seer, *yang, new_price);
                 },
                 Option::None => { break; },
             };
@@ -581,9 +559,8 @@ mod purger_utils {
     // yang prices
     fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
-        mock_pragma: IMockPragmaDispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
-        yang_pair_ids: Span<u256>,
         value: Wad,
         debt: Wad,
         target_ltv: Ray,
@@ -591,7 +568,7 @@ mod purger_utils {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
 
-        decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
+        decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
     }
 
     fn trigger_recovery_mode(
@@ -762,10 +739,9 @@ mod purger_utils {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     sum = sum + yang_price * *amounts.pop_front().unwrap();
                 },
-                Option::None => { break; },
-            };
-        };
-        sum
+                Option::None => { break sum; }
+            }
+        }
     }
 
     fn declare_contracts() -> PurgerTestClasses {
@@ -780,6 +756,7 @@ mod purger_utils {
             purger: declare('purger'),
             pragma: Option::Some(declare('pragma')),
             mock_pragma: Option::Some(declare('mock_pragma')),
+            seer: Option::Some(declare('seer')),
         }
     }
 }

@@ -5,8 +5,8 @@ mod purger {
     use core::zeroable::Zeroable;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
@@ -84,8 +84,8 @@ mod purger {
         sentinel: ISentinelDispatcher,
         // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
-        // the Oracle associated with the Shrine and this Purger
-        oracle: IOracleDispatcher,
+        // the Seer module
+        seer: ISeerDispatcher,
         // Scalar for multiplying penalties above `ABSORPTION_THRESHOLD`
         penalty_scalar: Ray,
     }
@@ -141,14 +141,14 @@ mod purger {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         absorber: ContractAddress,
-        oracle: ContractAddress,
+        seer: ContractAddress,
     ) {
         self.access_control.initializer(admin, Option::Some(purger_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.absorber.write(IAbsorberDispatcher { contract_address: absorber });
-        self.oracle.write(IOracleDispatcher { contract_address: oracle });
+        self.seer.write(ISeerDispatcher { contract_address: seer });
 
         self.penalty_scalar.write(RAY_ONE.into());
         self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into() });
@@ -330,7 +330,6 @@ mod purger {
                 // Free collateral corresponding to the purged amount
                 let absorbed_assets: Span<AssetBalance> = self
                     .free(shrine, trove_id, pct_value_to_purge, absorber.contract_address);
-
                 absorber.update(absorbed_assets);
 
                 self
@@ -370,12 +369,11 @@ mod purger {
                         debt_to_redistribute
                     )
                 };
-
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
                 // Update yang prices due to an appreciation in ratio of asset to yang from
                 // redistribution
-                self.oracle.read().update_prices();
+                self.seer.read().update_prices();
             }
 
             // Safety check to ensure the new LTV is not worse off

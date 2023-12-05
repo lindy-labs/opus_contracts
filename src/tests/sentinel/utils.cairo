@@ -6,6 +6,7 @@ mod sentinel_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -126,7 +127,8 @@ mod sentinel_utils {
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
     ) -> (ContractAddress, IGateDispatcher) {
-        let eth: ContractAddress = gate_utils::eth_token_deploy(token_class);
+        let eth: ContractAddress = common::eth_token_deploy(token_class);
+
         let eth_gate: ContractAddress = gate_utils::gate_deploy(
             eth, shrine_addr, sentinel.contract_address, gate_class
         );
@@ -134,7 +136,7 @@ mod sentinel_utils {
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(eth), gate_utils::eth_hoarder());
+        start_prank(CheatTarget::One(eth), common::eth_hoarder());
         eth_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         start_prank(CheatTarget::One(eth), admin());
         eth_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
@@ -163,7 +165,7 @@ mod sentinel_utils {
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
     ) -> (ContractAddress, IGateDispatcher) {
-        let wbtc: ContractAddress = gate_utils::wbtc_token_deploy(token_class);
+        let wbtc: ContractAddress = common::wbtc_token_deploy(token_class);
         let wbtc_gate: ContractAddress = gate_utils::gate_deploy(
             wbtc, shrine_addr, sentinel.contract_address, gate_class
         );
@@ -171,7 +173,7 @@ mod sentinel_utils {
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(wbtc), gate_utils::wbtc_hoarder());
+        start_prank(CheatTarget::One(wbtc), common::wbtc_hoarder());
         wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
         start_prank(CheatTarget::One(wbtc), admin());
         wbtc_erc20

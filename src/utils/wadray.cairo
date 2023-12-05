@@ -111,25 +111,25 @@ fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
 #[inline(always)]
 fn wmul_internal(lhs: u128, rhs: u128) -> u128 {
     let (lhs_u256, rhs_u256) = cast_to_u256(lhs, rhs);
-    (lhs_u256 * rhs_u256 / WAD_ONE.into()).try_into().unwrap()
+    (lhs_u256 * rhs_u256 / WAD_ONE.into()).try_into().expect('wmul_internal')
 }
 
 #[inline(always)]
 fn rmul_internal(lhs: u128, rhs: u128) -> u128 {
     let (lhs_u256, rhs_u256) = cast_to_u256(lhs, rhs);
-    (lhs_u256 * rhs_u256 / RAY_ONE.into()).try_into().unwrap()
+    (lhs_u256 * rhs_u256 / RAY_ONE.into()).try_into().expect('rmul_internal')
 }
 
 #[inline(always)]
 fn wdiv_internal(lhs: u128, rhs: u128) -> u128 {
     let (lhs_u256, rhs_u256) = cast_to_u256(lhs, rhs);
-    ((lhs_u256 * WAD_ONE.into()) / rhs_u256).try_into().unwrap()
+    ((lhs_u256 * WAD_ONE.into()) / rhs_u256).try_into().expect('wdiv_internal')
 }
 
 #[inline(always)]
 fn rdiv_internal(lhs: u128, rhs: u128) -> u128 {
     let (lhs_u256, rhs_u256) = cast_to_u256(lhs, rhs);
-    ((lhs_u256 * RAY_ONE.into()) / rhs_u256).try_into().unwrap()
+    ((lhs_u256 * RAY_ONE.into()) / rhs_u256).try_into().expect('rdiv_internal')
 }
 
 
