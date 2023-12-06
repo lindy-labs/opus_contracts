@@ -8,7 +8,6 @@ mod test_exp {
     const ACCEPTABLE_ERROR: u128 = 1000000;
 
     #[test]
-    #[available_gas(9999999)]
     fn test_exp_basic() {
         // Basic tests
         assert(exp(Wad { val: 0 }) == Wad { val: WAD_ONE }, 'Incorrect e^0 result');
@@ -34,7 +33,6 @@ mod test_exp {
     }
 
     #[test]
-    #[available_gas(9999999)]
     fn test_exp_add() {
         // Exponent law: e^x * e^y = e^(x + y)
         let a: Wad = exp(Wad { val: WAD_ONE });
@@ -47,7 +45,6 @@ mod test_exp {
     }
 
     #[test]
-    #[available_gas(9999999)]
     fn test_exp_sub() {
         //Exponent law: e^x / e^y = e^(x - y)
         let a: Wad = exp(Wad { val: 8 * WAD_ONE });
@@ -59,7 +56,6 @@ mod test_exp {
 
 
     #[test]
-    #[available_gas(9999999)]
     #[should_panic(expected: ('exp: x is out of bounds',))]
     fn test_exp_fail() {
         let _ = exp(Wad { val: 42600000000000000001 });

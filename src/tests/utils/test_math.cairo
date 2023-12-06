@@ -7,7 +7,6 @@ mod test_math {
     use opus::utils::wadray;
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_sqrt() {
         let ERROR_MARGIN = Ray { val: 1 };
 
@@ -68,7 +67,6 @@ mod test_math {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_pow() {
         // u128 tests
         assert(pow(5_u128, 3) == 125_u128, 'wrong pow #1');

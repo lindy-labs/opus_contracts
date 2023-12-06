@@ -8,19 +8,21 @@ mod pragma_utils {
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use opus::tests::external::mock_pragma::mock_pragma as mock_pragma_contract;
-    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_pragma::{
+        mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
+    };
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
 
     //
@@ -49,17 +51,23 @@ mod pragma_utils {
     // Test setup helpers
     //
 
-    fn mock_pragma_deploy() -> IMockPragmaDispatcher {
+    fn mock_pragma_deploy(mock_pragma_class: Option<ContractClass>) -> IMockPragmaDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
-        let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(mock_pragma_contract::TEST_CLASS_HASH)
-            .unwrap();
-        let (mock_pragma_addr, _) = deploy_syscall(mock_pragma_class_hash, 0, calldata.span(), false).unwrap_syscall();
+
+        let mock_pragma_class = match mock_pragma_class {
+            Option::Some(class) => class,
+            Option::None => declare('mock_pragma'),
+        };
+
+        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy pragma');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
 
-    fn pragma_deploy() -> (IPragmaDispatcher, IMockPragmaDispatcher) {
-        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
+    fn pragma_deploy(
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
+    ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
+        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(mock_pragma.contract_address),
@@ -67,12 +75,15 @@ mod pragma_utils {
             SOURCES_THRESHOLD.into(),
         ];
 
-        let pragma_class_hash: ClassHash = class_hash_try_from_felt252(pragma_contract::TEST_CLASS_HASH).unwrap();
-        let (pragma_addr, _) = deploy_syscall(pragma_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let pragma_class = match pragma_class {
+            Option::Some(class) => class,
+            Option::None => declare('pragma'),
+        };
+
+        let pragma_addr = pragma_class.deploy(@calldata).expect('failed deploy pragma');
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        set_contract_address(ContractAddressZeroable::zero());
         (pragma, mock_pragma)
     }
 
@@ -87,13 +98,11 @@ mod pragma_utils {
         mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
-        set_contract_address(admin());
-
         // Add yangs to Pragma
+        start_prank(CheatTarget::One(pragma.contract_address), admin());
         pragma.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
         pragma.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(pragma.contract_address));
     }
 
     //

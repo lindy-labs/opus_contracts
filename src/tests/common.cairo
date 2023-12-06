@@ -4,18 +4,16 @@ use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-use opus::tests::erc20::ERC20;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
+
+use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
-use starknet::{
-    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-    contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
-};
+use starknet::testing::{pop_log_raw};
+use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
 
 //
 // Constants
@@ -114,26 +112,66 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 
 // Helper function to advance timestamp by the given intervals
-#[inline(always)]
+fn advance_intervals_and_refresh_prices_and_multiplier(
+    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64
+) {
+    // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
+    let (current_multiplier, _, _) = shrine.get_current_multiplier();
+
+    let mut yang_prices = array![];
+    let mut yangs_copy = yangs;
+
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                yang_prices.append(current_yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+
+    // Updating prices and multiplier
+    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+    shrine.set_multiplier(current_multiplier);
+    loop {
+        match yangs.pop_front() {
+            Option::Some(yang) => {
+                let yang_price = yang_prices.pop_front().unwrap();
+                shrine.advance(*yang, yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+    stop_prank(CheatTarget::One(shrine.contract_address));
+}
+
 fn advance_intervals(intervals: u64) {
-    set_block_timestamp(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
 
 
-fn eth_token_deploy() -> ContractAddress {
-    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder())
+fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
 }
 
-fn wbtc_token_deploy() -> ContractAddress {
-    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder())
+fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
 }
 
 
 // Helper function to deploy a token
 fn deploy_token(
-    name: felt252, symbol: felt252, decimals: felt252, initial_supply: u256, recipient: ContractAddress,
+    name: felt252,
+    symbol: felt252,
+    decimals: felt252,
+    initial_supply: u256,
+    recipient: ContractAddress,
+    token_class: Option<ContractClass>,
 ) -> ContractAddress {
-    let mut calldata: Array<felt252> = array![
+    let calldata: Array<felt252> = array![
         name,
         symbol,
         decimals,
@@ -142,10 +180,12 @@ fn deploy_token(
         contract_address_to_felt252(recipient),
     ];
 
-    let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-    let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
+    let token_class = match token_class {
+        Option::Some(class) => class,
+        Option::None => declare('erc20_mintable'),
+    };
 
-    token
+    token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 
 // Helper function to fund a user account with yang assets
@@ -169,7 +209,6 @@ fn open_trove_helper(
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad
 ) -> u64 {
-    set_contract_address(user);
     let mut yangs_copy = yangs;
 
     loop {
@@ -183,10 +222,10 @@ fn open_trove_helper(
         };
     };
 
-    set_contract_address(user);
+    start_prank(CheatTarget::One(abbot.contract_address), user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-    set_contract_address(ContractAddressZeroable::zero());
+    stop_prank(CheatTarget::One(abbot.contract_address));
 
     trove_id
 }

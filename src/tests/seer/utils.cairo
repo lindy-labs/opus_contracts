@@ -7,17 +7,16 @@ mod seer_utils {
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
-    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Wad;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
-        class_hash_try_from_felt252, contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
-        get_block_timestamp, ClassHash, ContractAddress, SyscallResultTrait
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, ContractAddress
     };
 
     //
@@ -45,23 +44,29 @@ mod seer_utils {
         contract_address_try_from_felt252('wbtc token').unwrap()
     }
 
-    fn deploy_seer() -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
-        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(Option::None);
-        let mut calldata: Array<felt252> = array![
+    fn deploy_seer(
+        seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
+    ) -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
+        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine),
             contract_address_to_felt252(sentinel_dispatcher.contract_address),
             UPDATE_FREQUENCY.into()
         ];
 
-        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH).unwrap();
+        let seer_class = match seer_class {
+            Option::Some(class) => class,
+            Option::None => declare('seer')
+        };
 
-        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
+        stop_prank(CheatTarget::One(shrine));
 
         (
             ISeerDispatcher { contract_address: seer_addr },
@@ -70,7 +75,9 @@ mod seer_utils {
         )
     }
 
-    fn deploy_seer_using(shrine: ContractAddress, sentinel: ContractAddress) -> ISeerDispatcher {
+    fn deploy_seer_using(
+        seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress
+    ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
             contract_address_to_felt252(shrine),
@@ -78,29 +85,34 @@ mod seer_utils {
             UPDATE_FREQUENCY.into()
         ];
 
-        let seer_class_hash: ClassHash = class_hash_try_from_felt252(seer_contract::TEST_CLASS_HASH).unwrap();
+        let seer_class = match seer_class {
+            Option::Some(class) => class,
+            Option::None => declare('seer')
+        };
 
-        let (seer_addr, _) = deploy_syscall(seer_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
+        stop_prank(CheatTarget::One(shrine));
 
         ISeerDispatcher { contract_address: seer_addr }
     }
 
-    fn add_oracles(seer: ISeerDispatcher) -> Span<ContractAddress> {
+    fn add_oracles(
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>, seer: ISeerDispatcher
+    ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_deploy();
+        let (pragma, _) = pragma_utils::pragma_deploy(pragma_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
-        set_contract_address(pragma_utils::admin());
 
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(seer.contract_address), admin());
         seer.set_oracles(oracles.span());
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(seer.contract_address));
 
         oracles.span()
     }

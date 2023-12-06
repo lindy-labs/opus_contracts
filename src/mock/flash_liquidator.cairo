@@ -19,10 +19,8 @@ mod flash_liquidator {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::absorber::utils::absorber_utils;
-    use opus::tests::common;
     use opus::types::AssetBalance;
-    use opus::utils::wadray::{Wad, WadZeroable};
+    use opus::utils::wadray::{Wad, WAD_ONE, WadZeroable};
     use opus::utils::wadray;
     use starknet::{get_contract_address, ContractAddress};
 
@@ -105,7 +103,7 @@ mod flash_liquidator {
                 .read()
                 .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
-            let mut provider_assets: Span<u128> = absorber_utils::provider_asset_amts();
+            let mut provider_assets: Span<u128> = provider_assets();
             let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut freed_assets_copy = freed_assets;
             loop {
@@ -130,5 +128,13 @@ mod flash_liquidator {
 
             ON_FLASH_MINT_SUCCESS
         }
+    }
+
+    // Copy of `provider_asset_amts` in `absorber_utils`
+    fn provider_assets() -> Span<u128> {
+        let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
+         100000000, // 1 (10 ** 8) - BTC
+        ];
+        asset_amts.span()
     }
 }
