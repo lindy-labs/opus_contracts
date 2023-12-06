@@ -3,7 +3,7 @@ use opus::types::pragma;
 #[starknet::interface]
 trait IPragmaOracle<TContractState> {
     // getters
-    fn get_data_median(self: @TContractState, data_type: pragma::DataType) -> pragma::PricesResponse;
+    fn get_data_median(self: @TContractState, data_type: pragma::DataType) -> pragma::PragmaPricesResponse;
 }
 
 // TODO: currently a made up interface modelled after

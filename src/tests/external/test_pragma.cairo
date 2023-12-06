@@ -15,7 +15,7 @@ mod test_pragma {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::types::pragma::{PricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
@@ -209,7 +209,7 @@ mod test_pragma {
 
         // fake data for a second set_yang_pair_id, so its distinct from the first call
         let pepe_token_pair_id_2: u256 = 'WILDPEPE/USD'.into();
-        let response = PricesResponse {
+        let response = PragmaPricesResponse {
             price: price.into(),
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),
             last_updated_timestamp: (current_ts + 100).into(),
@@ -279,7 +279,7 @@ mod test_pragma {
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
-        let pepe_response = PricesResponse {
+        let pepe_response = PragmaPricesResponse {
             price: pepe_price.into(),
             decimals: invalid_decimals,
             last_updated_timestamp: 10000000,
@@ -397,7 +397,7 @@ mod test_pragma {
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
-                PricesResponse {
+                PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price).into(),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: now.into(),

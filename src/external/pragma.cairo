@@ -11,7 +11,7 @@ mod pragma {
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use opus::types::pragma::{DataType, PricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{DataType, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
@@ -36,8 +36,8 @@ mod pragma {
     // the range is [lower, upper]
     const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
     const UPPER_FRESHNESS_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
-    const LOWER_SOURCES_BOUND: u64 = 3;
-    const UPPER_SOURCES_BOUND: u64 = 13;
+    const LOWER_SOURCES_BOUND: u32 = 3;
+    const UPPER_SOURCES_BOUND: u32 = 13;
 
     //
     // Storage
@@ -60,7 +60,7 @@ mod pragma {
         // A mapping between a token's address and the ID Pragma uses
         // to identify the price feed
         // (yang address) -> (Pragma pair ID)
-        yang_pair_ids: LegacyMap::<ContractAddress, u256>
+        yang_pair_ids: LegacyMap::<ContractAddress, felt252>
     }
 
     //
@@ -81,8 +81,8 @@ mod pragma {
         #[key]
         yang: ContractAddress,
         price: Wad,
-        pragma_last_updated_ts: u256,
-        pragma_num_sources: u256,
+        pragma_last_updated_ts: u64,
+        pragma_num_sources: u32,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -101,7 +101,7 @@ mod pragma {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangPairIdSet {
         address: ContractAddress,
-        pair_id: u256
+        pair_id: felt252
     }
 
     //
@@ -114,7 +114,7 @@ mod pragma {
         admin: ContractAddress,
         oracle: ContractAddress,
         freshness_threshold: u64,
-        sources_threshold: u64
+        sources_threshold: u32
     ) {
         self.access_control.initializer(admin, Option::Some(pragma_roles::default_admin_role()));
 
@@ -137,14 +137,14 @@ mod pragma {
 
     #[abi(embed_v0)]
     impl IPragmaImpl of IPragma<ContractState> {
-        fn set_yang_pair_id(ref self: ContractState, yang: ContractAddress, pair_id: u256) {
+        fn set_yang_pair_id(ref self: ContractState, yang: ContractAddress, pair_id: felt252) {
             self.access_control.assert_has_role(pragma_roles::ADD_YANG);
             assert(pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
 
             // doing a sanity check if Pragma actually offers a price feed
             // of the requested asset and if it's suitable for our needs
-            let response: PricesResponse = self.oracle.read().get_data_median(DataType::Spot(pair_id));
+            let response: PragmaPricesResponse = self.oracle.read().get_data_median(DataType::SpotEntry(pair_id));
             // Pragma returns 0 decimals for an unknown pair ID
             assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
             assert(response.decimals <= 18, 'PGM: Too many decimals');
@@ -154,7 +154,7 @@ mod pragma {
             self.emit(YangPairIdSet { address: yang, pair_id });
         }
 
-        fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
+        fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u32) {
             self.access_control.assert_has_role(pragma_roles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
                 LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND, 'PGM: Freshness out of bounds'
@@ -184,15 +184,13 @@ mod pragma {
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252> {
-            let pair_id: u256 = self.yang_pair_ids.read(yang);
+            let pair_id: felt252 = self.yang_pair_ids.read(yang);
             assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-            let response: PricesResponse = self.oracle.read().get_data_median(DataType::Spot(pair_id));
+            let response: PragmaPricesResponse = self.oracle.read().get_data_median(DataType::SpotEntry(pair_id));
 
             // convert price value to Wad
-            let price: Wad = wadray::fixed_point_to_wad(
-                response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
-            );
+            let price: Wad = wadray::fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
 
             // if we receive what we consider a valid price from the oracle,
             // return it back, otherwise emit an event about the update being invalid
@@ -220,11 +218,11 @@ mod pragma {
 
     #[generate_trait]
     impl PragmaInternalFunctions of PragmaInternalFunctionsTrait {
-        fn is_valid_price_update(self: @ContractState, update: PricesResponse) -> bool {
+        fn is_valid_price_update(self: @ContractState, update: PragmaPricesResponse) -> bool {
             let required: PriceValidityThresholds = self.price_validity_thresholds.read();
 
             // check if the update is from enough sources
-            let has_enough_sources = required.sources <= update.num_sources_aggregated.try_into().unwrap();
+            let has_enough_sources = required.sources <= update.num_sources_aggregated;
 
             // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
             // it is from the future from the chain's perspective), because the update timestamp is coming
@@ -238,7 +236,7 @@ mod pragma {
             // discarding updates in cases where just a single publisher would push updates with future
             // timestamp; that could be disastrous as we would have stale prices
             let block_timestamp = get_block_timestamp();
-            let last_updated_timestamp: u64 = update.last_updated_timestamp.try_into().unwrap();
+            let last_updated_timestamp: u64 = update.last_updated_timestamp;
 
             if block_timestamp <= last_updated_timestamp {
                 return has_enough_sources;

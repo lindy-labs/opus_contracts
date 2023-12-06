@@ -11,7 +11,7 @@ mod pragma_utils {
     use opus::tests::external::mock_pragma::mock_pragma as mock_pragma_contract;
     use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
-    use opus::types::pragma::PricesResponse;
+    use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
@@ -123,7 +123,7 @@ mod pragma_utils {
     // Helper function to add a valid price update to the mock Pragma oracle
     // using default values for decimals and number of sources.
     fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
-        let response = PricesResponse {
+        let response = PragmaPricesResponse {
             price: convert_price_to_pragma_scale(price).into(),
             decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: timestamp.into(),

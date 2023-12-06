@@ -1,37 +1,36 @@
-use opus::types::pragma::PricesResponse;
+use opus::types::pragma::PragmaPricesResponse;
 
 #[starknet::interface]
 trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
-    fn next_get_data_median(ref self: TContractState, pair_id: u256, price_response: PricesResponse);
+    fn next_get_data_median(ref self: TContractState, pair_id: u256, price_response: PragmaPricesResponse);
 }
 
 #[starknet::contract]
 mod mock_pragma {
     use opus::interfaces::external::IPragmaOracle;
-    use opus::types::pragma::{DataType, PricesResponse};
+    use opus::types::pragma::{DataType, PragmaPricesResponse};
     use super::IMockPragma;
 
     #[storage]
     struct Storage {
         // Mapping from pair ID to price response data struct
-        price_response: LegacyMap::<u256, PricesResponse>,
+        price_response: LegacyMap::<u256, PragmaPricesResponse>,
     }
 
     #[abi(embed_v0)]
     impl IMockPragmaImpl of IMockPragma<ContractState> {
-        fn next_get_data_median(ref self: ContractState, pair_id: u256, price_response: PricesResponse) {
+        fn next_get_data_median(ref self: ContractState, pair_id: u256, price_response: PragmaPricesResponse) {
             self.price_response.write(pair_id, price_response);
         }
     }
 
     #[abi(embed_v0)]
     impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
-        fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
+        fn get_data_median(self: @ContractState, data_type: DataType) -> PragmaPricesResponse {
             match data_type {
-                DataType::Spot(pair_id) => { self.price_response.read(pair_id) },
-                DataType::Future(pair_id) => { self.price_response.read(pair_id) },
-                DataType::Generic(pair_id) => { self.price_response.read(pair_id) }
+                DataType::SpotEntry(pair_id) => { self.price_response.read(pair_id) },
+                _ => { panic_with_felt252('only spot') }
             }
         }
     }
