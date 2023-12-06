@@ -24,7 +24,7 @@ jobs:
       - run: scarb build
 
       # Starknet Foundry installation
-      - run: curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
-      - run: snfoundryup
-
-      - run: snforge test
+      - run: |
+      curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
+      snfoundryup
+      snforge test

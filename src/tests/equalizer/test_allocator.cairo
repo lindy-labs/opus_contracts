@@ -7,7 +7,6 @@ mod test_allocator {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Ray;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
 

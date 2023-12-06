@@ -14,7 +14,6 @@ mod test_caretaker {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress};
 

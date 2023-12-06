@@ -20,7 +20,6 @@ mod test_seer {
     use opus::types::pragma::PricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, WAD_SCALE};
-
     use snforge_std::{declare, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};

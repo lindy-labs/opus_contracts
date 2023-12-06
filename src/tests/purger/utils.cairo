@@ -18,7 +18,6 @@ mod purger_utils {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::seer::utils::seer_utils;
-
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
@@ -26,7 +25,6 @@ mod purger_utils {
     use opus::utils::math::pow;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{

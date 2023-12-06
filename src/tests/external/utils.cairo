@@ -19,7 +19,6 @@ mod pragma_utils {
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{

@@ -11,7 +11,6 @@ mod test_controller {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
     use opus::utils::wadray_signed;
-
     use snforge_std::{start_prank, CheatTarget};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad

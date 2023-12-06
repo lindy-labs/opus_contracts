@@ -16,7 +16,6 @@ mod test_shrine {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::get_block_timestamp;

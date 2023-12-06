@@ -17,7 +17,6 @@ mod test_equalizer {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};

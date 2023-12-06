@@ -9,7 +9,6 @@ mod controller_utils {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedRay;
     use opus::utils::wadray_signed;
-
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{

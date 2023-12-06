@@ -20,7 +20,6 @@ mod test_pragma {
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
-
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};

@@ -11,7 +11,6 @@ mod test_gate {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{WAD_SCALE, Wad};
     use opus::utils::wadray;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait};
     use starknet::{ContractAddress, contract_address_try_from_felt252};
 

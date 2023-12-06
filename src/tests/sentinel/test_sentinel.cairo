@@ -12,7 +12,6 @@ mod test_sentinel {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, ContractClass, start_prank, start_warp, CheatTarget, PrintTrait};
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;

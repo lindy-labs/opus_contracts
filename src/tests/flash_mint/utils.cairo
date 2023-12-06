@@ -7,7 +7,6 @@ mod flash_mint_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, SyscallResultTrait};

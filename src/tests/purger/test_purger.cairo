@@ -17,7 +17,6 @@ mod test_purger {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::flash_mint::utils::flash_mint_utils;
-
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
@@ -25,7 +24,6 @@ mod test_purger {
     use opus::utils::math::pow;
     use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, PrintTrait};
     use starknet::{ContractAddress, get_block_timestamp};
 

@@ -13,7 +13,6 @@ mod test_abbot {
     use opus::types::{AssetBalance, Health};
     use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
     use opus::utils::wadray;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 

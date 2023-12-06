@@ -3,7 +3,6 @@ mod test_access_control {
     use opus::tests::utils::mock_access_control::mock_access_control;
     use opus::utils::access_control::access_control_component::{AccessControlPublic, AccessControlHelpers};
     use opus::utils::access_control::access_control_component;
-
     use snforge_std::{spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, start_prank, CheatTarget};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     //

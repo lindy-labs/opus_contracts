@@ -9,7 +9,6 @@ mod test_shrine_compound {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-
     use snforge_std::{start_prank, start_warp, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp};
 

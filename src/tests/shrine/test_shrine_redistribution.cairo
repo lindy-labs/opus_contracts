@@ -7,7 +7,6 @@ mod test_shrine_redistribution {
     use opus::types::{ExceptionalYangRedistribution, Health, YangBalance, YangRedistribution};
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, CheatTarget};
     use starknet::ContractAddress;
     //

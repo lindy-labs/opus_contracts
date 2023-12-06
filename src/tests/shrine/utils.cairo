@@ -10,7 +10,6 @@ mod shrine_utils {
     use opus::utils::exp::exp;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
     };

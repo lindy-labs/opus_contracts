@@ -142,6 +142,7 @@ mod gate {
             if yang_amt.is_zero() {
                 return WadZeroable::zero();
             }
+
             let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
             self.emit(Enter { user, trove_id, asset_amt, yang_amt });

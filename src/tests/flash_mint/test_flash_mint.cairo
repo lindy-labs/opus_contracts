@@ -13,7 +13,6 @@ mod test_flash_mint {
     use opus::utils::wadray::{Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait};
     use starknet::ContractAddress;
 

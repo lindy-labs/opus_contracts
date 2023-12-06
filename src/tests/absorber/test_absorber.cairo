@@ -18,9 +18,7 @@ mod test_absorber {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
     use opus::utils::wadray;
-
     use snforge_std::{declare, start_prank, stop_prank, start_warp, CheatTarget};
-
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     //
