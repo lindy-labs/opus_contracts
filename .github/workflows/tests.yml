@@ -25,6 +25,6 @@ jobs:
 
       # Starknet Foundry installation
       - run: |
-      curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
-      snfoundryup
-      snforge test
+        curl -L https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
+        snfoundryup
+        snforge test
