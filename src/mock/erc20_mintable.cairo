@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod ERC20 {
+mod erc20_mintable {
     use opus::interfaces::IERC20::{IERC20, IMintable};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::get_caller_address;

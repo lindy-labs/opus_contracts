@@ -11,12 +11,9 @@ mod abbot_utils {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Wad;
     use opus::utils::wadray;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-    use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, deploy_syscall,
-        SyscallResultTrait
-    };
+    use starknet::{ContractAddress, contract_address_to_felt252,};
 
     //
     // Constants
@@ -53,37 +50,53 @@ mod abbot_utils {
     //
 
     fn abbot_deploy(
-        salt: Option<felt252>
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
     ) -> (IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(salt);
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
+            sentinel_class, token_class, gate_class, shrine_class
+        );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
-        let mut calldata: Array<felt252> = array![
+        let calldata: Array<felt252> = array![
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
         ];
 
-        let abbot_class_hash: ClassHash = class_hash_try_from_felt252(abbot_contract::TEST_CLASS_HASH).unwrap();
-        let (abbot_addr, _) = deploy_syscall(abbot_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let abbot_class = match abbot_class {
+            Option::Some(class) => class,
+            Option::None => declare('abbot'),
+        };
+
+        let abbot_addr = abbot_class.deploy(@calldata).expect('abbot deploy failed');
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
 
         // Grant Sentinel roles to Abbot
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
 
         (shrine, sentinel, abbot, yangs, gates)
     }
 
-    fn deploy_abbot_and_open_trove() -> (
+    fn deploy_abbot_and_open_trove(
+        abbot_class: Option<ContractClass>,
+        sentinel_class: Option<ContractClass>,
+        token_class: Option<ContractClass>,
+        gate_class: Option<ContractClass>,
+        shrine_class: Option<ContractClass>,
+    ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
         IAbbotDispatcher,
@@ -94,7 +107,9 @@ mod abbot_utils {
         Span<u128>, // deposited yang asset amounts
         Wad, // forge amount
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(Option::None);
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class
+        );
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();

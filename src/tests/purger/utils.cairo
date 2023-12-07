@@ -13,11 +13,10 @@ mod purger_utils {
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::purger::flash_liquidator::{
-        flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
-    };
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -26,11 +25,10 @@ mod purger_utils {
     use opus::utils::math::pow;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use opus::utils::wadray;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
 
     //
@@ -42,6 +40,24 @@ mod purger_utils {
 
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+
+
+    // Struct to group together all contract classes
+    // needed for purger tests
+    #[derive(Copy, Drop)]
+    struct PurgerTestClasses {
+        abbot: Option<ContractClass>,
+        sentinel: Option<ContractClass>,
+        token: Option<ContractClass>,
+        gate: Option<ContractClass>,
+        shrine: Option<ContractClass>,
+        absorber: Option<ContractClass>,
+        blesser: ContractClass,
+        purger: ContractClass,
+        pragma: Option<ContractClass>,
+        mock_pragma: Option<ContractClass>,
+        seer: Option<ContractClass>,
+    }
 
     //
     // Address constants
@@ -281,12 +297,30 @@ mod purger_utils {
             .span()
     }
 
+    fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+        array![
+            // First threshold of 78.75% (Ray)
+            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
+            // Second threshold of 80% (Ray)
+            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
+            // Third threshold of 90% (Ray)
+            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
+            // Fourth threshold of 96% (Ray)
+            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
+            // Fifth threshold of 97% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            // Sixth threshold of 99% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+        ]
+            .span()
+    }
+
     //
     // Test setup helpers
     //
 
     fn purger_deploy(
-        salt: Option<felt252>
+        classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -296,22 +330,31 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(salt);
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
 
-        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
+        );
+
+        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
+
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
-        absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing);
+        absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
-        let seer = seer_utils::deploy_seer_using(shrine.contract_address, sentinel.contract_address);
-        seer_utils::add_oracles(seer);
+        let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
+        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
         seer_utils::add_yangs(seer, yangs);
 
-        set_contract_address(seer_utils::admin());
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
+        stop_prank(CheatTarget::One(seer.contract_address));
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
@@ -319,43 +362,41 @@ mod purger_utils {
             contract_address_to_felt252(seer.contract_address)
         ];
 
-        let purger_class_hash: ClassHash = class_hash_try_from_felt252(purger_contract::TEST_CLASS_HASH).unwrap();
-        let (purger_addr, _) = deploy_syscall(purger_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
         // Approve Purger in Seer
         let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
-        set_contract_address(seer_utils::admin());
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         oracle_ac.grant_role(seer_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
-        set_contract_address(shrine_utils::admin());
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::All);
 
         (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, salt: Option<felt252>,
+        searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -365,26 +406,32 @@ mod purger_utils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(salt);
+        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(classes);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn flash_liquidator_deploy(
-        shrine: ContractAddress, abbot: ContractAddress, flashmint: ContractAddress, purger: ContractAddress,
+        shrine: ContractAddress,
+        abbot: ContractAddress,
+        flashmint: ContractAddress,
+        purger: ContractAddress,
+        fl_class: Option<ContractClass>,
     ) -> IFlashLiquidatorDispatcher {
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(shrine),
             contract_address_to_felt252(abbot),
             contract_address_to_felt252(flashmint),
             contract_address_to_felt252(purger)
         ];
 
-        let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(flash_liquidator::TEST_CLASS_HASH)
-            .unwrap();
-        let (flash_liquidator_addr, _) = deploy_syscall(flash_liquidator_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let fl_class = match fl_class {
+            Option::Some(class) => class,
+            Option::None => declare('flash_liquidator'),
+        };
+
+        let flash_liquidator_addr = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
@@ -432,21 +479,21 @@ mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -458,7 +505,7 @@ mod purger_utils {
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
@@ -492,8 +539,9 @@ mod purger_utils {
         let max_forge_amt: Wad = shrine.get_max_forge(trove);
         assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup #1');
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
+        stop_prank(CheatTarget::One(abbot.contract_address));
 
         assert(shrine.is_recovery_mode(), 'recovery mode setup #2');
     }
@@ -616,6 +664,22 @@ mod purger_utils {
                 },
                 Option::None => { break sum; }
             }
+        }
+    }
+
+    fn declare_contracts() -> PurgerTestClasses {
+        PurgerTestClasses {
+            abbot: Option::Some(declare('abbot')),
+            sentinel: Option::Some(declare('sentinel')),
+            token: Option::Some(declare('erc20_mintable')),
+            gate: Option::Some(declare('gate')),
+            shrine: Option::Some(declare('shrine')),
+            absorber: Option::Some(declare('absorber')),
+            blesser: declare('blesser'),
+            purger: declare('purger'),
+            pragma: Option::Some(declare('pragma')),
+            mock_pragma: Option::Some(declare('mock_pragma')),
+            seer: Option::Some(declare('seer')),
         }
     }
 }

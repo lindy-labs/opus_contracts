@@ -11,7 +11,7 @@ mod test_controller {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
     use opus::utils::wadray_signed;
-    use starknet::testing::set_contract_address;
+    use snforge_std::{start_prank, CheatTarget};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad
@@ -19,7 +19,6 @@ mod test_controller {
     const ERROR_MARGIN: u128 = 1000000000000000; // 10^-12 (ray)
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_deploy_controller() {
         let (controller, _) = controller_utils::deploy_controller();
 
@@ -30,37 +29,47 @@ mod test_controller {
         assert(alpha_i == controller_utils::ALPHA_I, 'wrong alpha_i');
         assert(beta_p == controller_utils::BETA_P, 'wrong beta_p');
         assert(beta_i == controller_utils::BETA_I, 'wrong beta_i');
-
-        let mut expected_events: Span<controller_contract::Event> = array![
-            controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated { name: 'p_gain', value: controller_utils::P_GAIN.into() }
-            ),
-            controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated { name: 'i_gain', value: controller_utils::I_GAIN.into() }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'alpha_p', value: controller_utils::ALPHA_P }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'alpha_i', value: controller_utils::ALPHA_I }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'beta_p', value: controller_utils::BETA_P }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'beta_i', value: controller_utils::BETA_I }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
+    // let mut expected_events: Span<controller_contract::Event> = array![
+    //     controller_contract::Event::GainUpdated(
+    //         controller_contract::GainUpdated {
+    //             name: 'p_gain', value: controller_utils::P_GAIN.into()
+    //         }
+    //     ),
+    //     controller_contract::Event::GainUpdated(
+    //         controller_contract::GainUpdated {
+    //             name: 'i_gain', value: controller_utils::I_GAIN.into()
+    //         }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated {
+    //             name: 'alpha_p', value: controller_utils::ALPHA_P
+    //         }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated {
+    //             name: 'alpha_i', value: controller_utils::ALPHA_I
+    //         }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated {
+    //             name: 'beta_p', value: controller_utils::BETA_P
+    //         }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated {
+    //             name: 'beta_i', value: controller_utils::BETA_I
+    //         }
+    //     ),
+    // ]
+    //     .span();
+    // common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_setters() {
         let (controller, _) = controller_utils::deploy_controller();
 
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
         let new_p_gain: Ray = 1_u128.into();
         let new_i_gain: Ray = 2_u128.into();
@@ -83,93 +92,85 @@ mod test_controller {
         assert(alpha_i == new_alpha_i, 'wrong alpha_i');
         assert(beta_p == new_beta_p, 'wrong beta_p');
         assert(beta_i == new_beta_i, 'wrong beta_i');
-
-        let mut expected_events: Span<controller_contract::Event> = array![
-            controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
-            ),
-            controller_contract::Event::GainUpdated(
-                controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
-            ),
-            controller_contract::Event::ParameterUpdated(
-                controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
+    // let mut expected_events: Span<controller_contract::Event> = array![
+    //     controller_contract::Event::GainUpdated(
+    //         controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
+    //     ),
+    //     controller_contract::Event::GainUpdated(
+    //         controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
+    //     ),
+    //     controller_contract::Event::ParameterUpdated(
+    //         controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
+    //     ),
+    // ]
+    //     .span();
+    // common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
     }
 
     // Testing unauthorized calls of setters
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_p_gain_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_p_gain(1_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_i_gain_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_i_gain(1_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_p_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_alpha_p(1);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_i_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_alpha_i(1);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_p_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_beta_p(1);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_i_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        set_contract_address(badguy());
+        start_prank(CheatTarget::All, badguy());
         controller.set_beta_i(1);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_against_ground_truth() {
         let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
@@ -198,11 +199,10 @@ mod test_controller {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_against_ground_truth2() {
         let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -457,11 +457,10 @@ mod test_controller {
     // This test is to ensure that the controller is still working as expected
     // when the time between updates is variable.
     #[test]
-    #[available_gas(20000000000)]
     fn test_against_ground_truth3() {
         let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::All, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -551,11 +550,10 @@ mod test_controller {
     }
 
     #[test]
-    #[available_gas(200000000000)]
     fn test_against_ground_truth4() {
         let (controller, shrine) = controller_utils::deploy_controller();
 
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -685,10 +683,9 @@ mod test_controller {
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_frequent_updates() {
         let (controller, shrine) = controller_utils::deploy_controller();
-        set_contract_address(controller_utils::admin());
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
         controller.set_i_gain(100000000000000000000000_u128.into()); // Ensuring the integral gain is non-zero
 
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());

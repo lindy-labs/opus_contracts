@@ -1,5 +1,4 @@
 mod shrine_utils {
-    use debug::PrintTrait;
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -11,11 +10,12 @@ mod shrine_utils {
     use opus::utils::exp::exp;
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
 
     //
@@ -159,41 +159,45 @@ mod shrine_utils {
         array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
-    fn shrine_deploy(salt: Option<felt252>) -> ContractAddress {
-        let salt: felt252 = match salt {
-            Option::Some(salt) => { salt },
-            Option::None => { 0 }
+    fn declare_shrine() -> ContractClass {
+        declare('shrine')
+    }
+
+    fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {
+        let shrine_class = match shrine_class {
+            Option::Some(class) => class,
+            Option::None => declare_shrine()
         };
-        set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata: Array<felt252> = array![contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,];
+        let calldata: Array<felt252> = array![contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,];
 
-        let shrine_class_hash: ClassHash = class_hash_try_from_felt252(shrine_contract::TEST_CLASS_HASH).unwrap();
-        let (shrine_addr, _) = deploy_syscall(shrine_class_hash, salt, calldata.span(), false).unwrap_syscall();
+        start_warp(CheatTarget::All, DEPLOYMENT_TIMESTAMP);
+
+        let shrine_addr = shrine_class.deploy(@calldata).expect('shrine deploy failed');
 
         shrine_addr
     }
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine_addr), admin());
         IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(shrine_roles::all_roles(), user);
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine_addr));
     }
 
     fn setup_debt_ceiling(shrine_addr: ContractAddress) {
         make_root(shrine_addr, admin());
         // Set debt ceiling
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine_addr), admin());
         let shrine = shrine(shrine_addr);
         shrine.set_debt_ceiling(DEBT_CEILING.into());
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine_addr));
     }
 
     fn shrine_setup(shrine_addr: ContractAddress) {
         setup_debt_ceiling(shrine_addr);
         let shrine = shrine(shrine_addr);
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine_addr), admin());
 
         // Add yangs
         shrine
@@ -225,7 +229,7 @@ mod shrine_utils {
         shrine.set_minimum_trove_value(MINIMUM_TROVE_VALUE.into());
 
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine_addr));
     }
 
     // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
@@ -250,13 +254,13 @@ mod shrine_utils {
         let feed_len: u32 = num_intervals.try_into().unwrap();
         let mut timestamp: u64 = get_block_timestamp();
 
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         loop {
             if idx == feed_len {
                 break;
             }
 
-            set_block_timestamp(timestamp);
+            start_warp(CheatTarget::All, timestamp);
 
             let mut yangs_copy = yangs;
             let mut yang_feeds_copy = yang_feeds;
@@ -275,14 +279,14 @@ mod shrine_utils {
         };
 
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
 
         yang_feeds
     }
 
     #[inline(always)]
-    fn shrine_setup_with_feed(salt: Option<felt252>) -> IShrineDispatcher {
-        let shrine_addr: ContractAddress = shrine_deploy(salt);
+    fn shrine_setup_with_feed(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+        let shrine_addr: ContractAddress = shrine_deploy(shrine_class);
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
@@ -292,34 +296,34 @@ mod shrine_utils {
 
     #[inline(always)]
     fn trove1_deposit(shrine: IShrineDispatcher, amt: Wad) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         shrine.deposit(yang1_addr(), common::TROVE_1, amt);
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     #[inline(always)]
     fn trove1_withdraw(shrine: IShrineDispatcher, amt: Wad) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         shrine.withdraw(yang1_addr(), common::TROVE_1, amt);
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, WadZeroable::zero());
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     #[inline(always)]
     fn trove1_melt(shrine: IShrineDispatcher, amt: Wad) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         shrine.melt(common::trove1_owner_addr(), common::TROVE_1, amt);
         // Reset contract address
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     //
@@ -563,20 +567,20 @@ mod shrine_utils {
     }
 
     fn create_whale_trove(shrine: IShrineDispatcher) {
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         // Deposit 1000 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
         // Mint 1 million yin (50% LTV at yang1's start price)
         shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    fn recovery_mode_test_setup(salt: Option<felt252>) -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(salt) };
+    fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(shrine_class) };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
 
         // This creates the larger trove
@@ -660,7 +664,7 @@ mod shrine_utils {
         let mut total: Wad = WadZeroable::zero();
         let mut trove_id: u64 = 1;
 
-        set_contract_address(admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         loop {
             if trove_id == troves_loop_end {
                 break;
@@ -674,7 +678,7 @@ mod shrine_utils {
 
             trove_id += 1;
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
 
         let redistributions_count: u32 = shrine.get_redistributions_count();
 
