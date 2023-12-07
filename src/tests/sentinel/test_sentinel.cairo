@@ -12,7 +12,10 @@ mod test_sentinel {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WAD_ONE};
     use opus::utils::wadray;
-    use snforge_std::{declare, ContractClass, start_prank, start_warp, CheatTarget, PrintTrait};
+    use snforge_std::{
+        declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
+        PrintTrait
+    };
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
 
@@ -21,6 +24,8 @@ mod test_sentinel {
         let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
+
+        let mut spy = spy_events(SpyOn::One(sentinel.contract_address));
 
         // Checking that sentinel was set up correctly
 
@@ -86,17 +91,23 @@ mod test_sentinel {
             shrine.get_yang_total(wbtc) == wadray::fixed_point_to_wad(sentinel_contract::INITIAL_DEPOSIT_AMT, 8),
             'Wrong yang total #2'
         );
+    // Currently can't check events emitted in constructor
+    // let expected_events = array![
+    //     (
+    //         sentinel.contract_address,
+    //         sentinel_contract::Event::YangAdded(
+    //             sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address, }
+    //         )
+    //     ),
+    //     (
+    //         sentinel.contract_address,
+    //         sentinel_contract::Event::YangAdded(
+    //             sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
+    //         )
+    //     ),
+    // ];
 
-        let mut expected_events: Span<sentinel_contract::Event> = array![
-            sentinel_contract::Event::YangAdded(
-                sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address, }
-            ),
-            sentinel_contract::Event::YangAdded(
-                sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
-            ),
-        ]
-            .span();
-    //common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
+    //spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -186,6 +197,7 @@ mod test_sentinel {
     #[test]
     fn test_set_yang_asset_max() {
         let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let mut spy = spy_events(SpyOn::One(sentinel.contract_address));
 
         let new_asset_max = sentinel_utils::ETH_ASSET_MAX * 2;
 
@@ -203,25 +215,34 @@ mod test_sentinel {
         sentinel.set_yang_asset_max(eth, sentinel_contract::INITIAL_DEPOSIT_AMT - 1);
         assert(sentinel.get_yang_asset_max(eth) == sentinel_contract::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max');
 
-        let mut expected_events: Span<sentinel_contract::Event> = array![
-            sentinel_contract::Event::YangAssetMaxUpdated(
-                sentinel_contract::YangAssetMaxUpdated {
-                    yang: eth, old_max: sentinel_utils::ETH_ASSET_MAX, new_max: new_asset_max,
-                }
+        let expected_events = array![
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAssetMaxUpdated(
+                    sentinel_contract::YangAssetMaxUpdated {
+                        yang: eth, old_max: sentinel_utils::ETH_ASSET_MAX, new_max: new_asset_max,
+                    }
+                )
             ),
-            sentinel_contract::Event::YangAssetMaxUpdated(
-                sentinel_contract::YangAssetMaxUpdated {
-                    yang: eth, old_max: new_asset_max, new_max: new_asset_max - 1,
-                }
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAssetMaxUpdated(
+                    sentinel_contract::YangAssetMaxUpdated {
+                        yang: eth, old_max: new_asset_max, new_max: new_asset_max - 1,
+                    }
+                )
             ),
-            sentinel_contract::Event::YangAssetMaxUpdated(
-                sentinel_contract::YangAssetMaxUpdated {
-                    yang: eth, old_max: new_asset_max - 1, new_max: sentinel_contract::INITIAL_DEPOSIT_AMT - 1,
-                }
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAssetMaxUpdated(
+                    sentinel_contract::YangAssetMaxUpdated {
+                        yang: eth, old_max: new_asset_max - 1, new_max: sentinel_contract::INITIAL_DEPOSIT_AMT - 1,
+                    }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -427,14 +448,6 @@ mod test_sentinel {
         // Exiting
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
         sentinel.exit(eth, user, common::TROVE_1, yang_amt);
-
-        let mut expected_events: Span<sentinel_contract::Event> = array![
-            sentinel_contract::Event::GateKilled(
-                sentinel_contract::GateKilled { yang: eth, gate: eth_gate.contract_address }
-            ),
-        ]
-            .span();
-    //common::assert_events_emitted(sentinel.contract_address, expected_events, Option::None);
     }
 
     #[test]
