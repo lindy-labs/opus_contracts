@@ -76,7 +76,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
-        let new_sources: u64 = 8;
+        let new_sources: u32 = 8;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(new_freshness, new_sources);
@@ -103,7 +103,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::LOWER_FRESHNESS_BOUND - 1;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
@@ -115,7 +115,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::UPPER_FRESHNESS_BOUND + 1;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
@@ -127,7 +127,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let invalid_sources: u64 = pragma_contract::LOWER_SOURCES_BOUND - 1;
+        let invalid_sources: u32 = pragma_contract::LOWER_SOURCES_BOUND - 1;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
@@ -139,7 +139,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let invalid_sources: u64 = pragma_contract::UPPER_SOURCES_BOUND + 1;
+        let invalid_sources: u32 = pragma_contract::UPPER_SOURCES_BOUND + 1;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
@@ -151,7 +151,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, common::badguy());
         pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
@@ -388,7 +388,7 @@ mod test_pragma {
 
         // prepare the response from mock oracle in such a way
         // that it has less than the required number of sources
-        let num_sources: u256 = (pragma_utils::SOURCES_THRESHOLD - 1).into();
+        let num_sources: u32 = pragma_utils::SOURCES_THRESHOLD - 1;
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
