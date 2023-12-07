@@ -3,7 +3,7 @@ use opus::types::pragma::PragmaPricesResponse;
 #[starknet::interface]
 trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
-    fn next_get_data_median(ref self: TContractState, pair_id: u256, price_response: PragmaPricesResponse);
+    fn next_get_data_median(ref self: TContractState, pair_id: felt252, price_response: PragmaPricesResponse);
 }
 
 #[starknet::contract]
@@ -20,7 +20,7 @@ mod mock_pragma {
 
     #[abi(embed_v0)]
     impl IMockPragmaImpl of IMockPragma<ContractState> {
-        fn next_get_data_median(ref self: ContractState, pair_id: u256, price_response: PragmaPricesResponse) {
+        fn next_get_data_median(ref self: ContractState, pair_id: felt252, price_response: PragmaPricesResponse) {
             self.price_response.write(pair_id, price_response);
         }
     }

@@ -114,7 +114,7 @@ mod pragma_utils {
         price.val / scale
     }
 
-    fn get_pair_id_for_yang(yang: ContractAddress) -> u256 {
+    fn get_pair_id_for_yang(yang: ContractAddress) -> felt252 {
         let erc20 = IERC20Dispatcher { contract_address: yang };
         let symbol: felt252 = erc20.symbol();
 
@@ -138,7 +138,7 @@ mod pragma_utils {
             last_updated_timestamp: timestamp.into(),
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
         };
-        let pair_id: u256 = get_pair_id_for_yang(yang);
+        let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
     }
 }
