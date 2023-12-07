@@ -305,7 +305,7 @@ mod test_seer {
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
-                    price: pragma_utils::convert_price_to_pragma_scale(seer_utils::ETH_INIT_PRICE.into()),
+                    price: pragma_utils::convert_price_to_pragma_scale(eth_price),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: get_block_timestamp(),
                     num_sources_aggregated: 0,
