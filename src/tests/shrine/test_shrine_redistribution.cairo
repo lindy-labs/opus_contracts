@@ -7,7 +7,10 @@ mod test_shrine_redistribution {
     use opus::types::{ExceptionalYangRedistribution, Health, YangBalance, YangRedistribution};
     use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, CheatTarget};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, start_prank, CheatTarget, spy_events, SpyOn, EventSpy,
+        EventAssertions
+    };
     use starknet::ContractAddress;
     //
     // Setup
@@ -233,7 +236,7 @@ mod test_shrine_redistribution {
     #[test]
     fn test_shrine_one_redistribution() {
         let shrine: IShrineDispatcher = redistribution_setup(Option::None);
-
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
         let before_trove2_health: Health = shrine.get_trove_health(common::TROVE_2);
 
         // Note order is reversed to match `yangs`
@@ -297,19 +300,21 @@ mod test_shrine_redistribution {
         shrine.melt(trove1_owner, recipient_trove, WadZeroable::zero());
         assert(shrine.get_trove_redistribution_id(recipient_trove) == expected_redistribution_id, 'wrong id');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TroveRedistributed(
-                shrine_contract::TroveRedistributed {
-                    redistribution_id: expected_redistribution_id,
-                    trove_id: redistributed_trove,
-                    debt: trove1_health.debt,
-                }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveRedistributed(
+                    shrine_contract::TroveRedistributed {
+                        redistribution_id: expected_redistribution_id,
+                        trove_id: redistributed_trove,
+                        debt: trove1_health.debt,
+                    }
+                )
             ),
-        ]
-            .span();
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
@@ -413,6 +418,7 @@ mod test_shrine_redistribution {
                         match pct_debt_to_redistribute_arr.pop_front() {
                             Option::Some(pct_debt_to_redistribute) => {
                                 let shrine: IShrineDispatcher = redistribution_setup(Option::Some(shrine_class));
+                                let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
                                 let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
                                 let redistributed_trove = common::TROVE_1;
@@ -442,19 +448,21 @@ mod test_shrine_redistribution {
                                 );
 
                                 let expected_redistribution_id: u32 = 1;
-                                let mut expected_events: Span<shrine_contract::Event> = array![
-                                    shrine_contract::Event::TroveRedistributed(
-                                        shrine_contract::TroveRedistributed {
-                                            redistribution_id: expected_redistribution_id,
-                                            trove_id: redistributed_trove,
-                                            debt: debt_to_redistribute,
-                                        }
+
+                                let expected_events = array![
+                                    (
+                                        shrine.contract_address,
+                                        shrine_contract::Event::TroveRedistributed(
+                                            shrine_contract::TroveRedistributed {
+                                                redistribution_id: expected_redistribution_id,
+                                                trove_id: redistributed_trove,
+                                                debt: debt_to_redistribute,
+                                            }
+                                        )
                                     ),
-                                ]
-                                    .span();
-                                // common::assert_events_emitted(
-                                //     shrine.contract_address, expected_events, Option::None
-                                // );
+                                ];
+
+                                spy.assert_emitted(@expected_events);
 
                                 shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
                                 // We are unable to test the trove value in a sensible way here because
@@ -540,6 +548,7 @@ mod test_shrine_redistribution {
     #[test]
     fn test_shrine_one_exceptional_redistribution_one_recipient_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
         // while the recipient troves (trove 2 and 3) uses only yang 2.
@@ -804,19 +813,22 @@ mod test_shrine_redistribution {
         );
 
         let expected_redistribution_id: u32 = 1;
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TroveRedistributed(
-                shrine_contract::TroveRedistributed {
-                    redistribution_id: expected_redistribution_id,
-                    trove_id: redistributed_trove,
-                    debt: redistributed_trove_health.debt,
-                }
+
+        let mut expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveRedistributed(
+                    shrine_contract::TroveRedistributed {
+                        redistribution_id: expected_redistribution_id,
+                        trove_id: redistributed_trove,
+                        debt: redistributed_trove_health.debt,
+                    }
+                )
             ),
-        ]
-            .span();
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
     }
 
     #[test]
