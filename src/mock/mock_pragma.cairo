@@ -15,7 +15,7 @@ mod mock_pragma {
     #[storage]
     struct Storage {
         // Mapping from pair ID to price response data struct
-        price_response: LegacyMap::<u256, PragmaPricesResponse>,
+        price_response: LegacyMap::<felt252, PragmaPricesResponse>,
     }
 
     #[abi(embed_v0)]
@@ -30,7 +30,8 @@ mod mock_pragma {
         fn get_data_median(self: @ContractState, data_type: DataType) -> PragmaPricesResponse {
             match data_type {
                 DataType::SpotEntry(pair_id) => { self.price_response.read(pair_id) },
-                _ => { panic_with_felt252('only spot') }
+                DataType::FutureEntry(_) => { panic_with_felt252('only spot') },
+                DataType::GenericEntry(_) => { panic_with_felt252('only spot') },
             }
         }
     }

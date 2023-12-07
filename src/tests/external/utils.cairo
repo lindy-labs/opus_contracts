@@ -30,12 +30,12 @@ mod pragma_utils {
     //
 
     const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
-    const SOURCES_THRESHOLD: u64 = 3;
+    const SOURCES_THRESHOLD: u32 = 3;
     const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
     const DEFAULT_NUM_SOURCES: u32 = 5;
-    const ETH_USD_PAIR_ID: u256 = 'ETH/USD';
-    const WBTC_USD_PAIR_ID: u256 = 'BTC/USD';
-    const PEPE_USD_PAIR_ID: u256 = 'PEPE/USD';
+    const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
+    const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
+    const PEPE_USD_PAIR_ID: felt252 = 'PEPE/USD';
     const PRAGMA_DECIMALS: u8 = 8;
 
     //

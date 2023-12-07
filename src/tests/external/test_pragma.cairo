@@ -1,6 +1,5 @@
 mod test_pragma {
     use debug::PrintTrait;
-    use integer::U256Zeroable;
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;
     use opus::external::pragma::pragma as pragma_contract;
@@ -165,7 +164,7 @@ mod test_pragma {
         let pepe_token: ContractAddress = common::deploy_token(
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
-        let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
+        let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
@@ -191,7 +190,7 @@ mod test_pragma {
         let pepe_token: ContractAddress = common::deploy_token(
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
-        let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
+        let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
@@ -201,9 +200,9 @@ mod test_pragma {
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
 
         // fake data for a second set_yang_pair_id, so its distinct from the first call
-        let pepe_token_pair_id_2: u256 = 'WILDPEPE/USD'.into();
+        let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD'.into();
         let response = PragmaPricesResponse {
-            price: price.into(),
+            price: price,
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),
             last_updated_timestamp: current_ts + 100,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
@@ -239,7 +238,7 @@ mod test_pragma {
     fn test_set_yang_pair_id_invalid_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        let invalid_pair_id = U256Zeroable::zero();
+        let invalid_pair_id = 0;
         pragma.set_yang_pair_id(mock_eth_token_addr(), invalid_pair_id);
     }
 
@@ -268,9 +267,9 @@ mod test_pragma {
         let pragma_price_scale: u128 = pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
-        let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
+        let invalid_decimals: u32 = (WAD_DECIMALS + 1).into();
         let pepe_response = PragmaPricesResponse {
-            price: pepe_price.into(),
+            price: pepe_price,
             decimals: invalid_decimals,
             last_updated_timestamp: 10000000,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
@@ -305,7 +304,7 @@ mod test_pragma {
         pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, first_ts);
 
         let mut wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
-        pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price.into(), first_ts);
+        pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, first_ts);
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
@@ -393,7 +392,7 @@ mod test_pragma {
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
-                    price: pragma_utils::convert_price_to_pragma_scale(eth_price).into(),
+                    price: pragma_utils::convert_price_to_pragma_scale(eth_price),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: now,
                     num_sources_aggregated: num_sources,
