@@ -206,7 +206,8 @@ mod test_pragma {
             price: price.into(),
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),
             last_updated_timestamp: (current_ts + 100).into(),
-            num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES
+            num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
         mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
 
@@ -273,6 +274,7 @@ mod test_pragma {
             decimals: invalid_decimals,
             last_updated_timestamp: 10000000,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
         mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_response);
 
@@ -394,7 +396,8 @@ mod test_pragma {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price).into(),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: now.into(),
-                    num_sources_aggregated: num_sources
+                    num_sources_aggregated: num_sources,
+                    expiration_timestamp: Option::None,
                 }
             );
 

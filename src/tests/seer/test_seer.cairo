@@ -308,7 +308,8 @@ mod test_seer {
                     price: pragma_utils::convert_price_to_pragma_scale(seer_utils::ETH_INIT_PRICE.into()).into(),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: get_block_timestamp().into(),
-                    num_sources_aggregated: 0
+                    num_sources_aggregated: 0,
+                    expiration_timestamp: Option::None,
                 }
             );
 

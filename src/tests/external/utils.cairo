@@ -137,6 +137,7 @@ mod pragma_utils {
             decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: timestamp.into(),
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
