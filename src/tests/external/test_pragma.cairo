@@ -205,7 +205,7 @@ mod test_pragma {
         let response = PragmaPricesResponse {
             price: price.into(),
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: (current_ts + 100).into(),
+            last_updated_timestamp: current_ts + 100,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
@@ -395,7 +395,7 @@ mod test_pragma {
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price).into(),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
-                    last_updated_timestamp: now.into(),
+                    last_updated_timestamp: now,
                     num_sources_aggregated: num_sources,
                     expiration_timestamp: Option::None,
                 }
