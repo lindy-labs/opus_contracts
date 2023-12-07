@@ -200,7 +200,7 @@ mod test_pragma {
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
 
         // fake data for a second set_yang_pair_id, so its distinct from the first call
-        let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD'.into();
+        let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD';
         let response = PragmaPricesResponse {
             price: price,
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),

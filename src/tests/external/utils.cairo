@@ -133,9 +133,9 @@ mod pragma_utils {
     // using default values for decimals and number of sources.
     fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
         let response = PragmaPricesResponse {
-            price: convert_price_to_pragma_scale(price).into(),
+            price: convert_price_to_pragma_scale(price),
             decimals: PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: timestamp.into(),
+            last_updated_timestamp: timestamp,
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
