@@ -1,7 +1,8 @@
 use opus::types::pragma::PragmaPricesResponse;
 
-// A modified version of `PragmaPricesResponse` struct that can be  written to storage by 
-// dropping `expiration_timestamp`, which is an `Option`. 
+// A modified version of `PragmaPricesResponse` struct that drops `expiration_timestamp`, 
+// which is an `Option`. Otherwise, trying to write `expiration_timestamp` to storage 
+// when its value is `Option::None` causes the value of `price` to be zero.
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct PragmaPricesResponseWrapper {
     price: u128,

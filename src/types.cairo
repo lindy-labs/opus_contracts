@@ -220,7 +220,7 @@ mod pragma {
         GenericEntry: felt252,
     }
 
-    #[derive(Copy, Drop, Serde, starknet::Store)]
+    #[derive(Copy, Drop, Serde)]
     struct PragmaPricesResponse {
         price: u128,
         decimals: u32,
