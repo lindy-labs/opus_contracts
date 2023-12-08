@@ -20,30 +20,36 @@ mod test_seer {
     use opus::types::pragma::PricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, WAD_SCALE};
-    use snforge_std::{declare, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
 
     #[test]
     fn test_seer_setup() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
         assert(seer.get_oracles().len() == 0, 'wrong number of oracles');
+    // Can't yet check events in the contructor
+    // let expected_events = array![
+    //     (shrine.contract_address,
+    //     seer_contract::Event::UpdateFrequencyUpdated(
+    //         seer_contract::UpdateFrequencyUpdated { old_frequency: 0, new_frequency: seer_utils::UPDATE_FREQUENCY }
+    //     ))
+    // ];
+    // 
+    // spy.assert_emitted(@expected_events);
 
-        let expected_events: Span<seer_contract::Event> = array![
-            seer_contract::Event::UpdateFrequencyUpdated(
-                seer_contract::UpdateFrequencyUpdated { old_frequency: 0, new_frequency: seer_utils::UPDATE_FREQUENCY }
-            )
-        ]
-            .span();
-    //common::assert_events_emitted(seer.contract_address, expected_events, Option::None);
     }
 
     #[test]
     fn test_set_oracles() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
@@ -77,6 +83,7 @@ mod test_seer {
     #[test]
     fn test_set_update_frequency() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let new_frequency: u64 = 1200;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -84,13 +91,16 @@ mod test_seer {
 
         assert(seer.get_update_frequency() == new_frequency, 'wrong update frequency');
 
-        let expected_events: Span<seer_contract::Event> = array![
-            seer_contract::Event::UpdateFrequencyUpdated(
-                seer_contract::UpdateFrequencyUpdated { old_frequency: seer_utils::UPDATE_FREQUENCY, new_frequency }
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdateFrequencyUpdated(
+                    seer_contract::UpdateFrequencyUpdated { old_frequency: seer_utils::UPDATE_FREQUENCY, new_frequency }
+                )
             )
-        ]
-            .span();
-    //common::assert_events_emitted(seer.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
