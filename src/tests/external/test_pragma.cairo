@@ -20,7 +20,7 @@ mod test_pragma {
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
     use opus::utils::wadray;
-    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
 
@@ -45,6 +45,7 @@ mod test_pragma {
     #[test]
     fn test_pragma_setup() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         // Check permissions
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
@@ -56,45 +57,48 @@ mod test_pragma {
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         assert(oracle.get_name() == 'Pragma', 'wrong name');
         assert(oracle.get_oracle() == mock_pragma.contract_address, 'wrong oracle address');
-    // let mut expected_events: Span<pragma_contract::Event> = array![
-    //     pragma_contract::Event::PriceValidityThresholdsUpdated(
-    //         pragma_contract::PriceValidityThresholdsUpdated {
-    //             old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
-    //             new_thresholds: PriceValidityThresholds {
-    //                 freshness: pragma_utils::FRESHNESS_THRESHOLD,
-    //                 sources: pragma_utils::SOURCES_THRESHOLD
-    //             },
-    //         }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::PriceValidityThresholdsUpdated(
+                    pragma_contract::PriceValidityThresholdsUpdated {
+                        old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
+                        new_thresholds: PriceValidityThresholds {
+                            freshness: pragma_utils::FRESHNESS_THRESHOLD, sources: pragma_utils::SOURCES_THRESHOLD
+                        },
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_set_price_validity_thresholds_pass() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(new_freshness, new_sources);
-    // let mut expected_events: Span<pragma_contract::Event> = array![
-    //     pragma_contract::Event::PriceValidityThresholdsUpdated(
-    //         pragma_contract::PriceValidityThresholdsUpdated {
-    //             old_thresholds: PriceValidityThresholds {
-    //                 freshness: pragma_utils::FRESHNESS_THRESHOLD,
-    //                 sources: pragma_utils::SOURCES_THRESHOLD
-    //             },
-    //             new_thresholds: PriceValidityThresholds {
-    //                 freshness: new_freshness, sources: new_sources
-    //             },
-    //         }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::PriceValidityThresholdsUpdated(
+                    pragma_contract::PriceValidityThresholdsUpdated {
+                        old_thresholds: PriceValidityThresholds {
+                            freshness: pragma_utils::FRESHNESS_THRESHOLD, sources: pragma_utils::SOURCES_THRESHOLD
+                        },
+                        new_thresholds: PriceValidityThresholds { freshness: new_freshness, sources: new_sources },
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -160,6 +164,7 @@ mod test_pragma {
     #[test]
     fn test_set_yang_pari_id_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
         let pepe_token: ContractAddress = common::deploy_token(
@@ -174,18 +179,22 @@ mod test_pragma {
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
         stop_prank(CheatTarget::One(pragma.contract_address));
-    // let expected_events: Span<pragma_contract::Event> = array![
-    //     pragma_contract::Event::YangPairIdSet(
-    //         pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::YangPairIdSet(
+                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_set_yang_pair_id_overwrite_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
         let pepe_token: ContractAddress = common::deploy_token(
@@ -211,18 +220,22 @@ mod test_pragma {
         mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
 
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id_2);
-    // let expected_events: Span<pragma_contract::Event> = array![
-    //     pragma_contract::Event::YangPairIdSet(
-    //         pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
-    //     ),
-    //     pragma_contract::Event::YangPairIdSet(
-    //         pragma_contract::YangPairIdSet {
-    //             address: pepe_token, pair_id: pepe_token_pair_id_2
-    //         },
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::YangPairIdSet(
+                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
+                )
+            ),
+            (
+                pragma.contract_address,
+                pragma_contract::Event::YangPairIdSet(
+                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id_2 },
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -329,6 +342,8 @@ mod test_pragma {
     #[test]
     fn test_fetch_price_too_soon() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
@@ -352,18 +367,20 @@ mod test_pragma {
         let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
         assert(fetched_eth.unwrap_err() == 'PGM: Invalid price update', 'wrong result');
 
-        // let mut expected_events: Span<pragma_contract::Event> = array![
-        //     pragma_contract::Event::InvalidPriceUpdate(
-        //         pragma_contract::InvalidPriceUpdate {
-        //             yang: eth_addr,
-        //             price: eth_price,
-        //             pragma_last_updated_ts: now.into(),
-        //             pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES.into(),
-        //         }
-        //     ),
-        // ]
-        //     .span();
-        // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::InvalidPriceUpdate(
+                    pragma_contract::InvalidPriceUpdate {
+                        yang: eth_addr,
+                        price: eth_price,
+                        pragma_last_updated_ts: now.into(),
+                        pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES.into(),
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         // now try forcing the fetch
         let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, true);
@@ -373,6 +390,8 @@ mod test_pragma {
     #[test]
     fn test_fetch_price_insufficient_sources() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
@@ -403,18 +422,21 @@ mod test_pragma {
         let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
 
         assert(fetched_eth.unwrap_err() == 'PGM: Invalid price update', 'wrong result');
-        // let mut expected_events: Span<pragma_contract::Event> = array![
-        //     pragma_contract::Event::InvalidPriceUpdate(
-        //         pragma_contract::InvalidPriceUpdate {
-        //             yang: eth_addr,
-        //             price: eth_price,
-        //             pragma_last_updated_ts: now.into(),
-        //             pragma_num_sources: num_sources
-        //         }
-        //     ),
-        // ]
-        //     .span();
-        // common::assert_events_emitted(pragma.contract_address, expected_events, Option::None);
+
+        let expected_events = array![
+            (
+                pragma.contract_address,
+                pragma_contract::Event::InvalidPriceUpdate(
+                    pragma_contract::InvalidPriceUpdate {
+                        yang: eth_addr,
+                        price: eth_price,
+                        pragma_last_updated_ts: now.into(),
+                        pragma_num_sources: num_sources
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         // now try forcing the fetch
         let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, true);

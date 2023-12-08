@@ -11,7 +11,7 @@ mod test_gate {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::wadray::{WAD_SCALE, Wad};
     use opus::utils::wadray;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, contract_address_try_from_felt252};
 
     #[test]
@@ -52,6 +52,8 @@ mod test_gate {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
+        let mut spy = spy_events(SpyOn::One(gate));
+
         let user = common::eth_hoarder();
         let trove_id = common::TROVE_1;
         gate_utils::approve_gate_for_token(gate, eth, user);
@@ -71,16 +73,23 @@ mod test_gate {
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
 
-        let mut expected_events: Span<gate_contract::Event> = array![
-            gate_contract::Event::Enter(gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }),
-        ]
-            .span();
-    //common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                gate.contract_address,
+                gate_contract::Event::Enter(
+                    gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_wbtc_gate_enter_pass() {
         let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy(Option::None);
+
+        let mut spy = spy_events(SpyOn::One(gate));
+
         gate_utils::add_wbtc_as_yang(shrine, wbtc);
 
         let user = common::wbtc_hoarder();
@@ -102,16 +111,22 @@ mod test_gate {
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
 
-        let mut expected_events: Span<gate_contract::Event> = array![
-            gate_contract::Event::Enter(gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }),
-        ]
-            .span();
-    //common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                gate.contract_address,
+                gate_contract::Event::Enter(
+                    gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_eth_gate_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(gate));
+
         gate_utils::add_eth_as_yang(shrine, eth);
 
         let user = common::eth_hoarder();
@@ -135,13 +150,15 @@ mod test_gate {
         assert(gate.get_total_assets() == remaining_yang_amt, 'get_total_assets');
         assert(eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance');
 
-        let mut expected_events: Span<gate_contract::Event> = array![
-            gate_contract::Event::Exit(
-                gate_contract::Exit { user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt, }
+        let expected_events = array![
+            (
+                gate.contract_address,
+                gate_contract::Event::Exit(
+                    gate_contract::Exit { user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt, }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(gate.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]

@@ -17,7 +17,7 @@ mod test_equalizer {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-    use snforge_std::{declare, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
 
@@ -37,6 +37,7 @@ mod test_equalizer {
     #[test]
     fn test_equalize_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let surplus: Wad = (500 * WAD_ONE).into();
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -57,11 +58,13 @@ mod test_equalizer {
 
         assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
-        let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() }),
-        ]
-            .span();
-        //common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                equalizer.contract_address,
+                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() })
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         // Assert that calling equalize again passes when budget is zero
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
@@ -76,6 +79,8 @@ mod test_equalizer {
     #[test]
     fn test_equalize_debt_ceiling_exceeded_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+
         let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(),].span();
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
 
@@ -123,13 +128,15 @@ mod test_equalizer {
 
             assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
 
-            let mut expected_events: Span<equalizer_contract::Event> = array![
-                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: expected_surplus.into() }),
-            ]
-                .span();
-            // common::assert_events_emitted(
-            //     equalizer.contract_address, expected_events, Option::None
-            // );
+            let expected_events = array![
+                (
+                    equalizer.contract_address,
+                    equalizer_contract::Event::Equalize(
+                        equalizer_contract::Equalize { yin_amt: expected_surplus.into() }
+                    )
+                ),
+            ];
+            spy.assert_emitted(@expected_events);
 
             start_debt = total_yin;
 
@@ -140,6 +147,7 @@ mod test_equalizer {
     #[test]
     fn test_allocate_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         // Simulate minted surplus by injecting to Equalizer directly
         start_prank(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
@@ -180,13 +188,15 @@ mod test_equalizer {
         };
         assert(surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch');
 
-        let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::Allocate(
-                equalizer_contract::Allocate { recipients, percentages, amount: allocated }
+        let expected_events = array![
+            (
+                equalizer.contract_address,
+                equalizer_contract::Event::Allocate(
+                    equalizer_contract::Allocate { recipients, percentages, amount: allocated }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -201,6 +211,7 @@ mod test_equalizer {
     #[test]
     fn test_normalize_pass() {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
@@ -235,15 +246,15 @@ mod test_equalizer {
 
                     // Event is emitted only if non-zero amount of deficit was wiped
                     if expected_normalized_amt.is_non_zero() {
-                        let mut expected_events: Span<equalizer_contract::Event> = array![
-                            equalizer_contract::Event::Normalize(
-                                equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt }
+                        let expected_events = array![
+                            (
+                                equalizer.contract_address,
+                                equalizer_contract::Event::Normalize(
+                                    equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt }
+                                )
                             ),
-                        ]
-                            .span();
-                    // common::assert_events_emitted(
-                    //     equalizer.contract_address, expected_events, Option::None
-                    // );
+                        ];
+                        spy.assert_emitted(@expected_events);
                     }
 
                     // Reset by normalizing all remaining deficit
@@ -265,6 +276,7 @@ mod test_equalizer {
     fn test_set_allocator_pass() {
         let allocator_class = Option::Some(declare('allocator'));
         let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
+        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
@@ -276,15 +288,17 @@ mod test_equalizer {
         // Check allocator is updated
         assert(equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated');
 
-        let mut expected_events: Span<equalizer_contract::Event> = array![
-            equalizer_contract::Event::AllocatorUpdated(
-                equalizer_contract::AllocatorUpdated {
-                    old_address: allocator.contract_address, new_address: new_allocator.contract_address
-                }
+        let expected_events = array![
+            (
+                equalizer.contract_address,
+                equalizer_contract::Event::AllocatorUpdated(
+                    equalizer_contract::AllocatorUpdated {
+                        old_address: allocator.contract_address, new_address: new_allocator.contract_address
+                    }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(equalizer.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
