@@ -1,0 +1,9 @@
+---
+description: External audits
+---
+
+# External
+
+The core contracts found in [opus\_contracts](https://github.com/lindy-labs/opus\_contracts) directory have been audited by:
+
+* Trail of Bits
