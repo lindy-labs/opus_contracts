@@ -14,7 +14,7 @@ mod test_caretaker {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-    use snforge_std::{start_prank, stop_prank, CheatTarget};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};
 
     #[test]
@@ -55,6 +55,7 @@ mod test_caretaker {
     #[test]
     fn test_shut() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 950 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -106,16 +107,16 @@ mod test_caretaker {
         common::assert_equalish(caretaker_y0_balance, y0_backing, tolerance, 'caretaker yang0 balance');
         common::assert_equalish(caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
-        ]
-            .span();
-    //common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_release() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -191,16 +192,21 @@ mod test_caretaker {
         assert(*trove2_released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
         assert((*trove2_released_assets.at(1).amount).is_zero(), 'incorrect release');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: trove1_released_assets, }
+        let expected_events = array![
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: trove1_released_assets, }
+                )
             ),
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release { user: user2, trove_id: trove2_id, assets: trove2_released_assets, }
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user2, trove_id: trove2_id, assets: trove2_released_assets, }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -237,6 +243,7 @@ mod test_caretaker {
     #[test]
     fn test_reclaim() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -338,16 +345,23 @@ mod test_caretaker {
         );
         assert(scammer_reclaimed_yin == scammer_yin, 'scammer reclaimed yin');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Reclaim(
-                caretaker_contract::Reclaim { user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets, }
+        let expected_events = array![
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Reclaim(
+                    caretaker_contract::Reclaim { user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets, }
+                )
             ),
-            caretaker_contract::Event::Reclaim(
-                caretaker_contract::Reclaim { user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets, }
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Reclaim(
+                    caretaker_contract::Reclaim {
+                        user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets,
+                    }
+                )
             ),
-        ]
-            .span();
-        // common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
 
         // assert that caretaker has no assets remaining
         let mut caretaker_assets: Span<Span<u128>> = common::get_token_balances(
@@ -367,6 +381,7 @@ mod test_caretaker {
     #[test]
     fn test_shut_during_armageddon() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -417,15 +432,18 @@ mod test_caretaker {
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: released_assets, }
+        let expected_events = array![
+            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: released_assets, }
+                )
             ),
-        ]
-            .span();
-    // common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
+
 
     #[test]
     #[should_panic(expected: ('CA: System is live',))]

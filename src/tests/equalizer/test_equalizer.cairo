@@ -236,8 +236,6 @@ mod test_equalizer {
                     // Mint the deficit amount to the admin
                     shrine.inject(admin, inject_amt);
 
-                    //common::drop_all_events(equalizer.contract_address);
-
                     let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
                     let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
