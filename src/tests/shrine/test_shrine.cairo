@@ -1066,7 +1066,13 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Event not emitted',))]
+    #[should_panic(
+        expected: (
+            'Event with matching data and',
+            'keys was not emitted from',
+            3411769512097638079147154388561035746677569257443090740396477986552390403081
+        )
+    )]
     fn test_shrine_forge_no_forgefee_emitted_when_zero() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events(SpyOn::One(shrine.contract_address));
