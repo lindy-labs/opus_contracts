@@ -20,8 +20,8 @@ mod test_controller {
 
     #[test]
     fn test_deploy_controller() {
+        let mut spy = spy_events(SpyOn::All);
         let (controller, _) = controller_utils::deploy_controller();
-        let mut spy = spy_events(SpyOn::One(controller.contract_address));
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
         assert(p_gain == controller_utils::P_GAIN.into(), 'wrong p gain');
@@ -68,7 +68,7 @@ mod test_controller {
                 )
             ),
         ];
-    //spy.assert_emitted(@expected_events);
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]

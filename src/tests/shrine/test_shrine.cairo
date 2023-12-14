@@ -27,7 +27,8 @@ mod test_shrine {
     // Check constructor function
     #[test]
     fn test_shrine_deploy() {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::All);
+        let shrine_addr = shrine_utils::shrine_deploy(Option::None);
 
         // Check ERC-20 getters
         let yin: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine_addr };
@@ -46,17 +47,20 @@ mod test_shrine {
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
         assert(shrine_accesscontrol.get_admin() == shrine_utils::admin(), 'wrong admin');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::MultiplierUpdated(
-                shrine_contract::MultiplierUpdated {
-                    multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-                }
+        let expected_events = array![
+            (
+                shrine_addr,
+                shrine_contract::Event::MultiplierUpdated(
+                    shrine_contract::MultiplierUpdated {
+                        multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
+                    }
+                )
             )
-        ]
-            .span();
-    //common::assert_events_emitted(shrine_addr, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     // Checks the following functions

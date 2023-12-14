@@ -44,8 +44,8 @@ mod test_pragma {
 
     #[test]
     fn test_pragma_setup() {
+        let mut spy = spy_events(SpyOn::All);
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         // Check permissions
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
@@ -71,8 +71,8 @@ mod test_pragma {
                 )
             ),
         ];
-    // Commenting out since spy can't see events emitted in the constructor
-    //spy.assert_emitted(@expected_events);
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]

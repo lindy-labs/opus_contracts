@@ -25,8 +25,7 @@ mod test_purger {
     use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
-        EventFetcher, event_name_hash
+        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions
     };
     use starknet::{ContractAddress, get_block_timestamp};
 
@@ -36,8 +35,8 @@ mod test_purger {
 
     #[test]
     fn test_purger_setup() {
+        let mut spy = spy_events(SpyOn::All);
         let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(purger.contract_address));
 
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
         assert(
@@ -52,7 +51,7 @@ mod test_purger {
                 )
             ),
         ];
-    //spy.assert_emitted(@expected_events);
+        spy.assert_emitted(@expected_events);
     }
 
     //

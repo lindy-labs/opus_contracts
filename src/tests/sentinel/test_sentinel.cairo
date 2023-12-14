@@ -21,11 +21,11 @@ mod test_sentinel {
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
+        let mut spy = spy_events(SpyOn::All);
+
         let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-
-        let mut spy = spy_events(SpyOn::One(sentinel.contract_address));
 
         // Checking that sentinel was set up correctly
 
@@ -91,23 +91,23 @@ mod test_sentinel {
             shrine.get_yang_total(wbtc) == wadray::fixed_point_to_wad(sentinel_contract::INITIAL_DEPOSIT_AMT, 8),
             'Wrong yang total #2'
         );
-    // Currently can't check events emitted in constructor
-    // let expected_events = array![
-    //     (
-    //         sentinel.contract_address,
-    //         sentinel_contract::Event::YangAdded(
-    //             sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address, }
-    //         )
-    //     ),
-    //     (
-    //         sentinel.contract_address,
-    //         sentinel_contract::Event::YangAdded(
-    //             sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
-    //         )
-    //     ),
-    // ];
 
-    //spy.assert_emitted(@expected_events);
+        let expected_events = array![
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAdded(
+                    sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address, }
+                )
+            ),
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAdded(
+                    sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
