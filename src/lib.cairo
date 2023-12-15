@@ -33,6 +33,7 @@ mod interfaces {
     mod IOracle;
     mod IPragma;
     mod IPurger;
+    mod ISRC5;
     mod ISeer;
     mod ISentinel;
     mod IShrine;

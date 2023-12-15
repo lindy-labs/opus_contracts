@@ -16,6 +16,15 @@ trait IERC20<TContractState> {
 }
 
 #[starknet::interface]
+trait IERC20CamelOnly<TContractState> {
+    fn totalSupply(self: @TContractState) -> u256;
+    fn balanceOf(self: @TContractState, account: ContractAddress) -> u256;
+    fn transferFrom(
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+    ) -> bool;
+}
+
+#[starknet::interface]
 trait IMintable<TContractState> {
     fn mint(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
 }

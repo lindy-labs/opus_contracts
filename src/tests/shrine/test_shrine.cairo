@@ -3,7 +3,10 @@ mod test_shrine {
     use integer::BoundedU256;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IERC20::{
+        IERC20Dispatcher, IERC20DispatcherTrait, IERC20CamelOnlyDispatcher, IERC20CamelOnlyDispatcherTrait
+    };
+    use opus::interfaces::ISRC5::{ISRC5Dispatcher, ISRC5DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
@@ -1406,6 +1409,54 @@ mod test_shrine {
     }
 
     #[test]
+    fn test_yin_camelCase_support() {
+        // same test as test_yin_transfer_from_pass above,
+        // but uses balanceOf, transferFrom and adds a call to totalSupply
+
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+
+        let yin = shrine_utils::yin(shrine.contract_address);
+        let camel_yin = IERC20CamelOnlyDispatcher { contract_address: yin.contract_address };
+        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let transfer_amt: u256 = shrine_utils::TROVE1_FORGE_AMT.into();
+        start_prank(CheatTarget::All, trove1_owner);
+        yin.approve(yin_user, transfer_amt);
+
+        assert(yin.total_supply() == camel_yin.totalSupply(), 'wrong total supply');
+
+        start_prank(CheatTarget::All, yin_user);
+        let success: bool = camel_yin.transferFrom(trove1_owner, yin_user, transfer_amt);
+
+        assert(success, 'yin transfer fail');
+
+        assert(camel_yin.balanceOf(trove1_owner).is_zero(), 'wrong transferor balance');
+        assert(camel_yin.balanceOf(yin_user) == transfer_amt, 'wrong transferee balance');
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Approval(
+                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
     #[should_panic(expected: ('SH: Insufficient yin allowance',))]
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -2359,5 +2410,14 @@ mod test_shrine {
         );
 
         assert(trove_health.threshold == alternative_threshold, 'invariant did not hold');
+    }
+
+    #[test]
+    fn test_src5_for_erc20_support() {
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let src5 = ISRC5Dispatcher { contract_address: shrine_addr };
+        assert(src5.supports_interface(shrine_contract::ISRC5_ID), 'should support SRC5');
+        assert(src5.supports_interface(shrine_contract::IERC20_ID), 'should support ERC20');
+        assert(src5.supports_interface(shrine_contract::IERC20_CAMEL_ID), 'should support ERC20 Camel');
     }
 }
