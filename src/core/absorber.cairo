@@ -921,7 +921,7 @@ mod absorber {
 
             let epoch: u32 = self.current_epoch.read();
             let mut blessed_assets: Array<AssetBalance> = ArrayTrait::new();
-            let mut current_rewards_id: u8 = 0;
+            let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
             loop {
