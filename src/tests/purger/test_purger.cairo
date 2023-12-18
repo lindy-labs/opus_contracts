@@ -25,7 +25,8 @@ mod test_purger {
     use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions
+        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
+        EventFetcher, event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
 
@@ -1465,11 +1466,14 @@ mod test_purger {
                                                     );
 
                                                     // Check Purger events
-                                                    // purger_spy.fetch_events();
+                                                    purger_spy.fetch_events();
 
-                                                    // let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
 
-                                                    // assert(purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+                                                    assert(
+                                                        purged_event.keys.at(0) == @event_name_hash('Purged'),
+                                                        'wrong event'
+                                                    );
 
                                                     // common::assert_asset_balances_equalish(
                                                     //     purged_event.freed_assets,
@@ -1974,6 +1978,14 @@ mod test_purger {
                                             };
 
                                             // Check Purger events
+
+                                            purger_spy.fetch_events();
+
+                                            let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+
+                                            assert(
+                                                purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event'
+                                            );
 
                                             // let purged_event: purger_contract::Purged =
                                             //     common::pop_event_with_indexed_keys(
@@ -2487,6 +2499,15 @@ mod test_purger {
                                                         );
 
                                                         // Check Purger events
+
+                                                        purger_spy.fetch_events();
+
+                                                        let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+
+                                                        assert(
+                                                            purged_event.keys.at(0) == @event_name_hash('Compensate'),
+                                                            'wrong event'
+                                                        );
 
                                                         // Note that this indirectly asserts that `Purged`
                                                         // is not emitted if it does not revert because
