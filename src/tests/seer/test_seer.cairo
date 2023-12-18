@@ -20,30 +20,41 @@ mod test_seer {
     use opus::types::pragma::PricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, WAD_SCALE};
-    use snforge_std::{declare, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
+        ContractClassTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
 
     #[test]
     fn test_seer_setup() {
+        let mut spy = spy_events(SpyOn::All);
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
         assert(seer.get_oracles().len() == 0, 'wrong number of oracles');
 
-        let expected_events: Span<seer_contract::Event> = array![
-            seer_contract::Event::UpdateFrequencyUpdated(
-                seer_contract::UpdateFrequencyUpdated { old_frequency: 0, new_frequency: seer_utils::UPDATE_FREQUENCY }
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdateFrequencyUpdated(
+                    seer_contract::UpdateFrequencyUpdated {
+                        old_frequency: 0, new_frequency: seer_utils::UPDATE_FREQUENCY
+                    }
+                )
             )
-        ]
-            .span();
-    //common::assert_events_emitted(seer.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_set_oracles() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
@@ -77,6 +88,7 @@ mod test_seer {
     #[test]
     fn test_set_update_frequency() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let new_frequency: u64 = 1200;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -84,13 +96,16 @@ mod test_seer {
 
         assert(seer.get_update_frequency() == new_frequency, 'wrong update frequency');
 
-        let expected_events: Span<seer_contract::Event> = array![
-            seer_contract::Event::UpdateFrequencyUpdated(
-                seer_contract::UpdateFrequencyUpdated { old_frequency: seer_utils::UPDATE_FREQUENCY, new_frequency }
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdateFrequencyUpdated(
+                    seer_contract::UpdateFrequencyUpdated { old_frequency: seer_utils::UPDATE_FREQUENCY, new_frequency }
+                )
             )
-        ]
-            .span();
-    //common::assert_events_emitted(seer.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -127,9 +142,13 @@ mod test_seer {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None,
         );
+
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
         // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
@@ -150,24 +169,34 @@ mod test_seer {
         assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
         assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
 
-        let expected_events_seer: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdate(
-                seer_contract::PriceUpdate { oracle: pragma, yang: eth_addr, price: eth_price }
+        let expected_events_seer = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_addr, price: eth_price }
+                )
             ),
-            seer_contract::Event::PriceUpdate(
-                seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+                )
             ),
-            seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: true })
-        ]
-            .span();
-        let expected_missing_seer: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] }),
-            seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] }),
-        ]
-            .span();
-        // common::assert_events_emitted(
-        //     seer.contract_address, expected_events_seer, Option::Some(expected_missing_seer)
-        // );
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: true })
+            )
+        ];
+
+        spy.assert_emitted(@expected_events_seer);
+
+        // TODO: Once foundry supports it, check that these events were not emitted
+        // let expected_missing_seer = array![
+        //     (seer.contract_address,
+        //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })),
+        //     (seer.contract_address,
+        //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })),
+        // ];
 
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
@@ -202,6 +231,9 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
         // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
@@ -218,24 +250,33 @@ mod test_seer {
         assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
         assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
 
-        let expected_events_seer: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdate(
-                seer_contract::PriceUpdate { oracle: pragma, yang: eth_addr, price: eth_price }
+        let expected_events_seer = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_addr, price: eth_price }
+                )
             ),
-            seer_contract::Event::PriceUpdate(
-                seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+                )
             ),
-            seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
-        ]
-            .span();
-        let expected_missing_seer: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] }),
-            seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] }),
-        ]
-            .span();
-    // common::assert_events_emitted(
-    //     seer.contract_address, expected_events_seer, Option::Some(expected_missing_seer)
-    // );
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
+            )
+        ];
+
+        spy.assert_emitted(@expected_events_seer);
+    // TODO: Once foundry supports it, check that these events were not emitted
+    // let expected_missing_seer = array![
+    //     (seer.contract_address,
+    //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })),
+    //     (seer.contract_address,
+    //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })),
+    // ];
     }
 
     #[test]
@@ -287,6 +328,9 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
 
@@ -316,21 +360,27 @@ mod test_seer {
         ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
 
         // expecting one PriceUpdateMissed event but also UpdatedPrices
-        let expected_events: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: eth_addr }),
-            seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
-        ]
-            .span();
-        // and not expecting PriceUpdate
-        let expected_missing: Span<seer_contract::Event> = array![
-            seer_contract::Event::PriceUpdate(
-                seer_contract::PriceUpdate { oracle: pragma.contract_address, yang: eth_addr, price: eth_price }
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: eth_addr })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
             )
-        ]
-            .span();
-    // common::assert_events_emitted(
-    //     seer.contract_address, expected_events, Option::Some(expected_missing)
-    // );
+        ];
+
+        spy.assert_emitted(@expected_events);
+    // TODO: Once foundry supports it, check that these events were not emitted
+    // and not expecting PriceUpdate
+    // let expected_missing = array![
+    //     (seer.contract_address,
+    //     seer_contract::Event::PriceUpdate(
+    //         seer_contract::PriceUpdate { oracle: pragma.contract_address, yang: eth_addr, price: eth_price }
+    //     ))
+    // ];
+
     }
 
     #[test]

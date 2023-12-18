@@ -13,7 +13,7 @@ mod test_flash_mint {
     use opus::utils::wadray::{Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
 
     //
@@ -78,6 +78,9 @@ mod test_flash_mint {
     #[test]
     fn test_flashmint_pass() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
+
+        let mut spy = spy_events(SpyOn::Multiple(array![flashmint.contract_address, borrower]));
+
         let yin = shrine_utils::yin(shrine);
 
         let mut calldata: Span<felt252> = flash_mint_utils::build_calldata(true, flash_borrower_contract::VALID_USAGE);
@@ -131,65 +134,113 @@ mod test_flash_mint {
         let sixth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, sixth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 6');
-    // let mut expected_events: Span<flash_mint_contract::Event> = array![
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: first_loan_amt
-    //         }
-    //     ),
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: second_loan_amt
-    //         }
-    //     ),
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: third_loan_amt
-    //         }
-    //     ),
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fourth_loan_amt
-    //         }
-    //     ),
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fifth_loan_amt
-    //         }
-    //     ),
-    //     flash_mint_contract::Event::FlashMint(
-    //         flash_mint_contract::FlashMint {
-    //             initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: sixth_loan_amt
-    //         }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(flashmint.contract_address, expected_events, Option::None);
 
-    // let mut expected_events: Span<flash_borrower_contract::Event> = array![
-    //     flash_borrower_contract::Event::FlashLoancall_dataReceived(
-    //         flash_borrower_contract::FlashLoancall_dataReceived {
-    //             initiator: flash_mint_caller, token: shrine, amount: first_loan_amt, fee: 0, call_data: calldata,
-    //         }
-    //     ),
-    //     flash_borrower_contract::Event::FlashLoancall_dataReceived(
-    //         flash_borrower_contract::FlashLoancall_dataReceived {
-    //             initiator: flash_mint_caller, token: shrine, amount: second_loan_amt, fee: 0, call_data: calldata,
-    //         }
-    //     ),
-    //     flash_borrower_contract::Event::FlashLoancall_dataReceived(
-    //         flash_borrower_contract::FlashLoancall_dataReceived {
-    //             initiator: flash_mint_caller, token: shrine, amount: third_loan_amt, fee: 0, call_data: calldata,
-    //         }
-    //     ),
-    //     flash_borrower_contract::Event::FlashLoancall_dataReceived(
-    //         flash_borrower_contract::FlashLoancall_dataReceived {
-    //             initiator: flash_mint_caller, token: shrine, amount: fourth_loan_amt, fee: 0, call_data: calldata,
-    //         }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(borrower, expected_events, Option::None);
+        let expected_events = array![
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: first_loan_amt
+                    }
+                )
+            ),
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: second_loan_amt
+                    }
+                )
+            ),
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: third_loan_amt
+                    }
+                )
+            ),
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fourth_loan_amt
+                    }
+                )
+            ),
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: fifth_loan_amt
+                    }
+                )
+            ),
+            (
+                flashmint.contract_address,
+                flash_mint_contract::Event::FlashMint(
+                    flash_mint_contract::FlashMint {
+                        initiator: flash_mint_caller, receiver: borrower, token: shrine, amount: sixth_loan_amt
+                    }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+
+        // Flash borrower events
+        let expected_events = array![
+            (
+                borrower,
+                flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                    flash_borrower_contract::FlashLoancall_dataReceived {
+                        initiator: flash_mint_caller,
+                        token: shrine,
+                        amount: first_loan_amt,
+                        fee: 0,
+                        call_data: calldata,
+                    }
+                )
+            ),
+            (
+                borrower,
+                flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                    flash_borrower_contract::FlashLoancall_dataReceived {
+                        initiator: flash_mint_caller,
+                        token: shrine,
+                        amount: second_loan_amt,
+                        fee: 0,
+                        call_data: calldata,
+                    }
+                )
+            ),
+            (
+                borrower,
+                flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                    flash_borrower_contract::FlashLoancall_dataReceived {
+                        initiator: flash_mint_caller,
+                        token: shrine,
+                        amount: third_loan_amt,
+                        fee: 0,
+                        call_data: calldata,
+                    }
+                )
+            ),
+            (
+                borrower,
+                flash_borrower_contract::Event::FlashLoancall_dataReceived(
+                    flash_borrower_contract::FlashLoancall_dataReceived {
+                        initiator: flash_mint_caller,
+                        token: shrine,
+                        amount: fourth_loan_amt,
+                        fee: 0,
+                        call_data: calldata,
+                    }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]

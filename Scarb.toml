@@ -19,6 +19,7 @@ snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag 
 
 [scripts]
 ktn = "katana --disable-fee --accounts 6 --seed 0x6f707573"
+test = "snforge test"
 
 [tool.fmt]
 sort-module-level-items = true
