@@ -11,7 +11,7 @@ mod test_seer {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::{IYagiDispatcher, IYagiDispatcherTrait};
+    use opus::interfaces::external::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
     use opus::tests::external::utils::pragma_utils;
@@ -243,7 +243,7 @@ mod test_seer {
         let wbtc_addr: ContractAddress = *yangs.at(1);
         let pragma: ContractAddress = *(oracles[0]);
 
-        IYagiDispatcher { contract_address: seer.contract_address }.execute_task();
+        ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
 
         let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
@@ -357,7 +357,7 @@ mod test_seer {
             );
 
         // using execute_task to not have a forced update
-        IYagiDispatcher { contract_address: seer.contract_address }.execute_task();
+        ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
 
         // expecting one PriceUpdateMissed event but also UpdatedPrices
         let expected_events = array![
@@ -394,18 +394,18 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
 
-        let yagi = IYagiDispatcher { contract_address: seer.contract_address };
-        assert(yagi.probe_task(), 'should be ready 1');
+        let task = ITaskDispatcher { contract_address: seer.contract_address };
+        assert(task.probe_task(), 'should be ready 1');
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
 
-        assert(!yagi.probe_task(), 'should not be ready 1');
+        assert(!task.probe_task(), 'should not be ready 1');
 
         start_warp(CheatTarget::All, get_block_timestamp() + seer.get_update_frequency() - 1);
-        assert(!yagi.probe_task(), 'should not be ready 2');
+        assert(!task.probe_task(), 'should not be ready 2');
 
         start_warp(CheatTarget::All, get_block_timestamp() + 1);
-        assert(yagi.probe_task(), 'should be ready 2');
+        assert(task.probe_task(), 'should be ready 2');
     }
 }
