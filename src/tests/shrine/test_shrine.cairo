@@ -1077,7 +1077,7 @@ mod test_shrine {
         expected: (
             'Event with matching data and',
             'keys was not emitted from',
-            3411769512097638079147154388561035746677569257443090740396477986552390403081
+            2295267269888109092026303815931680619733720960381289290319447202476564501893
         )
     )]
     fn test_shrine_forge_no_forgefee_emitted_when_zero() {
