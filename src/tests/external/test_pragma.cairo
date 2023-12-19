@@ -376,8 +376,8 @@ mod test_pragma {
                     pragma_contract::InvalidPriceUpdate {
                         yang: eth_addr,
                         price: eth_price,
-                        pragma_last_updated_ts: now.into(),
-                        pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES.into(),
+                        pragma_last_updated_ts: now,
+                        pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES,
                     }
                 )
             ),
@@ -431,10 +431,7 @@ mod test_pragma {
                 pragma.contract_address,
                 pragma_contract::Event::InvalidPriceUpdate(
                     pragma_contract::InvalidPriceUpdate {
-                        yang: eth_addr,
-                        price: eth_price,
-                        pragma_last_updated_ts: now.into(),
-                        pragma_num_sources: num_sources
+                        yang: eth_addr, price: eth_price, pragma_last_updated_ts: now, pragma_num_sources: num_sources
                     }
                 )
             ),
