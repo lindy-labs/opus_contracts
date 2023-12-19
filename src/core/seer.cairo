@@ -5,7 +5,7 @@ mod seer {
     use opus::interfaces::ISeer::ISeer;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::IYagi;
+    use opus::interfaces::external::ITask;
     use opus::utils::access_control::access_control_component;
     use opus::utils::wadray::Wad;
     use starknet::contract_address::ContractAddressZeroable;
@@ -172,7 +172,7 @@ mod seer {
     }
 
     #[abi(embed_v0)]
-    impl IYagiImpl of IYagi<ContractState> {
+    impl ITaskImpl of ITask<ContractState> {
         fn probe_task(self: @ContractState) -> bool {
             let seconds_since_last_update: u64 = get_block_timestamp() - self.last_update_prices_call_timestamp.read();
             self.update_frequency.read() <= seconds_since_last_update

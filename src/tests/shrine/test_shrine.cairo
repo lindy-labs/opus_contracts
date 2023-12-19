@@ -3,7 +3,10 @@ mod test_shrine {
     use integer::BoundedU256;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IERC20::{
+        IERC20Dispatcher, IERC20DispatcherTrait, IERC20CamelOnlyDispatcher, IERC20CamelOnlyDispatcherTrait
+    };
+    use opus::interfaces::ISRC5::{ISRC5Dispatcher, ISRC5DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
@@ -16,7 +19,7 @@ mod test_shrine {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::SignedWad;
     use opus::utils::wadray_signed;
-    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::get_block_timestamp;
 
@@ -27,7 +30,8 @@ mod test_shrine {
     // Check constructor function
     #[test]
     fn test_shrine_deploy() {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::All);
+        let shrine_addr = shrine_utils::shrine_deploy(Option::None);
 
         // Check ERC-20 getters
         let yin: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine_addr };
@@ -46,17 +50,20 @@ mod test_shrine {
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
         assert(shrine_accesscontrol.get_admin() == shrine_utils::admin(), 'wrong admin');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::MultiplierUpdated(
-                shrine_contract::MultiplierUpdated {
-                    multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-                }
+        let expected_events = array![
+            (
+                shrine_addr,
+                shrine_contract::Event::MultiplierUpdated(
+                    shrine_contract::MultiplierUpdated {
+                        multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
+                    }
+                )
             )
-        ]
-            .span();
-    //common::assert_events_emitted(shrine_addr, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     // Checks the following functions
@@ -66,22 +73,30 @@ mod test_shrine {
     #[test]
     fn test_shrine_setup() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine_addr));
         shrine_utils::shrine_setup(shrine_addr);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::MultiplierUpdated(
-                shrine_contract::MultiplierUpdated {
-                    multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-                    interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-                }
-            ),
-            shrine_contract::Event::DebtCeilingUpdated(
-                shrine_contract::DebtCeilingUpdated { ceiling: shrine_utils::DEBT_CEILING.into() }
+        let expected_events = array![
+            // NOTE: Can't currently check events emitted in the constructor
+            // (
+            //     shrine_addr,
+            //     shrine_contract::Event::MultiplierUpdated(
+            //         shrine_contract::MultiplierUpdated {
+            //             multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+            //             cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+            //             interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
+            //         }
+            //     )
+            // ),
+            (
+                shrine_addr,
+                shrine_contract::Event::DebtCeilingUpdated(
+                    shrine_contract::DebtCeilingUpdated { ceiling: shrine_utils::DEBT_CEILING.into() }
+                )
             )
-        ]
-            .span();
-        //common::assert_events_emitted(shrine_addr, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
 
         // Check debt ceiling and minimum trove value
         let shrine = shrine_utils::shrine(shrine_addr);
@@ -253,18 +268,22 @@ mod test_shrine {
     #[test]
     fn test_set_trove_minimum_value() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         let new_value: Wad = (100 * WAD_ONE).into();
         shrine.set_minimum_trove_value(new_value);
         assert(shrine.get_minimum_trove_value() == new_value, 'wrong min trove value');
-    // let expected_events: Span<shrine_contract::Event> = array![
-    //     shrine_contract::Event::MinimumTroveValueUpdated(
-    //         shrine_contract::MinimumTroveValueUpdated { value: new_value }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::MinimumTroveValueUpdated(
+                    shrine_contract::MinimumTroveValueUpdated { value: new_value }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -284,6 +303,7 @@ mod test_shrine {
     #[test]
     fn test_add_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let admin = shrine_utils::admin();
         start_prank(CheatTarget::One(shrine.contract_address), admin);
@@ -310,24 +330,33 @@ mod test_shrine {
 
         assert(shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate, 'incorrect yang rate');
 
-        let expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::ThresholdUpdated(
-                shrine_contract::ThresholdUpdated { yang: new_yang_address, threshold: new_yang_threshold }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::ThresholdUpdated(
+                    shrine_contract::ThresholdUpdated { yang: new_yang_address, threshold: new_yang_threshold }
+                )
             ),
-            shrine_contract::Event::YangAdded(
-                shrine_contract::YangAdded {
-                    yang: new_yang_address,
-                    yang_id: expected_yangs_count,
-                    start_price: new_yang_start_price,
-                    initial_rate: new_yang_rate
-                }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YangAdded(
+                    shrine_contract::YangAdded {
+                        yang: new_yang_address,
+                        yang_id: expected_yangs_count,
+                        start_price: new_yang_start_price,
+                        initial_rate: new_yang_rate
+                    }
+                )
             ),
-            shrine_contract::Event::YangTotalUpdated(
-                shrine_contract::YangTotalUpdated { yang: new_yang_address, total: WadZeroable::zero() }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YangTotalUpdated(
+                    shrine_contract::YangTotalUpdated { yang: new_yang_address, total: WadZeroable::zero() }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -363,6 +392,8 @@ mod test_shrine {
     #[test]
     fn test_set_threshold() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         let yang1_addr = shrine_utils::yang1_addr();
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
 
@@ -371,13 +402,16 @@ mod test_shrine {
         let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
         assert(raw_threshold == new_threshold, 'threshold not updated');
 
-        let expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::ThresholdUpdated(
-                shrine_contract::ThresholdUpdated { yang: yang1_addr, threshold: new_threshold }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::ThresholdUpdated(
+                    shrine_contract::ThresholdUpdated { yang: yang1_addr, threshold: new_threshold }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -530,6 +564,8 @@ mod test_shrine {
     #[test]
     fn test_kill() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         assert(shrine.get_live(), 'should be live');
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -548,7 +584,11 @@ mod test_shrine {
             shrine_contract::Event::Killed(shrine_contract::Killed {}),
         ]
             .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+
+        let expected_events = array![
+            (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {}))
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -638,6 +678,7 @@ mod test_shrine {
     #[test]
     fn test_shrine_deposit_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
@@ -665,22 +706,33 @@ mod test_shrine {
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id: trove_id,
-                    trove: Trove {
-                        charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
-                    },
-                }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveUpdated(
+                    shrine_contract::TroveUpdated {
+                        trove_id: trove_id,
+                        trove: Trove {
+                            charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
+                        },
+                    }
+                )
             ),
-            shrine_contract::Event::YangTotalUpdated(shrine_contract::YangTotalUpdated { yang, total: deposit_amt, }),
-            shrine_contract::Event::DepositUpdated(
-                shrine_contract::DepositUpdated { yang, trove_id, amount: deposit_amt, }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YangTotalUpdated(
+                    shrine_contract::YangTotalUpdated { yang, total: deposit_amt, }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+            (
+                shrine.contract_address,
+                shrine_contract::Event::DepositUpdated(
+                    shrine_contract::DepositUpdated { yang, trove_id, amount: deposit_amt, }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -708,6 +760,8 @@ mod test_shrine {
     #[test]
     fn test_shrine_withdraw_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         start_prank(CheatTarget::All, shrine_utils::admin());
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -740,24 +794,33 @@ mod test_shrine {
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id: trove_id,
-                    trove: Trove {
-                        charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
-                    },
-                }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveUpdated(
+                    shrine_contract::TroveUpdated {
+                        trove_id: trove_id,
+                        trove: Trove {
+                            charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
+                        },
+                    }
+                )
             ),
-            shrine_contract::Event::YangTotalUpdated(
-                shrine_contract::YangTotalUpdated { yang: yang1_addr, total: remaining_amt }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YangTotalUpdated(
+                    shrine_contract::YangTotalUpdated { yang: yang1_addr, total: remaining_amt }
+                )
             ),
-            shrine_contract::Event::DepositUpdated(
-                shrine_contract::DepositUpdated { yang: yang1_addr, trove_id, amount: remaining_amt }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::DepositUpdated(
+                    shrine_contract::DepositUpdated { yang: yang1_addr, trove_id, amount: remaining_amt }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -867,6 +930,7 @@ mod test_shrine {
     #[test]
     fn test_shrine_forge_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
@@ -901,24 +965,34 @@ mod test_shrine {
 
         shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TotalTrovesDebtUpdated(
-                shrine_contract::TotalTrovesDebtUpdated { total: forge_amt }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TotalTrovesDebtUpdated(
+                    shrine_contract::TotalTrovesDebtUpdated { total: forge_amt }
+                )
             ),
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id,
-                    trove: Trove { charge_from: shrine_utils::current_interval(), debt: forge_amt, last_rate_era: 1 },
-                }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveUpdated(
+                    shrine_contract::TroveUpdated {
+                        trove_id,
+                        trove: Trove {
+                            charge_from: shrine_utils::current_interval(), debt: forge_amt, last_rate_era: 1
+                        },
+                    }
+                )
             ),
-            shrine_contract::Event::Transfer(
-                shrine_contract::Transfer {
-                    from: ContractAddressZeroable::zero(), to: trove1_owner_addr, value: forge_amt.into(),
-                }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer {
+                        from: ContractAddressZeroable::zero(), to: trove1_owner_addr, value: forge_amt.into(),
+                    }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -999,22 +1073,32 @@ mod test_shrine {
     }
 
     #[test]
-    //#[should_panic(expected: ('Event not emitted',))]
+    #[should_panic(
+        expected: (
+            'Event with matching data and',
+            'keys was not emitted from',
+            2295267269888109092026303815931680619733720960381289290319447202476564501893
+        )
+    )]
     fn test_shrine_forge_no_forgefee_emitted_when_zero() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         let trove_id: u64 = common::TROVE_1;
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::ForgeFeePaid(
-                shrine_contract::ForgeFeePaid { trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(), }
-            ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::ForgeFeePaid(
+                    shrine_contract::ForgeFeePaid { trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(), }
+                )
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1023,6 +1107,7 @@ mod test_shrine {
         let yin_price2: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let trove_id: u64 = common::TROVE_1;
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
@@ -1050,11 +1135,13 @@ mod test_shrine {
         let intermediate_budget: SignedWad = shrine.get_budget();
         assert(intermediate_budget == before_budget + fee.into(), 'wrong budget #1');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct }),
-        ]
-            .span();
-        //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct })
+            )
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
@@ -1067,11 +1154,13 @@ mod test_shrine {
         );
         assert(shrine.get_budget() == intermediate_budget + fee.into(), 'wrong budget #2');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct }),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct })
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1103,6 +1192,8 @@ mod test_shrine {
     #[test]
     fn test_shrine_melt_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
 
@@ -1147,26 +1238,37 @@ mod test_shrine {
 
         shrine_utils::assert_total_troves_debt_invariant(shrine, yangs, 1);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TotalTrovesDebtUpdated(
-                shrine_contract::TotalTrovesDebtUpdated { total: after_trove_health.debt }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TotalTrovesDebtUpdated(
+                    shrine_contract::TotalTrovesDebtUpdated { total: after_trove_health.debt }
+                )
             ),
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id,
-                    trove: Trove {
-                        charge_from: shrine_utils::current_interval(), debt: after_trove_health.debt, last_rate_era: 1
-                    },
-                }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::TroveUpdated(
+                    shrine_contract::TroveUpdated {
+                        trove_id,
+                        trove: Trove {
+                            charge_from: shrine_utils::current_interval(),
+                            debt: after_trove_health.debt,
+                            last_rate_era: 1
+                        },
+                    }
+                )
             ),
-            shrine_contract::Event::Transfer(
-                shrine_contract::Transfer {
-                    from: trove1_owner_addr, to: ContractAddressZeroable::zero(), value: melt_amt.into(),
-                }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer {
+                        from: trove1_owner_addr, to: ContractAddressZeroable::zero(), value: melt_amt.into(),
+                    }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1198,6 +1300,7 @@ mod test_shrine {
     #[test]
     fn test_yin_transfer_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1219,7 +1322,18 @@ mod test_shrine {
             shrine_contract::Event::Transfer(shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: 0, }),
         ]
             .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer {
+                        from: trove1_owner, to: yin_user, value: shrine_utils::TROVE1_FORGE_AMT.into(),
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1255,6 +1369,7 @@ mod test_shrine {
     #[test]
     fn test_yin_transfer_from_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
@@ -1275,16 +1390,70 @@ mod test_shrine {
         assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(yin.balance_of(yin_user) == transfer_amt, 'wrong transferee balance');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Approval(
-                shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Approval(
+                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
+                )
             ),
-            shrine_contract::Event::Transfer(
-                shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    fn test_yin_camelCase_support() {
+        // same test as test_yin_transfer_from_pass above,
+        // but uses balanceOf, transferFrom and adds a call to totalSupply
+
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+
+        let yin = shrine_utils::yin(shrine.contract_address);
+        let camel_yin = IERC20CamelOnlyDispatcher { contract_address: yin.contract_address };
+        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let transfer_amt: u256 = shrine_utils::TROVE1_FORGE_AMT.into();
+        start_prank(CheatTarget::All, trove1_owner);
+        yin.approve(yin_user, transfer_amt);
+
+        assert(yin.total_supply() == camel_yin.totalSupply(), 'wrong total supply');
+
+        start_prank(CheatTarget::All, yin_user);
+        let success: bool = camel_yin.transferFrom(trove1_owner, yin_user, transfer_amt);
+
+        assert(success, 'yin transfer fail');
+
+        assert(camel_yin.balanceOf(trove1_owner).is_zero(), 'wrong transferor balance');
+        assert(camel_yin.balanceOf(yin_user) == transfer_amt, 'wrong transferee balance');
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Approval(
+                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1501,6 +1670,8 @@ mod test_shrine {
     fn test_shrine_inject_and_eject() {
         assert(true, 'test');
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         let yin = shrine_utils::yin(shrine.contract_address);
         let trove1_owner = common::trove1_owner_addr();
 
@@ -1514,15 +1685,17 @@ mod test_shrine {
         let inject_amt = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine.inject(trove1_owner, inject_amt);
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Transfer(
-                shrine_contract::Transfer {
-                    from: ContractAddressZeroable::zero(), to: trove1_owner, value: inject_amt.into(),
-                }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer {
+                        from: ContractAddressZeroable::zero(), to: trove1_owner, value: inject_amt.into(),
+                    }
+                )
             ),
-        ]
-            .span();
-        //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
 
         assert(yin.total_supply() == before_total_supply + inject_amt.into(), 'incorrect total supply');
         assert(yin.balance_of(trove1_owner) == before_user_bal + inject_amt.val.into(), 'incorrect user balance');
@@ -1535,15 +1708,17 @@ mod test_shrine {
         assert(shrine.get_total_yin() == before_total_yin, 'incorrect total yin');
         assert(shrine.get_yin(trove1_owner) == before_user_yin, 'incorrect user yin');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Transfer(
-                shrine_contract::Transfer {
-                    from: trove1_owner, to: ContractAddressZeroable::zero(), value: inject_amt.into(),
-                }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Transfer(
+                    shrine_contract::Transfer {
+                        from: trove1_owner, to: ContractAddressZeroable::zero(), value: inject_amt.into(),
+                    }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1770,54 +1945,49 @@ mod test_shrine {
         let third_forge_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
         shrine.update_yin_spot_price(first_yin_price);
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::YinPriceUpdated(
-                shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price, }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YinPriceUpdated(
+                    shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price, }
+                )
             ),
-        ]
-            .span();
-        //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine.update_yin_spot_price(second_yin_price);
         common::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::YinPriceUpdated(
-                shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price, }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YinPriceUpdated(
+                    shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price, }
+                )
             ),
-        ]
-            .span();
-        //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
         common::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
 
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::YinPriceUpdated(
-                shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price, }
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YinPriceUpdated(
+                    shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price, }
+                )
             ),
-        ]
-            .span();
-        //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
-
-        // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
-        shrine.update_yin_spot_price(fourth_yin_price);
-        assert(shrine.get_forge_fee_pct() == shrine_contract::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
-
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::YinPriceUpdated(
-                shrine_contract::YinPriceUpdated { old_price: third_yin_price, new_price: fourth_yin_price, }
-            ),
-        ]
-            .span();
-    //common::assert_events_emitted(shrine.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     //
@@ -1868,6 +2038,8 @@ mod test_shrine {
     #[test]
     fn test_yang_suspend_and_unsuspend() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine_addr));
+
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
         let yang = shrine_utils::yang1_addr();
@@ -1884,16 +2056,17 @@ mod test_shrine {
         assert(status == YangSuspensionStatus::Temporary, 'status 1');
 
         // check event emission
-        //common::assert_events_emitted(
-        //     shrine_addr,
-        //     array![
-        //         shrine_contract::Event::YangSuspended(
-        //             shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
-        //         ),
-        //     ]
-        //         .span(),
-        //     Option::None
-        // );
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        shrine_addr,
+                        shrine_contract::Event::YangSuspended(
+                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
+                        )
+                    ),
+                ]
+            );
 
         // setting block time to a second before the suspension would be permanent
         start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
@@ -1904,17 +2077,19 @@ mod test_shrine {
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::None, 'status 2');
-    // check event emission
-    //common::assert_events_emitted(
-    //     shrine_addr,
-    //     array![
-    //         shrine_contract::Event::YangUnsuspended(
-    //             shrine_contract::YangUnsuspended { yang, timestamp: get_block_timestamp() }
-    //         ),
-    //     ]
-    //         .span(),
-    //     Option::None,
-    // );
+
+        // check event emission
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        shrine_addr,
+                        shrine_contract::Event::YangUnsuspended(
+                            shrine_contract::YangUnsuspended { yang, timestamp: get_block_timestamp() }
+                        )
+                    ),
+                ]
+            );
     }
 
     #[test]
@@ -1947,6 +2122,8 @@ mod test_shrine {
     #[test]
     fn test_yang_suspension_progress_temp_to_permanent() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine_addr));
+
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
 
@@ -1964,16 +2141,17 @@ mod test_shrine {
         assert(status == YangSuspensionStatus::Temporary, 'status 1');
 
         // check event emission
-        //common::assert_events_emitted(
-        //     shrine_addr,
-        //     array![
-        //         shrine_contract::Event::YangSuspended(
-        //             shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
-        //         ),
-        //     ]
-        //         .span(),
-        //     Option::None,
-        // );
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        shrine_addr,
+                        shrine_contract::Event::YangSuspended(
+                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
+                        )
+                    ),
+                ]
+            );
 
         // check threshold (should be the same at the beginning)
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
@@ -2232,5 +2410,14 @@ mod test_shrine {
         );
 
         assert(trove_health.threshold == alternative_threshold, 'invariant did not hold');
+    }
+
+    #[test]
+    fn test_src5_for_erc20_support() {
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let src5 = ISRC5Dispatcher { contract_address: shrine_addr };
+        assert(src5.supports_interface(shrine_contract::ISRC5_ID), 'should support SRC5');
+        assert(src5.supports_interface(shrine_contract::IERC20_ID), 'should support ERC20');
+        assert(src5.supports_interface(shrine_contract::IERC20_CAMEL_ID), 'should support ERC20 Camel');
     }
 }

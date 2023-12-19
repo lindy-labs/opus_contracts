@@ -11,7 +11,7 @@ mod test_controller {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
     use opus::utils::wadray_signed;
-    use snforge_std::{start_prank, CheatTarget};
+    use snforge_std::{start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad
@@ -20,6 +20,7 @@ mod test_controller {
 
     #[test]
     fn test_deploy_controller() {
+        let mut spy = spy_events(SpyOn::All);
         let (controller, _) = controller_utils::deploy_controller();
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
@@ -29,45 +30,51 @@ mod test_controller {
         assert(alpha_i == controller_utils::ALPHA_I, 'wrong alpha_i');
         assert(beta_p == controller_utils::BETA_P, 'wrong beta_p');
         assert(beta_i == controller_utils::BETA_I, 'wrong beta_i');
-    // let mut expected_events: Span<controller_contract::Event> = array![
-    //     controller_contract::Event::GainUpdated(
-    //         controller_contract::GainUpdated {
-    //             name: 'p_gain', value: controller_utils::P_GAIN.into()
-    //         }
-    //     ),
-    //     controller_contract::Event::GainUpdated(
-    //         controller_contract::GainUpdated {
-    //             name: 'i_gain', value: controller_utils::I_GAIN.into()
-    //         }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated {
-    //             name: 'alpha_p', value: controller_utils::ALPHA_P
-    //         }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated {
-    //             name: 'alpha_i', value: controller_utils::ALPHA_I
-    //         }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated {
-    //             name: 'beta_p', value: controller_utils::BETA_P
-    //         }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated {
-    //             name: 'beta_i', value: controller_utils::BETA_I
-    //         }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                controller.contract_address,
+                controller_contract::Event::GainUpdated(
+                    controller_contract::GainUpdated { name: 'p_gain', value: controller_utils::P_GAIN.into() }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::GainUpdated(
+                    controller_contract::GainUpdated { name: 'i_gain', value: controller_utils::I_GAIN.into() }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'alpha_p', value: controller_utils::ALPHA_P }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'alpha_i', value: controller_utils::ALPHA_I }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'beta_p', value: controller_utils::BETA_P }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'beta_i', value: controller_utils::BETA_I }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_setters() {
         let (controller, _) = controller_utils::deploy_controller();
+        let mut spy = spy_events(SpyOn::One(controller.contract_address));
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -92,28 +99,45 @@ mod test_controller {
         assert(alpha_i == new_alpha_i, 'wrong alpha_i');
         assert(beta_p == new_beta_p, 'wrong beta_p');
         assert(beta_i == new_beta_i, 'wrong beta_i');
-    // let mut expected_events: Span<controller_contract::Event> = array![
-    //     controller_contract::Event::GainUpdated(
-    //         controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
-    //     ),
-    //     controller_contract::Event::GainUpdated(
-    //         controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
-    //     ),
-    //     controller_contract::Event::ParameterUpdated(
-    //         controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
-    //     ),
-    // ]
-    //     .span();
-    // common::assert_events_emitted(controller.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                controller.contract_address,
+                controller_contract::Event::GainUpdated(
+                    controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::GainUpdated(
+                    controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
+                )
+            ),
+            (
+                controller.contract_address,
+                controller_contract::Event::ParameterUpdated(
+                    controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     // Testing unauthorized calls of setters

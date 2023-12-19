@@ -4,7 +4,8 @@ mod shrine {
     use core::starknet::event::EventEmitter;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use opus::core::roles::shrine_roles;
-    use opus::interfaces::IERC20::IERC20;
+    use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
+    use opus::interfaces::ISRC5::ISRC5;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{
         ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
@@ -85,6 +86,11 @@ mod shrine {
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
+    // SRC5 interface constants
+    const ISRC5_ID: felt252 = 0x3f918d17e5ee77373b56385708f855659a07f75997f365cf87748628532a055;
+    const IERC20_ID: felt252 = 0x10a8f9ff27838cf36e9599878726d548a5c5c1acb0d7e04e99372cbb79f730b;
+    const IERC20_CAMEL_ID: felt252 = 0x2be91edd4cf1388a08c3612416baf85deb00e47d840e6d645f248c8ab64a4ab;
+
     //
     // Storage
     //
@@ -137,15 +143,15 @@ mod shrine {
         yin_spot_price: Wad,
         // Minimum value for a trove before a user can forge any debt
         minimum_trove_value: Wad,
-        // Maximum amount of yin that can be generated. Once this ceiling is exceeded, the 
-        // creation of new yin by users should be disallowed. 
-        // - If the budget is positive, a user may create new yin only if the resulting total 
+        // Maximum amount of yin that can be generated. Once this ceiling is exceeded, the
+        // creation of new yin by users should be disallowed.
+        // - If the budget is positive, a user may create new yin only if the resulting total
         //   yin amount and any debt surpluses is less than or equal to the ceiling.
         // - If the budget is neutral or negative, a user may create new yin only if the resulting
         //   total yin amount is less than the ceiling.
         //
-        // Note that this does not  prevent interest from accruing or the budget from accruing 
-        // a surplus, and positive budgets can still be minted as yin. Therefore, it is possible 
+        // Note that this does not  prevent interest from accruing or the budget from accruing
+        // a surplus, and positive budgets can still be minted as yin. Therefore, it is possible
         // for the total amount of yin to exceed the debt ceiling.
         debt_ceiling: Wad,
         // Global interest rate multiplier
@@ -1034,7 +1040,7 @@ mod shrine {
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
-        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt, 
+        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt,
         // trove value and compounded debt;
         fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
@@ -1144,9 +1150,9 @@ mod shrine {
             }
         }
 
-        // If the budget is positive, check that the new total amount of yin and any debt surpluses 
+        // If the budget is positive, check that the new total amount of yin and any debt surpluses
         // is less than the debt ceiling. Otherwise, if the budget is negative (i.e. there is a deficit),
-        // check that the new total amount of yin is less than the debt ceiling.  
+        // check that the new total amount of yin is less than the debt ceiling.
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
             let budget_adjustment: Wad = match new_budget.try_into() {
                 Option::Some(surplus) => { surplus },
@@ -1440,7 +1446,7 @@ mod shrine {
 
             let charged: Wad = compounded_trove_debt - trove.debt;
 
-            // Add the interest charged on the trove's debt to the total troves' debt and 
+            // Add the interest charged on the trove's debt to the total troves' debt and
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
@@ -2277,6 +2283,22 @@ mod shrine {
         }
     }
 
+    #[abi(embed_v0)]
+    impl IERC20CamelImpl of IERC20CamelOnly<ContractState> {
+        fn totalSupply(self: @ContractState) -> u256 {
+            self.total_supply()
+        }
+
+        fn balanceOf(self: @ContractState, account: ContractAddress) -> u256 {
+            self.balance_of(account)
+        }
+
+        fn transferFrom(
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+        ) -> bool {
+            self.transfer_from(sender, recipient, amount)
+        }
+    }
     //
     // Internal ERC20 functions
     //
@@ -2318,6 +2340,17 @@ mod shrine {
                 assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
+        }
+    }
+
+    //
+    // SRC5
+    //
+
+    #[abi(embed_v0)]
+    impl ISRC5Impl of ISRC5<ContractState> {
+        fn supports_interface(self: @ContractState, interface_id: felt252) -> bool {
+            interface_id == ISRC5_ID || interface_id == IERC20_ID || interface_id == IERC20_CAMEL_ID
         }
     }
 }

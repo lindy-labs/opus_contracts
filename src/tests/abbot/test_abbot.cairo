@@ -13,7 +13,7 @@ mod test_abbot {
     use opus::types::{AssetBalance, Health};
     use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
     use opus::utils::wadray;
-    use snforge_std::{start_prank, stop_prank, CheatTarget};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
     //
@@ -22,10 +22,18 @@ mod test_abbot {
 
     #[test]
     fn test_open_trove_pass() {
-        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt) =
-            abbot_utils::deploy_abbot_and_open_trove(
+        let (shrine, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
+
+        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+
+        // Deploying the first trove
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
+        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
+        let deposited_amts: Span<u128> = abbot_utils::open_trove_yang_asset_amts();
+        let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposited_amts, gates, forge_amt);
 
         // Check trove ID
         let expected_trove_id: u64 = 1;
@@ -114,14 +122,21 @@ mod test_abbot {
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt + second_forge_amt, 'wrong total debt #2');
 
-        let mut expected_events: Span<abbot_contract::Event> = array![
-            abbot_contract::Event::TroveOpened(abbot_contract::TroveOpened { user: trove_owner, trove_id: trove_id, }),
-            abbot_contract::Event::TroveOpened(
-                abbot_contract::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+        let expected_events = array![
+            (
+                abbot.contract_address,
+                abbot_contract::Event::TroveOpened(
+                    abbot_contract::TroveOpened { user: trove_owner, trove_id: trove_id, }
+                )
             ),
-        ]
-            .span();
-        //common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
+            (
+                abbot.contract_address,
+                abbot_contract::Event::TroveOpened(
+                    abbot_contract::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -167,6 +182,8 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
+        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.close_trove(trove_id);
 
@@ -181,11 +198,10 @@ mod test_abbot {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.debt.is_zero(), 'wrong trove debt');
 
-        let mut expected_events: Span<abbot_contract::Event> = array![
-            abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id }),
-        ]
-            .span();
-        //common::assert_events_emitted(abbot.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (abbot.contract_address, abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id })),
+        ];
+        spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
