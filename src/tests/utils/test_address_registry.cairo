@@ -3,23 +3,28 @@ mod test_address_registry {
     use opus::tests::utils::mock_address_registry::mock_address_registry;
     use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use opus::utils::address_registry::address_registry_component;
+    use snforge_std::cheatcodes::events::EventAssertions;
+    use snforge_std::{spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, test_address,};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
-    use starknet::testing::{pop_log, pop_log_raw, set_caller_address};
 
     //
     // Constants
     //
 
+    const ENTRY1_ADDR: felt252 = 'entry 1';
+    const ENTRY2_ADDR: felt252 = 'entry 2';
+    const ENTRY3_ADDR: felt252 = 'entry 3';
+
     fn entry1() -> ContractAddress {
-        contract_address_try_from_felt252('entry 1').unwrap()
+        contract_address_try_from_felt252(ENTRY1_ADDR).unwrap()
     }
 
     fn entry2() -> ContractAddress {
-        contract_address_try_from_felt252('entry 2').unwrap()
+        contract_address_try_from_felt252(ENTRY2_ADDR).unwrap()
     }
 
     fn entry3() -> ContractAddress {
-        contract_address_try_from_felt252('entry 3').unwrap()
+        contract_address_try_from_felt252(ENTRY3_ADDR).unwrap()
     }
 
     fn zero_addr() -> ContractAddress {
@@ -39,7 +44,6 @@ mod test_address_registry {
     //
 
     #[test]
-    #[available_gas(10000000)]
     fn test_setup() {
         let state = state();
 
@@ -48,9 +52,10 @@ mod test_address_registry {
     }
 
     #[test]
-    #[available_gas(10000000)]
     fn test_add_and_remove_entry() {
         let mut state = state();
+
+        let mut spy = spy_events(SpyOn::One(test_address()));
 
         // add first entry
         // order: 1
@@ -60,11 +65,13 @@ mod test_address_registry {
         let expected_entry_id: u32 = 1;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
-        assert(event.entry == entry1(), 'should be entry 1');
-        assert(event.entry_id == expected_entry_id, 'should be ID 1');
+        spy.fetch_events();
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        let mut event_id = 0;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryAdded'), 'wrong event name #1');
+        assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 1');
 
         assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #1');
         let expected_entries: Span<ContractAddress> = array![entry1()].span();
@@ -78,11 +85,13 @@ mod test_address_registry {
         let expected_entry_id: u32 = 2;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
-        assert(event.entry == entry2(), 'should be entry 2');
-        assert(event.entry_id == expected_entry_id, 'should be ID 2');
+        spy.fetch_events();
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryAdded'), 'wrong event name #2');
+        assert(*event.data[0] == ENTRY2_ADDR, 'should be entry 2');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 2');
 
         assert(state.address_registry.get_entry(expected_entry_id) == entry2(), 'wrong entry #2');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2()].span();
@@ -96,11 +105,13 @@ mod test_address_registry {
         let expected_entry_id: u32 = 3;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
-        assert(event.entry == entry3(), 'should be entry 3');
-        assert(event.entry_id == expected_entry_id, 'should be ID 3');
+        spy.fetch_events();
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryAdded'), 'wrong event name #3');
+        assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 3');
 
         assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #3');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
@@ -113,11 +124,14 @@ mod test_address_registry {
         assert(res.unwrap() == entry3(), 'error');
 
         let expected_entry_id: u32 = 3;
-        let event = pop_log::<address_registry_component::EntryRemoved>(zero_addr()).unwrap();
-        assert(event.entry == entry3(), 'should be entry 3');
-        assert(event.entry_id == expected_entry_id, 'should be ID 3');
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        spy.fetch_events();
+
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryRemoved'), 'wrong event name #4');
+        assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 3');
 
         assert(state.address_registry.get_entry(expected_entry_id).is_zero(), 'wrong entry #4');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2()].span();
@@ -130,11 +144,13 @@ mod test_address_registry {
         let expected_entry_id: u32 = 4;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
-        assert(event.entry == entry3(), 'should be entry 3');
-        assert(event.entry_id == expected_entry_id, 'should be ID 4');
+        spy.fetch_events();
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryAdded'), 'wrong event name #5');
+        assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 4');
 
         assert(state.address_registry.get_entry(expected_entry_id) == entry3(), 'wrong entry #5');
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
@@ -144,13 +160,15 @@ mod test_address_registry {
         // order: _, 2, _, 3
         let res = state.address_registry.remove_entry(entry1());
         assert(res.unwrap() == entry1(), 'error');
-
         let expected_entry_id: u32 = 1;
-        let event = pop_log::<address_registry_component::EntryRemoved>(zero_addr()).unwrap();
-        assert(event.entry == entry1(), 'should be entry 1');
-        assert(event.entry_id == expected_entry_id, 'should be ID 1');
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        spy.fetch_events();
+
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryRemoved'), 'wrong event name #6');
+        assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 1');
 
         assert(state.address_registry.get_entry(expected_entry_id).is_zero(), 'wrong entry #6');
         let expected_entries: Span<ContractAddress> = array![entry2(), entry3()].span();
@@ -163,11 +181,13 @@ mod test_address_registry {
         let expected_entry_id: u32 = 5;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        let event = pop_log::<address_registry_component::EntryAdded>(zero_addr()).unwrap();
-        assert(event.entry == entry1(), 'should be entry 1');
-        assert(event.entry_id == expected_entry_id, 'should be ID 5');
+        spy.fetch_events();
 
-        assert(pop_log_raw(zero_addr()).is_none(), 'unexpected event');
+        event_id += 1;
+        let (_, event) = spy.events.at(event_id);
+        assert(*event.keys[1] == event_name_hash('EntryAdded'), 'wrong event name #7');
+        assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
+        assert(*event.data[1] == expected_entry_id.into(), 'should be ID 5');
 
         assert(state.address_registry.get_entry(expected_entry_id) == entry1(), 'wrong entry #7');
         let expected_entries: Span<ContractAddress> = array![entry2(), entry3(), entry1()].span();
@@ -183,7 +203,6 @@ mod test_address_registry {
     }
 
     #[test]
-    #[available_gas(10000000)]
     fn test_add_duplicate_entry_fail() {
         let mut state = state();
 
@@ -193,7 +212,6 @@ mod test_address_registry {
     }
 
     #[test]
-    #[available_gas(10000000)]
     fn test_remove_non_existent_entry_fail() {
         let mut state = state();
 
