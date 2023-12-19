@@ -6,8 +6,7 @@ mod mock_access_control {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     #[storage]

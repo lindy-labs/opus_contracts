@@ -10,6 +10,7 @@ mod core {
     mod gate;
     mod purger;
     mod roles;
+    mod seer;
     mod sentinel;
     mod shrine;
     mod transmuter;
@@ -34,6 +35,8 @@ mod interfaces {
     mod IOracle;
     mod IPragma;
     mod IPurger;
+    mod ISRC5;
+    mod ISeer;
     mod ISentinel;
     mod IShrine;
     mod ITransmuter;
@@ -52,20 +55,23 @@ mod utils {
 
 // mock used for local devnet deployment
 mod mock {
+    mod blesser;
     mod erc20;
-    mod oracle;
+    mod erc20_mintable;
+    mod flash_borrower;
+    mod flash_liquidator;
+    mod mock_pragma;
+//mod oracle;
 }
 
 #[cfg(test)]
 mod tests {
     mod common;
-    mod erc20;
     mod abbot {
         mod test_abbot;
         mod utils;
     }
     mod absorber {
-        mod mock_blesser;
         mod test_absorber;
         mod utils;
     }
@@ -83,12 +89,10 @@ mod tests {
         mod utils;
     }
     mod external {
-        mod mock_pragma;
         mod test_pragma;
         mod utils;
     }
     mod flash_mint {
-        mod flash_borrower;
         mod test_flash_mint;
         mod utils;
     }
@@ -97,12 +101,15 @@ mod tests {
         mod utils;
     }
     mod purger {
-        mod flash_liquidator;
         mod test_purger;
         mod utils;
     }
     mod sentinel {
         mod test_sentinel;
+        mod utils;
+    }
+    mod seer {
+        mod test_seer;
         mod utils;
     }
     mod shrine {

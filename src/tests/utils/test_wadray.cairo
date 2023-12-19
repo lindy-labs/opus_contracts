@@ -1,8 +1,7 @@
 mod test_wadray {
     use opus::utils::wadray::{
-        DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
-        WAD_ONE, WAD_DECIMALS, WAD_SCALE, WadZeroable, wad_to_fixed_point, wdiv_rw, rdiv_ww,
-        wmul_rw, wmul_wr
+        DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, wad_to_fixed_point, Wad,
+        WadZeroable, WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, rdiv_ww, wmul_rw, wmul_wr
     };
     use opus::utils::wadray;
 
@@ -16,8 +15,7 @@ mod test_wadray {
 
         // 123456789101112 + 121110987654321 = 244567776755433
         assert(
-            Wad { val: 123456789101112 }
-                + Wad { val: 121110987654321 } == Wad { val: 244567776755433 },
+            Wad { val: 123456789101112 } + Wad { val: 121110987654321 } == Wad { val: 244567776755433 },
             'Incorrect addition #3'
         );
 
@@ -29,8 +27,7 @@ mod test_wadray {
 
         // 123456789101112 + 121110987654321 = 244567776755433
         assert(
-            Ray { val: 123456789101112 }
-                + Ray { val: 121110987654321 } == Ray { val: 244567776755433 },
+            Ray { val: 123456789101112 } + Ray { val: 121110987654321 } == Ray { val: 244567776755433 },
             'Incorrect addition #6'
         );
     }
@@ -56,8 +53,7 @@ mod test_wadray {
 
         // 244567776755433 - 121110987654321 = 123456789101112
         assert(
-            Wad { val: 244567776755433 }
-                - Wad { val: 121110987654321 } == Wad { val: 123456789101112 },
+            Wad { val: 244567776755433 } - Wad { val: 121110987654321 } == Wad { val: 123456789101112 },
             'Incorrect subtraction #3'
         );
 
@@ -69,8 +65,7 @@ mod test_wadray {
 
         // 244567776755433 - 121110987654321 = 123456789101112
         assert(
-            Ray { val: 244567776755433 }
-                - Ray { val: 121110987654321 } == Ray { val: 123456789101112 },
+            Ray { val: 244567776755433 } - Ray { val: 121110987654321 } == Ray { val: 123456789101112 },
             'Incorrect subtraction #6'
         );
     }
@@ -97,10 +92,7 @@ mod test_wadray {
         ); // Result should be truncated
 
         // 1 (wad) * 1 (wad) = 1 (wad)
-        assert(
-            Wad { val: WAD_ONE } * Wad { val: WAD_ONE } == Wad { val: WAD_ONE },
-            'Incorrect multiplication #3'
-        );
+        assert(Wad { val: WAD_ONE } * Wad { val: WAD_ONE } == Wad { val: WAD_ONE }, 'Incorrect multiplication #3');
 
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670187008926
         assert(
@@ -118,40 +110,32 @@ mod test_wadray {
         ); // Result should be truncated
 
         // 1 (ray) * 1 (ray) = 1 (ray)
-        assert(
-            Ray { val: RAY_ONE } * Ray { val: RAY_ONE } == Ray { val: RAY_ONE },
-            'Incorrect multiplication #7'
-        );
+        assert(Ray { val: RAY_ONE } * Ray { val: RAY_ONE } == Ray { val: RAY_ONE }, 'Incorrect multiplication #7');
 
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670 (truncated)
         assert(
-            Ray { val: 121110987654321531059 }
-                * Ray { val: 1234567891011125475893 } == Ray { val: 149519736606670 },
+            Ray { val: 121110987654321531059 } * Ray { val: 1234567891011125475893 } == Ray { val: 149519736606670 },
             'Incorrect multiplication #8'
         );
 
         // wmul(ray, wad) -> ray
         assert(
-            wmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE },
-            'Incorrect multiplication #9'
+            wmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE }, 'Incorrect multiplication #9'
         );
 
         // wmul(wad, ray) -> ray
         assert(
-            wmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Ray { val: RAY_ONE },
-            'Incorrect multiplication #10'
+            wmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Ray { val: RAY_ONE }, 'Incorrect multiplication #10'
         );
 
         // rmul(ray, wad) -> wad
         assert(
-            rmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Wad { val: WAD_ONE },
-            'Incorrect multiplication #11'
+            rmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Wad { val: WAD_ONE }, 'Incorrect multiplication #11'
         );
 
         // rmul(wad, ray) -> wad
         assert(
-            rmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE },
-            'Incorrect multiplication #12'
+            rmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE }, 'Incorrect multiplication #12'
         );
     }
 
@@ -170,27 +154,19 @@ mod test_wadray {
     fn test_div() {
         // 2 / (1 / 2) = 4 (wad)
         assert(
-            Wad { val: 2 * WAD_ONE } / Wad { val: WAD_ONE / 2 } == Wad { val: 4 * WAD_ONE },
-            'Incorrect division #1'
+            Wad { val: 2 * WAD_ONE } / Wad { val: WAD_ONE / 2 } == Wad { val: 4 * WAD_ONE }, 'Incorrect division #1'
         );
 
         // 2 / (1 / 2) = 4 (ray)
         assert(
-            Ray { val: 2 * RAY_ONE } / Ray { val: RAY_ONE / 2 } == Ray { val: 4 * RAY_ONE },
-            'Incorrect division #2'
+            Ray { val: 2 * RAY_ONE } / Ray { val: RAY_ONE / 2 } == Ray { val: 4 * RAY_ONE }, 'Incorrect division #2'
         );
 
         // wdiv(ray, wad) -> ray
-        assert(
-            wdiv_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE },
-            'Incorrect division #3'
-        );
+        assert(wdiv_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE }, 'Incorrect division #3');
 
         // rdiv(wad, ray) -> wad
-        assert(
-            rdiv_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE },
-            'Incorrect division #4'
-        );
+        assert(rdiv_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE }, 'Incorrect division #4');
     }
 
     #[test]
@@ -358,7 +334,6 @@ mod test_wadray {
     }
 
     #[test]
-    #[available_gas(2000000)]
     fn test_fixed_point_to_wad_zero() {
         // Test zero amount with varying decimals
         assert(fixed_point_to_wad(0, 0) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
@@ -367,13 +342,10 @@ mod test_wadray {
     }
 
     #[test]
-    #[available_gas(2000000)]
     fn test_fixed_point_to_wad_non_zero() {
         // Test non-zero amount with varying decimals
         assert(fixed_point_to_wad(1, 0) == WAD_SCALE.into(), 'Incorrect fp>wad conversion #4');
-        assert(
-            fixed_point_to_wad(1, 6) == 1000000000000_u128.into(), 'Incorrect fp>wad conversion #5'
-        );
+        assert(fixed_point_to_wad(1, 6) == 1000000000000_u128.into(), 'Incorrect fp>wad conversion #5');
         assert(fixed_point_to_wad(1, 18) == 1_u128.into(), 'Incorrect fp>wad conversion #6');
     }
 
@@ -387,18 +359,9 @@ mod test_wadray {
     #[available_gas(2000000)]
     fn test_wad_to_fixed_point_zero() {
         // Test zero amount with varying decimals
-        assert(
-            wad_to_fixed_point(WadZeroable::zero(), 0) == 0_u128.into(),
-            'Incorrect wad>fp conversion #1'
-        );
-        assert(
-            wad_to_fixed_point(WadZeroable::zero(), 6) == 0_u128.into(),
-            'Incorrect wad>fp conversion #2'
-        );
-        assert(
-            wad_to_fixed_point(WadZeroable::zero(), 18) == 0_u128.into(),
-            'Incorrect wad>fp conversion #3'
-        );
+        assert(wad_to_fixed_point(WadZeroable::zero(), 0) == 0_u128.into(), 'Incorrect wad>fp conversion #1');
+        assert(wad_to_fixed_point(WadZeroable::zero(), 6) == 0_u128.into(), 'Incorrect wad>fp conversion #2');
+        assert(wad_to_fixed_point(WadZeroable::zero(), 18) == 0_u128.into(), 'Incorrect wad>fp conversion #3');
     }
 
     #[test]
@@ -406,9 +369,7 @@ mod test_wadray {
     fn test_wad_to_fixed_point_non_zero() {
         // Test non-zero amount with varying decimals
         assert(wad_to_fixed_point(WAD_ONE.into(), 0) == 1_u128, 'Incorrect wad>fp conversion #4');
-        assert(
-            wad_to_fixed_point(WAD_ONE.into(), 6) == 1000000_u128, 'Incorrect wad>fp conversion #5'
-        );
+        assert(wad_to_fixed_point(WAD_ONE.into(), 6) == 1000000_u128, 'Incorrect wad>fp conversion #5');
         assert(wad_to_fixed_point(WAD_ONE.into(), 18) == WAD_ONE, 'Incorrect wad>fp conversion #6');
     }
 

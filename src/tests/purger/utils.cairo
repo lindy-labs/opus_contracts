@@ -4,36 +4,31 @@ mod purger_utils {
     use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
-    use opus::core::roles::{absorber_roles, pragma_roles, sentinel_roles, shrine_roles};
+    use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
-    use opus::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
-    use opus::tests::external::utils::pragma_utils;
-    use opus::tests::purger::flash_liquidator::{
-        flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
-    };
+    use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
-    };
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use opus::utils::wadray;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-        SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
 
     //
@@ -45,6 +40,24 @@ mod purger_utils {
 
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+
+
+    // Struct to group together all contract classes
+    // needed for purger tests
+    #[derive(Copy, Drop)]
+    struct PurgerTestClasses {
+        abbot: Option<ContractClass>,
+        sentinel: Option<ContractClass>,
+        token: Option<ContractClass>,
+        gate: Option<ContractClass>,
+        shrine: Option<ContractClass>,
+        absorber: Option<ContractClass>,
+        blesser: ContractClass,
+        purger: ContractClass,
+        pragma: Option<ContractClass>,
+        mock_pragma: Option<ContractClass>,
+        seer: Option<ContractClass>,
+    }
 
     //
     // Address constants
@@ -256,12 +269,9 @@ mod purger_utils {
     }
 
     fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
-        array![
-            target_trove_yang_asset_amts(), // Dust yang case
-             // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
-            array![20 * WAD_ONE, 100_u128].span()
-        ]
-            .span()
+        array![target_trove_yang_asset_amts(), // Dust yang case
+         // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
+        array![20 * WAD_ONE, 100_u128].span()].span()
     }
 
     fn inoperational_absorber_yin_cases() -> Span<Wad> {
@@ -287,116 +297,119 @@ mod purger_utils {
             .span()
     }
 
+    fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+        array![
+            // First threshold of 78.75% (Ray)
+            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
+            // Second threshold of 80% (Ray)
+            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
+            // Third threshold of 90% (Ray)
+            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
+            // Fourth threshold of 96% (Ray)
+            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
+            // Fifth threshold of 97% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            // Sixth threshold of 99% (Ray)
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+        ]
+            .span()
+    }
+
     //
     // Test setup helpers
     //
 
     fn purger_deploy(
-        salt: Option<felt252>
+        classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        IMockPragmaDispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
+
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            salt
+            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
         );
 
-        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy();
+        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
+
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
-        absorber_utils::deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing
-        );
+        absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
-        let (_, oracle, _, mock_pragma) = pragma_utils::pragma_deploy_with_shrine(
-            sentinel, shrine.contract_address
-        );
-        pragma_utils::add_yangs_to_pragma(oracle, yangs);
+        let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
+        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
+        seer_utils::add_yangs(seer, yangs);
 
-        // Seed initial prices for ETH and WBTC in Pragma
-        let current_ts = get_block_timestamp();
-        pragma_utils::mock_valid_price_update(
-            mock_pragma,
-            pragma_utils::ETH_USD_PAIR_ID,
-            pragma_utils::convert_price_to_pragma_scale(pragma_utils::ETH_INIT_PRICE),
-            current_ts
-        );
-        pragma_utils::mock_valid_price_update(
-            mock_pragma,
-            pragma_utils::WBTC_USD_PAIR_ID,
-            pragma_utils::convert_price_to_pragma_scale(pragma_utils::WBTC_INIT_PRICE),
-            current_ts
-        );
-        IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.update_prices();
+        stop_prank(CheatTarget::One(seer.contract_address));
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
             contract_address_to_felt252(absorber.contract_address),
-            contract_address_to_felt252(oracle.contract_address)
+            contract_address_to_felt252(seer.contract_address)
         ];
 
-        let purger_class_hash: ClassHash = class_hash_try_from_felt252(
-            purger_contract::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (purger_addr, _) = deploy_syscall(purger_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        set_contract_address(sentinel_utils::admin());
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
-        // Approve Purger in Oracle
-        let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
-        set_contract_address(pragma_utils::admin());
-        oracle_ac.grant_role(pragma_roles::purger(), purger_addr);
+        // Approve Purger in Seer
+        let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        oracle_ac.grant_role(seer_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        set_contract_address(absorber_utils::admin());
+        start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
-        set_contract_address(shrine_utils::admin());
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::All);
 
-        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
+        (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, salt: Option<felt252>,
+        searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        IMockPragmaDispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy(salt);
+        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(classes);
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
-        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
+        (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
     fn flash_liquidator_deploy(
@@ -404,37 +417,31 @@ mod purger_utils {
         abbot: ContractAddress,
         flashmint: ContractAddress,
         purger: ContractAddress,
+        fl_class: Option<ContractClass>,
     ) -> IFlashLiquidatorDispatcher {
-        let mut calldata = array![
+        let calldata = array![
             contract_address_to_felt252(shrine),
             contract_address_to_felt252(abbot),
             contract_address_to_felt252(flashmint),
             contract_address_to_felt252(purger)
         ];
 
-        let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(
-            flash_liquidator::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (flash_liquidator_addr, _) = deploy_syscall(
-            flash_liquidator_class_hash, 0, calldata.span(), false
-        )
-            .unwrap_syscall();
+        let fl_class = match fl_class {
+            Option::Some(class) => class,
+            Option::None => declare('flash_liquidator'),
+        };
+
+        let flash_liquidator_addr = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
 
     fn funded_searcher(
-        abbot: IAbbotDispatcher,
-        yangs: Span<ContractAddress>,
-        gates: Span<IGateDispatcher>,
-        yin_amt: Wad,
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
         common::fund_user(user, yangs, recipient_trove_yang_asset_amts());
-        common::open_trove_helper(
-            abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt
-        );
+        common::open_trove_helper(abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt);
     }
 
     fn funded_absorber(
@@ -446,23 +453,13 @@ mod purger_utils {
         amt: Wad,
     ) -> u64 {
         absorber_utils::provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            absorber_utils::provider_1(),
-            yangs,
-            recipient_trove_yang_asset_amts(),
-            gates,
-            amt,
+            shrine, abbot, absorber, absorber_utils::provider_1(), yangs, recipient_trove_yang_asset_amts(), gates, amt,
         )
     }
 
     // Creates a healthy trove and returns the trove ID
     fn funded_healthy_trove(
-        abbot: IAbbotDispatcher,
-        yangs: Span<ContractAddress>,
-        gates: Span<IGateDispatcher>,
-        yin_amt: Wad,
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = target_trove_yang_asset_amts();
@@ -472,9 +469,7 @@ mod purger_utils {
 
     // Creates a trove with a lot of collateral
     // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
-    fn create_whale_trove(
-        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
-    ) -> u64 {
+    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
         let yin_amt: Wad = WAD_ONE.into();
@@ -484,61 +479,41 @@ mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher,
-        mock_pragma: IMockPragmaDispatcher,
-        mut yangs: Span<ContractAddress>,
-        mut yang_pair_ids: Span<u256>,
-        pct_decrease: Ray,
+        shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
-        let current_ts = get_block_timestamp();
-        let scale: u128 = pow(10_u128, WAD_DECIMALS - pragma_utils::PRAGMA_DECIMALS);
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    let new_price: Wad = wadray::rmul_wr(
-                        yang_price, (RAY_ONE.into() - pct_decrease)
-                    );
-                    let new_pragma_price: u128 = new_price.val / scale;
-                    // Note that `new_price` is more precise than `new_pragma_price` so
-                    // the `new_pragma_price` is a rounded down value of `new_price`.
-                    // `new_price` is used so that there is more control over the precision of
-                    // the target LTV.
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
                     shrine.advance(*yang, new_price);
-
-                    pragma_utils::mock_valid_price_update(
-                        mock_pragma,
-                        *yang_pair_ids.pop_front().unwrap(),
-                        new_pragma_price,
-                        current_ts
-                    );
+                    seer_utils::mock_valid_price_update(seer, *yang, new_price);
                 },
                 Option::None => { break; },
             };
         };
-        set_contract_address(ContractAddressZeroable::zero());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
     // yang prices
     fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
-        mock_pragma: IMockPragmaDispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
-        yang_pair_ids: Span<u256>,
         value: Wad,
         debt: Wad,
         target_ltv: Ray,
@@ -546,22 +521,17 @@ mod purger_utils {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
 
-        decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
+        decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
     }
 
     fn trigger_recovery_mode(
-        shrine: IShrineDispatcher,
-        abbot: IAbbotDispatcher,
-        trove: u64,
-        trove_owner: ContractAddress,
+        shrine: IShrineDispatcher, abbot: IAbbotDispatcher, trove: u64, trove_owner: ContractAddress,
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold
-            * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
         // Add 1% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
-            (RAY_ONE + RAY_PERCENT).into(),
-            (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
+            (RAY_ONE + RAY_PERCENT).into(), (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
         );
 
         // Sanity check that we are able to mint the amount of debt to trigger
@@ -569,8 +539,9 @@ mod purger_utils {
         let max_forge_amt: Wad = shrine.get_max_forge(trove);
         assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup #1');
 
-        set_contract_address(trove_owner);
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
+        stop_prank(CheatTarget::One(abbot.contract_address));
 
         assert(shrine.is_recovery_mode(), 'recovery mode setup #2');
     }
@@ -589,11 +560,7 @@ mod purger_utils {
     // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
     fn get_expected_liquidation_assets(
-        trove_asset_amts: Span<u128>,
-        trove_value: Wad,
-        close_amt: Wad,
-        penalty: Ray,
-        compensation_value: Option<Wad>
+        trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray, compensation_value: Option<Wad>
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
 
@@ -603,38 +570,30 @@ mod purger_utils {
             WadZeroable::zero()
         };
         let value_after_compensation: Wad = trove_value - value_offset;
-        let expected_freed_pct_of_value_before_compensation: Ray =
-            if freed_amt < value_after_compensation {
+        let expected_freed_pct_of_value_before_compensation: Ray = if freed_amt < value_after_compensation {
             wadray::rdiv_ww(freed_amt, trove_value)
         } else {
             wadray::rdiv_ww(value_after_compensation, trove_value)
         };
-        let expected_freed_pct_of_value_after_compensation: Ray =
-            if freed_amt < value_after_compensation {
+        let expected_freed_pct_of_value_after_compensation: Ray = if freed_amt < value_after_compensation {
             wadray::rdiv_ww(freed_amt, value_after_compensation)
         } else {
             expected_freed_pct_of_value_before_compensation
         };
         (
             expected_freed_pct_of_value_after_compensation,
-            common::scale_span_by_pct(
-                trove_asset_amts, expected_freed_pct_of_value_before_compensation
-            )
+            common::scale_span_by_pct(trove_asset_amts, expected_freed_pct_of_value_before_compensation)
         )
     }
 
-    fn assert_trove_is_healthy(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
-    ) {
+    fn assert_trove_is_healthy(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
         assert(purger.preview_liquidate(trove_id).is_none(), 'should not be liquidatable');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
-    fn assert_trove_is_liquidatable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
-    ) {
+    fn assert_trove_is_liquidatable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         let (penalty, _,) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
         if ltv < RAY_ONE.into() {
@@ -644,15 +603,11 @@ mod purger_utils {
         }
     }
 
-    fn assert_trove_is_absorbable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
-    ) {
+    fn assert_trove_is_absorbable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        let (penalty, _, _) = purger
-            .preview_absorb(trove_id)
-            .expect('preview should be Option::Some');
+        let (penalty, _, _) = purger.preview_absorb(trove_id).expect('preview should be Option::Some');
         if ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -683,22 +638,15 @@ mod purger_utils {
         loop {
             match expected_freed_assets.pop_front() {
                 Option::Some(expected_freed_asset) => {
-                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals
-                        .pop_front()
-                        .unwrap();
+                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
                     let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
 
-                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals
-                        .pop_front()
-                        .unwrap();
+                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
                     let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
-                    let expected_after_asset_bal: u128 = before_asset_bal
-                        + *expected_freed_asset.amount;
+                    let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
 
-                    common::assert_equalish(
-                        after_asset_bal, expected_after_asset_bal, error_margin, message,
-                    );
+                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message,);
                 },
                 Option::None => { break; },
             };
@@ -706,9 +654,7 @@ mod purger_utils {
     }
 
     // Helper function to calculate the sum of the value of the given yangs
-    fn get_sum_of_value(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
-    ) -> Wad {
+    fn get_sum_of_value(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>) -> Wad {
         let mut sum: Wad = WadZeroable::zero();
         loop {
             match yangs.pop_front() {
@@ -716,9 +662,24 @@ mod purger_utils {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     sum = sum + yang_price * *amounts.pop_front().unwrap();
                 },
-                Option::None => { break; },
-            };
-        };
-        sum
+                Option::None => { break sum; }
+            }
+        }
+    }
+
+    fn declare_contracts() -> PurgerTestClasses {
+        PurgerTestClasses {
+            abbot: Option::Some(declare('abbot')),
+            sentinel: Option::Some(declare('sentinel')),
+            token: Option::Some(declare('erc20_mintable')),
+            gate: Option::Some(declare('gate')),
+            shrine: Option::Some(declare('shrine')),
+            absorber: Option::Some(declare('absorber')),
+            blesser: declare('blesser'),
+            purger: declare('purger'),
+            pragma: Option::Some(declare('pragma')),
+            mock_pragma: Option::Some(declare('mock_pragma')),
+            seer: Option::Some(declare('seer')),
+        }
     }
 }

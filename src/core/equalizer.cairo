@@ -21,8 +21,7 @@ mod equalizer {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -86,10 +85,7 @@ mod equalizer {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
-        admin: ContractAddress,
-        shrine: ContractAddress,
-        allocator: ContractAddress
+        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress
     ) {
         self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
 
@@ -135,15 +131,33 @@ mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let budget: SignedWad = shrine.get_budget();
-            let surplus: Option<Wad> = budget.try_into();
 
-            if surplus.is_none() {
+            // `is_negative` is an inadequate check for performing an early return
+            // here because it does not catch the case where budget is exactly zero.
+            if !budget.is_positive() {
                 return WadZeroable::zero();
             }
 
-            let minted_surplus: Wad = surplus.unwrap();
-            shrine.inject(get_contract_address(), minted_surplus);
+            let minted_surplus: Wad = budget.try_into().unwrap();
+
+            // temporarily increase the debt ceiling by the injected amount 
+            // so that surplus debt can still be minted when total yin is at
+            // or exceeds the debt ceiling. Note that we need to adjust the 
+            // budget first or the Shrine would double-count the injected amount 
+            // and revert because the debt ceiling would be exceeded
+            let ceiling: Wad = shrine.get_debt_ceiling();
+            let total_yin: Wad = shrine.get_total_yin();
+            let adjust_ceiling: bool = total_yin + minted_surplus > ceiling;
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(total_yin + minted_surplus);
+            }
+
             shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
+            shrine.inject(get_contract_address(), minted_surplus);
+
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(ceiling);
+            }
 
             self.emit(Equalize { yin_amt: minted_surplus });
 
@@ -176,9 +190,7 @@ mod equalizer {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        let amount: Wad = wadray::rmul_wr(
-                            balance, *(percentages_copy.pop_front().unwrap())
-                        );
+                        let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
 
                         yin.transfer(*recipient, amount.into());
                         amount_allocated += amount;

@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod mock_blesser {
+mod blesser {
     use opus::core::roles::blesser_roles;
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -9,8 +9,7 @@ mod mock_blesser {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     #[storage]

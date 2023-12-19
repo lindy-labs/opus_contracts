@@ -3,9 +3,7 @@ mod mock_address_registry {
     use opus::utils::address_registry::address_registry_component;
     use starknet::ContractAddress;
 
-    component!(
-        path: address_registry_component, storage: address_registry, event: AddressRegistryEvent
-    );
+    component!(path: address_registry_component, storage: address_registry, event: AddressRegistryEvent);
 
     impl AddressRegistryHelpers = address_registry_component::AddressRegistryHelpers<ContractState>;
 

@@ -15,8 +15,8 @@ mod transmuter_utils {
     use opus::utils::wadray::Wad;
     use starknet::testing::set_contract_address;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, SyscallResultTrait
     };
 
     // Constants
@@ -51,10 +51,7 @@ mod transmuter_utils {
     //
 
     fn transmuter_deploy(
-        shrine: ContractAddress,
-        asset: ContractAddress,
-        receiver: ContractAddress,
-        salt: Option<felt252>
+        shrine: ContractAddress, asset: ContractAddress, receiver: ContractAddress, salt: Option<felt252>
     ) -> ITransmuterDispatcher {
         let salt: felt252 = match salt {
             Option::Some(salt) => { salt },
@@ -68,19 +65,12 @@ mod transmuter_utils {
             INITIAL_CEILING.into()
         ];
 
-        let transmuter_class_hash: ClassHash = class_hash_try_from_felt252(
-            transmuter_contract::TEST_CLASS_HASH
-        )
+        let transmuter_class_hash: ClassHash = class_hash_try_from_felt252(transmuter_contract::TEST_CLASS_HASH)
             .unwrap();
-        let (transmuter_addr, _) = deploy_syscall(
-            transmuter_class_hash, salt, calldata.span(), false
-        )
-            .unwrap_syscall();
+        let (transmuter_addr, _) = deploy_syscall(transmuter_class_hash, salt, calldata.span(), false).unwrap_syscall();
 
         set_contract_address(shrine_utils::admin());
-        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: shrine
-        };
+        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::transmuter(), transmuter_addr);
 
         ITransmuterDispatcher { contract_address: transmuter_addr }
@@ -89,18 +79,14 @@ mod transmuter_utils {
     // mock stable with 18 decimals
     fn mock_wad_usd_stable_deploy() -> IERC20Dispatcher {
         IERC20Dispatcher {
-            contract_address: common::deploy_token(
-                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user()
-            )
+            contract_address: common::deploy_token('Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user())
         }
     }
 
     // mock stable with 6 decimals
     fn mock_nonwad_usd_stable_deploy() -> IERC20Dispatcher {
         IERC20Dispatcher {
-            contract_address: common::deploy_token(
-                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user()
-            )
+            contract_address: common::deploy_token('Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user())
         }
     }
 
@@ -123,9 +109,7 @@ mod transmuter_utils {
             .approve(transmuter.contract_address, BoundedInt::max());
     }
 
-    fn shrine_with_mock_wad_usd_stable_transmuter() -> (
-        IShrineDispatcher, ITransmuterDispatcher, IERC20Dispatcher
-    ) {
+    fn shrine_with_mock_wad_usd_stable_transmuter() -> (IShrineDispatcher, ITransmuterDispatcher, IERC20Dispatcher) {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mock_usd_stable: IERC20Dispatcher = mock_wad_usd_stable_deploy();
 
@@ -135,9 +119,7 @@ mod transmuter_utils {
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
         let seed_amt: Wad = START_TOTAL_YIN.into();
-        setup_shrine_with_transmuter(
-            shrine, transmuter, debt_ceiling, seed_amt, receiver(), user(),
-        );
+        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user(),);
 
         (shrine, transmuter, mock_usd_stable)
     }
@@ -148,9 +130,7 @@ mod transmuter_utils {
             transmuter_registry_contract::TEST_CLASS_HASH
         )
             .unwrap();
-        let (transmuter_registry_addr, _) = deploy_syscall(
-            transmuter_registry_class_hash, 0, calldata.span(), false
-        )
+        let (transmuter_registry_addr, _) = deploy_syscall(transmuter_registry_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         ITransmuterRegistryDispatcher { contract_address: transmuter_registry_addr }

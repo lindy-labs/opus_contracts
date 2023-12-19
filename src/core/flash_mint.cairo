@@ -20,21 +20,19 @@ mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::Wad;
+    use opus::utils::wadray::{Wad, WadZeroable};
+    use opus::utils::wadray_signed;
     use starknet::{ContractAddress, get_caller_address};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
-    const ON_FLASH_MINT_SUCCESS: u256 =
-        0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
+    const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
     const FLASH_FEE: u256 = 0;
 
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
+    component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
@@ -119,9 +117,18 @@ mod flash_mint {
             let amount_wad: Wad = amount.try_into().unwrap();
 
             // temporarily increase the debt ceiling by the loan amount so that
-            // flash loans still work when total yin is at the debt ceiling
+            // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
-            shrine.set_debt_ceiling(ceiling + amount_wad);
+            let total_yin: Wad = shrine.get_total_yin();
+            let budget_adjustment: Wad = match shrine.get_budget().try_into() {
+                Option::Some(surplus) => { surplus },
+                Option::None => { WadZeroable::zero() }
+            };
+            let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(total_yin + amount_wad + budget_adjustment);
+            }
+
             shrine.inject(receiver, amount_wad);
 
             let initiator: ContractAddress = get_caller_address();
@@ -134,7 +141,9 @@ mod flash_mint {
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
 
-            shrine.set_debt_ceiling(ceiling);
+            if adjust_ceiling {
+                shrine.set_debt_ceiling(ceiling);
+            }
 
             self.emit(FlashMint { initiator, receiver, token, amount });
 

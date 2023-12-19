@@ -1,9 +1,7 @@
 #[starknet::contract]
 mod transmuter_registry {
     use opus::core::roles::transmuter_registry_roles;
-    use opus::interfaces::ITransmuter::{
-        ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry
-    };
+    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry};
     use opus::utils::access_control::access_control_component;
     use opus::utils::address_registry::address_registry_component;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
@@ -16,8 +14,7 @@ mod transmuter_registry {
     component!(path: address_registry_component, storage: registry, event: AddressRegistryEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
 
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
     impl AddressRegistryHelpers = address_registry_component::AddressRegistryHelpers<ContractState>;
@@ -52,9 +49,7 @@ mod transmuter_registry {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress) {
-        self
-            .access_control
-            .initializer(admin, Option::Some(transmuter_registry_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_registry_roles::default_admin_role()));
     }
 
     //

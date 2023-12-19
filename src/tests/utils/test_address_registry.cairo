@@ -3,9 +3,7 @@ mod test_address_registry {
     use opus::tests::utils::mock_address_registry::mock_address_registry;
     use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use opus::utils::address_registry::address_registry_component;
-    use starknet::contract_address::{
-        ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
-    };
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::testing::{pop_log, pop_log_raw, set_caller_address};
 
     //

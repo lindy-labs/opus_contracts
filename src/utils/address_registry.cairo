@@ -64,9 +64,7 @@ mod address_registry_component {
         // setters
         //
 
-        fn add_entry(
-            ref self: ComponentState<TContractState>, entry: ContractAddress
-        ) -> Result<u32, felt252> {
+        fn add_entry(ref self: ComponentState<TContractState>, entry: ContractAddress) -> Result<u32, felt252> {
             if self.entry_ids.read(entry).is_non_zero() {
                 return Result::Err('AR: Entry already exists');
             }

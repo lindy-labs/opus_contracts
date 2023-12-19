@@ -1,36 +1,35 @@
 use debug::PrintTrait;
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-use opus::interfaces::IERC20::{
-    IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
-};
+use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-use opus::tests::erc20::ERC20;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::wadray::{Ray, Wad, WadZeroable};
 use opus::utils::wadray;
+
+use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
-use starknet::{
-    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    SyscallResultTrait
-};
+use starknet::testing::{pop_log_raw};
+use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
 
 //
 // Constants
 //
 
+const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
+const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
 const WBTC_DECIMALS: u8 = 8;
+const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
 
 // Trove constants
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
 const WHALE_TROVE: u64 = 0xb17b01;
+
 
 //
 // Constant addresses
@@ -55,6 +54,15 @@ fn trove3_owner_addr() -> ContractAddress {
 fn non_zero_address() -> ContractAddress {
     contract_address_try_from_felt252('nonzero address').unwrap()
 }
+
+fn eth_hoarder() -> ContractAddress {
+    contract_address_try_from_felt252('eth hoarder').unwrap()
+}
+
+fn wbtc_hoarder() -> ContractAddress {
+    contract_address_try_from_felt252('wbtc hoarder').unwrap()
+}
+
 
 //
 // Trait implementations
@@ -104,10 +112,55 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 
 // Helper function to advance timestamp by the given intervals
-#[inline(always)]
-fn advance_intervals(intervals: u64) {
-    set_block_timestamp(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+fn advance_intervals_and_refresh_prices_and_multiplier(
+    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64
+) {
+    // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
+    let (current_multiplier, _, _) = shrine.get_current_multiplier();
+
+    let mut yang_prices = array![];
+    let mut yangs_copy = yangs;
+
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                yang_prices.append(current_yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+
+    // Updating prices and multiplier
+    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+    shrine.set_multiplier(current_multiplier);
+    loop {
+        match yangs.pop_front() {
+            Option::Some(yang) => {
+                let yang_price = yang_prices.pop_front().unwrap();
+                shrine.advance(*yang, yang_price);
+            },
+            Option::None => { break; }
+        };
+    };
+    stop_prank(CheatTarget::One(shrine.contract_address));
 }
+
+fn advance_intervals(intervals: u64) {
+    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+}
+
+
+fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
+}
+
+fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
+}
+
 
 // Helper function to deploy a token
 fn deploy_token(
@@ -116,8 +169,9 @@ fn deploy_token(
     decimals: felt252,
     initial_supply: u256,
     recipient: ContractAddress,
+    token_class: Option<ContractClass>,
 ) -> ContractAddress {
-    let mut calldata: Array<felt252> = array![
+    let calldata: Array<felt252> = array![
         name,
         symbol,
         decimals,
@@ -126,10 +180,12 @@ fn deploy_token(
         contract_address_to_felt252(recipient),
     ];
 
-    let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-    let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
+    let token_class = match token_class {
+        Option::Some(class) => class,
+        Option::None => declare('erc20_mintable'),
+    };
 
-    token
+    token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 
 // Helper function to fund a user account with yang assets
@@ -137,8 +193,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
-                IMintableDispatcher { contract_address: *yang }
-                    .mint(user, (*asset_amts.pop_front().unwrap()).into());
+                IMintableDispatcher { contract_address: *yang }.mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
             Option::None => { break; }
         };
@@ -154,7 +209,6 @@ fn open_trove_helper(
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad
 ) -> u64 {
-    set_contract_address(user);
     let mut yangs_copy = yangs;
 
     loop {
@@ -168,10 +222,10 @@ fn open_trove_helper(
         };
     };
 
-    set_contract_address(user);
+    start_prank(CheatTarget::One(abbot.contract_address), user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-    set_contract_address(ContractAddressZeroable::zero());
+    stop_prank(CheatTarget::One(abbot.contract_address));
 
     trove_id
 }
@@ -183,9 +237,7 @@ fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-fn get_token_balances(
-    mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,
-) -> Span<Span<u128>> {
+fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {
@@ -214,22 +266,15 @@ fn get_token_balances(
 // Fetches the ERC20 asset balance of a given address, and
 // converts it to yang units.
 #[inline(always)]
-fn get_erc20_bal_as_yang(
-    gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress
-) -> Wad {
-    gate
-        .convert_to_yang(
-            IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap()
-        )
+fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress) -> Wad {
+    gate.convert_to_yang(IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap())
 }
 
 //
 // Helpers - Assertions
 //
 
-fn assert_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
->(
+fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(
     a: T, b: T, error: T, message: felt252
 ) {
     if a >= b {
@@ -239,9 +284,7 @@ fn assert_equalish<
     }
 }
 
-fn assert_asset_balances_equalish(
-    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
-) {
+fn assert_asset_balances_equalish(mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -256,9 +299,7 @@ fn assert_asset_balances_equalish(
     };
 }
 
-fn assert_yang_balances_equalish(
-    mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252
-) {
+fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -277,16 +318,13 @@ fn assert_yang_balances_equalish(
 // Helpers - Array functions
 //
 
-fn combine_assets_and_amts(
-    mut assets: Span<ContractAddress>, mut amts: Span<u128>
-) -> Span<AssetBalance> {
+fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
     loop {
         match assets.pop_front() {
             Option::Some(asset) => {
-                asset_balances
-                    .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
+                asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
             Option::None => { break; },
         };
@@ -329,97 +367,6 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     };
 
     combined_asset_amts.span()
-}
-
-//
-// Helpers for events
-//
-
-// Helper function to pop an event with indexed keys
-// From https://github.com/OpenZeppelin/cairo-contracts/blob/258daba0f4e85fcc8bc1f142ce1b2bdf328453b3/src/tests/utils.cairo#L24
-fn pop_event_with_indexed_keys<T, impl TDrop: Drop<T>, impl TEvent: starknet::Event<T>>(
-    addr: ContractAddress
-) -> Option<T> {
-    let (mut keys, mut data) = pop_log_raw(addr)?;
-
-    // Remove the event ID from the keys.
-    let _ = keys.pop_front();
-
-    let event = starknet::Event::deserialize(ref keys, ref data);
-    assert(data.is_empty(), 'Event has extra data');
-    event
-}
-
-fn assert_events_emitted<
-    T,
-    impl TCopy: Copy<T>,
-    impl TDrop: Drop<T>,
-    impl TEvent: starknet::Event<T>,
-    impl TPartialEq: PartialEq<T>,
->(
-    addr: ContractAddress, events: Span<T>, should_not_emit: Option<Span<T>>
-) {
-    // Fetch all emitted events
-    let mut emitted_events: Array<T> = ArrayTrait::new();
-    loop {
-        match pop_log_raw(addr) {
-            Option::Some(raw_event) => {
-                let (mut keys, mut data) = raw_event;
-                let event: Option<T> = starknet::Event::deserialize(ref keys, ref data);
-
-                // Only append the event if it is defined in the contract
-                // This excludes access control events that are manually emitted.
-                if event.is_some() {
-                    emitted_events.append(event.unwrap());
-                }
-            },
-            Option::None => { break; },
-        };
-    };
-
-    let emitted_events = emitted_events.span();
-
-    // Loop over each event, and check if it was emitted
-    let mut events_copy = events;
-    loop {
-        match events_copy.pop_front() {
-            Option::Some(event) => {
-                let mut emitted_events_copy = emitted_events;
-                if emitted_events_copy.contains(*event) {
-                    continue;
-                } else {
-                    panic(array!['Event not emitted']);
-                }
-            },
-            Option::None => { break; },
-        };
-    };
-
-    if should_not_emit.is_some() {
-        let mut should_not_emit_copy = should_not_emit.unwrap();
-        loop {
-            match should_not_emit_copy.pop_front() {
-                Option::Some(event) => {
-                    let mut emitted_events_copy = emitted_events;
-                    if emitted_events_copy.contains(*event) {
-                        panic(array!['Event should not emit']);
-                    } else {
-                        continue;
-                    }
-                },
-                Option::None => { break; },
-            };
-        };
-    }
-}
-
-fn drop_all_events(addr: ContractAddress) {
-    loop {
-        match pop_log_raw(addr) {
-            Option::Some(_) => {},
-            Option::None => { break; }
-        };
-    };
 }
 
 //

@@ -13,8 +13,7 @@ mod allocator {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -71,10 +70,7 @@ mod allocator {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState,
-        admin: ContractAddress,
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>
+        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
     ) {
         self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
 
@@ -119,9 +115,7 @@ mod allocator {
 
         // Update the recipients and their respective percentage share of newly minted surplus debt
         // by overwriting the existing values in `recipients` and `percentages`.
-        fn set_allocation(
-            ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
-        ) {
+        fn set_allocation(ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>) {
             self.access_control.assert_has_role(allocator_roles::SET_ALLOCATION);
 
             self.set_allocation_helper(recipients, percentages);
@@ -139,9 +133,7 @@ mod allocator {
         // - both arrays of recipient addresses and percentages are of equal length;
         // - there is at least one recipient;
         // - the percentages add up to one Ray.
-        fn set_allocation_helper(
-            ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
-        ) {
+        fn set_allocation_helper(ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>) {
             let recipients_len: u32 = recipients.len();
             assert(recipients_len.is_non_zero(), 'AL: No recipients');
             assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');

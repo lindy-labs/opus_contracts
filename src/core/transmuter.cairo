@@ -18,8 +18,7 @@ mod transmuter {
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     //
@@ -181,9 +180,7 @@ mod transmuter {
         receiver: ContractAddress,
         ceiling: Wad,
     ) {
-        self
-            .access_control
-            .initializer(admin, Option::Some(transmuter_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
@@ -352,10 +349,7 @@ mod transmuter {
             }
 
             // Transfer asset to Transmuter
-            let success: bool = self
-                .asset
-                .read()
-                .transfer_from(user, get_contract_address(), asset_amt.into());
+            let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'TR: Asset transfer failed');
 
             self.emit(Transmute { user, asset_amt, yin_amt, fee });
@@ -443,10 +437,7 @@ mod transmuter {
 
             // Incur deficit if any
             if total_transmuted.is_non_zero() {
-                self
-                    .shrine
-                    .read()
-                    .adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
+                self.shrine.read().adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
             }
 
             // Transfer all remaining yin and all assets to receiver
@@ -573,10 +564,7 @@ mod transmuter {
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt - fee, asset.decimals());
 
-            assert(
-                asset.balance_of(get_contract_address()) >= asset_amt.into(),
-                'TR: Insufficient assets'
-            );
+            assert(asset.balance_of(get_contract_address()) >= asset_amt.into(), 'TR: Insufficient assets');
 
             (asset_amt, fee)
         }
@@ -591,12 +579,7 @@ mod transmuter {
             let reclaimable_yin: Wad = self.total_transmuted.read();
             let capped_yin: Wad = min(yin_amt, reclaimable_yin);
 
-            let asset_balance: Wad = self
-                .asset
-                .read()
-                .balance_of(get_contract_address())
-                .try_into()
-                .unwrap();
+            let asset_balance: Wad = self.asset.read().balance_of(get_contract_address()).try_into().unwrap();
 
             if asset_balance.is_zero() {
                 (WadZeroable::zero(), 0)

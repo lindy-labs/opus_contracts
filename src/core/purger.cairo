@@ -5,8 +5,8 @@ mod purger {
     use core::zeroable::Zeroable;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
@@ -22,13 +22,10 @@ mod purger {
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
 
-    component!(
-        path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent
-    );
+    component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
     #[abi(embed_v0)]
-    impl AccessControlPublic =
-        access_control_component::AccessControl<ContractState>;
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
     impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
 
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
@@ -84,8 +81,8 @@ mod purger {
         sentinel: ISentinelDispatcher,
         // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
-        // the Oracle associated with the Shrine and this Purger
-        oracle: IOracleDispatcher,
+        // the Seer module
+        seer: ISeerDispatcher,
         // Scalar for multiplying penalties above `ABSORPTION_THRESHOLD`
         penalty_scalar: Ray,
     }
@@ -141,14 +138,14 @@ mod purger {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         absorber: ContractAddress,
-        oracle: ContractAddress,
+        seer: ContractAddress,
     ) {
         self.access_control.initializer(admin, Option::Some(purger_roles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.absorber.write(IAbsorberDispatcher { contract_address: absorber });
-        self.oracle.write(IOracleDispatcher { contract_address: oracle });
+        self.seer.write(ISeerDispatcher { contract_address: seer });
 
         self.penalty_scalar.write(RAY_ONE.into());
         self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into() });
@@ -209,8 +206,7 @@ mod purger {
         fn set_penalty_scalar(ref self: ContractState, new_scalar: Ray) {
             self.access_control.assert_has_role(purger_roles::SET_PENALTY_SCALAR);
             assert(
-                MIN_PENALTY_SCALAR.into() <= new_scalar && new_scalar <= MAX_PENALTY_SCALAR.into(),
-                'PU: Invalid scalar'
+                MIN_PENALTY_SCALAR.into() <= new_scalar && new_scalar <= MAX_PENALTY_SCALAR.into(), 'PU: Invalid scalar'
             );
 
             self.penalty_scalar.write(new_scalar);
@@ -247,19 +243,13 @@ mod purger {
             shrine.melt(funder, trove_id, purge_amt);
 
             // Free collateral corresponding to the purged amount
-            let freed_assets: Span<AssetBalance> = self
-                .free(shrine, trove_id, percentage_freed, recipient);
+            let freed_assets: Span<AssetBalance> = self.free(shrine, trove_id, percentage_freed, recipient);
 
             // Safety check to ensure the new LTV is not worse off
             let updated_trove_health: Health = shrine.get_trove_health(trove_id);
             assert(updated_trove_health.ltv <= trove_health.ltv, 'PU: LTV increased');
 
-            self
-                .emit(
-                    Purged {
-                        trove_id, purge_amt, percentage_freed, funder, recipient, freed_assets
-                    }
-                );
+            self.emit(Purged { trove_id, purge_amt, percentage_freed, funder, recipient, freed_assets });
 
             freed_assets
         }
@@ -301,8 +291,7 @@ mod purger {
             };
 
             // Transfer a percentage of the penalty to the caller as compensation
-            let compensation_assets: Span<AssetBalance> = self
-                .free(shrine, trove_id, pct_value_to_compensate, caller);
+            let compensation_assets: Span<AssetBalance> = self.free(shrine, trove_id, pct_value_to_compensate, caller);
 
             // Melt the trove's debt using the absorber's yin directly
             // This needs to be called even if `purge_amt` is 0 so that accrued interest
@@ -314,11 +303,7 @@ mod purger {
 
             let pct_value_to_purge: Ray = if can_absorb_some {
                 get_percentage_freed(
-                    ltv_after_compensation,
-                    value_after_compensation,
-                    trove_health.debt,
-                    trove_penalty,
-                    purge_amt
+                    ltv_after_compensation, value_after_compensation, trove_health.debt, trove_penalty, purge_amt
                 )
             } else {
                 RayZeroable::zero()
@@ -330,7 +315,6 @@ mod purger {
                 // Free collateral corresponding to the purged amount
                 let absorbed_assets: Span<AssetBalance> = self
                     .free(shrine, trove_id, pct_value_to_purge, absorber.contract_address);
-
                 absorber.update(absorbed_assets);
 
                 self
@@ -358,9 +342,7 @@ mod purger {
                     let debt_after_absorption: Wad = trove_health.debt - purge_amt;
                     let value_after_absorption: Wad = value_after_compensation
                         - wadray::rmul_rw(pct_value_to_purge, value_after_compensation);
-                    let ltv_after_absorption: Ray = wadray::rdiv_ww(
-                        debt_after_absorption, value_after_absorption
-                    );
+                    let ltv_after_absorption: Ray = wadray::rdiv_ww(debt_after_absorption, value_after_absorption);
 
                     get_percentage_freed(
                         ltv_after_absorption,
@@ -370,12 +352,11 @@ mod purger {
                         debt_to_redistribute
                     )
                 };
-
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
                 // Update yang prices due to an appreciation in ratio of asset to yang from
                 // redistribution
-                self.oracle.read().update_prices();
+                self.seer.read().update_prices();
             }
 
             // Safety check to ensure the new LTV is not worse off
@@ -421,17 +402,13 @@ mod purger {
                         let freed_asset_amt: u128 = if deposited_yang_amt.is_zero() {
                             0
                         } else {
-                            let freed_yang: Wad = wadray::rmul_wr(
-                                deposited_yang_amt, percentage_freed
-                            );
-                            let exit_amt: u128 = sentinel
-                                .exit(*yang, recipient, trove_id, freed_yang);
+                            let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
+                            let exit_amt: u128 = sentinel.exit(*yang, recipient, trove_id, freed_yang);
                             shrine.seize(*yang, trove_id, freed_yang);
                             exit_amt
                         };
 
-                        freed_assets
-                            .append(AssetBalance { address: *yang, amount: freed_asset_amt });
+                        freed_assets.append(AssetBalance { address: *yang, amount: freed_asset_amt });
                     },
                     Option::None => { break; }
                 };
@@ -471,10 +448,7 @@ mod purger {
                 // trove's LTV is also extremely low.
                 if ltv >= MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
                     return Option::Some(
-                        min(
-                            MAX_PENALTY.into(),
-                            (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation
-                        )
+                        min(MAX_PENALTY.into(), (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation)
                     );
                 }
                 return Option::Some(MAX_PENALTY.into());
@@ -484,22 +458,17 @@ mod purger {
             // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
             // after absorption.
             let mut max_possible_penalty: Ray = min(
-                (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation,
-                MAX_PENALTY.into()
+                (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
             );
 
             if threshold > ABSORPTION_THRESHOLD.into() {
                 let s = self.penalty_scalar.read();
-                let penalty = min(
-                    MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty
-                );
+                let penalty = min(MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty);
 
                 return Option::Some(penalty);
             }
 
-            let penalty = min(
-                MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), max_possible_penalty
-            );
+            let penalty = min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), max_possible_penalty);
 
             if penalty == max_possible_penalty {
                 Option::Some(penalty)
@@ -519,13 +488,10 @@ mod purger {
             self: @ContractState, trove_health: Health
         ) -> Option<(Ray, Wad, Ray, Wad, Ray, Wad)> {
             let (compensation_pct, compensation) = get_compensation(trove_health.value);
-            let ltv_after_compensation: Ray = trove_health.ltv
-                / (RAY_ONE.into() - compensation_pct);
+            let ltv_after_compensation: Ray = trove_health.ltv / (RAY_ONE.into() - compensation_pct);
 
             match self
-                .get_absorption_penalty_internal(
-                    trove_health.threshold, trove_health.ltv, ltv_after_compensation
-                ) {
+                .get_absorption_penalty_internal(trove_health.threshold, trove_health.ltv, ltv_after_compensation) {
                 Option::Some(penalty) => {
                     let value_after_compensation: Wad = wadray::rmul_rw(
                         RAY_ONE.into() - compensation_pct, trove_health.value
@@ -570,8 +536,7 @@ mod purger {
 
         min(
             wadray::rdiv_wr(
-                debt - wadray::rmul_wr(value, target_ltv),
-                RAY_ONE.into() - penalty_multiplier * target_ltv
+                debt - wadray::rmul_wr(value, target_ltv), RAY_ONE.into() - penalty_multiplier * target_ltv
             ),
             debt
         )
@@ -601,8 +566,7 @@ mod purger {
         }
 
         let penalty = min(
-            min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
-            (RAY_ONE.into() - ltv) / ltv
+            min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()), (RAY_ONE.into() - ltv) / ltv
         );
 
         Option::Some(penalty)
@@ -631,9 +595,7 @@ mod purger {
     // Helper function to calculate percentage of collateral freed.
     // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
-    fn get_percentage_freed(
-        trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad,
-    ) -> Ray {
+    fn get_percentage_freed(trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad,) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
             wadray::rdiv_ww(purge_amt + penalty_amt, trove_value)

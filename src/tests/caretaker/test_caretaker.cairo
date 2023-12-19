@@ -14,60 +14,48 @@ mod test_caretaker {
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
     use opus::utils::wadray;
-    use starknet::testing::set_contract_address;
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};
 
     #[test]
-    #[available_gas(100000000)]
     fn test_caretaker_setup() {
         let (caretaker, shrine, _, _, _, _) = caretaker_utils::caretaker_deploy();
 
-        let caretaker_ac = IAccessControlDispatcher {
-            contract_address: caretaker.contract_address
-        };
+        let caretaker_ac = IAccessControlDispatcher { contract_address: caretaker.contract_address };
 
         assert(caretaker_ac.get_admin() == caretaker_utils::admin(), 'setup admin');
-        assert(
-            caretaker_ac.get_roles(caretaker_utils::admin()) == caretaker_roles::SHUT, 'admin roles'
-        );
+        assert(caretaker_ac.get_roles(caretaker_utils::admin()) == caretaker_roles::SHUT, 'admin roles');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        assert(
-            shrine_ac.has_role(shrine_roles::KILL, caretaker.contract_address),
-            'caretaker cant kill shrine'
-        );
+        assert(shrine_ac.has_role(shrine_roles::KILL, caretaker.contract_address), 'caretaker cant kill shrine');
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: System is live',))]
     fn test_caretaker_setup_preview_release_throws() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         caretaker.preview_release(1);
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: System is live',))]
     fn test_caretaker_setup_preview_reclaim_throws() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
         caretaker.preview_reclaim(WAD_ONE.into());
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_shut_by_badguy_throws() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(caretaker.contract_address), common::badguy());
         caretaker.shut();
     }
 
     #[test]
-    #[available_gas(100000000)]
     fn test_shut() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            caretaker_utils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 950 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -91,18 +79,12 @@ mod test_caretaker {
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
-        let g0_before_balance: Wad = y0
-            .balance_of(*gates.at(0).contract_address)
-            .try_into()
-            .unwrap();
-        let g1_before_balance: Wad = y1
-            .balance_of(*gates.at(1).contract_address)
-            .try_into()
-            .unwrap();
+        let g0_before_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
+        let g1_before_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
         let y0_backing = wadray::wmul_wr(g0_before_balance, backing).into();
         let y1_backing = wadray::wmul_wr(g1_before_balance, backing).into();
 
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
         // assert Shrine killed
@@ -114,67 +96,41 @@ mod test_caretaker {
         let tolerance: Wad = 10_u128.into();
 
         // assert gates have their balance reduced
-        let g0_after_balance: Wad = y0
-            .balance_of(*gates.at(0).contract_address)
-            .try_into()
-            .unwrap();
-        let g1_after_balance: Wad = y1
-            .balance_of(*gates.at(1).contract_address)
-            .try_into()
-            .unwrap();
-        common::assert_equalish(
-            g0_after_balance, g0_expected_balance, tolerance, 'gate 0 balance after shut'
-        );
-        common::assert_equalish(
-            g1_after_balance, g1_expected_balance, tolerance, 'gate 1 balance after shut'
-        );
+        let g0_after_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
+        let g1_after_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
+        common::assert_equalish(g0_after_balance, g0_expected_balance, tolerance, 'gate 0 balance after shut');
+        common::assert_equalish(g1_after_balance, g1_expected_balance, tolerance, 'gate 1 balance after shut');
 
         // assert the balance diff is now in the hands of the Caretaker
-        let caretaker_y0_balance: Wad = y0
-            .balance_of(caretaker.contract_address)
-            .try_into()
-            .unwrap();
-        let caretaker_y1_balance: Wad = y1
-            .balance_of(caretaker.contract_address)
-            .try_into()
-            .unwrap();
-        common::assert_equalish(
-            caretaker_y0_balance, y0_backing, tolerance, 'caretaker yang0 balance'
-        );
-        common::assert_equalish(
-            caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance'
-        );
+        let caretaker_y0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
+        let caretaker_y1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
+        common::assert_equalish(caretaker_y0_balance, y0_backing, tolerance, 'caretaker yang0 balance');
+        common::assert_equalish(caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
-        ]
-            .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(100000000)]
     fn test_release() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            caretaker_utils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
         let trove1_deposit_amts = abbot_utils::open_trove_yang_asset_amts();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
-        let trove1_id = common::open_trove_helper(
-            abbot, user1, yangs, trove1_deposit_amts, gates, trove1_forge_amt
-        );
+        let trove1_id = common::open_trove_helper(abbot, user1, yangs, trove1_deposit_amts, gates, trove1_forge_amt);
 
         // user 2 with 100 yin and 1 yang
         let user2 = common::trove2_owner_addr();
         let trove2_forge_amt: Wad = (1000 * WAD_ONE).into();
         common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
         let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
-        let trove2_id = common::open_trove_helper(
-            abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt
-        );
+        let trove2_id = common::open_trove_helper(abbot, user2, eth_yang, eth_yang_amt, eth_gate, trove2_forge_amt);
 
         let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
         let shrine_health: Health = shrine.get_shrine_health();
@@ -188,10 +144,10 @@ mod test_caretaker {
         let trove1_yang0_deposit: Wad = shrine.get_deposit(*yangs[0], trove1_id);
         let trove1_yang1_deposit: Wad = shrine.get_deposit(*yangs[1], trove1_id);
 
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
-        set_contract_address(user1);
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
         let trove1_released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
 
         let user1_yang0_after_balance: u256 = y0.balance_of(user1);
@@ -199,40 +155,29 @@ mod test_caretaker {
 
         // assert released amount for eth
         let eth_tolerance: Wad = 10_u128.into(); // 10 wei
-        let expected_release_y0: Wad = trove1_yang0_deposit
-            - wadray::rmul_rw(backing, trove1_yang0_deposit);
+        let expected_release_y0: Wad = trove1_yang0_deposit - wadray::rmul_rw(backing, trove1_yang0_deposit);
         common::assert_equalish(
-            (*trove1_released_assets.at(0).amount).into(),
-            expected_release_y0,
-            eth_tolerance,
-            'y0 release'
+            (*trove1_released_assets.at(0).amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
         );
 
         // assert released amount for wbtc (need to deal w/ different decimals)
         let wbtc_tolerance: Wad = (2 * 10000000000_u128).into(); // 2 satoshi
-        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(
-            *trove1_deposit_amts[1], common::WBTC_DECIMALS
-        );
-        let expected_release_y1: Wad = wbtc_deposit
-            - wadray::rmul_rw(backing, trove1_yang1_deposit);
+        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
+        let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
         let actual_release_y1: Wad = wadray::fixed_point_to_wad(
             *trove1_released_assets.at(1).amount, common::WBTC_DECIMALS
         );
-        common::assert_equalish(
-            actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release'
-        );
+        common::assert_equalish(actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release');
 
         // assert all deposits were released and assets are back in user's account
         assert(*trove1_released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
         assert(*trove1_released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
         assert(
-            user1_yang0_after_balance == user1_yang0_before_balance
-                + (*trove1_released_assets.at(0).amount).into(),
+            user1_yang0_after_balance == user1_yang0_before_balance + (*trove1_released_assets.at(0).amount).into(),
             'user1 yang0 after balance'
         );
         assert(
-            user1_yang1_after_balance == user1_yang1_before_balance
-                + (*trove1_released_assets.at(1).amount).into(),
+            user1_yang1_after_balance == user1_yang1_before_balance + (*trove1_released_assets.at(1).amount).into(),
             'user1 yang1 after balance'
         );
 
@@ -241,30 +186,30 @@ mod test_caretaker {
         assert(shrine.get_deposit(*yangs[1], trove1_id).is_zero(), 'trove1 yang1 deposit');
 
         // sanity check that for user with only one yang, release reports a 0 asset amount
-        set_contract_address(user2);
+        start_prank(CheatTarget::One(caretaker.contract_address), user2);
         let trove2_released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
         assert(*trove2_released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
         assert(*trove2_released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
         assert((*trove2_released_assets.at(1).amount).is_zero(), 'incorrect release');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release {
-                    user: user1, trove_id: trove1_id, assets: trove1_released_assets,
-                }
+        let expected_events = array![
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: trove1_released_assets, }
+                )
             ),
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release {
-                    user: user2, trove_id: trove2_id, assets: trove2_released_assets,
-                }
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user2, trove_id: trove2_id, assets: trove2_released_assets, }
+                )
             ),
-        ]
-            .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(100000000)]
     fn test_preview_reclaim_more_than_total_yin() {
         let (caretaker, _, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
 
@@ -276,11 +221,10 @@ mod test_caretaker {
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
         );
 
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
-        let (reclaimed_yin, reclaimable_assets) = caretaker
-            .preview_reclaim(trove1_forge_amt + WAD_ONE.into());
+        let (reclaimed_yin, reclaimable_assets) = caretaker.preview_reclaim(trove1_forge_amt + WAD_ONE.into());
         let caretaker_balances: Span<Span<u128>> = common::get_token_balances(
             yangs, array![caretaker.contract_address].span()
         );
@@ -297,10 +241,9 @@ mod test_caretaker {
     }
 
     #[test]
-    #[available_gas(100000000)]
     fn test_reclaim() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            caretaker_utils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -314,9 +257,9 @@ mod test_caretaker {
         // => user1 got scammed, poor guy
         let scammer = common::badguy();
         let scam_amt: u256 = (4000 * WAD_ONE).into();
-        set_contract_address(user1);
+        start_prank(CheatTarget::One(shrine.contract_address), user1);
         IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(scammer, scam_amt);
-
+        stop_prank(CheatTarget::One(shrine.contract_address));
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
@@ -325,7 +268,7 @@ mod test_caretaker {
         let scammer_yang0_before_balance: u256 = y0.balance_of(scammer);
         let scammer_yang1_before_balance: u256 = y1.balance_of(scammer);
 
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
         //
@@ -337,7 +280,7 @@ mod test_caretaker {
         let ct_yang1_before_balance: u256 = y1.balance_of(caretaker.contract_address);
 
         // do the reclaiming
-        set_contract_address(user1);
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
         let user1_yin: Wad = shrine.get_yin(user1);
         let (user1_reclaimed_yin, user1_reclaimed_assets) = caretaker.reclaim(user1_yin);
 
@@ -359,12 +302,8 @@ mod test_caretaker {
 
         assert(ct_yang0_diff == user1_yang0_diff, 'user1 yang0 diff');
         assert(ct_yang1_diff == user1_yang1_diff, 'user1 yang1 diff');
-        assert(
-            ct_yang0_diff == (*user1_reclaimed_assets.at(0).amount).into(), 'user1 reclaimed yang0'
-        );
-        assert(
-            ct_yang1_diff == (*user1_reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1'
-        );
+        assert(ct_yang0_diff == (*user1_reclaimed_assets.at(0).amount).into(), 'user1 reclaimed yang0');
+        assert(ct_yang1_diff == (*user1_reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1');
 
         assert(user1_reclaimed_yin == user1_yin, 'user1 reclaimed yin');
 
@@ -379,7 +318,7 @@ mod test_caretaker {
         let ct_yang1_before_balance: u256 = y1.balance_of(caretaker.contract_address);
 
         // do the reclaiming
-        set_contract_address(scammer);
+        start_prank(CheatTarget::One(caretaker.contract_address), scammer);
         let scammer_yin: Wad = shrine.get_yin(scammer);
         let (scammer_reclaimed_yin, scammer_reclaimed_assets) = caretaker.reclaim(scammer_yin);
 
@@ -391,49 +330,38 @@ mod test_caretaker {
         let scammer_yang0_after_balance: u256 = y0.balance_of(scammer);
         let scammer_yang1_after_balance: u256 = y1.balance_of(scammer);
 
-        let ct_yang0_diff: Wad = (ct_yang0_before_balance - ct_yang0_after_balance)
-            .try_into()
-            .unwrap();
-        let ct_yang1_diff: Wad = (ct_yang1_before_balance - ct_yang1_after_balance)
-            .try_into()
-            .unwrap();
-        let scammer_yang0_diff: Wad = (scammer_yang0_after_balance - scammer_yang0_before_balance)
-            .try_into()
-            .unwrap();
-        let scammer_yang1_diff: Wad = (scammer_yang1_after_balance - scammer_yang1_before_balance)
-            .try_into()
-            .unwrap();
+        let ct_yang0_diff: Wad = (ct_yang0_before_balance - ct_yang0_after_balance).try_into().unwrap();
+        let ct_yang1_diff: Wad = (ct_yang1_before_balance - ct_yang1_after_balance).try_into().unwrap();
+        let scammer_yang0_diff: Wad = (scammer_yang0_after_balance - scammer_yang0_before_balance).try_into().unwrap();
+        let scammer_yang1_diff: Wad = (scammer_yang1_after_balance - scammer_yang1_before_balance).try_into().unwrap();
 
         common::assert_equalish(ct_yang0_diff, scammer_yang0_diff, tolerance, 'scammer yang0 diff');
         common::assert_equalish(ct_yang1_diff, scammer_yang1_diff, tolerance, 'scammer yang1 diff');
         common::assert_equalish(
-            ct_yang0_diff,
-            (*scammer_reclaimed_assets.at(0).amount).into(),
-            tolerance,
-            'scammer reclaimed yang0'
+            ct_yang0_diff, (*scammer_reclaimed_assets.at(0).amount).into(), tolerance, 'scammer reclaimed yang0'
         );
         common::assert_equalish(
-            ct_yang1_diff,
-            (*scammer_reclaimed_assets.at(1).amount).into(),
-            tolerance,
-            'scammer reclaimed yang1'
+            ct_yang1_diff, (*scammer_reclaimed_assets.at(1).amount).into(), tolerance, 'scammer reclaimed yang1'
         );
         assert(scammer_reclaimed_yin == scammer_yin, 'scammer reclaimed yin');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Reclaim(
-                caretaker_contract::Reclaim {
-                    user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets,
-                }
+        let expected_events = array![
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Reclaim(
+                    caretaker_contract::Reclaim { user: user1, yin_amt: user1_yin, assets: user1_reclaimed_assets, }
+                )
             ),
-            caretaker_contract::Event::Reclaim(
-                caretaker_contract::Reclaim {
-                    user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets,
-                }
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Reclaim(
+                    caretaker_contract::Reclaim {
+                        user: scammer, yin_amt: scammer_yin, assets: scammer_reclaimed_assets,
+                    }
+                )
             ),
-        ]
-            .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
 
         // assert that caretaker has no assets remaining
         let mut caretaker_assets: Span<Span<u128>> = common::get_token_balances(
@@ -451,10 +379,9 @@ mod test_caretaker {
     }
 
     #[test]
-    #[available_gas(100000000)]
     fn test_shut_during_armageddon() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
-            caretaker_utils::caretaker_deploy();
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -467,106 +394,84 @@ mod test_caretaker {
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
-        let gate0_before_balance: Wad = y0
-            .balance_of(*gates.at(0).contract_address)
-            .try_into()
-            .unwrap();
-        let gate1_before_balance: Wad = y1
-            .balance_of(*gates.at(1).contract_address)
-            .try_into()
-            .unwrap();
+        let gate0_before_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
+        let gate1_before_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
 
         // manipulate prices to be waaaay below start price to force
         // all yang deposits to be used to back yin
         shrine_utils::make_root(shrine.contract_address, caretaker_utils::admin());
-        set_contract_address(caretaker_utils::admin());
+        start_prank(
+            CheatTarget::Multiple(array![shrine.contract_address, caretaker.contract_address]), caretaker_utils::admin()
+        );
         let new_eth_price: Wad = (50 * WAD_ONE).into();
         let new_wbtc_price: Wad = (20 * WAD_ONE).into();
         shrine.advance(*yangs[0], new_eth_price);
         shrine.advance(*yangs[1], new_wbtc_price);
 
         caretaker.shut();
+        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, caretaker.contract_address]));
 
         let tolerance: Wad = 1_u128.into();
 
         // assert nothing's left in the gates and everything is now owned by Caretaker
-        let gate0_after_balance: Wad = y0
-            .balance_of(*gates.at(0).contract_address)
-            .try_into()
-            .unwrap();
-        let gate1_after_balance: Wad = y1
-            .balance_of(*gates.at(1).contract_address)
-            .try_into()
-            .unwrap();
+        let gate0_after_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
+        let gate1_after_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
         let ct_yang0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
         let ct_yang1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
 
-        common::assert_equalish(
-            gate0_after_balance, WadZeroable::zero(), tolerance, 'gate0 after balance'
-        );
-        common::assert_equalish(
-            gate1_after_balance, WadZeroable::zero(), tolerance, 'gate1 after balance'
-        );
-        common::assert_equalish(
-            ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance'
-        );
-        common::assert_equalish(
-            ct_yang1_balance, gate1_before_balance, tolerance, 'caretaker yang1 after balance'
-        );
+        common::assert_equalish(gate0_after_balance, WadZeroable::zero(), tolerance, 'gate0 after balance');
+        common::assert_equalish(gate1_after_balance, WadZeroable::zero(), tolerance, 'gate1 after balance');
+        common::assert_equalish(ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance');
+        common::assert_equalish(ct_yang1_balance, gate1_before_balance, tolerance, 'caretaker yang1 after balance');
 
         // calling release still works, but nothing gets released
-        set_contract_address(user1);
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
         let released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
 
         // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
 
-        let mut expected_events: Span<caretaker_contract::Event> = array![
-            caretaker_contract::Event::Shut(caretaker_contract::Shut {}),
-            caretaker_contract::Event::Release(
-                caretaker_contract::Release {
-                    user: user1, trove_id: trove1_id, assets: released_assets,
-                }
+        let expected_events = array![
+            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: released_assets, }
+                )
             ),
-        ]
-            .span();
-        common::assert_events_emitted(caretaker.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
+
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: System is live',))]
     fn test_release_when_system_live_reverts() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.release(1);
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: Owner should not be zero', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: Owner should not be zero',))]
     fn test_release_foreign_trove_reverts() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
         caretaker.release(1);
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('CA: System is live',))]
     fn test_reclaim_when_system_live_reverts() {
         let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.reclaim(WAD_ONE.into());
     }
 
     #[test]
-    #[available_gas(100000000)]
-    #[should_panic(
-        expected: ('SH: Insufficient yin balance', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
-    )]
+    #[should_panic(expected: ('SH: Insufficient yin balance',))]
     fn test_reclaim_insufficient_yin() {
         let (caretaker, shrine, abbot, _, yangs, gates) = caretaker_utils::caretaker_deploy();
 
@@ -592,16 +497,15 @@ mod test_caretaker {
         // of operations in `shrine.melt_helper`.
         let user2 = common::trove2_owner_addr();
         let transfer_amt: u256 = (4000 * WAD_ONE).into();
-        set_contract_address(user1);
-        IERC20Dispatcher { contract_address: shrine.contract_address }
-            .transfer(user2, transfer_amt);
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
+        IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(user2, transfer_amt);
 
         // Activating global settlement mode
-        set_contract_address(caretaker_utils::admin());
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
         // User1 attempts to reclaim more yin than they have
-        set_contract_address(user1);
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
         let user1_yin: Wad = shrine.get_yin(user1);
         // This should revert
         caretaker.reclaim(user1_yin + 1_u128.into());

@@ -28,8 +28,7 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_transmuter_deploy() {
-        let (_, transmuter, mock_usd_stable) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, mock_usd_stable) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         // Check Transmuter getters
         let ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -54,16 +53,11 @@ mod test_transmuter {
         };
         let admin: ContractAddress = transmuter_utils::admin();
         assert(transmuter_ac.get_admin() == admin, 'wrong admin');
-        assert(
-            transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(),
-            'wrong admin roles'
-        );
+        assert(transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(), 'wrong admin roles');
 
         let mut expected_events: Span<transmuter_contract::Event> = array![
             transmuter_contract::Event::CeilingUpdated(
-                transmuter_contract::CeilingUpdated {
-                    old_ceiling: WadZeroable::zero(), new_ceiling: ceiling,
-                }
+                transmuter_contract::CeilingUpdated { old_ceiling: WadZeroable::zero(), new_ceiling: ceiling, }
             ),
             transmuter_contract::Event::ReceiverUpdated(
                 transmuter_contract::ReceiverUpdated {
@@ -71,9 +65,7 @@ mod test_transmuter {
                 }
             ),
             transmuter_contract::Event::PercentageCapUpdated(
-                transmuter_contract::PercentageCapUpdated {
-                    cap: transmuter_contract::INITIAL_PERCENTAGE_CAP.into(),
-                }
+                transmuter_contract::PercentageCapUpdated { cap: transmuter_contract::INITIAL_PERCENTAGE_CAP.into(), }
             ),
         ]
             .span();
@@ -132,9 +124,7 @@ mod test_transmuter {
         assert(transmuter.get_percentage_cap() == cap, 'wrong percentage cap');
 
         let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::PercentageCapUpdated(
-                transmuter_contract::PercentageCapUpdated { cap }
-            ),
+            transmuter_contract::Event::PercentageCapUpdated(transmuter_contract::PercentageCapUpdated { cap }),
         ]
             .span();
         common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
@@ -170,17 +160,14 @@ mod test_transmuter {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(transmuter_utils::admin());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver')
-            .unwrap();
+        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
         transmuter.set_receiver(new_receiver);
 
         assert(transmuter.get_receiver() == new_receiver, 'wrong receiver');
 
         let expected_events: Span<transmuter_contract::Event> = array![
             transmuter_contract::Event::ReceiverUpdated(
-                transmuter_contract::ReceiverUpdated {
-                    old_receiver: transmuter_utils::receiver(), new_receiver
-                }
+                transmuter_contract::ReceiverUpdated { old_receiver: transmuter_utils::receiver(), new_receiver }
             ),
         ]
             .span();
@@ -204,8 +191,7 @@ mod test_transmuter {
         let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(common::badguy());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver')
-            .unwrap();
+        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
         transmuter.set_receiver(new_receiver);
     }
 
@@ -329,18 +315,13 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_transmute_with_preview_parametrized() {
-        let (shrine, wad_transmuter, _) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
         let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy();
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            shrine.contract_address,
-            mock_nonwad_usd_stable.contract_address,
-            transmuter_utils::receiver(),
-            Option::None
+            shrine.contract_address, mock_nonwad_usd_stable.contract_address, transmuter_utils::receiver(), Option::None
         );
 
-        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter]
-            .span();
+        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let transmute_fees: Span<Ray> = array![
             RayZeroable::zero(), // 0%
@@ -391,9 +372,7 @@ mod test_transmuter {
 
                                 // check preview
                                 let preview: Wad = transmuter.preview_transmute(transmute_amt);
-                                let expected: Wad = *expected_wad_transmuted_amts_copy
-                                    .pop_front()
-                                    .unwrap();
+                                let expected: Wad = *expected_wad_transmuted_amts_copy.pop_front().unwrap();
                                 common::assert_equalish(
                                     preview,
                                     expected,
@@ -406,35 +385,22 @@ mod test_transmuter {
 
                                 let before_user_yin_bal: Wad = shrine.get_yin(user);
                                 let before_total_yin: Wad = shrine.get_total_yin();
-                                let before_total_transmuted: Wad = transmuter
-                                    .get_total_transmuted();
+                                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
                                 let before_shrine_budget: SignedWad = shrine.get_budget();
-                                let before_transmuter_asset_bal: u256 = asset
-                                    .balance_of(transmuter.contract_address);
+                                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
 
-                                let expected_budget: SignedWad = before_shrine_budget
-                                    + expected_fee.into();
+                                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
 
                                 transmuter.transmute(transmute_amt);
-                                assert(
-                                    shrine.get_yin(user) == before_user_yin_bal + preview,
-                                    'wrong user yin'
-                                );
-                                assert(
-                                    shrine.get_total_yin() == before_total_yin + preview,
-                                    'wrong total yin'
-                                );
+                                assert(shrine.get_yin(user) == before_user_yin_bal + preview, 'wrong user yin');
+                                assert(shrine.get_total_yin() == before_total_yin + preview, 'wrong total yin');
                                 assert(shrine.get_budget() == expected_budget, 'wrong budget');
                                 assert(
-                                    transmuter.get_total_transmuted() == before_total_transmuted
-                                        + transmute_amt_wad,
+                                    transmuter.get_total_transmuted() == before_total_transmuted + transmute_amt_wad,
                                     'wrong total transmuted'
                                 );
                                 assert(
-                                    asset
-                                        .balance_of(
-                                            transmuter.contract_address
-                                        ) == before_transmuter_asset_bal
+                                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal
                                         + transmute_amt.into(),
                                     'wrong transmuter asset bal'
                                 );
@@ -442,10 +408,7 @@ mod test_transmuter {
                                 let mut expected_events: Span<transmuter_contract::Event> = array![
                                     transmuter_contract::Event::Transmute(
                                         transmuter_contract::Transmute {
-                                            user,
-                                            asset_amt: transmute_amt,
-                                            yin_amt: preview,
-                                            fee: expected_fee
+                                            user, asset_amt: transmute_amt, yin_amt: preview, fee: expected_fee
                                         }
                                     ),
                                 ]
@@ -467,8 +430,7 @@ mod test_transmuter {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
     fn test_transmute_exceeds_shrine_ceiling_fail() {
-        let (shrine, transmuter, _) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
         let user: ContractAddress = transmuter_utils::user();
 
         set_contract_address(shrine_utils::admin());
@@ -496,18 +458,13 @@ mod test_transmuter {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
     fn test_transmute_exceeds_percentage_cap_fail() {
-        let (shrine, transmuter, _) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(shrine_utils::admin());
 
         // reduce total supply to 1m yin 
         let target_total_yin: Wad = 1000000000000000000000000_u128.into();
-        shrine
-            .eject(
-                transmuter_utils::receiver(),
-                transmuter_utils::START_TOTAL_YIN.into() - target_total_yin
-            );
+        shrine.eject(transmuter_utils::receiver(), transmuter_utils::START_TOTAL_YIN.into() - target_total_yin);
         assert(shrine.get_total_yin() == target_total_yin, 'sanity check #1');
 
         // now, the cap is at 100_000
@@ -520,8 +477,7 @@ mod test_transmuter {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
     fn test_transmute_yin_spot_price_too_low_fail() {
-        let (shrine, transmuter, _) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
 
         set_contract_address(shrine_utils::admin());
         shrine.update_yin_spot_price((WAD_ONE - 1).into());
@@ -536,18 +492,13 @@ mod test_transmuter {
     #[test]
     #[available_gas(20000000000)]
     fn test_reverse_with_preview_parametrized() {
-        let (shrine, wad_transmuter, _) =
-            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
         let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy();
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            shrine.contract_address,
-            mock_nonwad_usd_stable.contract_address,
-            transmuter_utils::receiver(),
-            Option::None
+            shrine.contract_address, mock_nonwad_usd_stable.contract_address, transmuter_utils::receiver(), Option::None
         );
 
-        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter]
-            .span();
+        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let reverse_fees: Span<Ray> = array![
             RayZeroable::zero(), // 0%
@@ -581,8 +532,7 @@ mod test_transmuter {
                     transmuter.transmute(transmute_amt);
 
                     let mut expected_reversed_asset_amts: Span<u128> = array![
-                        wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals)
-                            .into(), // 0% fee, 1000
+                        wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
                         wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals)
                             .into(), // 1E-27% fee (loss of precision), 1000
                         wadray::wad_to_fixed_point(
@@ -610,9 +560,7 @@ mod test_transmuter {
 
                                 // check preview
                                 let preview: u128 = transmuter.preview_reverse(reverse_yin_amt);
-                                let expected: u128 = *expected_reversed_asset_amts
-                                    .pop_front()
-                                    .unwrap();
+                                let expected: u128 = *expected_reversed_asset_amts.pop_front().unwrap();
                                 common::assert_equalish(
                                     preview,
                                     expected,
@@ -621,30 +569,19 @@ mod test_transmuter {
                                 );
 
                                 // transmute
-                                let expected_fee: Wad = wadray::rmul_rw(
-                                    *reverse_fee, reverse_yin_amt
-                                );
+                                let expected_fee: Wad = wadray::rmul_rw(*reverse_fee, reverse_yin_amt);
 
                                 let before_user_yin_bal: Wad = shrine.get_yin(user);
                                 let before_total_yin: Wad = shrine.get_total_yin();
-                                let before_total_transmuted: Wad = transmuter
-                                    .get_total_transmuted();
+                                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
                                 let before_shrine_budget: SignedWad = shrine.get_budget();
-                                let before_transmuter_asset_bal: u256 = asset
-                                    .balance_of(transmuter.contract_address);
+                                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
 
-                                let expected_budget: SignedWad = before_shrine_budget
-                                    + expected_fee.into();
+                                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
 
                                 transmuter.reverse(reverse_yin_amt);
-                                assert(
-                                    shrine.get_yin(user) == before_user_yin_bal - reverse_yin_amt,
-                                    'wrong user yin'
-                                );
-                                assert(
-                                    shrine.get_total_yin() == before_total_yin - reverse_yin_amt,
-                                    'wrong total yin'
-                                );
+                                assert(shrine.get_yin(user) == before_user_yin_bal - reverse_yin_amt, 'wrong user yin');
+                                assert(shrine.get_total_yin() == before_total_yin - reverse_yin_amt, 'wrong total yin');
                                 assert(shrine.get_budget() == expected_budget, 'wrong budget');
                                 assert(
                                     transmuter.get_total_transmuted() == before_total_transmuted
@@ -653,10 +590,7 @@ mod test_transmuter {
                                     'wrong total transmuted'
                                 );
                                 assert(
-                                    asset
-                                        .balance_of(
-                                            transmuter.contract_address
-                                        ) == before_transmuter_asset_bal
+                                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal
                                         - preview.into(),
                                     'wrong transmuter asset bal'
                                 );
@@ -664,10 +598,7 @@ mod test_transmuter {
                                 let mut expected_events: Span<transmuter_contract::Event> = array![
                                     transmuter_contract::Event::Reverse(
                                         transmuter_contract::Reverse {
-                                            user,
-                                            asset_amt: preview,
-                                            yin_amt: reverse_yin_amt,
-                                            fee: expected_fee
+                                            user, asset_amt: preview, yin_amt: reverse_yin_amt, fee: expected_fee
                                         }
                                     ),
                                 ]
@@ -676,8 +607,7 @@ mod test_transmuter {
                                     transmuter.contract_address, expected_events, Option::None
                                 );
 
-                                cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale)
-                                    - preview;
+                                cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale) - preview;
                                 cumulative_yin_fees += expected_fee;
                             },
                             Option::None => { break; }
@@ -685,15 +615,10 @@ mod test_transmuter {
                     };
 
                     assert(
-                        asset
-                            .balance_of(transmuter.contract_address) == cumulative_asset_fees
-                            .into(),
+                        asset.balance_of(transmuter.contract_address) == cumulative_asset_fees.into(),
                         'wrong cumulative asset fees'
                     );
-                    assert(
-                        transmuter.get_total_transmuted() == cumulative_yin_fees,
-                        'wrong cumulative yin fees'
-                    );
+                    assert(transmuter.get_total_transmuted() == cumulative_yin_fees, 'wrong cumulative yin fees');
                 },
                 Option::None => { break; },
             };
@@ -764,10 +689,7 @@ mod test_transmuter {
                     );
 
                     let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        shrine.contract_address,
-                        asset.contract_address,
-                        receiver,
-                        Option::Some((*transmuter_id).into())
+                        shrine.contract_address, asset.contract_address, receiver, Option::Some((*transmuter_id).into())
                     );
 
                     let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -777,10 +699,7 @@ mod test_transmuter {
                         shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                     );
 
-                    let mut transmute_asset_amts: Span<u128> = array![
-                        0, 1000 * pow(10, asset_decimals),
-                    ]
-                        .span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {
@@ -802,52 +721,37 @@ mod test_transmuter {
                                             set_contract_address(user);
                                             transmuter.transmute(*transmute_asset_amt);
 
-                                            let before_receiver_asset_bal: u256 = asset
-                                                .balance_of(receiver);
+                                            let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
 
                                             set_contract_address(admin);
                                             transmuter.sweep(*sweep_amt);
 
-                                            let adjusted_sweep_amt: u128 = min(
-                                                *transmute_asset_amt, *sweep_amt
-                                            );
+                                            let adjusted_sweep_amt: u128 = min(*transmute_asset_amt, *sweep_amt);
 
                                             assert(
-                                                asset
-                                                    .balance_of(
-                                                        receiver
-                                                    ) == before_receiver_asset_bal
+                                                asset.balance_of(receiver) == before_receiver_asset_bal
                                                     + adjusted_sweep_amt.into(),
                                                 'wrong receiver asset bal'
                                             );
 
                                             if adjusted_sweep_amt.is_non_zero() {
-                                                let expected_events: Span<
-                                                    transmuter_contract::Event
-                                                > =
-                                                    array![
+                                                let expected_events: Span<transmuter_contract::Event> = array![
                                                     transmuter_contract::Event::Sweep(
                                                         transmuter_contract::Sweep {
-                                                            recipient: receiver,
-                                                            asset_amt: adjusted_sweep_amt
+                                                            recipient: receiver, asset_amt: adjusted_sweep_amt
                                                         }
                                                     ),
                                                 ]
                                                     .span();
                                                 common::assert_events_emitted(
-                                                    transmuter.contract_address,
-                                                    expected_events,
-                                                    Option::None
+                                                    transmuter.contract_address, expected_events, Option::None
                                                 );
                                             }
 
                                             // reset by sweeping all remaining amount
                                             transmuter.sweep(BoundedInt::max());
                                             assert(
-                                                asset
-                                                    .balance_of(transmuter.contract_address)
-                                                    .is_zero(),
-                                                'sanity check'
+                                                asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check'
                                             );
                                         },
                                         Option::None => { break; },
@@ -889,10 +793,7 @@ mod test_transmuter {
                     };
                     let asset_decimals: u8 = asset.decimals();
 
-                    let mut transmute_asset_amts: Span<u128> = array![
-                        0, 1000 * pow(10, asset_decimals),
-                    ]
-                        .span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {
@@ -901,21 +802,13 @@ mod test_transmuter {
                                 let mut transmuter_yin_amts: Array<Wad> = array![
                                     WadZeroable::zero(),
                                     1_u128.into(),
-                                    wadray::fixed_point_to_wad(
-                                        *transmute_asset_amt, asset_decimals
-                                    ),
-                                    wadray::fixed_point_to_wad(
-                                        *transmute_asset_amt + 1, asset_decimals
-                                    ),
+                                    wadray::fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
+                                    wadray::fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
                                 ];
 
                                 if (*transmute_asset_amt).is_non_zero() {
                                     transmuter_yin_amts
-                                        .append(
-                                            wadray::fixed_point_to_wad(
-                                                *transmute_asset_amt - 1, asset_decimals
-                                            )
-                                        );
+                                        .append(wadray::fixed_point_to_wad(*transmute_asset_amt - 1, asset_decimals));
                                 }
 
                                 let mut transmuter_yin_amts: Span<Wad> = transmuter_yin_amts.span();
@@ -923,121 +816,89 @@ mod test_transmuter {
                                 loop {
                                     match transmuter_yin_amts.pop_front() {
                                         Option::Some(transmuter_yin_amt) => {
-                                            let shrine: IShrineDispatcher =
-                                                shrine_utils::shrine_setup_with_feed(
+                                            let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
                                                 Option::Some(salt)
                                             );
 
-                                            let transmuter: ITransmuterDispatcher =
-                                                transmuter_utils::transmuter_deploy(
+                                            let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
                                                 shrine.contract_address,
                                                 asset.contract_address,
                                                 receiver,
                                                 Option::Some(salt)
                                             );
 
-                                            let shrine_debt_ceiling: Wad =
-                                                transmuter_utils::INITIAL_CEILING
-                                                .into();
+                                            let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
                                             let seed_amt: Wad = (100000 * WAD_ONE).into();
 
                                             transmuter_utils::setup_shrine_with_transmuter(
-                                                shrine,
-                                                transmuter,
-                                                shrine_debt_ceiling,
-                                                seed_amt,
-                                                receiver,
-                                                user,
+                                                shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                                             );
 
                                             set_contract_address(user);
 
                                             // transmute some amount
                                             transmuter.transmute(*transmute_asset_amt);
-                                            let transmuted_yin_amt: Wad = transmuter
-                                                .get_total_transmuted();
+                                            let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
                                             // set up the transmuter with the necessary yin amt
                                             set_contract_address(shrine_admin);
-                                            shrine
-                                                .inject(
-                                                    transmuter.contract_address, *transmuter_yin_amt
-                                                );
+                                            shrine.inject(transmuter.contract_address, *transmuter_yin_amt);
 
-                                            let before_receiver_asset_bal: u256 = asset
-                                                .balance_of(receiver);
-                                            let before_receiver_yin_bal: Wad = shrine
-                                                .get_yin(receiver);
+                                            let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
+                                            let before_receiver_yin_bal: Wad = shrine.get_yin(receiver);
                                             let before_budget: SignedWad = shrine.get_budget();
 
                                             set_contract_address(transmuter_admin);
                                             transmuter.settle();
 
-                                            let mut expected_budget_adjustment =
-                                                SignedWadZeroable::zero();
+                                            let mut expected_budget_adjustment = SignedWadZeroable::zero();
                                             let mut leftover_yin_amt = WadZeroable::zero();
 
                                             if *transmuter_yin_amt < transmuted_yin_amt {
                                                 expected_budget_adjustment =
                                                     SignedWad {
-                                                        val: (transmuted_yin_amt
-                                                            - *transmuter_yin_amt)
-                                                            .val,
-                                                        sign: true
+                                                        val: (transmuted_yin_amt - *transmuter_yin_amt).val, sign: true
                                                     };
                                             } else {
-                                                leftover_yin_amt = *transmuter_yin_amt
-                                                    - transmuted_yin_amt;
+                                                leftover_yin_amt = *transmuter_yin_amt - transmuted_yin_amt;
                                             }
 
                                             assert(
-                                                shrine.get_budget() == before_budget
-                                                    + expected_budget_adjustment,
+                                                shrine.get_budget() == before_budget + expected_budget_adjustment,
                                                 'wrong budget'
                                             );
                                             assert(
-                                                shrine.get_yin(receiver) == before_receiver_yin_bal
-                                                    + leftover_yin_amt,
+                                                shrine.get_yin(receiver) == before_receiver_yin_bal + leftover_yin_amt,
                                                 'wrong receiver yin'
                                             );
                                             assert(
-                                                shrine
-                                                    .get_yin(transmuter.contract_address)
-                                                    .is_zero(),
+                                                shrine.get_yin(transmuter.contract_address).is_zero(),
                                                 'wrong transmuter yin'
                                             );
                                             assert(
-                                                asset
-                                                    .balance_of(
-                                                        receiver
-                                                    ) == before_receiver_asset_bal
+                                                asset.balance_of(receiver) == before_receiver_asset_bal
                                                     + (*transmute_asset_amt).into(),
                                                 'wrong receiver asset'
                                             );
 
                                             assert(
-                                                transmuter.get_total_transmuted().is_zero(),
-                                                'wrong total transmuted'
+                                                transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted'
                                             );
                                             assert(!transmuter.get_live(), 'not killed');
 
-                                            let deficit: Wad = if expected_budget_adjustment
-                                                .is_negative() {
+                                            let deficit: Wad = if expected_budget_adjustment.is_negative() {
                                                 expected_budget_adjustment.val.into()
                                             } else {
                                                 WadZeroable::zero()
                                             };
-                                            let expected_events: Span<transmuter_contract::Event> =
-                                                array![
+                                            let expected_events: Span<transmuter_contract::Event> = array![
                                                 transmuter_contract::Event::Settle(
                                                     transmuter_contract::Settle { deficit }
                                                 ),
                                             ]
                                                 .span();
                                             common::assert_events_emitted(
-                                                transmuter.contract_address,
-                                                expected_events,
-                                                Option::None
+                                                transmuter.contract_address, expected_events, Option::None
                                             );
 
                                             salt += 1;
@@ -1130,15 +991,10 @@ mod test_transmuter {
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
                     let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
 
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
-                        Option::Some(salt)
-                    );
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(salt));
 
                     let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        shrine.contract_address,
-                        asset.contract_address,
-                        receiver,
-                        Option::Some(salt)
+                        shrine.contract_address, asset.contract_address, receiver, Option::Some(salt)
                     );
 
                     let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -1163,9 +1019,7 @@ mod test_transmuter {
                         transmuter_contract::Event::Killed(transmuter_contract::Killed {}),
                     ]
                         .span();
-                    common::assert_events_emitted(
-                        transmuter.contract_address, expected_events, Option::None
-                    );
+                    common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
 
                     transmuter.enable_reclaim();
 
@@ -1178,33 +1032,22 @@ mod test_transmuter {
                     let before_user_yin_bal: Wad = shrine.get_yin(user);
 
                     let first_reclaim_pct: Ray = (RAY_PERCENT * 10).into();
-                    let first_reclaim_yin_amt: Wad = wadray::rmul_wr(
-                        transmuted_yin_amt, first_reclaim_pct
-                    );
+                    let first_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, first_reclaim_pct);
                     let preview: u128 = transmuter.preview_reclaim(first_reclaim_yin_amt);
                     let expected_first_reclaim_asset_amt: u128 = wadray::rmul_wr(
                         transmute_asset_amt.into(), first_reclaim_pct
                     )
                         .val;
                     common::assert_equalish(
-                        preview,
-                        expected_first_reclaim_asset_amt,
-                        asset_error_margin,
-                        'wrong preview reclaim amt #1',
+                        preview, expected_first_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #1',
                     );
 
                     transmuter.reclaim(first_reclaim_yin_amt);
                     let first_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(
-                        first_user_asset_bal == before_user_asset_bal + preview.into(),
-                        'wrong reclaim amt #1'
-                    );
+                    assert(first_user_asset_bal == before_user_asset_bal + preview.into(), 'wrong reclaim amt #1');
 
                     let first_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(
-                        first_user_yin_bal == before_user_yin_bal - first_reclaim_yin_amt,
-                        'wrong user yin #1'
-                    );
+                    assert(first_user_yin_bal == before_user_yin_bal - first_reclaim_yin_amt, 'wrong user yin #1');
 
                     expected_events
                         .append(
@@ -1217,33 +1060,22 @@ mod test_transmuter {
 
                     // second reclaim for 35% of original transmuted amount
                     let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
-                    let second_reclaim_yin_amt: Wad = wadray::rmul_wr(
-                        transmuted_yin_amt, second_reclaim_pct
-                    );
+                    let second_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, second_reclaim_pct);
                     let preview: u128 = transmuter.preview_reclaim(second_reclaim_yin_amt);
                     let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
                         transmute_asset_amt.into(), second_reclaim_pct
                     )
                         .val;
                     common::assert_equalish(
-                        preview,
-                        expected_second_reclaim_asset_amt,
-                        asset_error_margin,
-                        'wrong preview reclaim amt #2',
+                        preview, expected_second_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #2',
                     );
 
                     transmuter.reclaim(second_reclaim_yin_amt);
                     let second_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(
-                        second_user_asset_bal == first_user_asset_bal + preview.into(),
-                        'wrong reclaim amt #2'
-                    );
+                    assert(second_user_asset_bal == first_user_asset_bal + preview.into(), 'wrong reclaim amt #2');
 
                     let second_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(
-                        second_user_yin_bal == first_user_yin_bal - second_reclaim_yin_amt,
-                        'wrong user yin #2'
-                    );
+                    assert(second_user_yin_bal == first_user_yin_bal - second_reclaim_yin_amt, 'wrong user yin #2');
 
                     expected_events
                         .append(
@@ -1264,42 +1096,26 @@ mod test_transmuter {
                         .try_into()
                         .unwrap();
                     common::assert_equalish(
-                        preview,
-                        expected_third_reclaim_asset_amt,
-                        asset_error_margin,
-                        'wrong preview reclaim amt #3',
+                        preview, expected_third_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #3',
                     );
 
                     transmuter.reclaim(third_reclaim_yin_amt);
                     let third_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(
-                        third_user_asset_bal == second_user_asset_bal + preview.into(),
-                        'wrong reclaim amt #3'
-                    );
+                    assert(third_user_asset_bal == second_user_asset_bal + preview.into(), 'wrong reclaim amt #3');
 
                     let third_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(
-                        third_user_yin_bal == second_user_yin_bal - reclaimable_yin,
-                        'wrong user yin #3'
-                    );
+                    assert(third_user_yin_bal == second_user_yin_bal - reclaimable_yin, 'wrong user yin #3');
 
                     expected_events
                         .append(
                             transmuter_contract::Event::Reclaim(
-                                transmuter_contract::Reclaim {
-                                    user, asset_amt: preview, yin_amt: reclaimable_yin,
-                                }
+                                transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin, }
                             )
                         );
-                    common::assert_events_emitted(
-                        transmuter.contract_address, expected_events.span(), Option::None
-                    );
+                    common::assert_events_emitted(transmuter.contract_address, expected_events.span(), Option::None);
 
                     // preview reclaim when transmuter has no assets
-                    assert(
-                        transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(),
-                        'preview should be zero'
-                    );
+                    assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
 
                     salt += 1;
                 },

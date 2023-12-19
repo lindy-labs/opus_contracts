@@ -63,17 +63,10 @@ mod pragma_roles {
     const ADD_YANG: u128 = 1;
     const SET_ORACLE_ADDRESS: u128 = 2;
     const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
-    const SET_UPDATE_FREQUENCY: u128 = 8;
-    const UPDATE_PRICES: u128 = 16;
-
-    #[inline(always)]
-    fn purger() -> u128 {
-        UPDATE_PRICES
-    }
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
+        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS
     }
 }
 
@@ -83,6 +76,22 @@ mod purger_roles {
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_PENALTY_SCALAR
+    }
+}
+
+mod seer_roles {
+    const SET_ORACLES: u128 = 1;
+    const SET_UPDATE_FREQUENCY: u128 = 2;
+    const UPDATE_PRICES: u128 = 4;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ORACLES + SET_UPDATE_FREQUENCY + UPDATE_PRICES
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE_PRICES
     }
 }
 
@@ -128,12 +137,13 @@ mod shrine_roles {
     const REDISTRIBUTE: u128 = 512;
     const SEIZE: u128 = 1024;
     const SET_DEBT_CEILING: u128 = 2048;
-    const SET_MULTIPLIER: u128 = 4096;
-    const SET_THRESHOLD: u128 = 8192;
-    const UPDATE_RATES: u128 = 16384;
-    const UPDATE_YANG_SUSPENSION: u128 = 32768;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 65536;
-    const WITHDRAW: u128 = 131072;
+    const SET_MINIMUM_TROVE_VALUE: u128 = 4096;
+    const SET_MULTIPLIER: u128 = 8192;
+    const SET_THRESHOLD: u128 = 16384;
+    const UPDATE_RATES: u128 = 32768;
+    const UPDATE_YANG_SUSPENSION: u128 = 65536;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 131072;
+    const WITHDRAW: u128 = 262144;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -152,12 +162,18 @@ mod shrine_roles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES + UPDATE_YANG_SUSPENSION
+        ADD_YANG
+            + SET_DEBT_CEILING
+            + SET_MINIMUM_TROVE_VALUE
+            + SET_THRESHOLD
+            + KILL
+            + UPDATE_RATES
+            + UPDATE_YANG_SUSPENSION
     }
 
     #[inline(always)]
     fn equalizer() -> u128 {
-        ADJUST_BUDGET + EJECT + INJECT
+        ADJUST_BUDGET + EJECT + INJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
@@ -166,13 +182,13 @@ mod shrine_roles {
     }
 
     #[inline(always)]
-    fn oracle() -> u128 {
-        ADVANCE
+    fn purger() -> u128 {
+        MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]
-    fn purger() -> u128 {
-        MELT + REDISTRIBUTE + SEIZE
+    fn seer() -> u128 {
+        ADVANCE
     }
 
     #[inline(always)]
@@ -200,6 +216,7 @@ mod shrine_roles {
             + REDISTRIBUTE
             + SEIZE
             + SET_DEBT_CEILING
+            + SET_MINIMUM_TROVE_VALUE
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES

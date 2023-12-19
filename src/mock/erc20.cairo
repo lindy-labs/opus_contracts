@@ -12,9 +12,7 @@ trait IERC20<TState> {
     fn balance_of(self: @TState, account: ContractAddress) -> u256;
     fn allowance(self: @TState, owner: ContractAddress, spender: ContractAddress) -> u256;
     fn transfer(ref self: TState, recipient: ContractAddress, amount: u256) -> bool;
-    fn transfer_from(
-        ref self: TState, sender: ContractAddress, recipient: ContractAddress, amount: u256
-    ) -> bool;
+    fn transfer_from(ref self: TState, sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
     fn approve(ref self: TState, spender: ContractAddress, amount: u256) -> bool;
 }
 
@@ -108,9 +106,7 @@ mod erc20 {
             self.balances.read(account)
         }
 
-        fn allowance(
-            self: @ContractState, owner: ContractAddress, spender: ContractAddress
-        ) -> u256 {
+        fn allowance(self: @ContractState, owner: ContractAddress, spender: ContractAddress) -> u256 {
             self.allowances.read((owner, spender))
         }
 
@@ -120,10 +116,7 @@ mod erc20 {
         }
 
         fn transfer_from(
-            ref self: ContractState,
-            sender: ContractAddress,
-            recipient: ContractAddress,
-            amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
         ) -> bool {
             self._spend_allowance(sender, get_caller_address(), amount);
             self._transfer(sender, recipient, amount);
@@ -142,12 +135,7 @@ mod erc20 {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
-        fn _transfer(
-            ref self: ContractState,
-            sender: ContractAddress,
-            recipient: ContractAddress,
-            amount: u256
-        ) {
+        fn _transfer(ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) {
             assert(!sender.is_zero(), Errors::TRANSFER_FROM_ZERO);
             assert(!recipient.is_zero(), Errors::TRANSFER_TO_ZERO);
             self.balances.write(sender, self.balances.read(sender) - amount);
@@ -155,9 +143,7 @@ mod erc20 {
             self.emit(Transfer { from: sender, to: recipient, value: amount });
         }
 
-        fn _approve(
-            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
-        ) {
+        fn _approve(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             assert(!owner.is_zero(), Errors::APPROVE_FROM_ZERO);
             assert(!spender.is_zero(), Errors::APPROVE_TO_ZERO);
             self.allowances.write((owner, spender), amount);
@@ -178,9 +164,7 @@ mod erc20 {
             self.emit(Transfer { from: account, to: Zeroable::zero(), value: amount });
         }
 
-        fn _spend_allowance(
-            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
-        ) {
+        fn _spend_allowance(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             let current_allowance = self.allowances.read((owner, spender));
             if current_allowance != integer::BoundedInt::max() {
                 self._approve(owner, spender, current_allowance - amount);
