@@ -16,9 +16,11 @@ mod test_transmuter {
     use opus::utils::wadray;
     use opus::utils::wadray_signed::{Signed, SignedWad, SignedWadZeroable};
     use opus::utils::wadray_signed;
+    use snforge_std::{
+        CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
+    };
     use starknet::ContractAddress;
     use starknet::contract_address::{contract_address_try_from_felt252, ContractAddressZeroable};
-    use starknet::testing::set_contract_address;
 
     //
     // Tests - Deployment 
@@ -26,9 +28,11 @@ mod test_transmuter {
 
     // Check constructor function
     #[test]
-    #[available_gas(20000000000)]
     fn test_transmuter_deploy() {
-        let (_, transmuter, mock_usd_stable) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let mut spy = spy_events(SpyOn::All);
+        let (_, transmuter, mock_usd_stable) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
         // Check Transmuter getters
         let ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -55,21 +59,31 @@ mod test_transmuter {
         assert(transmuter_ac.get_admin() == admin, 'wrong admin');
         assert(transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(), 'wrong admin roles');
 
-        let mut expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::CeilingUpdated(
-                transmuter_contract::CeilingUpdated { old_ceiling: WadZeroable::zero(), new_ceiling: ceiling, }
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::CeilingUpdated(
+                    transmuter_contract::CeilingUpdated { old_ceiling: WadZeroable::zero(), new_ceiling: ceiling, }
+                ),
             ),
-            transmuter_contract::Event::ReceiverUpdated(
-                transmuter_contract::ReceiverUpdated {
-                    old_receiver: ContractAddressZeroable::zero(), new_receiver: receiver
-                }
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::ReceiverUpdated(
+                    transmuter_contract::ReceiverUpdated {
+                        old_receiver: ContractAddressZeroable::zero(), new_receiver: receiver
+                    }
+                ),
             ),
-            transmuter_contract::Event::PercentageCapUpdated(
-                transmuter_contract::PercentageCapUpdated { cap: transmuter_contract::INITIAL_PERCENTAGE_CAP.into(), }
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::PercentageCapUpdated(
+                    transmuter_contract::PercentageCapUpdated {
+                        cap: transmuter_contract::INITIAL_PERCENTAGE_CAP.into(),
+                    }
+                ),
             ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     //
@@ -77,130 +91,153 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_ceiling() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
 
         assert(transmuter.get_ceiling() == new_ceiling, 'wrong ceiling');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::CeilingUpdated(
-                transmuter_contract::CeilingUpdated {
-                    old_ceiling: transmuter_utils::INITIAL_CEILING.into(), new_ceiling
-                }
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::CeilingUpdated(
+                    transmuter_contract::CeilingUpdated {
+                        old_ceiling: transmuter_utils::INITIAL_CEILING.into(), new_ceiling
+                    }
+                )
             ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_set_ceiling_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_percentage_cap() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
 
         assert(transmuter.get_percentage_cap() == cap, 'wrong percentage cap');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::PercentageCapUpdated(transmuter_contract::PercentageCapUpdated { cap }),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::PercentageCapUpdated(transmuter_contract::PercentageCapUpdated { cap }),
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Exceeds upper bound', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Exceeds upper bound',))]
     fn test_set_percentage_cap_too_high_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 100% + 1E-27 (Ray)
         let cap: Ray = (transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND + 1).into();
         transmuter.set_percentage_cap(cap);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_percentage_cap_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_percentage_cap_unauthorized_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_receiver() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
         transmuter.set_receiver(new_receiver);
 
         assert(transmuter.get_receiver() == new_receiver, 'wrong receiver');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::ReceiverUpdated(
-                transmuter_contract::ReceiverUpdated { old_receiver: transmuter_utils::receiver(), new_receiver }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::ReceiverUpdated(
+                    transmuter_contract::ReceiverUpdated { old_receiver: transmuter_utils::receiver(), new_receiver }
+                ),
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Zero address', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Zero address',))]
     fn test_set_receiver_zero_addr_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.set_receiver(ContractAddressZeroable::zero());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_receiver_authorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_receiver_unauthorized_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
         transmuter.set_receiver(new_receiver);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_set_transmute_and_reverse_fee() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
 
@@ -209,103 +246,118 @@ mod test_transmuter {
 
         assert(transmuter.get_transmute_fee() == new_fee, 'wrong transmute fee');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::TransmuteFeeUpdated(
-                transmuter_contract::TransmuteFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::TransmuteFeeUpdated(
+                    transmuter_contract::TransmuteFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
+                )
+            )
+        ];
+        spy.assert_emitted(@expected_events);
 
         // reverse
         transmuter.set_reverse_fee(new_fee);
 
         assert(transmuter.get_reverse_fee() == new_fee, 'wrong reverse fee');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::ReverseFeeUpdated(
-                transmuter_contract::ReverseFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::ReverseFeeUpdated(
+                    transmuter_contract::ReverseFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
+                )
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Exceeds max fee', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Exceeds max fee',))]
     fn test_set_transmute_fee_exceeds_max_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_transmute_fee(new_fee);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_transmute_fee_authorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_transmute_fee_unauthorized_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
         transmuter.set_transmute_fee(new_fee);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Exceeds max fee', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Exceeds max fee',))]
     fn test_set_reverse_fee_exceeds_max_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_reverse_fee(new_fee);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_reverse_fee_authorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_reverse_fee_unauthorized_fail() {
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
         transmuter.set_reverse_fee(new_fee);
     }
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_toggle_reversibility_pass() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'reversible');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::ReversibilityToggled(
-                transmuter_contract::ReversibilityToggled { reversibility: false }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::ReversibilityToggled(
+                    transmuter_contract::ReversibilityToggled { reversibility: false }
+                )
+            )
+        ];
+        spy.assert_emitted(@expected_events);
 
         transmuter.toggle_reversibility();
         assert(transmuter.get_reversibility(), 'not reversible');
 
-        let expected_events: Span<transmuter_contract::Event> = array![
-            transmuter_contract::Event::ReversibilityToggled(
-                transmuter_contract::ReversibilityToggled { reversibility: true }
-            ),
-        ]
-            .span();
-        common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+        let expected_events = array![
+            (
+                transmuter.contract_address,
+                transmuter_contract::Event::ReversibilityToggled(
+                    transmuter_contract::ReversibilityToggled { reversibility: true }
+                )
+            )
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     //
@@ -313,12 +365,18 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_transmute_with_preview_parametrized() {
-        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::Some(transmuter_class), Option::Some(token_class)
+        );
+        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            shrine.contract_address, mock_nonwad_usd_stable.contract_address, transmuter_utils::receiver(), Option::None
+            Option::Some(transmuter_class),
+            shrine.contract_address,
+            mock_nonwad_usd_stable.contract_address,
+            transmuter_utils::receiver()
         );
 
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -351,9 +409,12 @@ mod test_transmuter {
                     let transmuter = *transmuter;
                     let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
+                    let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
                     // approve Transmuter to transfer user's mock USD stable
-                    set_contract_address(user);
+                    start_prank(CheatTarget::One(asset.contract_address), user);
                     asset.approve(transmuter.contract_address, BoundedInt::max());
+                    stop_prank(CheatTarget::One(asset.contract_address));
 
                     // Set up transmute amount to be equivalent to 1_000 (Wad) yin
                     let asset_decimals: u8 = asset.decimals();
@@ -365,10 +426,10 @@ mod test_transmuter {
                     loop {
                         match transmute_fees_copy.pop_front() {
                             Option::Some(transmute_fee) => {
-                                set_contract_address(transmuter_utils::admin());
+                                start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
                                 transmuter.set_transmute_fee(*transmute_fee);
 
-                                set_contract_address(user);
+                                start_prank(CheatTarget::One(transmuter.contract_address), user);
 
                                 // check preview
                                 let preview: Wad = transmuter.preview_transmute(transmute_amt);
@@ -405,17 +466,17 @@ mod test_transmuter {
                                     'wrong transmuter asset bal'
                                 );
 
-                                let mut expected_events: Span<transmuter_contract::Event> = array![
-                                    transmuter_contract::Event::Transmute(
-                                        transmuter_contract::Transmute {
-                                            user, asset_amt: transmute_amt, yin_amt: preview, fee: expected_fee
-                                        }
-                                    ),
-                                ]
-                                    .span();
-                                common::assert_events_emitted(
-                                    transmuter.contract_address, expected_events, Option::None
-                                );
+                                let expected_events = array![
+                                    (
+                                        transmuter.contract_address,
+                                        transmuter_contract::Event::Transmute(
+                                            transmuter_contract::Transmute {
+                                                user, asset_amt: transmute_amt, yin_amt: preview, fee: expected_fee
+                                            }
+                                        )
+                                    )
+                                ];
+                                spy.assert_emitted(@expected_events);
                             },
                             Option::None => { break; }
                         };
@@ -427,13 +488,14 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Debt ceiling reached',))]
     fn test_transmute_exceeds_shrine_ceiling_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
         let user: ContractAddress = transmuter_utils::user();
 
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
         shrine.inject(user, debt_ceiling);
 
@@ -441,12 +503,14 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_exceeds_transmuter_ceiling_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, asset) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+
         let ceiling: Wad = transmuter.get_ceiling();
         transmuter.transmute(ceiling.val);
         assert(transmuter.get_total_transmuted() == ceiling, 'sanity check');
@@ -455,31 +519,35 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_exceeds_percentage_cap_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
 
         // reduce total supply to 1m yin 
         let target_total_yin: Wad = 1000000000000000000000000_u128.into();
         shrine.eject(transmuter_utils::receiver(), transmuter_utils::START_TOTAL_YIN.into() - target_total_yin);
         assert(shrine.get_total_yin() == target_total_yin, 'sanity check #1');
 
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
         // now, the cap is at 100_000
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
         let expected_cap: u128 = 100000 * WAD_ONE;
         transmuter.transmute(expected_cap + 1);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmute is paused', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_yin_spot_price_too_low_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(shrine_utils::admin());
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.update_yin_spot_price((WAD_ONE - 1).into());
 
         transmuter.transmute(1_u128.into());
@@ -490,12 +558,19 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_reverse_with_preview_parametrized() {
-        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
-        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class: ContractClass = transmuter_utils::declare_erc20();
+
+        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::Some(transmuter_class), Option::Some(token_class)
+        );
+        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            shrine.contract_address, mock_nonwad_usd_stable.contract_address, transmuter_utils::receiver(), Option::None
+            Option::Some(transmuter_class),
+            shrine.contract_address,
+            mock_nonwad_usd_stable.contract_address,
+            transmuter_utils::receiver()
         );
 
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -521,15 +596,19 @@ mod test_transmuter {
                     let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
                     // approve Transmuter to transfer user's mock USD stable
-                    set_contract_address(user);
+                    start_prank(CheatTarget::One(asset.contract_address), user);
                     asset.approve(transmuter.contract_address, BoundedInt::max());
+                    stop_prank(CheatTarget::One(asset.contract_address));
 
                     // Transmute an amount of yin to set up Transmuter for reverse
                     let asset_decimals: u8 = asset.decimals();
                     let real_transmute_amt: u128 = reverse_fees.len().into() * real_reverse_amt;
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
                     let transmute_amt: u128 = real_transmute_amt * asset_decimal_scale;
+
+                    start_prank(CheatTarget::One(transmuter.contract_address), user);
                     transmuter.transmute(transmute_amt);
+                    stop_prank(CheatTarget::One(transmuter.contract_address));
 
                     let mut expected_reversed_asset_amts: Span<u128> = array![
                         wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
@@ -553,10 +632,13 @@ mod test_transmuter {
                     loop {
                         match reverse_fees_copy.pop_front() {
                             Option::Some(reverse_fee) => {
-                                set_contract_address(transmuter_utils::admin());
-                                transmuter.set_reverse_fee(*reverse_fee);
+                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
 
-                                set_contract_address(user);
+                                start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+                                transmuter.set_reverse_fee(*reverse_fee);
+                                stop_prank(CheatTarget::One(transmuter.contract_address));
+
+                                start_prank(CheatTarget::One(transmuter.contract_address), user);
 
                                 // check preview
                                 let preview: u128 = transmuter.preview_reverse(reverse_yin_amt);
@@ -595,20 +677,22 @@ mod test_transmuter {
                                     'wrong transmuter asset bal'
                                 );
 
-                                let mut expected_events: Span<transmuter_contract::Event> = array![
-                                    transmuter_contract::Event::Reverse(
-                                        transmuter_contract::Reverse {
-                                            user, asset_amt: preview, yin_amt: reverse_yin_amt, fee: expected_fee
-                                        }
-                                    ),
-                                ]
-                                    .span();
-                                common::assert_events_emitted(
-                                    transmuter.contract_address, expected_events, Option::None
-                                );
+                                let expected_events = array![
+                                    (
+                                        transmuter.contract_address,
+                                        transmuter_contract::Event::Reverse(
+                                            transmuter_contract::Reverse {
+                                                user, asset_amt: preview, yin_amt: reverse_yin_amt, fee: expected_fee
+                                            }
+                                        )
+                                    )
+                                ];
+                                spy.assert_emitted(@expected_events);
 
                                 cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale) - preview;
                                 cumulative_yin_fees += expected_fee;
+
+                                stop_prank(CheatTarget::One(transmuter.contract_address));
                             },
                             Option::None => { break; }
                         };
@@ -626,16 +710,17 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Reverse is paused', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Reverse is paused',))]
     fn test_reverse_disabled_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'sanity check');
 
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
         let transmute_amt: u128 = 1000 * WAD_ONE;
         transmuter.transmute(transmute_amt);
 
@@ -643,20 +728,21 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Insufficient assets', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Insufficient assets',))]
     fn test_reverse_zero_assets_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
         let user: ContractAddress = transmuter_utils::user();
         let asset_amt: u128 = WAD_ONE;
-        set_contract_address(user);
+        start_prank(CheatTarget::One(transmuter.contract_address), user);
         transmuter.transmute(asset_amt.into());
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.sweep(asset_amt);
 
-        set_contract_address(user);
+        start_prank(CheatTarget::One(transmuter.contract_address), user);
         transmuter.reverse(1_u128.into());
     }
 
@@ -665,8 +751,11 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_sweep_parametrized_pass() {
+        let shrine_class: ContractClass = shrine_utils::declare_shrine();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class: ContractClass = transmuter_utils::declare_erc20();
+
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
@@ -678,18 +767,16 @@ mod test_transmuter {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
                     let asset: IERC20Dispatcher = if *transmuter_id == 0 {
-                        transmuter_utils::mock_wad_usd_stable_deploy()
+                        transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        transmuter_utils::mock_nonwad_usd_stable_deploy()
+                        transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
 
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
-                        Option::Some((*transmuter_id).into())
-                    );
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
                     let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        shrine.contract_address, asset.contract_address, receiver, Option::Some((*transmuter_id).into())
+                        Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver
                     );
 
                     let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -704,6 +791,8 @@ mod test_transmuter {
                     loop {
                         match transmute_asset_amts.pop_front() {
                             Option::Some(transmute_asset_amt) => {
+                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
                                 // parametrize amount to sweep
                                 let mut sweep_amts: Array<u128> = array![
                                     0, 1, *transmute_asset_amt, *transmute_asset_amt + 1,
@@ -718,12 +807,12 @@ mod test_transmuter {
                                 loop {
                                     match sweep_amts.pop_front() {
                                         Option::Some(sweep_amt) => {
-                                            set_contract_address(user);
+                                            start_prank(CheatTarget::One(transmuter.contract_address), user);
                                             transmuter.transmute(*transmute_asset_amt);
 
                                             let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
 
-                                            set_contract_address(admin);
+                                            start_prank(CheatTarget::One(transmuter.contract_address), admin);
                                             transmuter.sweep(*sweep_amt);
 
                                             let adjusted_sweep_amt: u128 = min(*transmute_asset_amt, *sweep_amt);
@@ -735,17 +824,17 @@ mod test_transmuter {
                                             );
 
                                             if adjusted_sweep_amt.is_non_zero() {
-                                                let expected_events: Span<transmuter_contract::Event> = array![
-                                                    transmuter_contract::Event::Sweep(
-                                                        transmuter_contract::Sweep {
-                                                            recipient: receiver, asset_amt: adjusted_sweep_amt
-                                                        }
-                                                    ),
-                                                ]
-                                                    .span();
-                                                common::assert_events_emitted(
-                                                    transmuter.contract_address, expected_events, Option::None
-                                                );
+                                                let expected_events = array![
+                                                    (
+                                                        transmuter.contract_address,
+                                                        transmuter_contract::Event::Sweep(
+                                                            transmuter_contract::Sweep {
+                                                                recipient: receiver, asset_amt: adjusted_sweep_amt
+                                                            }
+                                                        )
+                                                    )
+                                                ];
+                                                spy.assert_emitted(@expected_events);
                                             }
 
                                             // reset by sweeping all remaining amount
@@ -753,6 +842,8 @@ mod test_transmuter {
                                             assert(
                                                 asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check'
                                             );
+
+                                            stop_prank(CheatTarget::One(transmuter.contract_address));
                                         },
                                         Option::None => { break; },
                                     };
@@ -772,8 +863,11 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_settle_parametrized_pass() {
+        let shrine_class: ContractClass = shrine_utils::declare_shrine();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class: ContractClass = transmuter_utils::declare_erc20();
+
         let transmuter_admin: ContractAddress = transmuter_utils::admin();
         let shrine_admin: ContractAddress = shrine_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -781,15 +875,14 @@ mod test_transmuter {
 
         let mut transmuter_ids: Span<u32> = array![0, 1].span();
 
-        let mut salt: felt252 = 0;
         loop {
             match transmuter_ids.pop_front() {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
                     let asset: IERC20Dispatcher = if *transmuter_id == 0 {
-                        transmuter_utils::mock_wad_usd_stable_deploy()
+                        transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        transmuter_utils::mock_nonwad_usd_stable_deploy()
+                        transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
 
@@ -817,15 +910,17 @@ mod test_transmuter {
                                     match transmuter_yin_amts.pop_front() {
                                         Option::Some(transmuter_yin_amt) => {
                                             let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
-                                                Option::Some(salt)
+                                                Option::Some(shrine_class)
                                             );
 
                                             let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                                                Option::Some(transmuter_class),
                                                 shrine.contract_address,
                                                 asset.contract_address,
                                                 receiver,
-                                                Option::Some(salt)
                                             );
+
+                                            let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
 
                                             let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
                                             let seed_amt: Wad = (100000 * WAD_ONE).into();
@@ -834,21 +929,26 @@ mod test_transmuter {
                                                 shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                                             );
 
-                                            set_contract_address(user);
+                                            start_prank(CheatTarget::One(transmuter.contract_address), user);
 
                                             // transmute some amount
                                             transmuter.transmute(*transmute_asset_amt);
                                             let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
+                                            stop_prank(CheatTarget::One(transmuter.contract_address));
+
                                             // set up the transmuter with the necessary yin amt
-                                            set_contract_address(shrine_admin);
+                                            start_prank(CheatTarget::One(shrine.contract_address), shrine_admin);
                                             shrine.inject(transmuter.contract_address, *transmuter_yin_amt);
+                                            stop_prank(CheatTarget::One(shrine.contract_address));
 
                                             let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
                                             let before_receiver_yin_bal: Wad = shrine.get_yin(receiver);
                                             let before_budget: SignedWad = shrine.get_budget();
 
-                                            set_contract_address(transmuter_admin);
+                                            start_prank(
+                                                CheatTarget::One(transmuter.contract_address), transmuter_admin
+                                            );
                                             transmuter.settle();
 
                                             let mut expected_budget_adjustment = SignedWadZeroable::zero();
@@ -891,17 +991,17 @@ mod test_transmuter {
                                             } else {
                                                 WadZeroable::zero()
                                             };
-                                            let expected_events: Span<transmuter_contract::Event> = array![
-                                                transmuter_contract::Event::Settle(
-                                                    transmuter_contract::Settle { deficit }
-                                                ),
-                                            ]
-                                                .span();
-                                            common::assert_events_emitted(
-                                                transmuter.contract_address, expected_events, Option::None
-                                            );
+                                            let expected_events = array![
+                                                (
+                                                    transmuter.contract_address,
+                                                    transmuter_contract::Event::Settle(
+                                                        transmuter_contract::Settle { deficit }
+                                                    ),
+                                                )
+                                            ];
+                                            spy.assert_emitted(@expected_events);
 
-                                            salt += 1;
+                                            stop_prank(CheatTarget::One(transmuter.contract_address));
                                         },
                                         Option::None => { break; },
                                     };
@@ -917,50 +1017,54 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_transmute_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.settle();
 
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
         transmuter.transmute(1_u128);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_reverse_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.settle();
 
-        set_contract_address(transmuter_utils::user());
-        transmuter.transmute(1_u128.into());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        transmuter.reverse(1_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_sweep_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.settle();
 
         transmuter.sweep(BoundedInt::max());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_sweep_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         transmuter.sweep(BoundedInt::max());
     }
 
@@ -969,32 +1073,34 @@ mod test_transmuter {
     //
 
     #[test]
-    #[available_gas(20000000000)]
     fn test_kill_and_reclaim_parametrized_pass() {
+        let shrine_class: ContractClass = shrine_utils::declare_shrine();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class: ContractClass = transmuter_utils::declare_erc20();
+
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
 
         let mut transmuter_ids: Span<u32> = array![0, 1].span();
 
-        let mut salt: felt252 = 0;
         loop {
             match transmuter_ids.pop_front() {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
                     let asset: IERC20Dispatcher = if *transmuter_id == 0 {
-                        transmuter_utils::mock_wad_usd_stable_deploy()
+                        transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        transmuter_utils::mock_nonwad_usd_stable_deploy()
+                        transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
                     let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
 
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(salt));
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
                     let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        shrine.contract_address, asset.contract_address, receiver, Option::Some(salt)
+                        Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
                     );
 
                     let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
@@ -1004,26 +1110,31 @@ mod test_transmuter {
                         shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                     );
 
-                    set_contract_address(user);
+                    let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+                    start_prank(CheatTarget::One(transmuter.contract_address), user);
 
                     // transmute some amount
                     transmuter.transmute(transmute_asset_amt);
                     let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
-                    set_contract_address(admin);
+                    start_prank(CheatTarget::One(transmuter.contract_address), admin);
                     transmuter.kill();
 
                     assert(!transmuter.get_live(), 'not killed');
 
-                    let expected_events: Span<transmuter_contract::Event> = array![
-                        transmuter_contract::Event::Killed(transmuter_contract::Killed {}),
-                    ]
-                        .span();
-                    common::assert_events_emitted(transmuter.contract_address, expected_events, Option::None);
+                    let expected_events = array![
+                        (
+                            transmuter.contract_address,
+                            transmuter_contract::Event::Killed(transmuter_contract::Killed {}),
+                        )
+                    ];
+                    spy.assert_emitted(@expected_events);
 
                     transmuter.enable_reclaim();
 
-                    set_contract_address(user);
+                    start_prank(CheatTarget::One(transmuter.contract_address), user);
+
                     let asset_error_margin: u128 = asset_decimal_scale / 100;
                     let mut expected_events: Array<transmuter_contract::Event> = ArrayTrait::new();
 
@@ -1112,12 +1223,11 @@ mod test_transmuter {
                                 transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin, }
                             )
                         );
-                    common::assert_events_emitted(transmuter.contract_address, expected_events.span(), Option::None);
 
                     // preview reclaim when transmuter has no assets
                     assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
 
-                    salt += 1;
+                    stop_prank(CheatTarget::One(transmuter.contract_address));
                 },
                 Option::None => { break; },
             };
@@ -1125,82 +1235,89 @@ mod test_transmuter {
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_kill_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         transmuter.kill();
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_transmute_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
         transmuter.transmute(1_u128);
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_reverse_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
-        set_contract_address(transmuter_utils::user());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
         transmuter.transmute(1_u128.into());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_sweep_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.sweep(BoundedInt::max());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Reclaim unavailable', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Reclaim unavailable',))]
     fn test_reclaim_disabled_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.reclaim(BoundedInt::max());
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('TR: Transmuter is live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('TR: Transmuter is live',))]
     fn test_enable_reclaim_while_live_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(transmuter_utils::admin());
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.enable_reclaim();
     }
 
     #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_enable_reclaim_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter();
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+            Option::None, Option::None
+        );
 
-        set_contract_address(common::badguy());
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
         transmuter.enable_reclaim();
     }
 }
