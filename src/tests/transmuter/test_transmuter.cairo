@@ -1136,7 +1136,7 @@ mod test_transmuter {
                     start_prank(CheatTarget::One(transmuter.contract_address), user);
 
                     let asset_error_margin: u128 = asset_decimal_scale / 100;
-                    let mut expected_events: Array<transmuter_contract::Event> = ArrayTrait::new();
+                    let mut expected_events = ArrayTrait::new();
 
                     // first reclaim for 10% of original transmuted amount
                     let before_user_asset_bal: u256 = asset.balance_of(user);
@@ -1162,10 +1162,13 @@ mod test_transmuter {
 
                     expected_events
                         .append(
-                            transmuter_contract::Event::Reclaim(
-                                transmuter_contract::Reclaim {
-                                    user, asset_amt: preview, yin_amt: first_reclaim_yin_amt,
-                                }
+                            (
+                                transmuter.contract_address,
+                                transmuter_contract::Event::Reclaim(
+                                    transmuter_contract::Reclaim {
+                                        user, asset_amt: preview, yin_amt: first_reclaim_yin_amt,
+                                    }
+                                )
                             )
                         );
 
@@ -1190,10 +1193,13 @@ mod test_transmuter {
 
                     expected_events
                         .append(
-                            transmuter_contract::Event::Reclaim(
-                                transmuter_contract::Reclaim {
-                                    user, asset_amt: preview, yin_amt: second_reclaim_yin_amt,
-                                }
+                            (
+                                transmuter.contract_address,
+                                transmuter_contract::Event::Reclaim(
+                                    transmuter_contract::Reclaim {
+                                        user, asset_amt: preview, yin_amt: second_reclaim_yin_amt,
+                                    }
+                                )
                             )
                         );
 
@@ -1219,10 +1225,14 @@ mod test_transmuter {
 
                     expected_events
                         .append(
-                            transmuter_contract::Event::Reclaim(
-                                transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin, }
+                            (
+                                transmuter.contract_address,
+                                transmuter_contract::Event::Reclaim(
+                                    transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin, }
+                                )
                             )
                         );
+                    spy.assert_emitted(@expected_events);
 
                     // preview reclaim when transmuter has no assets
                     assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
