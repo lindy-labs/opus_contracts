@@ -14,7 +14,7 @@ mod pragma_utils {
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::pragma::PricesResponse;
+    use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
@@ -30,12 +30,12 @@ mod pragma_utils {
     //
 
     const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
-    const SOURCES_THRESHOLD: u64 = 3;
+    const SOURCES_THRESHOLD: u32 = 3;
     const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
-    const DEFAULT_NUM_SOURCES: u256 = 5;
-    const ETH_USD_PAIR_ID: u256 = 'ETH/USD';
-    const WBTC_USD_PAIR_ID: u256 = 'BTC/USD';
-    const PEPE_USD_PAIR_ID: u256 = 'PEPE/USD';
+    const DEFAULT_NUM_SOURCES: u32 = 5;
+    const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
+    const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
+    const PEPE_USD_PAIR_ID: felt252 = 'PEPE/USD';
     const PRAGMA_DECIMALS: u8 = 8;
 
     //
@@ -114,7 +114,7 @@ mod pragma_utils {
         price.val / scale
     }
 
-    fn get_pair_id_for_yang(yang: ContractAddress) -> u256 {
+    fn get_pair_id_for_yang(yang: ContractAddress) -> felt252 {
         let erc20 = IERC20Dispatcher { contract_address: yang };
         let symbol: felt252 = erc20.symbol();
 
@@ -132,13 +132,14 @@ mod pragma_utils {
     // Helper function to add a valid price update to the mock Pragma oracle
     // using default values for decimals and number of sources.
     fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
-        let response = PricesResponse {
-            price: convert_price_to_pragma_scale(price).into(),
+        let response = PragmaPricesResponse {
+            price: convert_price_to_pragma_scale(price),
             decimals: PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: timestamp.into(),
+            last_updated_timestamp: timestamp,
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
-        let pair_id: u256 = get_pair_id_for_yang(yang);
+        let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
     }
 }

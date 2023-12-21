@@ -17,7 +17,7 @@ mod test_seer {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::types::pragma::PricesResponse;
+    use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::{Wad, WAD_SCALE};
     use snforge_std::{
@@ -348,11 +348,12 @@ mod test_seer {
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
-                PricesResponse {
-                    price: pragma_utils::convert_price_to_pragma_scale(seer_utils::ETH_INIT_PRICE.into()).into(),
+                PragmaPricesResponse {
+                    price: pragma_utils::convert_price_to_pragma_scale(eth_price),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
-                    last_updated_timestamp: get_block_timestamp().into(),
-                    num_sources_aggregated: 0
+                    last_updated_timestamp: get_block_timestamp(),
+                    num_sources_aggregated: 0,
+                    expiration_timestamp: Option::None,
                 }
             );
 

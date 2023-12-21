@@ -1,6 +1,5 @@
 mod test_pragma {
     use debug::PrintTrait;
-    use integer::U256Zeroable;
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;
     use opus::external::pragma::pragma as pragma_contract;
@@ -15,7 +14,7 @@ mod test_pragma {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::types::pragma::{PricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
     use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
@@ -81,7 +80,7 @@ mod test_pragma {
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
-        let new_sources: u64 = 8;
+        let new_sources: u32 = 8;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(new_freshness, new_sources);
@@ -108,7 +107,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::LOWER_FRESHNESS_BOUND - 1;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
@@ -120,7 +119,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::UPPER_FRESHNESS_BOUND + 1;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
@@ -132,7 +131,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let invalid_sources: u64 = pragma_contract::LOWER_SOURCES_BOUND - 1;
+        let invalid_sources: u32 = pragma_contract::LOWER_SOURCES_BOUND - 1;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
@@ -144,7 +143,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let invalid_sources: u64 = pragma_contract::UPPER_SOURCES_BOUND + 1;
+        let invalid_sources: u32 = pragma_contract::UPPER_SOURCES_BOUND + 1;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
         pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
@@ -156,7 +155,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
-        let valid_sources: u64 = pragma_utils::SOURCES_THRESHOLD;
+        let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
         start_prank(CheatTarget::All, common::badguy());
         pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
@@ -171,7 +170,7 @@ mod test_pragma {
         let pepe_token: ContractAddress = common::deploy_token(
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
-        let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
+        let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
@@ -201,7 +200,7 @@ mod test_pragma {
         let pepe_token: ContractAddress = common::deploy_token(
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
-        let pepe_token_pair_id: u256 = pragma_utils::PEPE_USD_PAIR_ID;
+        let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
@@ -211,12 +210,13 @@ mod test_pragma {
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
 
         // fake data for a second set_yang_pair_id, so its distinct from the first call
-        let pepe_token_pair_id_2: u256 = 'WILDPEPE/USD'.into();
-        let response = PricesResponse {
-            price: price.into(),
+        let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD';
+        let response = PragmaPricesResponse {
+            price: price,
             decimals: pragma_utils::PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: (current_ts + 100).into(),
-            num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES
+            last_updated_timestamp: current_ts + 100,
+            num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
         mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
 
@@ -252,7 +252,7 @@ mod test_pragma {
     fn test_set_yang_pair_id_invalid_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        let invalid_pair_id = U256Zeroable::zero();
+        let invalid_pair_id = 0;
         pragma.set_yang_pair_id(mock_eth_token_addr(), invalid_pair_id);
     }
 
@@ -281,12 +281,13 @@ mod test_pragma {
         let pragma_price_scale: u128 = pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
-        let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
-        let pepe_response = PricesResponse {
-            price: pepe_price.into(),
+        let invalid_decimals: u32 = (WAD_DECIMALS + 1).into();
+        let pepe_response = PragmaPricesResponse {
+            price: pepe_price,
             decimals: invalid_decimals,
             last_updated_timestamp: 10000000,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
+            expiration_timestamp: Option::None,
         };
         mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_response);
 
@@ -317,7 +318,7 @@ mod test_pragma {
         pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, first_ts);
 
         let mut wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
-        pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price.into(), first_ts);
+        pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, first_ts);
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
@@ -375,8 +376,8 @@ mod test_pragma {
                     pragma_contract::InvalidPriceUpdate {
                         yang: eth_addr,
                         price: eth_price,
-                        pragma_last_updated_ts: now.into(),
-                        pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES.into(),
+                        pragma_last_updated_ts: now,
+                        pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES,
                     }
                 )
             ),
@@ -406,15 +407,16 @@ mod test_pragma {
 
         // prepare the response from mock oracle in such a way
         // that it has less than the required number of sources
-        let num_sources: u256 = (pragma_utils::SOURCES_THRESHOLD - 1).into();
+        let num_sources: u32 = pragma_utils::SOURCES_THRESHOLD - 1;
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
-                PricesResponse {
-                    price: pragma_utils::convert_price_to_pragma_scale(eth_price).into(),
+                PragmaPricesResponse {
+                    price: pragma_utils::convert_price_to_pragma_scale(eth_price),
                     decimals: pragma_utils::PRAGMA_DECIMALS.into(),
-                    last_updated_timestamp: now.into(),
-                    num_sources_aggregated: num_sources
+                    last_updated_timestamp: now,
+                    num_sources_aggregated: num_sources,
+                    expiration_timestamp: Option::None,
                 }
             );
 
@@ -429,10 +431,7 @@ mod test_pragma {
                 pragma.contract_address,
                 pragma_contract::Event::InvalidPriceUpdate(
                     pragma_contract::InvalidPriceUpdate {
-                        yang: eth_addr,
-                        price: eth_price,
-                        pragma_last_updated_ts: now.into(),
-                        pragma_num_sources: num_sources
+                        yang: eth_addr, price: eth_price, pragma_last_updated_ts: now, pragma_num_sources: num_sources
                     }
                 )
             ),

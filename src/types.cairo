@@ -215,17 +215,18 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
 mod pragma {
     #[derive(Copy, Drop, Serde)]
     enum DataType {
-        Spot: u256,
-        Future: u256,
-        Generic: u256,
+        SpotEntry: felt252,
+        FutureEntry: (felt252, u64),
+        GenericEntry: felt252,
     }
 
-    #[derive(Copy, Drop, Serde, starknet::Store)]
-    struct PricesResponse {
-        price: u256,
-        decimals: u256,
-        last_updated_timestamp: u256,
-        num_sources_aggregated: u256,
+    #[derive(Copy, Drop, Serde)]
+    struct PragmaPricesResponse {
+        price: u128,
+        decimals: u32,
+        last_updated_timestamp: u64,
+        num_sources_aggregated: u32,
+        expiration_timestamp: Option<u64>,
     }
 
     #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
@@ -236,6 +237,6 @@ mod pragma {
         freshness: u64,
         // the minimum number of data publishers used to aggregate the
         // price value
-        sources: u64
+        sources: u32,
     }
 }
