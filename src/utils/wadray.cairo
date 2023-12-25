@@ -500,3 +500,9 @@ fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
     (n * scale).into()
 }
+
+fn wad_to_fixed_point(n: Wad, decimals: u8) -> u128 {
+    assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
+    let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
+    n.val / scale
+}

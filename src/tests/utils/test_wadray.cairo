@@ -1,7 +1,7 @@
 mod test_wadray {
     use opus::utils::wadray::{
-        DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad, WAD_ONE,
-        WAD_DECIMALS, WAD_SCALE, wdiv_rw, rdiv_ww, wmul_rw, wmul_wr
+        DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, wad_to_fixed_point, Wad,
+        WadZeroable, WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, rdiv_ww, wmul_rw, wmul_wr
     };
     use opus::utils::wadray;
 
@@ -353,5 +353,27 @@ mod test_wadray {
     #[should_panic(expected: ('More than 18 decimals',))]
     fn test_fixed_point_to_wad_fail() {
         let _: Wad = fixed_point_to_wad(1, WAD_DECIMALS + 1);
+    }
+
+    #[test]
+    fn test_wad_to_fixed_point_zero() {
+        // Test zero amount with varying decimals
+        assert(wad_to_fixed_point(WadZeroable::zero(), 0) == 0_u128.into(), 'Incorrect wad>fp conversion #1');
+        assert(wad_to_fixed_point(WadZeroable::zero(), 6) == 0_u128.into(), 'Incorrect wad>fp conversion #2');
+        assert(wad_to_fixed_point(WadZeroable::zero(), 18) == 0_u128.into(), 'Incorrect wad>fp conversion #3');
+    }
+
+    #[test]
+    fn test_wad_to_fixed_point_non_zero() {
+        // Test non-zero amount with varying decimals
+        assert(wad_to_fixed_point(WAD_ONE.into(), 0) == 1_u128, 'Incorrect wad>fp conversion #4');
+        assert(wad_to_fixed_point(WAD_ONE.into(), 6) == 1000000_u128, 'Incorrect wad>fp conversion #5');
+        assert(wad_to_fixed_point(WAD_ONE.into(), 18) == WAD_ONE, 'Incorrect wad>fp conversion #6');
+    }
+
+    #[test]
+    #[should_panic(expected: ('More than 18 decimals',))]
+    fn test_wad_to_fixed_point_fail() {
+        let _: u128 = wad_to_fixed_point(1_u128.into(), WAD_DECIMALS + 1);
     }
 }

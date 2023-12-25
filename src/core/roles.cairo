@@ -196,6 +196,11 @@ mod shrine_roles {
         ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
+    #[inline(always)]
+    fn transmuter() -> u128 {
+        ADJUST_BUDGET + EJECT + INJECT
+    }
+
     #[cfg(test)]
     #[inline(always)]
     fn all_roles() -> u128 {
@@ -218,5 +223,39 @@ mod shrine_roles {
             + UPDATE_YANG_SUSPENSION
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
+    }
+}
+
+mod transmuter_roles {
+    const ENABLE_RECLAIM: u128 = 1;
+    const KILL: u128 = 2;
+    const SETTLE: u128 = 4;
+    const SET_CEILING: u128 = 8;
+    const SET_FEES: u128 = 16;
+    const SET_PERCENTAGE_CAP: u128 = 32;
+    const SET_RECEIVER: u128 = 64;
+    const SWEEP: u128 = 128;
+    const TOGGLE_REVERSIBILITY: u128 = 256;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ENABLE_RECLAIM
+            + KILL
+            + SETTLE
+            + SET_CEILING
+            + SET_FEES
+            + SET_PERCENTAGE_CAP
+            + SET_RECEIVER
+            + SWEEP
+            + TOGGLE_REVERSIBILITY
+    }
+}
+
+mod transmuter_registry_roles {
+    const MODIFY: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        MODIFY
     }
 }
