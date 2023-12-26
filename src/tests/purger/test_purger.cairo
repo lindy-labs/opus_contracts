@@ -2374,7 +2374,7 @@ mod test_purger {
                                                         let target_trove_updated_start_health: Health = shrine
                                                             .get_trove_health(target_trove);
 
-                                                        // Sanity check to ensure recovery mode paramterization is correct
+                                                        // Sanity check to ensure recovery mode parameterization is correct
                                                         // Due to the changes in yang prices, there may be a very slight
                                                         // deviation in the threshold. Therefore, we treat the new threshold
                                                         // as equal to the previous threshold if it is within 0.1%
