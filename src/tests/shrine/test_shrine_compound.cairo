@@ -170,7 +170,7 @@ mod test_shrine_compound {
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
-        let mut expected_events = array![
+        let expected_events = array![
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -674,18 +674,6 @@ mod test_shrine_compound {
 
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
-
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TotalTrovesDebtUpdated(
-                shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-            ),
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                }
-            ),
-        ]
-            .span();
 
         let expected_events = array![
             (

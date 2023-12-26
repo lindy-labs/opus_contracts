@@ -159,6 +159,8 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
 
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
         let yang_addrs = shrine_utils::three_yang_addrs();
         let yang_start_prices = shrine_utils::three_yang_start_prices();
         let yang_feeds = shrine_utils::advance_prices_and_set_multiplier(
@@ -171,7 +173,7 @@ mod test_shrine {
             *yang_start_prices.at(0), *yang_start_prices.at(1), *yang_start_prices.at(2),
         ];
 
-        let mut expected_events: Array<shrine_contract::Event> = ArrayTrait::new();
+        let mut expected_events: Array<(ContractAddress, shrine_contract::Event)> = ArrayTrait::new();
 
         let start_interval: u64 = shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP);
         let mut yang_addrs_copy = yang_addrs;
@@ -226,14 +228,17 @@ mod test_shrine {
 
                         expected_events
                             .append(
-                                shrine_contract::Event::YangPriceUpdated(
-                                    shrine_contract::YangPriceUpdated {
-                                        yang: *yang_addr,
-                                        price: expected_price,
-                                        cumulative_price: expected_cumulative_price,
-                                        interval
-                                    }
-                                )
+                                (
+                                    shrine.contract_address,
+                                    shrine_contract::Event::YangPriceUpdated(
+                                        shrine_contract::YangPriceUpdated {
+                                            yang: *yang_addr,
+                                            price: expected_price,
+                                            cumulative_price: expected_cumulative_price,
+                                            interval
+                                        }
+                                    ),
+                                ),
                             );
 
                         yang_idx += 1;
@@ -249,15 +254,20 @@ mod test_shrine {
 
             expected_events
                 .append(
-                    shrine_contract::Event::MultiplierUpdated(
-                        shrine_contract::MultiplierUpdated {
-                            multiplier: RAY_ONE.into(), cumulative_multiplier: expected_cumulative_multiplier, interval
-                        }
-                    )
+                    (
+                        shrine.contract_address,
+                        shrine_contract::Event::MultiplierUpdated(
+                            shrine_contract::MultiplierUpdated {
+                                multiplier: RAY_ONE.into(),
+                                cumulative_multiplier: expected_cumulative_multiplier,
+                                interval
+                            }
+                        ),
+                    ),
                 );
             idx += 1;
         };
-    //common::assert_s_emitted(shrine_addr, expected_events.span(), Option::None);
+        spy.assert_emitted(@expected_events);
     }
 
     //
@@ -1316,11 +1326,6 @@ mod test_shrine {
         assert(success, 'yin transfer fail');
         assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(yin.balance_of(yin_user) == shrine_utils::TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
-
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Transfer(shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: 0, }),
-        ]
-            .span();
 
         let expected_events = array![
             (

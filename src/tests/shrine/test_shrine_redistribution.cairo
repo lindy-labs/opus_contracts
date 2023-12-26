@@ -814,7 +814,7 @@ mod test_shrine_redistribution {
 
         let expected_redistribution_id: u32 = 1;
 
-        let mut expected_events = array![
+        let expected_events = array![
             (
                 shrine.contract_address,
                 shrine_contract::Event::TroveRedistributed(
