@@ -134,7 +134,7 @@ mod transmuter_utils {
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
         let seed_amt: Wad = START_TOTAL_YIN.into();
-        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user(),);
+        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user());
 
         (shrine, transmuter, mock_usd_stable)
     }

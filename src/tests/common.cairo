@@ -237,7 +237,7 @@ fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,) -> Span<Span<u128>> {
+fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {

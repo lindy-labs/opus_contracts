@@ -6,8 +6,8 @@ trait ISentinel<TContractState> {
     // getters
     fn get_gate_address(self: @TContractState, yang: ContractAddress) -> ContractAddress;
     fn get_gate_live(self: @TContractState, yang: ContractAddress) -> bool;
-    fn get_yang_addresses(self: @TContractState,) -> Span<ContractAddress>;
-    fn get_yang_addresses_count(self: @TContractState,) -> u64;
+    fn get_yang_addresses(self: @TContractState) -> Span<ContractAddress>;
+    fn get_yang_addresses_count(self: @TContractState) -> u64;
     fn get_yang(self: @TContractState, idx: u64) -> ContractAddress;
     fn get_yang_asset_max(self: @TContractState, yang: ContractAddress) -> u128;
     fn get_asset_amt_per_yang(self: @TContractState, yang: ContractAddress) -> Wad;

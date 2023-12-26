@@ -289,7 +289,7 @@ mod shrine_utils {
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
-        advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),);
+        advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices());
         shrine
     }
 
@@ -601,7 +601,7 @@ mod shrine_utils {
     // the initial yang amount.
     // We do not check for strict equality because there may be loss of precision when
     // exceptionally redistributed yang are pulled into troves.
-    fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,) {
+    fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64) {
         let troves_loop_end: u64 = troves_count + 1;
 
         let mut yang_id: u32 = 1;
@@ -719,7 +719,7 @@ mod shrine_utils {
         common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #2');
     }
 
-    fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,) {
+    fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
         assert_total_troves_debt_invariant(shrine, yangs, troves_count);
     }

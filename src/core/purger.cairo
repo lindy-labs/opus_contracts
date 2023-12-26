@@ -595,7 +595,7 @@ mod purger {
     // Helper function to calculate percentage of collateral freed.
     // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
-    fn get_percentage_freed(trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad,) -> Ray {
+    fn get_percentage_freed(trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
             wadray::rdiv_ww(purge_amt + penalty_amt, trove_value)
