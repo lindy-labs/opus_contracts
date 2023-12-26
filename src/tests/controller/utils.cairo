@@ -4,7 +4,7 @@ mod controller_utils {
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;

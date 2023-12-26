@@ -21,8 +21,8 @@ mod purger_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;

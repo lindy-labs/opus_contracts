@@ -11,7 +11,7 @@ mod seer_utils {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{

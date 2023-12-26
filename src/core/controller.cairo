@@ -1,9 +1,9 @@
 #[starknet::contract]
 mod controller {
+    use access_control::access_control_component;
     use opus::core::roles::controller_roles;
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::access_control::access_control_component;
     use opus::utils::math;
 
     use starknet::{ContractAddress, contract_address, get_block_timestamp};

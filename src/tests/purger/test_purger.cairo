@@ -20,8 +20,8 @@ mod test_purger {
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::math::pow;
+    use opus::utils::math::{pow, scale_u128_by_ray};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
@@ -3137,7 +3137,7 @@ mod test_purger {
         let btc_threshold_decrease_factor: Ray = (target_trove_start_health.ltv - eth_weight * eth_threshold)
             / (btc_weight * btc_threshold);
         let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
-            - wadray::scale_u128_by_ray(shrine_contract::SUSPENSION_GRACE_PERIOD.into(), btc_threshold_decrease_factor)
+            - scale_u128_by_ray(shrine_contract::SUSPENSION_GRACE_PERIOD.into(), btc_threshold_decrease_factor)
                 .try_into()
                 .unwrap();
 
@@ -3252,7 +3252,7 @@ mod test_purger {
 
                                                         let decrease_factor: Ray = *desired_threshold / eth_threshold;
                                                         let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
-                                                            - wadray::scale_u128_by_ray(
+                                                            - scale_u128_by_ray(
                                                                 shrine_contract::SUSPENSION_GRACE_PERIOD.into(),
                                                                 decrease_factor
                                                             )
@@ -3639,12 +3639,12 @@ mod test_purger {
                                                             target_trove_start_health.value
                                                         );
 
-                                                        let expected_eth_comp: u128 = wadray::scale_u128_by_ray(
+                                                        let expected_eth_comp: u128 = scale_u128_by_ray(
                                                             purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT,
                                                             expected_compensation_pct
                                                         );
 
-                                                        let expected_wbtc_comp: u128 = wadray::scale_u128_by_ray(
+                                                        let expected_wbtc_comp: u128 = scale_u128_by_ray(
                                                             purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT,
                                                             expected_compensation_pct
                                                         );

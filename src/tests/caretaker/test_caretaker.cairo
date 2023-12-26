@@ -11,8 +11,8 @@ mod test_caretaker {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::fixed_point_to_wad;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};

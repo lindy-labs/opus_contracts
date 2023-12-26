@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod purger {
+    use access_control::access_control_component;
     use cmp::min;
     use core::math::Oneable;
     use core::zeroable::Zeroable;
@@ -10,7 +11,6 @@ mod purger {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
 
     use starknet::{ContractAddress, get_caller_address};

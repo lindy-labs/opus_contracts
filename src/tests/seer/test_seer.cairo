@@ -18,7 +18,7 @@ mod test_seer {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::PragmaPricesResponse;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait

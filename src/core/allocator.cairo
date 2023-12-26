@@ -1,8 +1,8 @@
 #[starknet::contract]
 mod allocator {
+    use access_control::access_control_component;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
-    use opus::utils::access_control::access_control_component;
     use starknet::ContractAddress;
     use wadray::{Ray, RayZeroable, RAY_ONE};
 

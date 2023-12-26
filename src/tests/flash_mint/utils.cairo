@@ -4,7 +4,7 @@ mod flash_mint_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_borrower::flash_borrower as flash_borrower_contract;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;

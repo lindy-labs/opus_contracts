@@ -15,8 +15,8 @@ mod test_pragma {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::ContractAddressZeroable;

@@ -1,8 +1,8 @@
 #[starknet::contract]
 mod transmuter_registry {
+    use access_control::access_control_component;
     use opus::core::roles::transmuter_registry_roles;
     use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry};
-    use opus::utils::access_control::access_control_component;
     use opus::utils::address_registry::address_registry_component;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 

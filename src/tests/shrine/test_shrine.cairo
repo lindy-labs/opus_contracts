@@ -11,7 +11,7 @@ mod test_shrine {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};

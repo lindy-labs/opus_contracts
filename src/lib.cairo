@@ -1,4 +1,6 @@
 mod types;
+
+use utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 mod core {
     mod abbot;
     mod absorber;

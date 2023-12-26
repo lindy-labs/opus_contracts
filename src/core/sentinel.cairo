@@ -1,12 +1,12 @@
 #[starknet::contract]
 mod sentinel {
+    use access_control::access_control_component;
     use opus::core::roles::sentinel_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::access_control::access_control_component;
     use opus::utils::math::fixed_point_to_wad;
 
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};

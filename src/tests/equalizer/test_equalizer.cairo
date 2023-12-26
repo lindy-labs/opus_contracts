@@ -12,7 +12,7 @@ mod test_equalizer {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::testing::{set_block_timestamp};

@@ -11,10 +11,10 @@ mod transmuter_utils {
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::Wad;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use wadray::Wad;
 
     // Constants
 

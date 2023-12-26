@@ -9,8 +9,8 @@ mod test_sentinel {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::fixed_point_to_wad;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,

@@ -1,15 +1,14 @@
 #[starknet::contract]
 mod transmuter {
+    use access_control::access_control_component;
     use cmp::min;
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
-    use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
+    use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use wadray::{Ray, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Components
@@ -542,7 +541,7 @@ mod transmuter {
         fn preview_transmute_helper(self: @ContractState, asset_amt: u128) -> (Wad, Wad) {
             self.assert_live();
 
-            let yin_amt: Wad = wadray::fixed_point_to_wad(asset_amt, self.asset.read().decimals());
+            let yin_amt: Wad = fixed_point_to_wad(asset_amt, self.asset.read().decimals());
             self.assert_can_transmute(yin_amt);
 
             let fee: Wad = wadray::rmul_wr(yin_amt, self.transmute_fee.read());
@@ -562,7 +561,7 @@ mod transmuter {
             let fee: Wad = wadray::rmul_wr(yin_amt.into(), self.reverse_fee.read());
 
             let asset: IERC20Dispatcher = self.asset.read();
-            let asset_amt: u128 = wadray::wad_to_fixed_point(yin_amt - fee, asset.decimals());
+            let asset_amt: u128 = wad_to_fixed_point(yin_amt - fee, asset.decimals());
 
             assert(asset.balance_of(get_contract_address()) >= asset_amt.into(), 'TR: Insufficient assets');
 

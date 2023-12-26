@@ -1,8 +1,8 @@
 mod test_access_control {
+    use access_control::access_control_component::{AccessControlPublic, AccessControlHelpers};
+    use access_control::access_control_component;
     use opus::tests::common;
     use opus::tests::utils::mock_access_control::mock_access_control;
-    use opus::utils::access_control::access_control_component::{AccessControlPublic, AccessControlHelpers};
-    use opus::utils::access_control::access_control_component;
     use snforge_std::cheatcodes::events::EventAssertions;
     use snforge_std::{
         spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, start_prank, CheatTarget, test_address,

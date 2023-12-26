@@ -6,8 +6,8 @@ mod shrine_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::types::{Health, YangRedistribution};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::exp::exp;
+    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
 
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait

@@ -6,6 +6,7 @@
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
 mod absorber {
+    use access_control::access_control_component;
     use cmp::min;
     use integer::u256_safe_divmod;
     use opus::core::roles::absorber_roles;
@@ -14,10 +15,8 @@ mod absorber {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
-    use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable};
-    use opus::utils::wadray;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use wadray::{Ray, RayZeroable, u128_wdiv, u128_wmul, Wad, WadZeroable};
 
     //
     // Components
@@ -729,12 +728,8 @@ mod absorber {
             let last_error: u128 = self.get_recent_asset_absorption_error(asset_balance.address, absorption_id);
             let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
 
-            let asset_amt_per_share: u128 = wadray::wdiv_internal(
-                total_amount_to_distribute, total_recipient_shares.val
-            );
-            let actual_amount_distributed: u128 = wadray::wmul_internal(
-                asset_amt_per_share, total_recipient_shares.val
-            );
+            let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.val);
+            let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.val);
             let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
             self
@@ -864,7 +859,7 @@ mod absorber {
                                 .asset_absorption
                                 .read((*asset, start_absorption_id));
 
-                            absorbed_amt += wadray::wmul_internal(adjusted_shares.val, absorption.asset_amt_per_share);
+                            absorbed_amt += u128_wmul(adjusted_shares.val, absorption.asset_amt_per_share);
                         };
 
                         absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
@@ -945,12 +940,8 @@ mod absorber {
                         .read((reward.asset, epoch));
                     let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
 
-                    let asset_amt_per_share: u128 = wadray::wdiv_internal(
-                        total_amount_to_distribute, total_recipient_shares.val
-                    );
-                    let actual_amount_distributed: u128 = wadray::wmul_internal(
-                        asset_amt_per_share, total_recipient_shares.val
-                    );
+                    let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.val);
+                    let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.val);
                     let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
                     let updated_asset_amt_per_share: u128 = epoch_reward_info.asset_amt_per_share + asset_amt_per_share;
@@ -1013,7 +1004,7 @@ mod absorber {
                     let asset_amt_per_share: u128 = if include_pending_rewards && epoch == current_epoch {
                         let total_recipient_shares: Wad = self.total_shares.read() - INITIAL_SHARES.into();
                         let pending_amt: u128 = reward.blesser.preview_bless();
-                        let pending_amt_per_share: u128 = wadray::wdiv_internal(
+                        let pending_amt_per_share: u128 = u128_wdiv(
                             pending_amt + epoch_reward_info.error, total_recipient_shares.val
                         );
                         epoch_reward_info.asset_amt_per_share + pending_amt_per_share
@@ -1029,7 +1020,7 @@ mod absorber {
                     } else {
                         asset_amt_per_share
                     };
-                    reward_amt += wadray::wmul_internal(rate, epoch_shares.val);
+                    reward_amt += u128_wmul(rate, epoch_shares.val);
 
                     epoch_shares = self.convert_epoch_shares(epoch, epoch + 1, epoch_shares);
 
