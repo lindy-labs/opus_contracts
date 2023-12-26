@@ -4,7 +4,7 @@ version = 1
 [[package]]
 name = "access_control"
 version = "0.2.0"
-source = "git+https://github.com/lindy-labs/access_control.git?branch=main#644402efcb23d96a17158712b43d0f54e3c3563e"
+source = "git+https://github.com/lindy-labs/access_control.git?branch=main#5365102134c5d96d5cf67d5f3f4cefd11cbf26f2"
 dependencies = [
  "snforge_std",
 ]

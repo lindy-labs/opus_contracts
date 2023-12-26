@@ -1,4 +1,5 @@
 mod shrine_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -7,8 +8,6 @@ mod shrine_utils {
     use opus::tests::common;
     use opus::types::{Health, YangRedistribution};
     use opus::utils::exp::exp;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
     };

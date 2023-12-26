@@ -1,4 +1,5 @@
 mod caretaker_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
@@ -11,7 +12,6 @@ mod caretaker_utils {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::{ContractAddress, contract_address_try_from_felt252, contract_address_to_felt252};
 

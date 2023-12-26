@@ -1,4 +1,5 @@
 mod test_pragma {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;
@@ -16,8 +17,6 @@ mod test_pragma {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::pow;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};

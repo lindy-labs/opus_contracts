@@ -1,4 +1,5 @@
 mod test_purger {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::{max, min};
     use core::option::OptionTrait;
     use integer::BoundedU256;
@@ -21,8 +22,6 @@ mod test_purger {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
         EventFetcher, event_name_hash

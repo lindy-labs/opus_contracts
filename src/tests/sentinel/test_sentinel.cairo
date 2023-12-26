@@ -1,4 +1,5 @@
 mod test_sentinel {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::sentinel_roles;
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -10,8 +11,6 @@ mod test_sentinel {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::fixed_point_to_wad;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         PrintTrait

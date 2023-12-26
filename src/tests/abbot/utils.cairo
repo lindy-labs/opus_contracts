@@ -1,4 +1,5 @@
 mod abbot_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -8,8 +9,6 @@ mod abbot_utils {
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252,};

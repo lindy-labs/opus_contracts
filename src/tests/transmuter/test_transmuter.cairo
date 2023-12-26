@@ -1,4 +1,5 @@
 mod test_transmuter {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::min;
     use debug::PrintTrait;
     use integer::BoundedInt;
@@ -11,7 +12,6 @@ mod test_transmuter {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };

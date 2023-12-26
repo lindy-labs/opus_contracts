@@ -1,4 +1,5 @@
 mod pragma_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::{pragma_roles, shrine_roles};
     use opus::external::pragma::pragma as pragma_contract;
@@ -16,8 +17,6 @@ mod pragma_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::math::pow;
-    use opus::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
