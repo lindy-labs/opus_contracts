@@ -2,9 +2,18 @@
 version = 1
 
 [[package]]
+name = "access_control"
+version = "0.2.0"
+source = "git+https://github.com/lindy-labs/access_control.git?branch=main#644402efcb23d96a17158712b43d0f54e3c3563e"
+dependencies = [
+ "snforge_std",
+]
+
+[[package]]
 name = "opus"
 version = "0.1.0"
 dependencies = [
+ "access_control",
  "snforge_std",
  "wadray",
 ]
@@ -12,9 +21,12 @@ dependencies = [
 [[package]]
 name = "snforge_std"
 version = "0.1.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.11.0#5465c41541c44a7804d16318fab45a2f0ccec9e7"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.13.1#e1412ed040d10e66be0fd84115f72a667b57a116"
 
 [[package]]
 name = "wadray"
-version = "0.1.0"
-source = "git+https://github.com/lindy-labs/wadray.git?tag=v0.1.0#ea1fa019e7c7c60878ac1e613bc81693524436f5"
+version = "0.2.0"
+source = "git+https://github.com/lindy-labs/wadray.git?branch=main#8eabf1a77cc38c589e432b9e71552af2893802ba"
+dependencies = [
+ "snforge_std",
+]
