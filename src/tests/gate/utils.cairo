@@ -7,11 +7,11 @@ mod gate_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable};
-    use opus::utils::wadray;
+
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use wadray::{Ray, Wad, WadZeroable};
 
     //
     // Address constants

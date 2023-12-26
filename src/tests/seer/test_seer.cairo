@@ -19,13 +19,13 @@ mod test_seer {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Wad, WAD_SCALE};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
+    use wadray::{Wad, WAD_SCALE};
 
     #[test]
     fn test_seer_setup() {

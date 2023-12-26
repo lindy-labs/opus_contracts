@@ -13,13 +13,13 @@ mod test_equalizer {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
-    use opus::utils::wadray_signed;
+
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
+
+    use wadray::SignedWad;
+    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
     #[test]
     fn test_equalizer_deploy() {

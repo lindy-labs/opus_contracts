@@ -10,14 +10,15 @@ mod test_sentinel {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
-    use opus::utils::wadray;
+    use opus::utils::math::fixed_point_to_wad;
+
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         PrintTrait
     };
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
+    use wadray::{Ray, Wad, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -88,7 +89,7 @@ mod test_sentinel {
 
         assert(shrine.get_yang_total(eth) == sentinel_contract::INITIAL_DEPOSIT_AMT.into(), 'Wrong yang total #1');
         assert(
-            shrine.get_yang_total(wbtc) == wadray::fixed_point_to_wad(sentinel_contract::INITIAL_DEPOSIT_AMT, 8),
+            shrine.get_yang_total(wbtc) == fixed_point_to_wad(sentinel_contract::INITIAL_DEPOSIT_AMT, 8),
             'Wrong yang total #2'
         );
 

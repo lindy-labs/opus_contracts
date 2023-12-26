@@ -12,14 +12,12 @@ mod shrine {
     };
     use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
-    use opus::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
-    };
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
-    use opus::utils::wadray_signed;
+
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
+
+    use wadray::SignedWad;
+    use wadray::{BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     //
     // Components

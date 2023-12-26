@@ -10,11 +10,11 @@ mod sentinel_utils {
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Wad, Ray};
-    use opus::utils::wadray;
+
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_caller_address};
+    use wadray::{Wad, Ray};
 
     const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
     const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8

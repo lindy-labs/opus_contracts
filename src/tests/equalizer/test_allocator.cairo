@@ -6,9 +6,9 @@ mod test_allocator {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::Ray;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
+    use wadray::Ray;
 
     #[test]
     fn test_allocator_deploy() {

@@ -7,11 +7,11 @@ mod test_controller {
     use opus::tests::common;
     use opus::tests::controller::utils::controller_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::wadray::{Ray, Wad};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
-    use opus::utils::wadray_signed;
+
     use snforge_std::{start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use wadray::{Ray, Wad};
+
+    use wadray::{SignedRay, SignedRayZeroable};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad

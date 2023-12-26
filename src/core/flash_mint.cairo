@@ -20,9 +20,9 @@ mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::{Wad, WadZeroable};
-    use opus::utils::wadray_signed;
+
     use starknet::{ContractAddress, get_caller_address};
+    use wadray::{Wad, WadZeroable};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver

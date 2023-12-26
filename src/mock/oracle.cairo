@@ -1,8 +1,8 @@
-use opus::utils::wadray::Wad;
 // mock oracle contract for storing token prices
 // and advancing shrine on request
 
 use starknet::ContractAddress;
+use wadray::Wad;
 
 #[starknet::interface]
 trait MockOracle<TContractState> {
@@ -12,8 +12,8 @@ trait MockOracle<TContractState> {
 #[starknet::contract]
 mod mock_oracle {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::wadray::Wad;
     use starknet::ContractAddress;
+    use wadray::Wad;
 
     #[storage]
     struct Storage {

@@ -1,6 +1,6 @@
-use opus::utils::wadray::Ray;
-use opus::utils::wadray_signed::SignedRay;
 use starknet::ContractAddress;
+use wadray::Ray;
+use wadray::SignedRay;
 
 #[starknet::interface]
 trait IController<TContractState> {

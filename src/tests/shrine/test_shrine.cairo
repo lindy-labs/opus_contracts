@@ -12,16 +12,16 @@ mod test_shrine {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT,
-        WAD_ONE, WAD_SCALE
-    };
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
-    use opus::utils::wadray_signed;
+
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::get_block_timestamp;
+
+    use wadray::SignedWad;
+    use wadray::{
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT,
+        WAD_ONE, WAD_SCALE
+    };
 
     //
     // Tests - Deployment and initial setup of Shrine

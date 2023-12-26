@@ -45,8 +45,6 @@ mod utils {
     mod exp;
     mod math;
     mod reentrancy_guard;
-    mod wadray;
-    mod wadray_signed;
 }
 
 // mock used for local devnet deployment
@@ -121,7 +119,5 @@ mod tests {
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;
-        mod test_wadray;
-        mod test_wadray_signed;
     }
 }

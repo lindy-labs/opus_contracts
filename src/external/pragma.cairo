@@ -13,9 +13,10 @@ mod pragma {
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::types::pragma::{DataType, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::Wad;
-    use opus::utils::wadray;
+    use opus::utils::math::fixed_point_to_wad;
+
     use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::Wad;
 
     //
     // Components
@@ -190,7 +191,7 @@ mod pragma {
             let response: PragmaPricesResponse = self.oracle.read().get_data_median(DataType::SpotEntry(pair_id));
 
             // convert price value to Wad
-            let price: Wad = wadray::fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
+            let price: Wad = fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
 
             // if we receive what we consider a valid price from the oracle,
             // return it back, otherwise emit an event about the update being invalid

@@ -12,10 +12,11 @@ mod test_caretaker {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
+    use opus::utils::math::fixed_point_to_wad;
+
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};
+    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
     #[test]
     fn test_caretaker_setup() {
@@ -162,11 +163,9 @@ mod test_caretaker {
 
         // assert released amount for wbtc (need to deal w/ different decimals)
         let wbtc_tolerance: Wad = (2 * 10000000000_u128).into(); // 2 satoshi
-        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
+        let wbtc_deposit: Wad = fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
         let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
-        let actual_release_y1: Wad = wadray::fixed_point_to_wad(
-            *trove1_released_assets.at(1).amount, common::WBTC_DECIMALS
-        );
+        let actual_release_y1: Wad = fixed_point_to_wad(*trove1_released_assets.at(1).amount, common::WBTC_DECIMALS);
         common::assert_equalish(actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release');
 
         // assert all deposits were released and assets are back in user's account

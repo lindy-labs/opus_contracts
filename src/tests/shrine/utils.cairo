@@ -8,8 +8,7 @@ mod shrine_utils {
     use opus::types::{Health, YangRedistribution};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::exp::exp;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
+
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
     };
@@ -17,6 +16,7 @@ mod shrine_utils {
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
+    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     //
     // Constants

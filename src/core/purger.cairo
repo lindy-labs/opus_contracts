@@ -12,9 +12,9 @@ mod purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
-    use opus::utils::wadray;
+
     use starknet::{ContractAddress, get_caller_address};
+    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     //
     // Components

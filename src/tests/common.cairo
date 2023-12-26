@@ -7,13 +7,13 @@ use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
-use opus::utils::wadray::{Ray, Wad, WadZeroable};
-use opus::utils::wadray;
+
 
 use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
+use wadray::{Ray, Wad, WadZeroable};
 
 //
 // Constants

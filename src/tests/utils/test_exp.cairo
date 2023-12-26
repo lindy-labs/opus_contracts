@@ -1,8 +1,8 @@
 mod test_exp {
     use opus::tests::common::assert_equalish;
     use opus::utils::exp::exp;
-    use opus::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
-    use opus::utils::wadray;
+    use wadray::{WAD_ONE, WAD_PERCENT, Wad};
+
 
     // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
     const ACCEPTABLE_ERROR: u128 = 1000000;

@@ -17,11 +17,11 @@ mod test_pragma {
     use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
-    use opus::utils::wadray;
+
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
+    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
     //
     // Address constants

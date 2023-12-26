@@ -7,9 +7,9 @@ mod seer {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::external::ITask;
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::Wad;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::Wad;
 
     //
     // Components

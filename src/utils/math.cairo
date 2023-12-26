@@ -1,7 +1,7 @@
 use integer::u256_sqrt;
 use math::Oneable;
-use opus::utils::wadray::Ray;
-use opus::utils::wadray;
+use wadray::{Ray, Wad, WAD_DECIMALS};
+
 
 fn sqrt(x: Ray) -> Ray {
     let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();
@@ -20,4 +20,10 @@ fn pow<T, impl TMul: Mul<T>, impl TOneable: Oneable<T>, impl TDrop: Drop<T>, imp
     } else {
         x * pow(x * x, (n - 1) / 2)
     }
+}
+
+fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
+    assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
+    let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
+    (n * scale).into()
 }

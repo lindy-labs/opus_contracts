@@ -22,13 +22,13 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
+
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
         EventFetcher, event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests - Setup

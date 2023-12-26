@@ -3,8 +3,8 @@ mod allocator {
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
     use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE};
     use starknet::ContractAddress;
+    use wadray::{Ray, RayZeroable, RAY_ONE};
 
     //
     // Components

@@ -11,9 +11,9 @@ mod caretaker {
     use opus::types::{AssetBalance, Health};
     use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::{Ray, RAY_ONE, Wad};
-    use opus::utils::wadray;
+
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Components

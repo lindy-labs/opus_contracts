@@ -1,6 +1,6 @@
 use opus::types::AssetBalance;
-use opus::utils::wadray::{Ray, Wad};
 use starknet::ContractAddress;
+use wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait IPurger<TContractState> {
