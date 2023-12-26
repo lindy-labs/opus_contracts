@@ -45,7 +45,6 @@ mod interfaces {
 }
 
 mod utils {
-    mod access_control;
     mod address_registry;
     mod exp;
     mod math;
@@ -123,10 +122,8 @@ mod tests {
         mod utils;
     }
     mod utils {
-        mod mock_access_control;
         mod mock_address_registry;
         mod mock_reentrancy_guard;
-        mod test_access_control;
         mod test_address_registry;
         mod test_exp;
         mod test_math;
