@@ -1,4 +1,5 @@
 use cmp::min;
+use core::fmt::{Debug, Display, DisplayInteger, Error, Formatter};
 use integer::{u256_safe_div_rem, u256_try_as_non_zero};
 
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
@@ -31,10 +32,46 @@ struct Health {
     debt: Wad,
 }
 
+impl DisplayHealth of Display<Health> {
+    fn fmt(self: @Health, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "Health(threshold: ");
+        Display::fmt(self.threshold, ref f);
+        write!(f, ", ltv: ");
+        Display::fmt(self.ltv, ref f);
+        write!(f, ", value: ");
+        Display::fmt(self.value, ref f);
+        write!(f, ", debt: ");
+        Display::fmt(self.debt, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugHealth of Debug<Health> {
+    fn fmt(self: @Health, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
+}
+
 #[derive(Copy, Drop, Serde)]
 struct YangBalance {
     yang_id: u32, //  ID of yang in Shrine
     amount: Wad, // Amount of yang in Wad
+}
+
+impl DisplayYangBalance of Display<YangBalance> {
+    fn fmt(self: @YangBalance, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "YangBalance(yang_id: ");
+        Display::fmt(self.yang_id, ref f);
+        write!(f, ", amount: ");
+        Display::fmt(self.amount, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugYangBalance of Debug<YangBalance> {
+    fn fmt(self: @YangBalance, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
 }
 
 #[derive(Copy, Drop, PartialEq, Serde)]
@@ -48,6 +85,24 @@ struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     last_rate_era: u64,
     debt: Wad, // Normalized debt
+}
+
+impl DisplayTrove of Display<Trove> {
+    fn fmt(self: @Trove, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "Trove(charge_from: ");
+        Display::fmt(self.charge_from, ref f);
+        write!(f, ", last_rate_era: ");
+        Display::fmt(self.last_rate_era, ref f);
+        write!(f, ", debt: ");
+        Display::fmt(self.debt, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugTrove of Debug<Trove> {
+    fn fmt(self: @Trove, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
 }
 
 impl TroveStorePacking of StorePacking<Trove, u256> {
@@ -87,6 +142,24 @@ struct YangRedistribution {
     exception: bool,
 }
 
+impl DisplayYangRedistribution of Display<YangRedistribution> {
+    fn fmt(self: @YangRedistribution, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "YangRedistribution(unit_debt: ");
+        Display::fmt(self.unit_debt, ref f);
+        write!(f, ", error: ");
+        Display::fmt(self.error, ref f);
+        write!(f, ", exception: ");
+        Display::fmt(self.exception, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugYangRedistribution of Debug<YangRedistribution> {
+    fn fmt(self: @YangRedistribution, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
+}
+
 // 2 ** 122 - 1
 const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x3ffffffffffffffffffffffffffffff;
 
@@ -115,6 +188,22 @@ struct ExceptionalYangRedistribution {
     unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
 }
 
+impl DisplayExceptionalYangRedistribution of Display<ExceptionalYangRedistribution> {
+    fn fmt(self: @ExceptionalYangRedistribution, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "ExceptionalYangRedistribution(unit_debt: ");
+        Display::fmt(self.unit_debt, ref f);
+        write!(f, ", unit_yang: ");
+        Display::fmt(self.unit_yang, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugExceptionalYangRedistribution of Debug<ExceptionalYangRedistribution> {
+    fn fmt(self: @ExceptionalYangRedistribution, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
+}
+
 //
 // Absorber
 //
@@ -132,6 +221,22 @@ struct DistributionInfo {
     // to prevent redistributions from failing in this unlikely scenario, at the expense of providers
     // losing out on some absorbed assets.
     error: u128,
+}
+
+impl DisplayDistributionInfo of Display<DistributionInfo> {
+    fn fmt(self: @DistributionInfo, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "DistributionInfo(asset_amt_per_share: ");
+        Display::fmt(self.asset_amt_per_share, ref f);
+        write!(f, ", error: ");
+        Display::fmt(self.error, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugDistributionInfo of Debug<DistributionInfo> {
+    fn fmt(self: @DistributionInfo, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
 }
 
 // 2 ** 123 - 1
@@ -167,6 +272,22 @@ struct Provision {
     shares: Wad, // Amount of shares for provider in the above epoch
 }
 
+impl DisplayProvision of Display<Provision> {
+    fn fmt(self: @Provision, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "Provision(epoch: ");
+        Display::fmt(self.epoch, ref f);
+        write!(f, ", shares: ");
+        Display::fmt(self.shares, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugProvision of Debug<Provision> {
+    fn fmt(self: @Provision, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
+}
+
 impl ProvisionStorePacking of StorePacking<Provision, felt252> {
     fn pack(value: Provision) -> felt252 {
         value.epoch.into() + (value.shares.into() * TWO_POW_32)
@@ -186,6 +307,24 @@ struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
     has_removed: bool, // Whether provider has called `remove`
+}
+
+impl DisplayRequest of Display<Request> {
+    fn fmt(self: @Request, ref f: Formatter) -> Result<(), Error> {
+        write!(f, "Request(timestamp: ");
+        Display::fmt(self.timestamp, ref f);
+        write!(f, ", timelock: ");
+        Display::fmt(self.timelock, ref f);
+        write!(f, ", has_removed: ");
+        Display::fmt(self.has_removed, ref f);
+        write!(f, ")")
+    }
+}
+
+impl DebugRequest of Debug<Request> {
+    fn fmt(self: @Request, ref f: Formatter) -> Result<(), Error> {
+        Display::fmt(self, ref f)
+    }
 }
 
 impl RequestStorePacking of StorePacking<Request, felt252> {
