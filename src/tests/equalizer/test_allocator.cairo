@@ -7,7 +7,7 @@ mod test_allocator {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::wadray::Ray;
-    use snforge_std::{start_prank, stop_prank, CheatTarget};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
 
     #[test]
@@ -67,6 +67,8 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
+        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
+
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
         let new_recipients = equalizer_utils::new_recipients();
         let new_percentages = equalizer_utils::new_percentages();
@@ -78,13 +80,16 @@ mod test_allocator {
         assert(recipients.len() == 4, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
-        let mut expected_events: Span<allocator_contract::Event> = array![
-            allocator_contract::Event::AllocationUpdated(
-                allocator_contract::AllocationUpdated { recipients, percentages }
+        let expected_events = array![
+            (
+                allocator.contract_address,
+                allocator_contract::Event::AllocationUpdated(
+                    allocator_contract::AllocationUpdated { recipients, percentages }
+                )
             ),
-        ]
-            .span();
-    //common::assert_events_emitted(allocator.contract_address, expected_events, Option::None);
+        ];
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
