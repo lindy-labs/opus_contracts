@@ -5,11 +5,8 @@ mod controller {
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
-
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-
-    use wadray::{SignedRay, SignedRayZeroable};
-    use wadray::{Wad, Ray, RAY_ONE};
+    use wadray::{Ray, RAY_ONE, SignedRay, SignedRayZeroable, Wad};
 
     //
     // Components

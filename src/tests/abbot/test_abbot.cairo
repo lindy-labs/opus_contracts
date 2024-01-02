@@ -12,7 +12,6 @@ mod test_abbot {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::fixed_point_to_wad;
-
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use wadray::{Wad, WadZeroable, WAD_SCALE};

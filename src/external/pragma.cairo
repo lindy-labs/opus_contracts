@@ -14,7 +14,6 @@ mod pragma {
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::types::pragma::{DataType, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
-
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 

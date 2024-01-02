@@ -10,9 +10,7 @@ mod controller_utils {
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
-
-    use wadray::SignedRay;
-    use wadray::{Ray, Wad};
+    use wadray::{Ray, SignedRay, Wad};
 
     // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour

@@ -1,7 +1,6 @@
 use opus::types::{ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
 use starknet::ContractAddress;
-use wadray::SignedWad;
-use wadray::{Ray, Wad};
+use wadray::{Ray, SignedWad, Wad};
 
 #[starknet::interface]
 trait IShrine<TContractState> {
