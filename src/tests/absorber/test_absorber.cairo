@@ -13,6 +13,7 @@ mod test_absorber {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::common;
+    use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -1696,6 +1697,41 @@ mod test_absorber {
             idx += 1;
         };
         spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    fn test_shrine_killed_and_remove_pass() {
+        let (shrine, abbot, absorber, _, _, _, _, _, provider, provided_amt) =
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        // Increase debt ceiling for recovery mode to be triggered
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
+        shrine.set_debt_ceiling(debt_ceiling);
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, absorber_utils::provider_1());
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        shrine.kill();
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        assert(!shrine.get_live(), 'should be killed');
+
+        // Check provider can remove
+        let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+        start_prank(CheatTarget::One(absorber.contract_address), provider);
+        absorber.request();
+        start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        absorber.remove(BoundedWad::max());
+
+        // Loss of precision
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(
+            shrine.get_yin(provider), before_provider_yin_bal + provided_amt, error_margin, 'wrong yin amount'
+        );
     }
 
     #[test]
