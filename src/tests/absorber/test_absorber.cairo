@@ -1712,7 +1712,7 @@ mod test_absorber {
         shrine.set_debt_ceiling(debt_ceiling);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, absorber_utils::provider_1());
+        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, provider);
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.kill();
