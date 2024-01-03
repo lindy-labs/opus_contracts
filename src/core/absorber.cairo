@@ -894,7 +894,11 @@ mod absorber {
         //
 
         fn assert_can_remove(self: @ContractState, request: Request) {
-            assert(!self.shrine.read().is_recovery_mode(), 'ABS: Recovery Mode active');
+            let shrine = self.shrine.read();
+            // Removal is not allowed if Shrine is live and in recovery mode.
+            if shrine.get_live() {
+                assert(!shrine.is_recovery_mode(), 'ABS: Recovery Mode active');
+            }
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
             assert(!request.has_removed, 'ABS: Only 1 removal per request');
