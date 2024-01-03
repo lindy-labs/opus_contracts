@@ -213,12 +213,9 @@ mod test_absorber {
     #[test]
     fn test_update_after_kill_pass() {
         // Setup
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-
         let (shrine, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
