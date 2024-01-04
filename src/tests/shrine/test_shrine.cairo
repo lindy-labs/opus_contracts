@@ -461,7 +461,7 @@ mod test_shrine {
                 array![
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    RAY_ONE.into(),
                 ]
                     .span()
             );
@@ -470,9 +470,7 @@ mod test_shrine {
         assert(shrine.get_current_rate_era() == expected_rate_era, 'wrong rate era');
 
         let mut expected_rates: Span<Ray> = array![
-            shrine_utils::YANG1_BASE_RATE.into(),
-            shrine_utils::YANG2_BASE_RATE.into(),
-            shrine_utils::YANG3_BASE_RATE.into(),
+            shrine_utils::YANG1_BASE_RATE.into(), shrine_utils::YANG2_BASE_RATE.into(), RAY_ONE.into()
         ]
             .span();
 
@@ -500,6 +498,23 @@ mod test_shrine {
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
+                ]
+                    .span()
+            );
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Rate out of bounds',))]
+    fn test_update_rates_exceed_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine
+            .update_rates(
+                shrine_utils::three_yang_addrs(),
+                array![
+                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    (RAY_ONE + 2).into(),
                 ]
                     .span()
             );

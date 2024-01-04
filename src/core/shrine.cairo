@@ -57,7 +57,7 @@ mod shrine {
     const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
 
     // Maximum interest rate a yang can have (ray): RAY_ONE
-    const MAX_YANG_RATE: u128 = 100000000000000000000000000;
+    const MAX_YANG_RATE: u128 = 1000000000000000000000000000;
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
