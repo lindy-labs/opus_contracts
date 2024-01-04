@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod caretaker {
+    use access_control::access_control_component;
     use cmp::min;
     use opus::core::roles::caretaker_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -9,11 +10,9 @@ mod caretaker {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::access_control_component;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::{Ray, RAY_ONE, Wad};
-    use opus::utils::wadray;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Components

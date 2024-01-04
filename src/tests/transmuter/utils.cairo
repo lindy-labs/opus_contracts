@@ -1,4 +1,5 @@
 mod transmuter_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use integer::BoundedInt;
     use opus::core::roles::shrine_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
@@ -11,10 +12,9 @@ mod transmuter_utils {
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::Wad;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use wadray::Wad;
 
     // Constants
 
@@ -134,7 +134,7 @@ mod transmuter_utils {
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
         let seed_amt: Wad = START_TOTAL_YIN.into();
-        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user(),);
+        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user());
 
         (shrine, transmuter, mock_usd_stable)
     }

@@ -1,5 +1,5 @@
-use opus::utils::wadray::Ray;
 use starknet::ContractAddress;
+use wadray::Ray;
 
 #[starknet::interface]
 trait IAllocator<TContractState> {

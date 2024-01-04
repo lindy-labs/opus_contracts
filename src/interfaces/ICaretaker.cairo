@@ -1,5 +1,5 @@
 use opus::types::AssetBalance;
-use opus::utils::wadray::Wad;
+use wadray::Wad;
 
 #[starknet::interface]
 trait ICaretaker<TContractState> {

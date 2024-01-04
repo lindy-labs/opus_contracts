@@ -3,10 +3,9 @@ mod gate {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::utils::math::pow;
-    use opus::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
-    use opus::utils::wadray;
+    use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -113,7 +112,7 @@ mod gate {
                 return amt.into();
             }
 
-            wadray::fixed_point_to_wad(amt, decimals)
+            fixed_point_to_wad(amt, decimals)
         }
 
         // This can be used to simulate the effects of `enter` at the current on-chain conditions.
@@ -216,7 +215,7 @@ mod gate {
                 // Otherwise, scale `asset_amt` up by the difference to match `Wad`
                 // precision of yang. If asset is of `Wad` precision, then the same
                 // value is returned
-                wadray::fixed_point_to_wad(asset_amt, decimals)
+                fixed_point_to_wad(asset_amt, decimals)
             } else {
                 (asset_amt.into() * total_yang) / get_total_assets_helper(asset).into()
             }

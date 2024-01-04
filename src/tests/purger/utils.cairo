@@ -1,4 +1,5 @@
 mod purger_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::min;
     use core::option::OptionTrait;
     use debug::PrintTrait;
@@ -21,15 +22,13 @@ mod purger_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::math::pow;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
-    use opus::utils::wadray;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
+    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -595,7 +594,7 @@ mod purger_utils {
 
     fn assert_trove_is_liquidatable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
-        let (penalty, _,) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
+        let (penalty, _) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
         if ltv < RAY_ONE.into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
@@ -615,7 +614,7 @@ mod purger_utils {
         }
     }
 
-    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64,) {
+    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64) {
         assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
@@ -646,7 +645,7 @@ mod purger_utils {
 
                     let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
 
-                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message,);
+                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
                 },
                 Option::None => { break; },
             };

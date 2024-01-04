@@ -11,10 +11,10 @@ mod test_abbot {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
-    use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
-    use opus::utils::wadray;
+    use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use wadray::{Wad, WadZeroable, WAD_SCALE};
 
     //
     // Tests
@@ -54,10 +54,10 @@ mod test_abbot {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let expected_initial_yang: Wad = wadray::fixed_point_to_wad(
+                    let expected_initial_yang: Wad = fixed_point_to_wad(
                         sentinel_contract::INITIAL_DEPOSIT_AMT, decimals
                     );
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(
                         *deposited_amts_copy.pop_front().unwrap(), decimals
                     );
                     let expected_yang_total: Wad = expected_initial_yang + expected_deposited_yang;
@@ -104,7 +104,7 @@ mod test_abbot {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let before_yang_total: Wad = *yangs_total.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(
                         *second_deposit_amts.pop_front().unwrap(), decimals
                     );
                     let expected_yang_total: Wad = before_yang_total + expected_deposited_yang;
@@ -233,7 +233,7 @@ mod test_abbot {
                     let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let deposit_amt: u128 = *deposited_amts_copy.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(deposit_amt, decimals);
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(deposit_amt, decimals);
                     abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(after_trove_yang == before_trove_yang + expected_deposited_yang, 'wrong yang amount #1');
@@ -261,7 +261,7 @@ mod test_abbot {
                     let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let deposit_amt: u128 = *non_owner_deposit_amts.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(deposit_amt, decimals);
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(deposit_amt, decimals);
 
                     start_prank(CheatTarget::One(abbot.contract_address), non_owner);
                     abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });

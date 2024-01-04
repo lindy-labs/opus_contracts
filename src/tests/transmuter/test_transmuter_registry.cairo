@@ -1,4 +1,5 @@
 mod test_transmuter_registry {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::transmuter_registry_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -8,7 +9,6 @@ mod test_transmuter_registry {
     };
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use snforge_std::{CheatTarget, ContractClass, start_prank, stop_prank};
     use starknet::ContractAddress;
 

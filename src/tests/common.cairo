@@ -7,13 +7,11 @@ use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
-use opus::utils::wadray::{Ray, Wad, WadZeroable};
-use opus::utils::wadray;
-
 use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
+use wadray::{Ray, Wad, WadZeroable};
 
 //
 // Constants
@@ -237,7 +235,7 @@ fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,) -> Span<Span<u128>> {
+fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {

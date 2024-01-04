@@ -1,4 +1,5 @@
 mod types;
+
 mod core {
     mod abbot;
     mod absorber;
@@ -44,13 +45,10 @@ mod interfaces {
 }
 
 mod utils {
-    mod access_control;
     mod address_registry;
     mod exp;
     mod math;
     mod reentrancy_guard;
-    mod wadray;
-    mod wadray_signed;
 }
 
 // mock used for local devnet deployment
@@ -124,15 +122,11 @@ mod tests {
         mod utils;
     }
     mod utils {
-        mod mock_access_control;
         mod mock_address_registry;
         mod mock_reentrancy_guard;
-        mod test_access_control;
         mod test_address_registry;
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;
-        mod test_wadray;
-        mod test_wadray_signed;
     }
 }

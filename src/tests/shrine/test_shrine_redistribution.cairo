@@ -5,13 +5,13 @@ mod test_shrine_redistribution {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{ExceptionalYangRedistribution, Health, YangBalance, YangRedistribution};
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, CheatTarget, spy_events, SpyOn, EventSpy,
         EventAssertions
     };
     use starknet::ContractAddress;
+    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+
     //
     // Setup
     //
@@ -782,7 +782,7 @@ mod test_shrine_redistribution {
 
         // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
         // and the errors for all yangs
-        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id,);
+        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id);
 
         let actual_redistributed_debt: Wad = (recipient_troves_yang2_amt * yang2_unit_debt)
             + (recipient_troves_yang2_amt * yang1_to_yang2_unit_debt)
@@ -814,7 +814,7 @@ mod test_shrine_redistribution {
 
         let expected_redistribution_id: u32 = 1;
 
-        let mut expected_events = array![
+        let expected_events = array![
             (
                 shrine.contract_address,
                 shrine_contract::Event::TroveRedistributed(
@@ -1140,7 +1140,7 @@ mod test_shrine_redistribution {
 
         // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
         // and the errors for all yangs
-        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id,);
+        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id);
 
         let actual_redistributed_debt: Wad = (recipient_troves_yang2_amt * yang2_unit_debt)
             + (recipient_troves_yang2_amt * yang1_to_yang2_unit_debt)
@@ -1307,7 +1307,7 @@ mod test_shrine_redistribution {
             'wrong recipient trove debt'
         );
 
-        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id,);
+        let cumulative_error: Wad = get_redistributed_debt_error(shrine, yangs, expected_redistribution_id);
 
         let actual_redistributed_debt: Wad = (recipient_trove_yang2_amt * first_redistribution_yang2_unit_debt)
             + (recipient_trove_yang2_amt * first_redistribution_yang1_to_yang2_unit_debt)

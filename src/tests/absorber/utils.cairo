@@ -1,4 +1,5 @@
 mod absorber_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::min;
     use debug::PrintTrait;
     use integer::BoundedU256;
@@ -19,12 +20,10 @@ mod absorber_utils {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Reward};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
-    use opus::utils::wadray;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
+    use wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
     //
     // Constants

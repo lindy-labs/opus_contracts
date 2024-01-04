@@ -3,8 +3,8 @@ mod test_math {
     use integer::BoundedU128;
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{pow, sqrt};
-    use opus::utils::wadray::{Ray, RAY_ONE};
-    use opus::utils::wadray;
+    use wadray::{Ray, RAY_ONE};
+
 
     #[test]
     fn test_sqrt() {

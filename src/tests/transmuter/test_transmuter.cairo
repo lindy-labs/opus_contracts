@@ -1,4 +1,5 @@
 mod test_transmuter {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::min;
     use debug::PrintTrait;
     use integer::BoundedInt;
@@ -10,17 +11,15 @@ mod test_transmuter {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::math::pow;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::{Signed, SignedWad, SignedWadZeroable};
-    use opus::utils::wadray_signed;
+    use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };
     use starknet::ContractAddress;
     use starknet::contract_address::{contract_address_try_from_felt252, ContractAddressZeroable};
+    use wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Signed, SignedWad, SignedWadZeroable, Wad, WadZeroable, WAD_ONE
+    };
 
     //
     // Tests - Deployment 
@@ -611,18 +610,14 @@ mod test_transmuter {
                     stop_prank(CheatTarget::One(transmuter.contract_address));
 
                     let mut expected_reversed_asset_amts: Span<u128> = array![
-                        wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
-                        wadray::wad_to_fixed_point(reverse_yin_amt, asset_decimals)
+                        wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
+                        wad_to_fixed_point(reverse_yin_amt, asset_decimals)
                             .into(), // 1E-27% fee (loss of precision), 1000
-                        wadray::wad_to_fixed_point(
-                            reverse_yin_amt - WAD_ONE.into(), asset_decimals
-                        ), // 0.1% fee, 999.00
-                        wadray::wad_to_fixed_point(
+                        wad_to_fixed_point(reverse_yin_amt - WAD_ONE.into(), asset_decimals), // 0.1% fee, 999.00
+                        wad_to_fixed_point(
                             reverse_yin_amt - 2345000000000000000_u128.into(), asset_decimals
                         ), // 0.2345% fee, 997.655...
-                        wadray::wad_to_fixed_point(
-                            reverse_yin_amt - (10 * WAD_ONE).into(), asset_decimals
-                        ), // 1% fee, 990.00
+                        wad_to_fixed_point(reverse_yin_amt - (10 * WAD_ONE).into(), asset_decimals), // 1% fee, 990.00
                     ]
                         .span();
 
@@ -895,13 +890,13 @@ mod test_transmuter {
                                 let mut transmuter_yin_amts: Array<Wad> = array![
                                     WadZeroable::zero(),
                                     1_u128.into(),
-                                    wadray::fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
-                                    wadray::fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
+                                    fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
+                                    fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
                                 ];
 
                                 if (*transmute_asset_amt).is_non_zero() {
                                     transmuter_yin_amts
-                                        .append(wadray::fixed_point_to_wad(*transmute_asset_amt - 1, asset_decimals));
+                                        .append(fixed_point_to_wad(*transmute_asset_amt - 1, asset_decimals));
                                 }
 
                                 let mut transmuter_yin_amts: Span<Wad> = transmuter_yin_amts.span();

@@ -14,8 +14,10 @@ casm = true
 sierra-replace-ids = true
 
 [dependencies]
-starknet = "2.3.1"
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.11.0" }
+starknet = "2.4.0"
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.13.1" }
+wadray = { git = "https://github.com/lindy-labs/wadray.git", tag = "v0.2.1" }
+access_control = { git = "https://github.com/lindy-labs/access_control.git", tag = "v0.2.0" }
 
 [scripts]
 ktn = "katana --disable-fee --accounts 6 --seed 0x6f707573"

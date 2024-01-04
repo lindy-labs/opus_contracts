@@ -1,16 +1,16 @@
 #[starknet::contract]
 mod sentinel {
+    use access_control::access_control_component;
     use opus::core::roles::sentinel_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::access_control::access_control_component;
-    use opus::utils::wadray::{Ray, Wad, WadZeroable};
-    use opus::utils::wadray;
+    use opus::utils::math::fixed_point_to_wad;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
+    use wadray::{Ray, Wad, WadZeroable};
 
     //
     // Components
@@ -198,7 +198,7 @@ mod sentinel {
             // Require an initial deposit when adding a yang to prevent first depositor from front-running
             let yang_erc20 = IERC20Dispatcher { contract_address: yang };
             // scale `asset_amt` up by the difference to match `Wad` precision of yang
-            let initial_yang_amt: Wad = wadray::fixed_point_to_wad(INITIAL_DEPOSIT_AMT, yang_erc20.decimals());
+            let initial_yang_amt: Wad = fixed_point_to_wad(INITIAL_DEPOSIT_AMT, yang_erc20.decimals());
             let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
 
             let caller: ContractAddress = get_caller_address();

@@ -1,4 +1,5 @@
 mod seer_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::shrine_roles;
     use opus::core::seer::seer as seer_contract;
@@ -11,13 +12,12 @@ mod seer_utils {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::Wad;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, ContractAddress
     };
+    use wadray::Wad;
 
     //
     // Constants

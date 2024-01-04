@@ -20,9 +20,9 @@ mod flash_liquidator {
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-    use opus::utils::wadray::{Wad, WAD_ONE, WadZeroable};
-    use opus::utils::wadray;
+
     use starknet::{get_contract_address, ContractAddress};
+    use wadray::{Wad, WAD_ONE, WadZeroable};
 
     #[storage]
     struct Storage {

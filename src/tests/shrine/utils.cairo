@@ -1,4 +1,5 @@
 mod shrine_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -6,10 +7,7 @@ mod shrine_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::types::{Health, YangRedistribution};
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::utils::exp::exp;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
     };
@@ -17,6 +15,7 @@ mod shrine_utils {
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
+    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     //
     // Constants
@@ -290,7 +289,7 @@ mod shrine_utils {
         shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
-        advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),);
+        advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices());
         shrine
     }
 
@@ -602,7 +601,7 @@ mod shrine_utils {
     // the initial yang amount.
     // We do not check for strict equality because there may be loss of precision when
     // exceptionally redistributed yang are pulled into troves.
-    fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,) {
+    fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64) {
         let troves_loop_end: u64 = troves_count + 1;
 
         let mut yang_id: u32 = 1;
@@ -720,7 +719,7 @@ mod shrine_utils {
         common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #2');
     }
 
-    fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64,) {
+    fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
         assert_total_troves_debt_invariant(shrine, yangs, troves_count);
     }

@@ -1,4 +1,4 @@
-use opus::utils::wadray::{Wad, WAD_ONE, TIntoWad};
+use wadray::{Wad, WAD_ONE};
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 

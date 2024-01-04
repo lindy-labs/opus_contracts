@@ -1,4 +1,5 @@
 mod equalizer_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::allocator::allocator as allocator_contract;
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::{equalizer_roles, shrine_roles};
@@ -6,11 +7,10 @@ mod equalizer_utils {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::Ray;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
+    use wadray::Ray;
 
     //
     // Convenience helpers

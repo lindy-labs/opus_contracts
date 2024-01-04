@@ -5,12 +5,9 @@ mod test_shrine_compound {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove};
     use opus::utils::exp::exp;
-    use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable, WAD_ONE};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
-    use opus::utils::wadray_signed;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{Ray, RayZeroable, RAY_SCALE, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests - Trove estimate and charge
@@ -170,7 +167,7 @@ mod test_shrine_compound {
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
-        let mut expected_events = array![
+        let expected_events = array![
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
@@ -674,18 +671,6 @@ mod test_shrine_compound {
 
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
-
-        let mut expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::TotalTrovesDebtUpdated(
-                shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-            ),
-            shrine_contract::Event::TroveUpdated(
-                shrine_contract::TroveUpdated {
-                    trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                }
-            ),
-        ]
-            .span();
 
         let expected_events = array![
             (

@@ -1,5 +1,6 @@
 #[starknet::contract]
 mod shrine {
+    use access_control::access_control_component;
     use cmp::{max, min};
     use core::starknet::event::EventEmitter;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
@@ -10,16 +11,10 @@ mod shrine {
     use opus::types::{
         ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
-    use opus::utils::access_control::access_control_component;
     use opus::utils::exp::{exp, neg_exp};
-    use opus::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
-    };
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedWad;
-    use opus::utils::wadray_signed;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
+    use wadray::{BoundedRay, Ray, RayZeroable, RAY_ONE, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     //
     // Components

@@ -5,8 +5,8 @@ mod abbot {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use opus::utils::wadray::{BoundedWad, Wad};
     use starknet::{ContractAddress, get_caller_address};
+    use wadray::{BoundedWad, Wad};
 
     // 
     // Components 

@@ -1,19 +1,16 @@
 mod controller_utils {
+    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::utils::wadray::{Ray, Wad};
-    use opus::utils::wadray;
-    use opus::utils::wadray_signed::SignedRay;
-    use opus::utils::wadray_signed;
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
+    use wadray::{Ray, SignedRay, Wad};
 
     // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour

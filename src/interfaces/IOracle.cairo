@@ -1,5 +1,5 @@
-use opus::utils::wadray::Wad;
 use starknet::ContractAddress;
+use wadray::Wad;
 
 #[starknet::interface]
 trait IOracle<TContractState> {
