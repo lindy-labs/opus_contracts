@@ -239,6 +239,8 @@ mod purger {
             let funder: ContractAddress = get_caller_address();
 
             // Melt from the funder address directly
+            // This step is also crucial because it would revert if the Shrine has been killed, thereby
+            // preventing further liquidations.
             shrine.melt(funder, trove_id, purge_amt);
 
             // Free collateral corresponding to the purged amount
@@ -295,6 +297,8 @@ mod purger {
             // Melt the trove's debt using the absorber's yin directly
             // This needs to be called even if `purge_amt` is 0 so that accrued interest
             // will be charged on the trove before `shrine.redistribute`.
+            // This step is also crucial because it would revert if the Shrine has been killed, thereby
+            // preventing further liquidations.
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
             let can_absorb_some: bool = purge_amt.is_non_zero();
