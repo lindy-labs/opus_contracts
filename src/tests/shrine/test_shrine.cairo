@@ -1789,7 +1789,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.set_multiplier((shrine_contract::MAX_MULTIPLIER + 1).into());
+        shrine.set_multiplier((RAY_SCALE * 10 + 1).into());
     }
 
     //
