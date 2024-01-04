@@ -83,7 +83,10 @@ mod absorber {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Absorber
         shrine: IShrineDispatcher,
-        // boolean flag indicating whether the absorber is live or not
+        // boolean flag indicating whether the Absorber is live or not
+        // once the Absorber is killed,
+        // 1. users can no longer `provide` yin
+        // 2. distribution of rewards via `bestow` stops
         is_live: bool,
         // epoch starts from 1
         // both shares and absorptions are tied to an epoch
@@ -910,6 +913,11 @@ mod absorber {
         //
 
         fn bestow(ref self: ContractState) {
+            // Rewards are no longer distributed once Absorber is killed, but absorptions can still occur
+            if !self.is_live.read() {
+                return;
+            }
+
             // Defer rewards until at least one provider deposits
             let total_shares: Wad = self.total_shares.read();
             if !is_operational_helper(total_shares) {
