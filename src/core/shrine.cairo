@@ -32,7 +32,7 @@ mod shrine {
 
     // Initial multiplier value to ensure `get_recent_multiplier_from` terminates - (ray): RAY_ONE
     const INITIAL_MULTIPLIER: u128 = 1000000000000000000000000000;
-    const MAX_MULTIPLIER: u128 = 3000000000000000000000000000; // Max of 3x (ray): 3 * RAY_ONE
+    const MAX_MULTIPLIER: u128 = 10000000000000000000000000000; // Max of 10x (ray): 10 * RAY_ONE
 
     const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
 
@@ -57,7 +57,7 @@ mod shrine {
     const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
 
     // Maximum interest rate a yang can have (ray): RAY_ONE
-    const MAX_YANG_RATE: u128 = 100000000000000000000000000;
+    const MAX_YANG_RATE: u128 = 1000000000000000000000000000;
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1

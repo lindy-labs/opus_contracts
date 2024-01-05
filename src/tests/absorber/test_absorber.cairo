@@ -14,6 +14,7 @@ mod test_absorber {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::common;
+    use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
@@ -200,6 +201,128 @@ mod test_absorber {
 
         let expected_events = array![
             (absorber.contract_address, absorber_contract::Event::Killed(absorber_contract::Killed {})),
+        ];
+        spy.assert_emitted(@expected_events);
+    }
+
+    // Sequence of events
+    // 1. Provider 1 provides.
+    // 2. Absorber is killed.
+    // 3. Full absorption occurs. Provider 1 receives zero rewards.
+    // 4. Provider 1 reaps.
+    #[test]
+    fn test_update_after_kill_pass() {
+        // Setup
+        let (shrine, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
+        );
+
+        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+
+        let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        let expected_recipient_shares: Wad = total_shares - absorber_contract::INITIAL_SHARES.into();
+        let expected_epoch = 1;
+        let expected_absorption_id = 1;
+
+        // Step 2
+        start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
+        absorber.kill();
+
+        // Step 3
+        let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
+        absorber_utils::simulate_update_with_pct_to_drain(
+            shrine, absorber, yangs, first_update_assets, RAY_SCALE.into()
+        );
+
+        // Assert rewards are not distributed in `update`
+        assert(
+            absorber
+                .get_cumulative_reward_amt_by_epoch(*reward_tokens[0], expected_epoch)
+                .asset_amt_per_share
+                .is_zero(),
+            'should be zero #1'
+        );
+        assert(
+            absorber
+                .get_cumulative_reward_amt_by_epoch(*reward_tokens[1], expected_epoch)
+                .asset_amt_per_share
+                .is_zero(),
+            'should be zero #2'
+        );
+
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, first_update_assets);
+        let expected_events = array![
+            (
+                absorber.contract_address,
+                absorber_contract::Event::Gain(
+                    absorber_contract::Gain {
+                        assets: expected_absorbed_assets,
+                        total_recipient_shares: expected_recipient_shares,
+                        epoch: expected_epoch,
+                        absorption_id: expected_absorption_id
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
+
+        // Step 4
+        let provider_before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
+        let provider_before_absorbed_bals = common::get_token_balances(yangs, provider.into());
+
+        start_prank(CheatTarget::One(absorber.contract_address), provider);
+        let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(provider);
+
+        let mut preview_reward_assets_copy = preview_reward_assets;
+        loop {
+            match preview_reward_assets_copy.pop_front() {
+                Option::Some(reward_asset_balance) => {
+                    assert((*reward_asset_balance).amount.is_zero(), 'rewards should be zero');
+                },
+                Option::None => { break; },
+            };
+        };
+
+        absorber.reap();
+
+        // Assert rewards are not distributed in `reap`
+        assert(
+            absorber
+                .get_cumulative_reward_amt_by_epoch(*reward_tokens[0], expected_epoch)
+                .asset_amt_per_share
+                .is_zero(),
+            'should be zero #3'
+        );
+        assert(
+            absorber
+                .get_cumulative_reward_amt_by_epoch(*reward_tokens[1], expected_epoch)
+                .asset_amt_per_share
+                .is_zero(),
+            'should be zero #4'
+        );
+
+        assert(absorber.get_provider_last_absorption(provider) == 1, 'wrong last absorption');
+
+        let error_margin: u128 = 1000;
+        absorber_utils::assert_provider_received_absorbed_assets(
+            absorber,
+            provider,
+            first_update_assets,
+            provider_before_absorbed_bals,
+            preview_absorbed_assets,
+            error_margin,
+        );
+
+        let expected_events = array![
+            (
+                absorber.contract_address,
+                absorber_contract::Event::Reap(
+                    absorber_contract::Reap {
+                        provider, absorbed_assets: preview_absorbed_assets, reward_assets: preview_reward_assets
+                    }
+                )
+            ),
         ];
         spy.assert_emitted(@expected_events);
     }
@@ -1695,6 +1818,41 @@ mod test_absorber {
             idx += 1;
         };
         spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    fn test_shrine_killed_and_remove_pass() {
+        let (shrine, abbot, absorber, _, _, _, _, _, provider, provided_amt) =
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        // Increase debt ceiling for recovery mode to be triggered
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
+        shrine.set_debt_ceiling(debt_ceiling);
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, provider);
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        shrine.kill();
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        assert(!shrine.get_live(), 'should be killed');
+
+        // Check provider can remove
+        let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+        start_prank(CheatTarget::One(absorber.contract_address), provider);
+        absorber.request();
+        start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+        absorber.remove(BoundedWad::max());
+
+        // Loss of precision
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(
+            shrine.get_yin(provider), before_provider_yin_bal + provided_amt, error_margin, 'wrong yin amount'
+        );
     }
 
     #[test]

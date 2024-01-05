@@ -5,12 +5,9 @@ mod test_shrine_compound {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove};
     use opus::utils::exp::exp;
-
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
-
-    use wadray::SignedWad;
-    use wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RayZeroable, RAY_SCALE, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests - Trove estimate and charge

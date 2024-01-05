@@ -1,6 +1,5 @@
 use starknet::ContractAddress;
-use wadray::Ray;
-use wadray::SignedRay;
+use wadray::{Ray, SignedRay};
 
 #[starknet::interface]
 trait IController<TContractState> {

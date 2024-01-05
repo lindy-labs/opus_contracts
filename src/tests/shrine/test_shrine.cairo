@@ -15,11 +15,9 @@ mod test_shrine {
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
     use starknet::get_block_timestamp;
-
-    use wadray::SignedWad;
     use wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT,
-        WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WadZeroable, WAD_DECIMALS,
+        WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
 
     //
@@ -463,7 +461,7 @@ mod test_shrine {
                 array![
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    RAY_ONE.into(),
                 ]
                     .span()
             );
@@ -472,9 +470,7 @@ mod test_shrine {
         assert(shrine.get_current_rate_era() == expected_rate_era, 'wrong rate era');
 
         let mut expected_rates: Span<Ray> = array![
-            shrine_utils::YANG1_BASE_RATE.into(),
-            shrine_utils::YANG2_BASE_RATE.into(),
-            shrine_utils::YANG3_BASE_RATE.into(),
+            shrine_utils::YANG1_BASE_RATE.into(), shrine_utils::YANG2_BASE_RATE.into(), RAY_ONE.into()
         ]
             .span();
 
@@ -502,6 +498,23 @@ mod test_shrine {
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
                     shrine_contract::USE_PREV_BASE_RATE.into(),
+                ]
+                    .span()
+            );
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Rate out of bounds',))]
+    fn test_update_rates_exceed_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine
+            .update_rates(
+                shrine_utils::three_yang_addrs(),
+                array![
+                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    (RAY_ONE + 2).into(),
                 ]
                     .span()
             );
@@ -1081,14 +1094,9 @@ mod test_shrine {
             );
     }
 
+    // TODO: assert event is not emitted once Starknet Foundry adds support
     #[test]
-    #[should_panic(
-        expected: (
-            'Event with matching data and',
-            'keys was not emitted from',
-            2295267269888109092026303815931680619733720960381289290319447202476564501893
-        )
-    )]
+    #[should_panic]
     fn test_shrine_forge_no_forgefee_emitted_when_zero() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events(SpyOn::One(shrine.contract_address));
@@ -1784,7 +1792,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.set_multiplier((RAY_SCALE * 3 + 1).into());
+        shrine.set_multiplier((RAY_SCALE * 10 + 1).into());
     }
 
     //

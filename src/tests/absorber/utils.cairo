@@ -408,6 +408,12 @@ mod absorber_utils {
         };
     }
 
+    fn kill_absorber(absorber: IAbsorberDispatcher) {
+        start_prank(CheatTarget::One(absorber.contract_address), admin());
+        absorber.kill();
+        stop_prank(CheatTarget::One(absorber.contract_address));
+    }
+
     //
     // Test assertion helpers
     //

@@ -8,7 +8,6 @@ mod sentinel {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::fixed_point_to_wad;
-
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
     use wadray::{Ray, Wad, WadZeroable};

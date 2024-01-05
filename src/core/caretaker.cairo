@@ -11,7 +11,6 @@ mod caretaker {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use wadray::{Ray, RAY_ONE, Wad};
 

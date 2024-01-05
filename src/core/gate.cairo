@@ -4,7 +4,6 @@ mod gate {
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::{fixed_point_to_wad, pow};
-
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 

@@ -82,7 +82,10 @@ mod absorber {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Absorber
         shrine: IShrineDispatcher,
-        // boolean flag indicating whether the absorber is live or not
+        // boolean flag indicating whether the Absorber is live or not
+        // once the Absorber is killed,
+        // 1. users can no longer `provide` yin
+        // 2. distribution of rewards via `bestow` stops
         is_live: bool,
         // epoch starts from 1
         // both shares and absorptions are tied to an epoch
@@ -889,7 +892,11 @@ mod absorber {
         //
 
         fn assert_can_remove(self: @ContractState, request: Request) {
-            assert(!self.shrine.read().is_recovery_mode(), 'ABS: Recovery Mode active');
+            let shrine = self.shrine.read();
+            // Removal is not allowed if Shrine is live and in recovery mode.
+            if shrine.get_live() {
+                assert(!shrine.is_recovery_mode(), 'ABS: Recovery Mode active');
+            }
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
             assert(!request.has_removed, 'ABS: Only 1 removal per request');
@@ -905,6 +912,11 @@ mod absorber {
         //
 
         fn bestow(ref self: ContractState) {
+            // Rewards are no longer distributed once Absorber is killed, but absorptions can still occur
+            if !self.is_live.read() {
+                return;
+            }
+
             // Defer rewards until at least one provider deposits
             let total_shares: Wad = self.total_shares.read();
             if !is_operational_helper(total_shares) {
@@ -916,7 +928,7 @@ mod absorber {
 
             let epoch: u32 = self.current_epoch.read();
             let mut blessed_assets: Array<AssetBalance> = ArrayTrait::new();
-            let mut current_rewards_id: u8 = 0;
+            let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
             loop {

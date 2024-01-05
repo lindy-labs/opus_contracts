@@ -12,9 +12,7 @@ mod test_flash_mint {
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
-
-    use wadray::SignedWad;
-    use wadray::{Wad, WadZeroable, WAD_ONE};
+    use wadray::{SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests

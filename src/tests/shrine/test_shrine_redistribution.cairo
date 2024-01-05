@@ -5,13 +5,13 @@ mod test_shrine_redistribution {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{ExceptionalYangRedistribution, Health, YangBalance, YangRedistribution};
-
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, CheatTarget, spy_events, SpyOn, EventSpy,
         EventAssertions
     };
     use starknet::ContractAddress;
     use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+
     //
     // Setup
     //

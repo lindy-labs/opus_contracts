@@ -20,7 +20,6 @@ mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-
     use starknet::{ContractAddress, get_caller_address};
     use wadray::{Wad, WadZeroable};
 

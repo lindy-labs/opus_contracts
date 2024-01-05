@@ -8,11 +8,8 @@ mod equalizer {
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Health;
-
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, Wad, WadZeroable};
-
-    use wadray::{Signed, SignedWad};
+    use wadray::{Ray, Signed, SignedWad, Wad, WadZeroable};
 
     //
     // Components
