@@ -18,7 +18,7 @@ enum YangSuspensionStatus {
     Permanent
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct Health {
     // Threshold at which a trove can be liquidated, or at which
     // recovery mode is triggered for Shrine
@@ -33,25 +33,11 @@ struct Health {
 
 impl DisplayHealth of Display<Health> {
     fn fmt(self: @Health, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "Health(threshold: ");
-        Display::fmt(self.threshold, ref f);
-        write!(f, ", ltv: ");
-        Display::fmt(self.ltv, ref f);
-        write!(f, ", value: ");
-        Display::fmt(self.value, ref f);
-        write!(f, ", debt: ");
-        Display::fmt(self.debt, ref f);
-        write!(f, ")")
+        Debug::fmt(self, ref f)
     }
 }
 
-impl DebugHealth of Debug<Health> {
-    fn fmt(self: @Health, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
-    }
-}
-
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct YangBalance {
     yang_id: u32, //  ID of yang in Shrine
     amount: Wad, // Amount of yang in Wad
@@ -59,17 +45,7 @@ struct YangBalance {
 
 impl DisplayYangBalance of Display<YangBalance> {
     fn fmt(self: @YangBalance, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "YangBalance(yang_id: ");
-        Display::fmt(self.yang_id, ref f);
-        write!(f, ", amount: ");
-        Display::fmt(self.amount, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugYangBalance of Debug<YangBalance> {
-    fn fmt(self: @YangBalance, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -79,7 +55,7 @@ struct AssetBalance {
     amount: u128, // Amount of the asset in the asset's decimals
 }
 
-#[derive(Copy, Drop, PartialEq, Serde)]
+#[derive(Copy, Debug, Drop, PartialEq, Serde)]
 struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     last_rate_era: u64,
@@ -88,19 +64,7 @@ struct Trove {
 
 impl DisplayTrove of Display<Trove> {
     fn fmt(self: @Trove, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "Trove(charge_from: ");
-        Display::fmt(self.charge_from, ref f);
-        write!(f, ", last_rate_era: ");
-        Display::fmt(self.last_rate_era, ref f);
-        write!(f, ", debt: ");
-        Display::fmt(self.debt, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugTrove of Debug<Trove> {
-    fn fmt(self: @Trove, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -124,7 +88,7 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
     }
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct YangRedistribution {
     // Amount of debt in wad to be distributed to each wad unit of yang
     // This is packed into bits 0 to 127.
@@ -143,19 +107,7 @@ struct YangRedistribution {
 
 impl DisplayYangRedistribution of Display<YangRedistribution> {
     fn fmt(self: @YangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "YangRedistribution(unit_debt: ");
-        Display::fmt(self.unit_debt, ref f);
-        write!(f, ", error: ");
-        Display::fmt(self.error, ref f);
-        write!(f, ", exception: ");
-        Display::fmt(self.exception, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugYangRedistribution of Debug<YangRedistribution> {
-    fn fmt(self: @YangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -181,7 +133,7 @@ impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252>
     }
 }
 
-#[derive(Copy, Drop, Serde, starknet::Store)]
+#[derive(Copy, Debug, Drop, Serde, starknet::Store)]
 struct ExceptionalYangRedistribution {
     unit_debt: Wad, // Amount of debt to be distributed to each wad unit of recipient yang
     unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
@@ -189,17 +141,7 @@ struct ExceptionalYangRedistribution {
 
 impl DisplayExceptionalYangRedistribution of Display<ExceptionalYangRedistribution> {
     fn fmt(self: @ExceptionalYangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "ExceptionalYangRedistribution(unit_debt: ");
-        Display::fmt(self.unit_debt, ref f);
-        write!(f, ", unit_yang: ");
-        Display::fmt(self.unit_yang, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugExceptionalYangRedistribution of Debug<ExceptionalYangRedistribution> {
-    fn fmt(self: @ExceptionalYangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -209,7 +151,7 @@ impl DebugExceptionalYangRedistribution of Debug<ExceptionalYangRedistribution> 
 
 // For absorptions, the `asset_amt_per_share` is tied to an absorption ID and is not changed once set.
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct DistributionInfo {
     // Amount of asset in its decimal precision per share wad
     // This is packed into bits 0 to 127.
@@ -224,17 +166,7 @@ struct DistributionInfo {
 
 impl DisplayDistributionInfo of Display<DistributionInfo> {
     fn fmt(self: @DistributionInfo, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "DistributionInfo(asset_amt_per_share: ");
-        Display::fmt(self.asset_amt_per_share, ref f);
-        write!(f, ", error: ");
-        Display::fmt(self.error, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugDistributionInfo of Debug<DistributionInfo> {
-    fn fmt(self: @DistributionInfo, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -265,7 +197,7 @@ struct Reward {
     is_active: bool, // Whether the blesser (vesting contract) should be called
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct Provision {
     epoch: u32, // Epoch in which shares are issued
     shares: Wad, // Amount of shares for provider in the above epoch
@@ -273,17 +205,7 @@ struct Provision {
 
 impl DisplayProvision of Display<Provision> {
     fn fmt(self: @Provision, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "Provision(epoch: ");
-        Display::fmt(self.epoch, ref f);
-        write!(f, ", shares: ");
-        Display::fmt(self.shares, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugProvision of Debug<Provision> {
-    fn fmt(self: @Provision, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
@@ -301,7 +223,7 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
     }
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Debug, Drop, Serde)]
 struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
@@ -310,19 +232,7 @@ struct Request {
 
 impl DisplayRequest of Display<Request> {
     fn fmt(self: @Request, ref f: Formatter) -> Result<(), Error> {
-        write!(f, "Request(timestamp: ");
-        Display::fmt(self.timestamp, ref f);
-        write!(f, ", timelock: ");
-        Display::fmt(self.timelock, ref f);
-        write!(f, ", has_removed: ");
-        Display::fmt(self.has_removed, ref f);
-        write!(f, ")")
-    }
-}
-
-impl DebugRequest of Debug<Request> {
-    fn fmt(self: @Request, ref f: Formatter) -> Result<(), Error> {
-        Display::fmt(self, ref f)
+        Debug::fmt(self, ref f)
     }
 }
 
