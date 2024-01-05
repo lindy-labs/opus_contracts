@@ -65,6 +65,7 @@ mod mock {
 #[cfg(test)]
 mod tests {
     mod common;
+    mod test_types;
     mod abbot {
         mod test_abbot;
         mod utils;
