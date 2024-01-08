@@ -10,8 +10,8 @@ As a wrapper around Gates, the Sentinel mimics the Gate's functions with an addi
 
 In addition, the Sentinel also acts as a gatekeeper by:
 
-1. adding a collateral token as `yang` to the Shrine, ensuring the Gate has been deployed for the token, and enforcing an initial minimum deposit paid for by the protocol to guard against the first depositor front-running;
-2. ensuring that the total amount of underlying collateral tokens for a `yang` does not exceed its supply cap;
+1. adding a collateral token as `yang` to the Shrine, ensuring the Gate has been deployed for the token, and enforcing an initial minimum deposit paid for by the protocol to guard against the first depositor front-running; and
+2. ensuring that the total amount of underlying collateral tokens for a `yang` does not exceed its supply cap.
 
 ## Description of key functions
 

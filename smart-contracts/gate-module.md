@@ -33,4 +33,4 @@ Both `enter` and `exit` performs rounding down by default in favour of the proto
 These are some properties of the Gate module that should hold true at all times:
 
 1. The conversion rate of a `yang` to its underlying collateral asset is monotonic while the Shrine is live, meaning it never decreases in value.
-2. The conversion rate of a `yang` to its underlying collateral asset should remain unchanged in both `enter` (if there is non-zero amount of collateral before `enter` ) and `exit` (if there is non-zero amount of collateral tokens after `exit`)
+2. The conversion rate of a `yang` to its underlying collateral asset should remain unchanged in both `enter` (if there is non-zero amount of the collateral asset before `enter` ) and `exit` (if there is non-zero amount of the collateral asset after `exit`)

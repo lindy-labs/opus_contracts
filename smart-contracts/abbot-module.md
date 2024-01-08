@@ -46,6 +46,7 @@ Note that there are a couple of restrictions when it comes to withdrawing collat
 
 1. Only the trove owner can withdraw collateral from a trove.
 2. Withdrawal of collateral will revert if it causes the trove's loan-to-value ratio to fall below its threshold.
+3. If the trove has non-zero debt, withdrawal of collateral will revert if it causes the trove's value to fall below the minimum value.
 
 ## Forging synthetic
 
@@ -57,6 +58,7 @@ Note that there are a couple of restrictions when it comes to forging synthetic 
 
 1. Only the trove owner can forge synthetic for a trove.
 2. Forging of the synthetic will revert if it causes the trove's loan-to-value ratio to fall below its threshold.
+3. If the trove has non-zero debt, forging of the synthetic will revert if the trove's value is below the minimum value.
 
 ## Melting synthetic
 

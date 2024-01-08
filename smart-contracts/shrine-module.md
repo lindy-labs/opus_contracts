@@ -11,9 +11,9 @@ The Shrine module is the core accounting module for a synthetic, and performs th
 3. Storing the prices of `yang`s&#x20;
 4. Storing the multiplier value from the Controller module
 
-In addition, the Shrine module is also implements the ERC-20 standard for its synthetic.
+In addition, the Shrine module also implements the ERC-20 standard for its synthetic.
 
-The Shrine module is intended to be immutable and non-upgradeable. It is also purposefully designed to avoid making any external call for security reasons. As the bookkeeper, the Shrine also does not come into possession of any underlying collateral tokens.
+The Shrine module is intended to be immutable and non-upgradeable. It is purposefully designed to avoid making any external call for security reasons. As the bookkeeper, the Shrine also does not come into possession of any underlying collateral tokens.
 
 Note that the Shrine is meant to be called by other modules only, and not by an end-user directly.
 
@@ -34,7 +34,7 @@ Note that the Shrine is meant to be called by other modules only, and not by an 
      * However, it can be suspended with the following effects:
        * No further deposits can be made. This is enforced by the Sentinel.
        * Its threshold will decrease to zero linearly over the `SUSPENSION_GRACE_PERIOD`.
-     * From the time of the suspension and before the `SUSPENSION_GRACE_PERIOD` elapses, the suspension can be reversed. However, once the `SUSPENSION_GRACE_PERIOD` elapses, the `yang` will be permanently delisted.
+     * From the time of the suspension and before the `SUSPENSION_GRACE_PERIOD` elapses, the suspension can be reversed. However, once the `SUSPENSION_GRACE_PERIOD` elapses, the `yang` will be permanently suspended i.e. delisted.
    * Each `yang` has a set of parameters attached to it:
      * base rate: the interest rate to be charged for the `yang`
      * threshold: determines the maximum percentage of the `yang`'s value that debt can be forged against
@@ -43,8 +43,9 @@ Note that the Shrine is meant to be called by other modules only, and not by an 
 5. The Shrine has a budget that keeps track of whether there is a debt deficit or debt surplus.&#x20;
    * A debt surplus is created when interest is accrued. This debt surplus can be balanced by minting new `yin`.
    * A debt deficit is created when bad debt is incurred. Bad debt can only be created by modules that are authorized to call `Shrine.adjust_budget`. For troves, there will not be a situation of bad debt because redistributions act as the final layer of liquidations.
-6. The Shrine has a ceiling that caps the amount of yin that may be generated. When checking if the ceiling is exceeded, any debt surpluses should be included.
+6. The Shrine has a ceiling that caps the amount of yin that may be generated. When checking if the ceiling is exceeded, any debt surpluses should be included, and any debt deficits should be excluded.
    * However, note that the debt ceiling should not block the minting of any debt surpluses as `yin`.
+   * Debt deficits are excluded to prevent a situation where the total `yin` supply exceeds the debt ceiling, but including the deficit would bring the resulting amount below the debt ceiling. In this situation, we do not want to allow more yin to be generated, except for minting of debt surpluses.
 
 ## Description of key functions
 
@@ -61,7 +62,7 @@ Note that the Shrine is meant to be called by other modules only, and not by an 
 
 There are two primary ways in which debt and `yin` can be created:
 
-1. For troves, debt is created when a user `forge`s `yin`. The `yin` is minted to the trove owner, and the corresponding debt, including any forge fees, is added to the trove's debt. As a trove incurs interest, the interest is added to the Shrine's budget, and eventually minted as debt surpluses via the Equalizer. It is therefore expected that the total amount of `yin`  that is `forge`d and backed by all troves will slightly lag the total amount of debt that has been accrued by all troves. While the Shrine's `forge` function is restricted by access control, it is intended for users to be able to interact with the Shrine's `forge` function via the equivalent `forge` function in the Abbot in a permissionless manner. In the case of troves, there is an equivalent concept of debt for `yin` in the Shrine.
+1. For troves, debt is created when a user `forge`s `yin`. The `yin` is minted to the trove owner, and the corresponding debt, including any forge fees, is added to the trove's debt. As a trove incurs interest, the interest is added to the Shrine's budget, and eventually minted as debt surpluses via the Equalizer. It is therefore expected that the total amount of `yin`  that is `forge`d and backed by all troves will slightly lag behind the total amount of debt that has been accrued by all troves. While the Shrine's `forge` function is restricted by access control, it is intended for users to be able to interact with the Shrine's `forge` function via the equivalent `forge` function in the Abbot in a permissionless manner. In the case of troves, there is an equivalent concept of debt for `yin` in the Shrine.
 2. Debt can be created by the `inject` function, which is similarly restricted by access control. This is intended for use by other modules that allow users to mint debt without the need to create a trove e.g. flash mint. In this case, there is no equivalent concept of debt for `yin` in the Shrine. Other than the flash mint module where the minted `yin` does not persist beyond a flash loan transaction, modules that rely on `inject` to mint `yin` should track the corresponding debt in their implementation. This ensures that it is possible to determine how much `yin` that module is liable to backstop the value of in the event of shutdown.
 
 ## Interest rates
@@ -74,7 +75,7 @@ The interest rate for a trove is determined by multiplying:
    * For example, assume that ETH has a base rate of 2% and BTC has a base rate of 1%. A trove has deposited 5 ETH and 0.5 BTC, amounting to 5 Wad units of ETH `yang` and 0.5 Wad unit of BTC `yang`. The average prices of ETH `yang` and BTC `yang` over the charging period are USD 1,000 and USD 10,000 respectively. This gives the trove an average value of USD 10,000 with the value of ETH and BTC in equal ratio. Accordingly, the weighted average base rate is (5,000 / 10,000) \* 2% + (5,000 / 10,000) \* 1% = 1.5%. If ETH price were higher, it would make up a larger percentage of the total collateral value, and so the weighted average base rate would be higher.
 2. the average multiplier value for the elapsed time period.
 
-Note that whenever any base rate needs to be updated, all other base rates will also need to be updated even if they are unchanged. The time period spanning the first interval of the previous base rates and the interval right before any base rates were updated is called an `era`. Therefore, each base rate change corresponds to the start of a new `era`. This allows the average base rate to be calculated over an arbitrary number of intervals with changing base rates by breaking the entire duration into discrete `era`s, each with a start interval and end interval.
+Note that whenever any base rate needs to be updated, all other base rates will also need to be updated even if they are unchanged. The time period spanning the first interval of the previous base rates and the interval right before any base rates were updated is called an `era`. Therefore, each base rate change corresponds to the start of a new `era`. This allows the average base rate to be calculated over an arbitrary number of intervals with changing base rates by breaking the entire duration into discrete `era`s, each with a start interval and an end interval.
 
 Within an era, there are also multiple variations for calculating the average price of a `yang`, depending on the available price history, which in turn determines the value of a trove and the weighted interest rate:
 
@@ -101,7 +102,7 @@ A trove can be liquidated once its loan-to-value ratio (LTV) is above its thresh
 Briefly, there are three layers of liquidations for troves:
 
 1. Searcher liquidation
-2. Absorption i.e. liquidation by the Absorber module
+2. Absorption i.e. liquidation using `yin` from the Absorber module
 3. Redistribution
 
 where redistribution is a built-in mechanism that socializes bad debt in a trove between all of the remaining troves. For more details on searcher liquidations and absorptions, please refer to the [Purger](https://app.gitbook.com/o/G0dVpaR8CLqXhZ3TlTJx/s/BTWxg1bdHQ15qxTg6SOE/\~/changes/1/smart-contract-modules/purger-module) module.
@@ -131,7 +132,7 @@ Based on the above design, no redistributed debt or `yang` should accrue to the 
 
 ## Recovery Mode
 
-Recovery mode is activated when the aggregate loan-to-value ratio of all troves in the Shrine is greater than 70% of the Shrine's threshold, which is in turn calculated based on the weighted average of all deposited `yang`s.
+Recovery mode is activated when the aggregate loan-to-value ratio of all troves in the Shrine is equal to or greater than 70% of the Shrine's threshold, which is in turn calculated based on the weighted average of all deposited `yang`s.
 
 In recovery mode, the threshold for all yangs is gradually adjusted downwards depending on the the extent to which the Shrine's aggregate loan-to-value ratio is greater than the Shrine's recovery mode threshold, down to a floor of 50% of the `yang`'s original threshold. By adjusting the threshold downwards, troves are more susceptible to liquidations. The recovery mode therefore encourages users to either deposit more collateral or repay existing debt to avoid liquidation. This in turn improves the health of the protocol. Recovery mode is also intended to steer user's behaviour towards preventing it from being activated in the first place.
 
@@ -145,10 +146,10 @@ The Shrine can be killed permanently using `Shrine.kill` . After the Shrine is k
 
 ## Properties
 
-These are some properties that of the Shrine module that should always hold true at all times.
+These are some properties of the Shrine module that should hold true at all times.
 
-* The total amount of a `yang` is equal to the sum of all trove's deposits of that `yang` (this includes any exceptionally redistributed yangs and their accompanying errors) and the initial amount seeded at the time of `add_yang`.
-* For a redistribution, the redistributed debt is equal to the sum of the amount of `yang` multiplied by the unit debt for that `yang` and the error for that `yang`, for all `yang`s, minus the carried over from the previous redistribution, if any.
+* The total amount of a `yang` is equal to the sum of all troves' deposits of that `yang` (this includes any exceptionally redistributed yangs and their accompanying errors) and the initial amount seeded at the time of `add_yang`.
+* For a redistribution, the redistributed debt is equal to the sum of the amount of `yang` multiplied by the unit debt for that `yang` and the error for that `yang`, for all `yang`s, minus the carried over error from the previous redistribution, if any.
 * A trove that is healthy cannot become unhealthy as a result of `withdraw` or `forge`.
 * The accrual of interest is monotonic, meaning it only increases in value.
 

@@ -10,17 +10,17 @@ The Purger module is the primary interface for the multi-layered liquidation sys
 
 There are two ways to liquidate an unhealthy trove:
 
-1.  `liquidate`: the caller pays down the unhealthy trove's debt using its own `yin` and gets the corresponding collateral value plus a liquidation penalty as reward;
+1.  `liquidate`: the caller pays down the unhealthy trove's debt using its own `yin` and gets the corresponding collateral value plus a liquidation penalty as reward.
 
     <figure><img src="../.gitbook/assets/image (10).png" alt=""><figcaption></figcaption></figure>
 2.  `absorb`: an absorption where some or all of the Absorber's `yin` balance is used to pay down the unhealthy trove's debt and the Absorber receives the corresponding collateral value plus a liquidation penalty, and the caller receives a compensation.&#x20;
 
     * If the Absorber's `yin` balance is insufficient to cover the amount to be paid down, then the remainder debt is redistributed.&#x20;
-    * If the Absorber has no `yin`, then the entire amount of debt to be paid down is redistributed. The caller will still receive compensation.
+    * If the Absorber has no `yin` or if the Absorber is not operational, then the entire amount of debt to be paid down is redistributed. The caller will still receive compensation.
 
     <figure><img src="../.gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
 
-Both functions should revert if the Shrine is not live.
+Both functions should revert (via the call to `shrine.melt`) if the Shrine is not live.
 
 **Priority of liquidation methods**
 
@@ -72,7 +72,7 @@ $$s$$ is a scalar that is introduced to control how quickly the absorption penal
 
 ### Close amount
 
-The close amount refers to the amount of debt that can be paid down during a liquidation. Rather than all-or-nothing liquidations, the minimum amount of repayment required to bring the trove's LTV back to a healthy level (also referred to as its safety margin) can be liquidated each time. The healthy level is currently defined as 90% of the trove's threshold. For example, assuming a trove with 70% threshold is unhealthy, then the close amount will be the amount of repayment needed to bring the trove's LTV back to 0.9 \* 70% = 63%.\
+The close amount refers to the amount of debt that can be paid down during a liquidation. Rather than all-or-nothing liquidations, up to the minimum amount of repayment required to bring the trove's LTV back to a healthy level (also referred to as its safety margin) can be liquidated each time. The healthy level is currently defined as 90% of the trove's threshold. For example, assuming a trove with 70% threshold is unhealthy, then the close amount will be the amount of repayment needed to bring the trove's LTV back to 0.9 \* 70% = 63%.\
 \
 The close amount takes into account the liquidation penalty, as well as the compensation in the case of `absorb`.&#x20;
 

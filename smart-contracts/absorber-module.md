@@ -4,7 +4,7 @@ description: Stability pool as the secondary layer of liquidations
 
 # Absorber Module
 
-The Absorber is Opus' implementation of a stability pool that allows yin holders to provide their yin and participate in liquidations (i.e. absorptions) as a consolidated liquidated pool.&#x20;
+The Absorber is Opus' implementation of a stability pool that allows yin holders to provide their yin and participate in liquidations (i.e. absorptions) as a consolidated pool.&#x20;
 
 By providing their `yin` to the Absorber, users will be able to:
 
@@ -22,7 +22,7 @@ To prevent confusion with "deposit" and "withdrawal" of `yang` for trove users, 
 2. `remove`: users who have provided `yin` previously may remove their remaining entitlement provided they have submitted a request (see below) and the conditions for the request have been fulfilled
 3. `request`: users may request to `remove` their earlier provided `yin`
 4. `reap`: withdraw a provider's entitlement to absorbed assets and rewards
-5. `update`: Inform the Absorber that an absorption has occured so that the Absorber can account for the absorbed assets. This is intended for the Purger.
+5. `update`: inform the Absorber that an absorption has occured so that the Absorber can account for the absorbed assets. This is intended for the Purger.
 
 ## Providing liquidity
 
@@ -36,7 +36,7 @@ The internal shares are used to account for the following:
 2. the amount of absorbed assets the provider is entitled to based on the absorptions that have occurred while the provider has some entitlement of `yin` in the Absorber; and
 3. the amount of rewards, if any, that a provider is entitled to withdraw.
 
-On the rare occasions, it is possible for a provider's shares to be carried over to the next epoch if the Absorber still has `yin`. This may happen if the trigger for the new epoch is if the amount of yin represented per share falls below a certain threshold. In these cases, we keep track of a conversion rate of an epoch's share to the next epoch's share, and calculate the provider's entitlement in the new epoch. There may be some precision loss from this share conversion across epochs that will favour the protocol.
+On rare occasions, it is possible for a provider's shares to be carried over to the next epoch if the Absorber still has `yin`. This may happen if the trigger for the new epoch is the amount of yin represented per share falling below a certain threshold. In these cases, we keep track of a conversion rate of an epoch's share to the next epoch's share, and calculate the provider's entitlement in the new epoch. There may be some precision loss from this share conversion across epochs that will favour the protocol.
 
 ### Initial shares
 
@@ -66,9 +66,9 @@ Note that the amount of shares that is minted into oblivion at the start of each
 
 As the initial amount of shares minted into oblivion are excluded from receiving absorbed assets and rewards, there is a potential overflow issue when attempting to distribute absorbed assets and rewards if the remaining shares is a very small number.&#x20;
 
-To mitigate against potential overflows, the Absorber is available for absorptions only if there is a minimum number of shares (currently set at `10 ** 6`), even if there is some `yin` in the Absorber.&#x20;
+To mitigate against potential overflows, the Absorber is available for absorptions only if there is a minimum number of shares (currently set at `10 ** 6`), even if there is some `yin` in the Absorber.
 
-Note that this requirement is distinct from the initial shares that is minted to oblivion at the start of each epoch to address the first depositor front-running issue.
+Note that this requirement is distinct from, and in addition to, the initial shares that is minted to oblivion at the start of each epoch to address the first depositor front-running issue.
 
 ## Removing liquidity
 
@@ -78,7 +78,7 @@ A provider who has provided `yin` can subsequently elect to remove such remainin
 
 There are two preconditions for removal:
 
-1. the Shrine must not be in recovery mode; and
+1. if the Shrine is live, the Shrine must not be in recovery mode; and
 2. the provider must have submitted a `request` and the removal must be made within the validity period.
 
 Once a provider has submitted a `request`, the timelock (initial value of 1 minute) will start counting down. Once the timelock has elapsed, the provider has 1 hour to call `remove` before the `request` expires. In addition, if a subsequent `request` is made within the cooldown period (currently set at 7 days) of the earlier `request`, then the timelock will increase by a factor of 5, capped at a maximum of 7 days.
@@ -98,6 +98,13 @@ A provider may also opt to withdraw absorbed assets and rewards only by calling 
 
 ## Emergency Mechanism
 
-The Absorber has a `kill` function that irreversibly pauses `provide`. This prevents users from providing further liquidity. Users will still be able to `remove` their liquidity after the Absorber is killed.
+The Absorber has a `kill` function that:
+
+1. irreversibly pauses `provide`, preventing users from providing further liquidity; and&#x20;
+2. irreversibly pauses the distribution of all rewards, if any.
+
+Users will still be able to `remove` their liquidity after the Absorber is killed.
 
 Note that the Caretaker does not automatically kill the Absorber during global shutdown because the Absorber may be a recipient of any final debt surplus that is minted before final settlement in the Shrine.
+
+In addition, `yin` that has been provided to the Absorber may still be used for absorptions after the Absorber is killed.
