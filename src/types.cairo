@@ -260,6 +260,13 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
 //
 
 mod pragma {
+    #[derive(Serde, Drop, Copy)]
+    enum AggregationMode {
+        Median: (),
+        Mean: (),
+        Error: (),
+    }
+
     #[derive(Copy, Drop, Serde)]
     enum DataType {
         SpotEntry: felt252,
