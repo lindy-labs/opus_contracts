@@ -9,8 +9,11 @@ mod pragma_utils {
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use opus::mock::mock_pragma::{
-        mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
+    use opus::mock::mock_spot_pragma::{
+        mock_spot_pragma as mock_spot_pragma_contract, IMockSpotPragmaDispatcher, IMockSpotPragmaDispatcherTrait
+    };
+    use opus::mock::mock_twap_pragma::{
+        mock_twap_pragma as mock_twap_pragma_contract, IMockTwapPragmaDispatcher, IMockTwapPragmaDispatcherTrait
     };
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::tests::sentinel::utils::sentinel_utils;
@@ -50,26 +53,43 @@ mod pragma_utils {
     // Test setup helpers
     //
 
-    fn mock_pragma_deploy(mock_pragma_class: Option<ContractClass>) -> IMockPragmaDispatcher {
+    fn mock_spot_pragma_deploy(mock_spot_pragma_class: Option<ContractClass>) -> IMockSpotPragmaDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
 
-        let mock_pragma_class = match mock_pragma_class {
+        let mock_spot_pragma_class = match mock_spot_pragma_class {
             Option::Some(class) => class,
-            Option::None => declare('mock_pragma'),
+            Option::None => declare('mock_spot_pragma'),
         };
 
-        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy pragma');
+        let mock_spot_pragma_addr = mock_spot_pragma_class.deploy(@calldata).expect('failed deploy spot pragma');
 
-        IMockPragmaDispatcher { contract_address: mock_pragma_addr }
+        IMockSpotPragmaDispatcher { contract_address: mock_spot_pragma_addr }
+    }
+
+    fn mock_twap_pragma_deploy(mock_twap_pragma_class: Option<ContractClass>) -> IMockTwapPragmaDispatcher {
+        let mut calldata: Array<felt252> = ArrayTrait::new();
+
+        let mock_twap_pragma_class = match mock_twap_pragma_class {
+            Option::Some(class) => class,
+            Option::None => declare('mock_twap_pragma'),
+        };
+
+        let mock_twap_pragma_addr = mock_twap_pragma_class.deploy(@calldata).expect('failed deploy twap pragma');
+
+        IMockTwapPragmaDispatcher { contract_address: mock_twap_pragma_addr }
     }
 
     fn pragma_deploy(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
-    ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
-        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
+        pragma_class: Option<ContractClass>,
+        mock_spot_pragma_class: Option<ContractClass>,
+        mock_twap_pragma_class: Option<ContractClass>
+    ) -> (IPragmaDispatcher, IMockSpotPragmaDispatcher, IMockTwapPragmaDispatcher) {
+        let mock_spot_pragma: IMockSpotPragmaDispatcher = mock_spot_pragma_deploy(mock_spot_pragma_class);
+        let mock_twap_pragma: IMockTwapPragmaDispatcher = mock_twap_pragma_deploy(mock_twap_pragma_class);
         let mut calldata: Array<felt252> = array![
             contract_address_to_felt252(admin()),
-            contract_address_to_felt252(mock_pragma.contract_address),
+            contract_address_to_felt252(mock_spot_pragma.contract_address),
+            contract_address_to_felt252(mock_twap_pragma.contract_address),
             FRESHNESS_THRESHOLD.into(),
             SOURCES_THRESHOLD.into(),
         ];
@@ -83,7 +103,7 @@ mod pragma_utils {
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        (pragma, mock_pragma)
+        (pragma, mock_spot_pragma, mock_twap_pragma)
     }
 
     fn add_yangs_to_pragma(pragma: IPragmaDispatcher, yangs: Span<ContractAddress>) {
@@ -93,9 +113,16 @@ mod pragma_utils {
         // add_yang does an assert on the response decimals, so we
         // need to provide a valid mock response for it to pass
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
-        mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
-        mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
+
+        let mock_pragmas: Span<ContractAddress> = oracle.get_oracles();
+
+        let mock_spot_pragma = IMockSpotPragmaDispatcher { contract_address: *mock_pragmas[0] };
+        mock_valid_spot_price_update(mock_spot_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
+        mock_valid_spot_price_update(mock_spot_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
+
+        let mock_twap_pragma = IMockTwapPragmaDispatcher { contract_address: *mock_pragmas[1] };
+        mock_valid_twap_update(mock_twap_pragma, eth_yang, ETH_INIT_PRICE.into());
+        mock_valid_twap_update(mock_twap_pragma, wbtc_yang, WBTC_INIT_PRICE.into());
 
         // Add yangs to Pragma
         start_prank(CheatTarget::One(pragma.contract_address), admin());
@@ -128,9 +155,11 @@ mod pragma_utils {
         }
     }
 
-    // Helper function to add a valid price update to the mock Pragma oracle
+    // Helper function to add a valid price update to the mock Pragma spot oracle
     // using default values for decimals and number of sources.
-    fn mock_valid_price_update(mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64) {
+    fn mock_valid_spot_price_update(
+        mock_spot_pragma: IMockSpotPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
+    ) {
         let response = PragmaPricesResponse {
             price: convert_price_to_pragma_scale(price),
             decimals: PRAGMA_DECIMALS.into(),
@@ -139,6 +168,16 @@ mod pragma_utils {
             expiration_timestamp: Option::None,
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
-        mock_pragma.next_get_data_median(pair_id, response);
+        mock_spot_pragma.next_get_data_median(pair_id, response);
+    }
+
+    // Helper function to add a valid price update to the mock Pragma TWAP oracle
+    // using default values for decimals.
+    fn mock_valid_twap_update(mock_twap_pragma: IMockTwapPragmaDispatcher, yang: ContractAddress, price: Wad) {
+        let price: u128 = convert_price_to_pragma_scale(price);
+        let decimals: u32 = PRAGMA_DECIMALS.into();
+
+        let pair_id: felt252 = get_pair_id_for_yang(yang);
+        mock_twap_pragma.next_calculate_twap(pair_id, price, decimals);
     }
 }

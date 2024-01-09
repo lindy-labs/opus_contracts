@@ -15,7 +15,7 @@ mod purger_utils {
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
-    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_spot_pragma::{IMockSpotPragmaDispatcher, IMockSpotPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::seer::utils::seer_utils;
@@ -54,7 +54,8 @@ mod purger_utils {
         blesser: ContractClass,
         purger: ContractClass,
         pragma: Option<ContractClass>,
-        mock_pragma: Option<ContractClass>,
+        mock_spot_pragma: Option<ContractClass>,
+        mock_twap_pragma: Option<ContractClass>,
         seer: Option<ContractClass>,
     }
 
@@ -344,7 +345,7 @@ mod purger_utils {
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
-        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
+        seer_utils::add_oracles(classes.pragma, classes.mock_spot_pragma, classes.mock_twap_pragma, seer);
         seer_utils::add_yangs(seer, yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -499,7 +500,7 @@ mod purger_utils {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
                     shrine.advance(*yang, new_price);
-                    seer_utils::mock_valid_price_update(seer, *yang, new_price);
+                    seer_utils::mock_valid_seer_price_update(seer, *yang, new_price);
                 },
                 Option::None => { break; },
             };
@@ -677,7 +678,8 @@ mod purger_utils {
             blesser: declare('blesser'),
             purger: declare('purger'),
             pragma: Option::Some(declare('pragma')),
-            mock_pragma: Option::Some(declare('mock_pragma')),
+            mock_spot_pragma: Option::Some(declare('mock_spot_pragma')),
+            mock_twap_pragma: Option::Some(declare('mock_twap_pragma')),
             seer: Option::Some(declare('seer')),
         }
     }

@@ -8,7 +8,8 @@ mod seer_utils {
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
-    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_spot_pragma::{IMockSpotPragmaDispatcher, IMockSpotPragmaDispatcherTrait};
+    use opus::mock::mock_twap_pragma::{IMockTwapPragmaDispatcher, IMockTwapPragmaDispatcherTrait};
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -102,11 +103,14 @@ mod seer_utils {
     }
 
     fn add_oracles(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>, seer: ISeerDispatcher
+        pragma_class: Option<ContractClass>,
+        mock_spot_pragma_class: Option<ContractClass>,
+        mock_twap_pragma_class: Option<ContractClass>,
+        seer: ISeerDispatcher
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_deploy(pragma_class, mock_pragma_class);
+        let (pragma, _, _) = pragma_utils::pragma_deploy(pragma_class, mock_spot_pragma_class, mock_twap_pragma_class);
         oracles.append(pragma.contract_address);
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
 
@@ -124,13 +128,18 @@ mod seer_utils {
         pragma_utils::add_yangs_to_pragma(pragma, yangs);
     }
 
-    fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
+    fn mock_valid_seer_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
         let current_ts: u64 = get_block_timestamp();
         let oracles: Span<ContractAddress> = seer.get_oracles();
 
         // assuming first oracle is Pragma
         let pragma = IOracleDispatcher { contract_address: *oracles.at(0) };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
-        pragma_utils::mock_valid_price_update(mock_pragma, yang, price, current_ts);
+        let mock_pragma_oracles: Span<ContractAddress> = pragma.get_oracles();
+
+        let mock_spot_pragma = IMockSpotPragmaDispatcher { contract_address: *mock_pragma_oracles[0] };
+        pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, yang, price, current_ts);
+
+        let mock_twap_pragma = IMockTwapPragmaDispatcher { contract_address: *mock_pragma_oracles[1] };
+        pragma_utils::mock_valid_twap_update(mock_twap_pragma, yang, price);
     }
 }

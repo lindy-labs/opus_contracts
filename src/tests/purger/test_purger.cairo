@@ -1658,7 +1658,9 @@ mod test_purger {
 
                                             match kill_absorber_fuzz.pop_front() {
                                                 Option::Some(kill_absorber) => {
-                                                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                                    let (
+                                                        shrine, abbot, mock_spot_pragma, absorber, purger, yangs, gates
+                                                    ) =
                                                         purger_utils::purger_deploy(
                                                         classes
                                                     );
@@ -1706,7 +1708,7 @@ mod test_purger {
                                                     // Make the target trove absorbable
                                                     purger_utils::lower_prices_to_raise_trove_ltv(
                                                         shrine,
-                                                        mock_pragma,
+                                                        mock_spot_pragma,
                                                         yangs,
                                                         target_trove_start_health.value,
                                                         target_trove_start_health.debt,
