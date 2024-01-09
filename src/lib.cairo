@@ -58,7 +58,8 @@ mod mock {
     mod erc20_mintable;
     mod flash_borrower;
     mod flash_liquidator;
-    mod mock_pragma;
+    mod mock_spot_pragma;
+    mod mock_twap_pragma;
 //mod oracle;
 }
 
