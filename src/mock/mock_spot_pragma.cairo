@@ -12,16 +12,16 @@ struct PragmaPricesResponseWrapper {
 }
 
 #[starknet::interface]
-trait IMockPragma<TContractState> {
+trait IMockSpotPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
     fn next_get_data_median(ref self: TContractState, pair_id: felt252, price_response: PragmaPricesResponse);
 }
 
 #[starknet::contract]
-mod mock_pragma {
+mod mock_spot_pragma {
     use opus::interfaces::external::IPragmaOracle;
     use opus::types::pragma::{DataType, PragmaPricesResponse};
-    use super::{IMockPragma, PragmaPricesResponseWrapper};
+    use super::{IMockSpotPragma, PragmaPricesResponseWrapper};
 
     #[storage]
     struct Storage {
@@ -30,7 +30,7 @@ mod mock_pragma {
     }
 
     #[abi(embed_v0)]
-    impl IMockPragmaImpl of IMockPragma<ContractState> {
+    impl IMockSpotPragmaImpl of IMockSpotPragma<ContractState> {
         fn next_get_data_median(ref self: ContractState, pair_id: felt252, price_response: PragmaPricesResponse) {
             self
                 .price_response
