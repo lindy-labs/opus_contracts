@@ -2,7 +2,7 @@ mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::pragma_roles;
-    use opus::core::shrine::shrine;
+    use opus::core::shrine::shrine as shrine_contract;
     use opus::external::pragma::pragma as pragma_contract;
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -318,8 +318,10 @@ mod test_pragma {
     // Tests - Functionality
     //
 
+    // Checks that price takes into account the amount of asset corresponding to per yang
+    // Assumes spot price is equal to TWAP for simplicity.
     #[test]
-    fn test_fetch_price_pass() {
+    fn test_fetch_price_increasing_asset_per_yang_pass() {
         let (pragma, mock_spot_pragma, mock_twap_pragma) = pragma_utils::pragma_deploy(
             Option::None, Option::None, Option::None
         );
@@ -351,7 +353,7 @@ mod test_pragma {
         assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 1');
         assert(wbtc_price == fetched_wbtc.unwrap(), 'wrong WBTC price 1');
 
-        let next_ts = first_ts + shrine::TIME_INTERVAL;
+        let next_ts = first_ts + shrine_contract::TIME_INTERVAL;
         start_warp(CheatTarget::All, next_ts);
         eth_price += (10 * WAD_SCALE).into();
         pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, eth_addr, eth_price, next_ts);
@@ -366,6 +368,64 @@ mod test_pragma {
 
         assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 2');
         assert(wbtc_price == fetched_wbtc.unwrap(), 'wrong WBTC price 2');
+    }
+
+    // Checks that the lower of spot price and TWAP is used to calculate price
+    // Assumes the amount of asset corresponding to per yang is constant for simplicity
+    #[test]
+    fn test_fetch_price_pessismistic_pass() {
+        let (pragma, mock_spot_pragma, mock_twap_pragma) = pragma_utils::pragma_deploy(
+            Option::None, Option::None, Option::None
+        );
+        let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::None, Option::None
+        );
+        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+
+        let eth_addr = *yangs.at(0);
+        let wbtc_addr = *yangs.at(1);
+
+        // Perform a price update with spot price lower than TWAP
+        let first_ts = get_block_timestamp() + 1;
+        start_warp(CheatTarget::All, first_ts);
+
+        let eth_spot_price: Wad = (seer_utils::ETH_INIT_PRICE / 2).into();
+        pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, eth_addr, eth_spot_price, first_ts);
+
+        let eth_twap: Wad = seer_utils::ETH_INIT_PRICE.into();
+        pragma_utils::mock_valid_twap_update(mock_twap_pragma, eth_addr, eth_twap);
+
+        let wbtc_spot_price: Wad = (seer_utils::WBTC_INIT_PRICE / 2).into();
+        pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, wbtc_addr, wbtc_spot_price, first_ts);
+
+        let wbtc_twap: Wad = seer_utils::WBTC_INIT_PRICE.into();
+        pragma_utils::mock_valid_twap_update(mock_twap_pragma, wbtc_addr, wbtc_twap);
+
+        start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
+        let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
+        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr, false);
+
+        assert(eth_spot_price == fetched_eth.unwrap(), 'wrong pessismistic ETH price 1');
+        assert(wbtc_spot_price == fetched_wbtc.unwrap(), 'wrong pessismistic WBTC price 1');
+
+        let eth_spot_price: Wad = seer_utils::ETH_INIT_PRICE.into();
+        pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, eth_addr, eth_spot_price, first_ts);
+
+        let eth_twap: Wad = (seer_utils::ETH_INIT_PRICE / 2).into();
+        pragma_utils::mock_valid_twap_update(mock_twap_pragma, eth_addr, eth_twap);
+
+        let wbtc_spot_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
+        pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, wbtc_addr, wbtc_spot_price, first_ts);
+
+        let wbtc_twap: Wad = (seer_utils::WBTC_INIT_PRICE / 2).into();
+        pragma_utils::mock_valid_twap_update(mock_twap_pragma, wbtc_addr, wbtc_twap);
+
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
+        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr, false);
+
+        assert(eth_twap == fetched_eth.unwrap(), 'wrong ETH price 2');
+        assert(wbtc_twap == fetched_wbtc.unwrap(), 'wrong WBTC price 2');
     }
 
     #[test]
