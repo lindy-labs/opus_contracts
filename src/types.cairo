@@ -20,8 +20,9 @@ enum YangSuspensionStatus {
 
 #[derive(Copy, Debug, Drop, Serde)]
 struct Health {
-    // Threshold at which a trove can be liquidated, or at which
-    // recovery mode is triggered for Shrine
+    // Threshold at which a trove can be liquidated,
+    // or in case of Shrine, the base threshold for
+    // calculating recovery mode status
     threshold: Ray,
     // Debt as a percentage of value
     ltv: Ray,
