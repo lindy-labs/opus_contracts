@@ -78,6 +78,15 @@ mod shrine {
 
     const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
 
+    // An additional multiplier to be added to `RECOVERY_MODE_THRESHOLD_MULTIPLIER`
+    // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
+    // thresholds start to be scaled.
+    // This adds a safety margin from when recovery mode is triggered until thresholds
+    // are adjusted to mitigate against a trove intentionally triggering recovery mode to
+    // liquidate other troves. Once recovery mode is triggered, this safety margin can
+    // only be depleted by the accrual of interest or changes to yangs' prices.
+    const RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER: u128 = 50000000000000000000000000; // 0.05 (ray)
+
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
@@ -837,8 +846,14 @@ mod shrine {
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
+            self.charge(trove_id);
+
+            let start_shrine_health: Health = self.get_shrine_health();
+
             self.withdraw_helper(yang, trove_id, amount);
             self.assert_valid_trove_action(trove_id);
+
+            self.assert_recovery_mode_checks(start_shrine_health);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -847,6 +862,8 @@ mod shrine {
             self.assert_live();
 
             self.charge(trove_id);
+
+            let start_shrine_health: Health = self.get_shrine_health();
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -867,6 +884,8 @@ mod shrine {
             self.assert_valid_trove_action(trove_id);
 
             self.forge_helper(user, amount);
+
+            self.assert_recovery_mode_checks(start_shrine_health);
 
             // Events
             if forge_fee.is_non_zero() {
@@ -913,7 +932,69 @@ mod shrine {
         // even if the trove is still unsafe.
         fn seize(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             self.access_control.assert_has_role(shrine_roles::SEIZE);
+            self.charge(trove_id);
             self.withdraw_helper(yang, trove_id, amount);
+        }
+
+        // Adds the accumulated interest as debt to the trove
+        fn charge(ref self: ContractState, trove_id: u64) {
+            // Do not charge accrued interest once Shrine is killed because total troves' debt
+            // and individual trove's debt are fixed at the time of shutdown.
+            if !self.is_live.read() {
+                return;
+            }
+
+            let trove: Trove = self.troves.read(trove_id);
+
+            // Get current interval and yang count
+            let current_interval: u64 = now();
+
+            // Get new debt amount
+            let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
+
+            // Pull undistributed debt and update state
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) = self
+                .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, compounded_trove_debt);
+
+            // If there was any exceptional redistribution, write updated yang amounts to trove
+            if updated_trove_yang_balances.is_some() {
+                let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
+                loop {
+                    match updated_trove_yang_balances.pop_front() {
+                        Option::Some(yang_balance) => {
+                            self.deposits.write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
+                        },
+                        Option::None => { break; },
+                    };
+                };
+            }
+
+            // Update trove
+            let updated_trove: Trove = Trove {
+                charge_from: current_interval,
+                debt: compounded_trove_debt_with_redistributed_debt,
+                last_rate_era: self.rates_latest_era.read()
+            };
+            self.troves.write(trove_id, updated_trove);
+            self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
+
+            let charged: Wad = compounded_trove_debt - trove.debt;
+
+            // Add the interest charged on the trove's debt to the total troves' debt and
+            // budget only if there is a change in the trove's debt. This should not include
+            // redistributed debt, as that is already included in the total.
+            if charged.is_non_zero() {
+                let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
+                self.total_troves_debt.write(new_total_troves_debt);
+                self.adjust_budget_helper(charged.into());
+                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+            }
+
+            // Emit only if there is a change in the `Trove` struct
+            if updated_trove != trove {
+                self.emit(TroveUpdated { trove_id, trove: updated_trove });
+            }
         }
 
         fn redistribute(
@@ -1145,6 +1226,20 @@ mod shrine {
             }
         }
 
+        // Checks that:
+        // 1. if Shrine is in normal mode, that recovery mode is not triggered; or if 
+        //    Shrine is in recovery mode, that Shrine's LTV does not worsen
+        fn assert_recovery_mode_checks(self: @ContractState, start_shrine_health: Health) {
+            let end_shrine_health: Health = self.get_shrine_health();
+
+            if !self.is_recovery_mode_helper(end_shrine_health) {
+                return;
+            } else {
+                assert(!self.is_recovery_mode_helper(start_shrine_health), 'SH: Triggers recovery mode');
+                assert(end_shrine_health.ltv <= start_shrine_health.ltv, 'SH: Shrine LTV lowered in RM');
+            }
+        }
+
         // If the budget is positive, check that the new total amount of yin and any debt surpluses
         // is less than the debt ceiling. Otherwise, if the budget is negative (i.e. there is a deficit),
         // check that the new total amount of yin is less than the debt ceiling.
@@ -1203,9 +1298,14 @@ mod shrine {
             let shrine_health: Health = self.get_shrine_health();
 
             if self.is_recovery_mode_helper(shrine_health) {
-                let recovery_mode_threshold: Ray = shrine_health.threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+                let recovery_mode_margin_threshold: Ray = shrine_health.threshold
+                    * (RECOVERY_MODE_THRESHOLD_MULTIPLIER + RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER).into();
+                if shrine_health.ltv <= recovery_mode_margin_threshold {
+                    return threshold;
+                }
+
                 return max(
-                    threshold * THRESHOLD_DECREASE_FACTOR.into() * (recovery_mode_threshold / shrine_health.ltv),
+                    threshold * THRESHOLD_DECREASE_FACTOR.into() * (recovery_mode_margin_threshold / shrine_health.ltv),
                     (threshold.val / 2_u128).into()
                 );
             }
@@ -1386,75 +1486,12 @@ mod shrine {
             let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
 
-            self.charge(trove_id);
-
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
 
             // Emit events
             self.emit(YangTotalUpdated { yang, total: new_total });
             self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
-        }
-
-        // Adds the accumulated interest as debt to the trove
-        fn charge(ref self: ContractState, trove_id: u64) {
-            // Do not charge accrued interest once Shrine is killed because total troves' debt
-            // and individual trove's debt are fixed at the time of shutdown.
-            if !self.is_live.read() {
-                return;
-            }
-
-            let trove: Trove = self.troves.read(trove_id);
-
-            // Get current interval and yang count
-            let current_interval: u64 = now();
-
-            // Get new debt amount
-            let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
-
-            // Pull undistributed debt and update state
-            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
-            let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) = self
-                .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, compounded_trove_debt);
-
-            // If there was any exceptional redistribution, write updated yang amounts to trove
-            if updated_trove_yang_balances.is_some() {
-                let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
-                loop {
-                    match updated_trove_yang_balances.pop_front() {
-                        Option::Some(yang_balance) => {
-                            self.deposits.write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
-                        },
-                        Option::None => { break; },
-                    };
-                };
-            }
-
-            // Update trove
-            let updated_trove: Trove = Trove {
-                charge_from: current_interval,
-                debt: compounded_trove_debt_with_redistributed_debt,
-                last_rate_era: self.rates_latest_era.read()
-            };
-            self.troves.write(trove_id, updated_trove);
-            self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
-
-            let charged: Wad = compounded_trove_debt - trove.debt;
-
-            // Add the interest charged on the trove's debt to the total troves' debt and
-            // budget only if there is a change in the trove's debt. This should not include
-            // redistributed debt, as that is already included in the total.
-            if charged.is_non_zero() {
-                let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
-                self.total_troves_debt.write(new_total_troves_debt);
-                self.adjust_budget_helper(charged.into());
-                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-            }
-
-            // Emit only if there is a change in the `Trove` struct
-            if updated_trove != trove {
-                self.emit(TroveUpdated { trove_id, trove: updated_trove });
-            }
         }
 
         // Returns the amount of debt owed by trove after having interest charged over a given time period
