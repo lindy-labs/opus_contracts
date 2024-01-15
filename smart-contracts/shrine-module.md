@@ -97,7 +97,7 @@ The forge fee is intended to protect against downward depegs by discouraging fur
 
 A trove can be liquidated once its loan-to-value ratio (LTV) is above its threshold. Each trove has its unique threshold that is determined by the weighted average of the thresholds of its deposited yangs.
 
-* For example, assume that ETH has a threshold of 80% and BTC has a threshold of 90%. A trove has deposited 5 ETH and 0.5 BTC, amounting to 5 Wad units of ETH `yang` and 0.5 Wad unit of BTC `yang`. The average prices of ETH `yang` and BTC `yang` over the charging period are USD 1,000 and USD 10,000 respectively. This gives the trove an average value of USD 10,000 with the value of ETH and BTC in equal ratio. Accordingly, the weighted average threshold is (5,000 / 10,000) \* 80% + (5,000 / 10,000) \* 90% = 85%. If ETH price were higher, it would make up a larger percentage of the total collateral value, and so the weighted average threshold would be higher.
+* For example, assume that ETH has a threshold of 80% and BTC has a threshold of 90%. A trove has deposited 5 ETH and 0.5 BTC, amounting to 5 Wad units of ETH `yang` and 0.5 Wad unit of BTC `yang`. The average prices of ETH `yang` and BTC `yang` over the charging period are USD 1,000 and USD 10,000 respectively. This gives the trove an average value of USD 10,000 with the value of ETH and BTC in equal ratio. Accordingly, the weighted average threshold is (5,000 / 10,000) \* 80% + (5,000 / 10,000) \* 90% = 85%. If ETH price were higher, it would make up a larger percentage of the total collateral value, and so the weighted average threshold would be lower.
 
 Briefly, there are three layers of liquidations for troves:
 
