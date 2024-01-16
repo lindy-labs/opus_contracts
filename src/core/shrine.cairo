@@ -851,9 +851,7 @@ mod shrine {
             let start_shrine_health: Health = self.get_shrine_health();
 
             self.withdraw_helper(yang, trove_id, amount);
-            self.assert_valid_trove_action(trove_id);
-
-            self.assert_recovery_mode_checks(start_shrine_health);
+            self.assert_valid_trove_action(trove_id, start_shrine_health);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -881,11 +879,8 @@ mod shrine {
             trove.debt += debt_amount;
             self.troves.write(trove_id, trove);
 
-            self.assert_valid_trove_action(trove_id);
-
             self.forge_helper(user, amount);
-
-            self.assert_recovery_mode_checks(start_shrine_health);
+            self.assert_valid_trove_action(trove_id, start_shrine_health);
 
             // Events
             if forge_fee.is_non_zero() {
@@ -1218,18 +1213,15 @@ mod shrine {
         // Checks that:
         // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
         // 2. the trove has at least the minimum value if it has non-zero debt
-        fn assert_valid_trove_action(self: @ContractState, trove_id: u64) {
+        // 3. if Shrine is in normal mode, that recovery mode is not triggered; or if 
+        //    Shrine is in recovery mode, that Shrine's LTV does not worsen
+        fn assert_valid_trove_action(self: @ContractState, trove_id: u64, start_shrine_health: Health) {
             let health: Health = self.get_trove_health(trove_id);
             assert(self.is_healthy_helper(health), 'SH: Trove LTV is too high');
             if health.debt.is_non_zero() {
                 assert(health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value');
             }
-        }
 
-        // Checks that:
-        // 1. if Shrine is in normal mode, that recovery mode is not triggered; or if 
-        //    Shrine is in recovery mode, that Shrine's LTV does not worsen
-        fn assert_recovery_mode_checks(self: @ContractState, start_shrine_health: Health) {
             let end_shrine_health: Health = self.get_shrine_health();
 
             if !self.is_recovery_mode_helper(end_shrine_health) {
