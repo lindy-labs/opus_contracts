@@ -78,6 +78,10 @@ mod shrine {
 
     const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
 
+    // Time delay from the timestamp when recovery mode condition is first met to when 
+    // recovery mode is active.
+    const RECOVERY_MODE_ACTIVATION_TIME_DELAY: u64 = consteval_int!(60 * 60);
+
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
@@ -194,6 +198,8 @@ mod shrine {
         yang_to_yang_redistribution: LegacyMap::<(u32, u32, u32), ExceptionalYangRedistribution>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
+        // Keeps track of whether shrine is in recovery mode
+        recovery_mode_start: u64,
         // Yin storage
         yin_name: felt252,
         yin_symbol: felt252,
@@ -1157,14 +1163,60 @@ mod shrine {
             assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
         }
 
+        // Checks if recovery mode is active, and updates the recovery mode start timestamp according to the 
+        // logic below.
+        //
+        // If the recovery mode start timestamp is non-zero, check if recovery mode condition is still met.
+        // - If yes, return true if time delay from recovery mode start timestamp has passed, or false otherwise.
+        // - If no, reset recovery mode start timestamp to zero and return false.
+        //
+        // Else, if recovery mode start timestamp is zero, check if recovery mode condition is met.
+        // - If yes, set recovery mode start timestamp to current timestamp.
+        // then always returns false.
+        fn check_and_update_recovery_mode(ref self: ContractState) -> bool {
+            let rm_start_ts = self.recovery_mode_start.read();
+            let shrine_health: Health = self.get_shrine_health();
+            let rm_condition: bool = self.recovery_mode_condition_helper(shrine_health);
+
+            if rm_start_ts.is_non_zero() {
+                if rm_condition {
+                    get_block_timestamp() >= (rm_start_ts + RECOVERY_MODE_ACTIVATION_TIME_DELAY)
+                } else {
+                    self.recovery_mode_start.write(0);
+                    false
+                }
+            } else {
+                if rm_condition {
+                    self.recovery_mode_start.write(get_block_timestamp());
+                }
+                false
+            }
+        }
+
         //
         // Helpers for getters and view functions
         //
 
         // Helper function to check if recovery mode is triggered for Shrine
-        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
+        fn recovery_mode_condition_helper(self: @ContractState, health: Health) -> bool {
             let recovery_mode_threshold: Ray = health.threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
             health.ltv >= recovery_mode_threshold
+        }
+
+        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
+            let rm_start_ts = self.recovery_mode_start.read();
+            let shrine_health: Health = self.get_shrine_health();
+            let rm_condition: bool = self.recovery_mode_condition_helper(shrine_health);
+
+            if rm_start_ts.is_non_zero() {
+                if rm_condition {
+                    get_block_timestamp() >= rm_start_ts + RECOVERY_MODE_ACTIVATION_TIME_DELAY
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         }
 
         // Helper function to get the yang ID given a yang address, and throw an error if
