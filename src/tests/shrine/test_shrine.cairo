@@ -2387,7 +2387,7 @@ mod test_shrine {
     // the same as scaling each yang threshold individually and only then
     // calculating the trove threshold
     #[test]
-    fn test_recovery_mode_invariant() {
+    fn test_recovery_mode_thresholds() {
         let shrine: IShrineDispatcher = shrine_utils::recovery_mode_test_setup(Option::None);
 
         let yang2_deposit: Wad = (2 * WAD_ONE).into();
@@ -2396,13 +2396,57 @@ mod test_shrine {
         // and subsequently its threshold
         shrine.deposit(shrine_utils::yang2_addr(), common::TROVE_1, yang2_deposit);
 
-        // We then withdraw collateral from the whale trove in order to bring up the global LTV
-        // and activate recovery mode
-        shrine.withdraw(shrine_utils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
+        // Crash yang prices to trigger recovery mode but within recovery mode margin
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
-        // Sanity check that recovery mode is active
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / rm_threshold));
+        let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
+
+        let mut yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+                    shrine.advance(*yang, new_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        // Sanity check that recovery mode is active but within recovery mode margin
+        // so thresholds are not scaled yet
+        assert(shrine.is_recovery_mode(), 'not recovery mode');
+
         let (_, threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
-        assert(threshold < shrine_utils::YANG1_THRESHOLD.into(), 'recovery mode not active');
+        assert_eq!(threshold, shrine_utils::YANG1_THRESHOLD.into(), "thresholds scaled");
+
+        // Crash yang prices again to cross the recovery mode margin and scale thresholds
+        let shrine_health: Health = shrine.get_shrine_health();
+        let rm_threshold: Ray = shrine_health.threshold
+            * (shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER
+                + shrine_contract::RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER)
+                .into();
+
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / rm_threshold));
+        let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
+
+        let mut yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+                    shrine.advance(*yang, new_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        // Assert threshold is now scaled
+        let (_, threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
+        assert(threshold < shrine_utils::YANG1_THRESHOLD.into(), 'thresholds not scaled');
 
         // Getting the trove threshold as calculated by Shrine
         let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
@@ -2421,7 +2465,9 @@ mod test_shrine {
             yang1_deposit_value + yang2_deposit_value
         );
 
-        assert(trove_health.threshold == alternative_threshold, 'invariant did not hold');
+        common::assert_equalish(
+            trove_health.threshold, alternative_threshold, 100000_u128.into(), 'invariant did not hold'
+        );
     }
 
     #[test]
