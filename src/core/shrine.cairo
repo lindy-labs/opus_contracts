@@ -1204,12 +1204,11 @@ mod shrine {
                 // There are two possibilities:
                 // 1. the trove's LTV is at or greater than its recovery mode threshold before the trove action; or
                 // 2. the trove's LTV is below its recovery mode threshold before the trove action. 
-                // (2) is already checked by ensuring the trove is healthy after the trove action.
-                // Hence, we only need to handle (1) here by asserting that the trove's LTV must improve after the 
-                // trove action.
                 if start_trove_health.ltv >= start_trove_health.threshold {
+                    // For (1), the trove's LTV cannot be worse off.
                     assert(end_trove_health.ltv <= start_trove_health.ltv, 'SH: Trove LTV lowered in RM');
                 } else {
+                    // For (2), the trove's LTV cannot be at or greater than its recovery mode threshold.
                     assert(!self.exceeds_recovery_mode_threshold(end_trove_health), 'SH: Trove LTV is too high (RM)')
                 }
             }
