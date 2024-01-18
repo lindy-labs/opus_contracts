@@ -20,7 +20,7 @@ trait IShrine<TContractState> {
     fn get_debt_ceiling(self: @TContractState) -> Wad;
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(self: @TContractState, yang: ContractAddress) -> YangSuspensionStatus;
-    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
+    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(
