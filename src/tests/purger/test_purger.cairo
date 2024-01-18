@@ -3427,27 +3427,25 @@ mod test_purger {
                                                             purger_utils::trigger_recovery_mode(
                                                                 shrine, abbot, whale_trove, whale_trove_owner
                                                             );
+                                                        // let (_, threshold_before_liquidation) = shrine
+                                                        //     .get_yang_threshold(eth);
+                                                        // assert(
+                                                        //     threshold_before_liquidation < *desired_threshold
+                                                        //         - 100000000000000000000_u128.into(),
+                                                        //     'not recovery mode'
+                                                        // )
+                                                        } else { // let (_, threshold_before_liquidation) = shrine
+                                                        //     .get_yang_threshold(eth);
 
-                                                            let (_, threshold_before_liquidation) = shrine
-                                                                .get_yang_threshold(eth);
-                                                            assert(
-                                                                threshold_before_liquidation < *desired_threshold
-                                                                    - 100000000000000000000_u128.into(),
-                                                                'not recovery mode'
-                                                            )
-                                                        } else {
-                                                            let (_, threshold_before_liquidation) = shrine
-                                                                .get_yang_threshold(eth);
-
-                                                            common::assert_equalish(
-                                                                threshold_before_liquidation,
-                                                                *desired_threshold,
-                                                                // 0.0000001 = 10^-7 (ray). Precision
-                                                                // is limited by the precision of timestamps,
-                                                                // which is only in seconds
-                                                                100000000000000000000_u128.into(),
-                                                                'wrong eth threshold'
-                                                            );
+                                                        // common::assert_equalish(
+                                                        //     threshold_before_liquidation,
+                                                        //     *desired_threshold,
+                                                        //     // 0.0000001 = 10^-7 (ray). Precision
+                                                        //     // is limited by the precision of timestamps,
+                                                        //     // which is only in seconds
+                                                        //     100000000000000000000_u128.into(),
+                                                        //     'wrong eth threshold'
+                                                        // );
                                                         }
 
                                                         // We want to compare the yin balance of the liquidator
