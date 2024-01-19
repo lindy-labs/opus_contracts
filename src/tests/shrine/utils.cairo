@@ -1,5 +1,6 @@
 mod shrine_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use debug::PrintTrait;
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -8,14 +9,19 @@ mod shrine_utils {
     use opus::tests::common;
     use opus::types::{Health, YangRedistribution};
     use opus::utils::exp::exp;
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
     use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
+
+    #[derive(Copy, Drop, PartialEq)]
+    enum RecoveryModeSetupType {
+        BeforeRecoveryMode: (),
+        BeforeMargin: (),
+        AfterMargin: (),
+    }
 
     //
     // Constants
@@ -574,22 +580,104 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(shrine_class) };
-        shrine_setup(shrine.contract_address);
+    // fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+    //     let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(shrine_class) };
+    //     shrine_setup(shrine.contract_address);
 
+    //     // Setting the debt and collateral ceilings high enough to accomodate a very large trove
+    //     start_prank(CheatTarget::One(shrine.contract_address), admin());
+    //     shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
+
+    //     // This creates the larger trove
+    //     create_whale_trove(shrine);
+
+    //     // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
+    //     let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
+    //     trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
+    //     trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
+    //     shrine
+    // }
+
+    fn recovery_mode_test_setup(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: RecoveryModeSetupType
+    ) {
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
         start_prank(CheatTarget::One(shrine.contract_address), admin());
-        shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
 
-        // This creates the larger trove
-        create_whale_trove(shrine);
+        // This creates the larger trove so that the target trove used for the test does not 
+        // fail its own health check when we manipulate it for the test.
 
-        // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
-        let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
-        trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
-        trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
-        shrine
+        // Mirror trove 1 but borrow twice the amount
+        shrine.deposit(yang1_addr(), common::TROVE_2, TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (TROVE1_FORGE_AMT * 2).into(), 0_u128.into());
+
+        let shrine_health: Health = shrine.get_shrine_health();
+        // offset for values at the boundaries
+        let offset: Ray = 100000000_u128.into();
+
+        // The target threshold multiplier that we want the offset from
+        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+
+        let threshold_multiplier: Ray = match rm_setup_type {
+            RecoveryModeSetupType::BeforeRecoveryMode => { target_rm_threshold_multiplier - offset },
+            RecoveryModeSetupType::BeforeMargin => {
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER.into();
+                target_rm_threshold_multiplier - offset
+            },
+            RecoveryModeSetupType::AfterMargin => {
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER.into();
+                target_rm_threshold_multiplier + offset
+            }
+        };
+        let rm_threshold: Ray = shrine_health.threshold * threshold_multiplier;
+
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / rm_threshold));
+        let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
+
+        start_prank(CheatTarget::All, admin());
+
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+                    shrine.advance(*yang, new_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        let shrine_health: Health = shrine.get_shrine_health();
+        let error_margin: Ray = offset;
+        match rm_setup_type {
+            RecoveryModeSetupType::BeforeRecoveryMode => {
+                let target: Ray = target_rm_threshold_multiplier * shrine_health.threshold;
+                common::assert_equalish(
+                    shrine_health.ltv,
+                    target_rm_threshold_multiplier * shrine_health.threshold,
+                    error_margin,
+                    'recovery mode test setup #1'
+                );
+            },
+            RecoveryModeSetupType::BeforeMargin => {
+                common::assert_equalish(
+                    shrine_health.ltv,
+                    target_rm_threshold_multiplier * shrine_health.threshold,
+                    error_margin,
+                    'recovery mode test setup #2'
+                );
+            },
+            RecoveryModeSetupType::AfterMargin => {
+                common::assert_equalish(
+                    shrine_health.ltv,
+                    target_rm_threshold_multiplier * shrine_health.threshold,
+                    error_margin,
+                    'recovery mode test setup #3'
+                );
+            }
+        };
     }
 
     //
