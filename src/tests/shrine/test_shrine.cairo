@@ -2297,6 +2297,64 @@ mod test_shrine {
         shrine.suspend_yang(yang);
     }
 
+    //
+    // Tests - Recovery mode
+    //
+
+    // User cannot withdraw if it triggers recovery mode
+    #[test]
+    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    fn test_withdraw_trigger_recovery_mode_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+
+        let trove_id: u64 = common::TROVE_1;
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::BeforeRecoveryMode
+        );
+
+        assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
+
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+    }
+
+    // Test - User cannot forge if it triggers recovery mode
+    #[test]
+    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    fn test_forge_trigger_recovery_mode_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+
+        let trove_id: u64 = common::TROVE_1;
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::BeforeRecoveryMode
+        );
+
+        assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
+
+        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
+    }
+
+    // Test - Within the recovery mode margin, if trove is already at or above RM threshold, user cannot withdraw
+    // Test - Within the recovery mode margin, if trove is already at or above RM threshold, user cannot forge
+    // Test - Within the recovery mode margin, if trove is already at or above RM threshold, user can deposit and melt
+    // Test - Within the recovery mode margin, if trove is already at or above RM threshold, its threshold has not been scaled
+    // Test - Within the recovery mode margin, if trove is below RM threshold, user can withdraw
+    // Test - Within the recovery mode margin, if trove is below RM threshold, user can forge
+    // Test - Within the recovery mode margin, if trove is below RM threshold, its threshold has not been scaled
+
+    // Test - After the recovery mode margin, if trove is already at or above RM threshold, user cannot withdraw
+    // Test - After the recovery mode margin, if trove is already at or above RM threshold, user cannot forge
+    // Test - After the recovery mode margin, if trove is already at or above RM threshold, user can deposit and melt
+    // Test - After the recovery mode margin, if trove is already at or above RM threshold, its threshold has been scaled
+    // Test - After the recovery mode margin, if trove is below RM threshold, user can withdraw
+    // Test - After the recovery mode margin, if trove is below RM threshold, user can forge
+    // Test - After the recovery mode margin, if trove is below RM threshold, its threshold has not been scaled
+
     // In this test, we have two troves. Both are initially healthy. And then suddenly the
     // LTV of the larger trove drops enough such that the global LTV is above the
     // recovery mode threshold, and high enough above the threshold such that
