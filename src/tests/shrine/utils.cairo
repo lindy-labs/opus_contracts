@@ -20,7 +20,7 @@ mod shrine_utils {
     enum RecoveryModeSetupType {
         BeforeRecoveryMode: (),
         WithinBuffer: (),
-        AfterBuffer: (),
+        ExceedsBuffer: (),
     }
 
     //
@@ -604,13 +604,6 @@ mod shrine_utils {
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
         start_prank(CheatTarget::One(shrine.contract_address), admin());
 
-        // This creates the larger trove so that the target trove used for the test does not 
-        // fail its own health check when we manipulate it for the test.
-
-        // Mirror trove 1 but borrow twice the amount
-        shrine.deposit(yang1_addr(), common::TROVE_2, TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (TROVE1_FORGE_AMT * 2).into(), 0_u128.into());
-
         let shrine_health: Health = shrine.get_shrine_health();
         // offset for values at the boundaries
         let offset: Ray = 100000000_u128.into();
@@ -625,7 +618,7 @@ mod shrine_utils {
                     .into();
                 target_rm_threshold_multiplier - offset
             },
-            RecoveryModeSetupType::AfterBuffer => {
+            RecoveryModeSetupType::ExceedsBuffer => {
                 target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER
                     .into();
                 target_rm_threshold_multiplier + offset
@@ -671,7 +664,7 @@ mod shrine_utils {
                     'recovery mode test setup #2'
                 );
             },
-            RecoveryModeSetupType::AfterBuffer => {
+            RecoveryModeSetupType::ExceedsBuffer => {
                 common::assert_equalish(
                     shrine_health.ltv,
                     target_rm_threshold_multiplier * shrine_health.threshold,
@@ -680,6 +673,13 @@ mod shrine_utils {
                 );
             }
         };
+    }
+
+    fn assert_trove_ltv_above_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) {
+        let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
+        let target_rm_threshold: Ray = shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into()
+            * trove_base_health.threshold;
+        assert(trove_base_health.ltv >= target_rm_threshold, 'trove threshold below rm target');
     }
 
     //
