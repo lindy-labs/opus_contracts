@@ -2595,7 +2595,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
-    // and the trove is already at or above its target recovery mode LTV, user cannot withdraw
+    // and the trove is already at or above its target recovery mode LTV, user cannot forge
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_forge_exceeded_recovery_mode_buffer_above_rm_target_threshold_fail() {
@@ -2656,9 +2656,43 @@ mod test_shrine {
         assert_eq!(trove_health.threshold, trove_base_health.threshold, "threshold has been scaled");
     }
 
-    // Test - After the recovery mode buffer is exceeded, if trove is already at or above its target recovery mode LTV, its threshold has been scaled
-    // Test - After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, user can withdraw
-    // Test - After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, user can forge
+    // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, 
+    // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
+    // provided that the withdraw and forge does not result in the trove reaching its 
+    // target recovery mode LTV
+    #[test]
+    fn test_actions_exceeded_recovery_mode_buffer_below_rm_target_threshold_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+        shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
+        shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_health.threshold, "threshold has been scaled");
+    }
+
     // Test - After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, its threshold has not been scaled
 
     // In this test, we have two troves. Both are initially healthy. And then suddenly the
