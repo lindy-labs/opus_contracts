@@ -76,16 +76,16 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+    const RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    // An additional multiplier to be added to `RECOVERY_MODE_THRESHOLD_MULTIPLIER`
+    // An additional multiplier to be added to `RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER`
     // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
     // thresholds start to be scaled.
     // This adds a safety margin from when recovery mode is triggered until thresholds
     // are adjusted to mitigate against a trove intentionally triggering recovery mode to
     // liquidate other troves. Once recovery mode is triggered, this safety margin can
     // only be depleted by the accrual of interest or changes to yangs' prices.
-    const RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER: u128 = 50000000000000000000000000; // 0.05 (ray)
+    const RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
@@ -1235,7 +1235,7 @@ mod shrine {
         //
 
         fn get_recovery_mode_target_threshold(self: @ContractState, threshold: Ray) -> Ray {
-            threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into()
+            threshold * RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into()
         }
 
         // Helper function to check if recovery mode is triggered for Shrine
@@ -1329,9 +1329,9 @@ mod shrine {
         fn scale_trove_threshold_for_recovery_mode(self: @ContractState, trove_health: Health) -> Ray {
             let shrine_health: Health = self.get_shrine_health();
 
-            let recovery_mode_margin_threshold: Ray = shrine_health.threshold
-                * (RECOVERY_MODE_THRESHOLD_MULTIPLIER + RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER).into();
-            if shrine_health.ltv <= recovery_mode_margin_threshold {
+            let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
+                * (RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER + RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER).into();
+            if shrine_health.ltv <= recovery_mode_buffered_threshold {
                 return trove_health.threshold;
             }
 

@@ -19,8 +19,8 @@ mod shrine_utils {
     #[derive(Copy, Drop, PartialEq)]
     enum RecoveryModeSetupType {
         BeforeRecoveryMode: (),
-        BeforeMargin: (),
-        AfterMargin: (),
+        WithinBuffer: (),
+        AfterBuffer: (),
     }
 
     //
@@ -616,16 +616,18 @@ mod shrine_utils {
         let offset: Ray = 100000000_u128.into();
 
         // The target threshold multiplier that we want the offset from
-        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into();
 
         let threshold_multiplier: Ray = match rm_setup_type {
             RecoveryModeSetupType::BeforeRecoveryMode => { target_rm_threshold_multiplier - offset },
-            RecoveryModeSetupType::BeforeMargin => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER.into();
+            RecoveryModeSetupType::WithinBuffer => {
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER
+                    .into();
                 target_rm_threshold_multiplier - offset
             },
-            RecoveryModeSetupType::AfterMargin => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_THRESHOLD_MARGIN_MULTIPLIER.into();
+            RecoveryModeSetupType::AfterBuffer => {
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER
+                    .into();
                 target_rm_threshold_multiplier + offset
             }
         };
@@ -661,7 +663,7 @@ mod shrine_utils {
                     'recovery mode test setup #1'
                 );
             },
-            RecoveryModeSetupType::BeforeMargin => {
+            RecoveryModeSetupType::WithinBuffer => {
                 common::assert_equalish(
                     shrine_health.ltv,
                     target_rm_threshold_multiplier * shrine_health.threshold,
@@ -669,7 +671,7 @@ mod shrine_utils {
                     'recovery mode test setup #2'
                 );
             },
-            RecoveryModeSetupType::AfterMargin => {
+            RecoveryModeSetupType::AfterBuffer => {
                 common::assert_equalish(
                     shrine_health.ltv,
                     target_rm_threshold_multiplier * shrine_health.threshold,
