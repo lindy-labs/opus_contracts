@@ -845,10 +845,10 @@ mod shrine {
             self.charge(trove_id);
 
             let start_shrine_health: Health = self.get_shrine_health();
-            let start_trove_health: Health = self.get_trove_health_helper(trove_id);
+            let start_trove_base_health: Health = self.get_trove_health_helper(trove_id);
 
             self.withdraw_helper(yang, trove_id, amount);
-            self.assert_valid_trove_action(start_shrine_health, start_trove_health, trove_id);
+            self.assert_valid_trove_action(start_shrine_health, start_trove_base_health, trove_id);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -859,7 +859,7 @@ mod shrine {
             self.charge(trove_id);
 
             let start_shrine_health: Health = self.get_shrine_health();
-            let start_trove_health: Health = self.get_trove_health_helper(trove_id);
+            let start_trove_base_health: Health = self.get_trove_health_helper(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -878,7 +878,7 @@ mod shrine {
             self.troves.write(trove_id, trove);
 
             self.forge_helper(user, amount);
-            self.assert_valid_trove_action(start_shrine_health, start_trove_health, trove_id);
+            self.assert_valid_trove_action(start_shrine_health, start_trove_base_health, trove_id);
 
             // Events
             if forge_fee.is_non_zero() {
@@ -1121,6 +1121,10 @@ mod shrine {
             trove_health
         }
 
+        fn get_trove_base_health(self: @ContractState, trove_id: u64) -> Health {
+            self.get_trove_health_helper(trove_id)
+        }
+
         fn get_redistributions_attributed_to_trove(self: @ContractState, trove_id: u64) -> (Span<YangBalance>, Wad) {
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (updated_trove_yang_balances, pulled_debt) = self
@@ -1179,10 +1183,10 @@ mod shrine {
         // 3. if Shrine is in normal mode, that recovery mode is not triggered; or if 
         //    Shrine is in recovery mode, that Shrine's LTV does not worsen
         //
-        // Note that the threshold in `start_trove_health` should be the recovery mode threshold if the 
+        // Note that the threshold in `start_trove_base_health` should be the base threshold even if the 
         // Shrine is in recovery mode
         fn assert_valid_trove_action(
-            self: @ContractState, start_shrine_health: Health, start_trove_health: Health, trove_id: u64
+            self: @ContractState, start_shrine_health: Health, start_trove_base_health: Health, trove_id: u64
         ) {
             // Note that the trove's threshold we want here is the base threshold, even if Shrine is in recovery mode
             let end_trove_health: Health = self.get_trove_health_helper(trove_id);
@@ -1204,11 +1208,13 @@ mod shrine {
 
                 // If we reach this line, then Shrine was in recovery mode, and still is after the trove action.
                 // There are two possibilities:
-                // 1. the trove's LTV is at or greater than its recovery mode threshold before the trove action; or
+                // 1. the trove's LTV is at or greater than its target recovery mode threshold before the trove action; or
                 // 2. the trove's LTV is below its recovery mode threshold before the trove action. 
-                if start_trove_health.ltv >= start_trove_health.threshold {
+                let rm_target_threshold: Ray = start_trove_base_health.threshold
+                    * RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into();
+                if start_trove_base_health.ltv >= rm_target_threshold {
                     // For (1), the trove's LTV cannot be worse off.
-                    assert(end_trove_health.ltv <= start_trove_health.ltv, 'SH: Trove LTV lowered in RM');
+                    assert(end_trove_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
                 } else {
                     // For (2), the trove's LTV cannot be at or greater than its recovery mode threshold.
                     assert(
