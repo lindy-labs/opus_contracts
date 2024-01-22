@@ -527,8 +527,7 @@ mod purger_utils {
         shrine: IShrineDispatcher, abbot: IAbbotDispatcher, trove: u64, trove_owner: ContractAddress,
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold
-            * shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into();
+        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into();
         // Add 1% to the amount needed to activate RM
         let amt_to_activate_rm: Wad = wadray::rmul_rw(
             (RAY_ONE + RAY_PERCENT).into(), (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)

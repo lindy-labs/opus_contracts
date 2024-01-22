@@ -609,18 +609,16 @@ mod shrine_utils {
         let offset: Ray = 100000000_u128.into();
 
         // The target threshold multiplier that we want the offset from
-        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into();
+        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into();
 
         let threshold_multiplier: Ray = match rm_setup_type {
             RecoveryModeSetupType::BeforeRecoveryMode => { target_rm_threshold_multiplier - offset },
             RecoveryModeSetupType::WithinBuffer => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER
-                    .into();
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into();
                 target_rm_threshold_multiplier - offset
             },
             RecoveryModeSetupType::ExceedsBuffer => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER
-                    .into();
+                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into();
                 target_rm_threshold_multiplier + offset
             }
         };
@@ -679,7 +677,7 @@ mod shrine_utils {
     // its recovery mode target when setting up recovery mode
     fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
-        let target_rm_threshold: Ray = shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into()
+        let target_rm_threshold: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
             * trove_base_health.threshold;
         trove_base_health.ltv >= target_rm_threshold
     }

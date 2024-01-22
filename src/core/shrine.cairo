@@ -76,16 +76,17 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+    // The target Shrine's LTV as a percentage of its threshold at which recovery mode will be triggered
+    const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    // An additional multiplier to be added to `RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER`
+    // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
     // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
     // thresholds start to be scaled.
-    // This adds a safety margin from when recovery mode is triggered until thresholds
+    // This acts as a buffer from when recovery mode is triggered until thresholds
     // are adjusted to mitigate against a trove intentionally triggering recovery mode to
-    // liquidate other troves. Once recovery mode is triggered, this safety margin can
-    // only be depleted by the accrual of interest or changes to yangs' prices.
-    const RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER: u128 = 50000000000000000000000000; // 0.05 (ray)
+    // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
+    // the accrual of fees or changes to yangs' prices.
+    const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
@@ -553,7 +554,7 @@ mod shrine {
 
         fn is_recovery_mode(self: @ContractState) -> bool {
             let shrine_health: Health = self.get_shrine_health();
-            self.exceeds_recovery_mode_target_threshold(shrine_health)
+            self.exceeds_recovery_mode_ltv(shrine_health)
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -1202,24 +1203,20 @@ mod shrine {
                 return;
             } else {
                 // Otherwise, assert that trove action did not move Shrine from normal mode into recovery mode
-                assert(
-                    self.exceeds_recovery_mode_target_threshold(start_shrine_health), 'SH: Will trigger recovery mode'
-                );
+                assert(self.exceeds_recovery_mode_ltv(start_shrine_health), 'SH: Will trigger recovery mode');
 
                 // If we reach this line, then Shrine was in recovery mode, and still is after the trove action.
                 // There are two possibilities:
-                // 1. the trove's LTV is at or greater than its target recovery mode threshold before the trove action; or
-                // 2. the trove's LTV is below its recovery mode threshold before the trove action. 
+                // 1. the trove's LTV is at or greater than its target recovery mode LTV before the trove action; or
+                // 2. the trove's LTV is below its target recovery mode LTV before the trove action. 
                 let rm_target_threshold: Ray = start_trove_base_health.threshold
-                    * RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into();
+                    * RECOVERY_MODE_TARGET_LTV_FACTOR.into();
                 if start_trove_base_health.ltv >= rm_target_threshold {
                     // For (1), the trove's LTV cannot be worse off.
                     assert(end_trove_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
                 } else {
-                    // For (2), the trove's LTV cannot be at or greater than its recovery mode threshold.
-                    assert(
-                        !self.exceeds_recovery_mode_target_threshold(end_trove_health), 'SH: Trove LTV is too high (RM)'
-                    )
+                    // For (2), the trove's LTV cannot be at or greater than its target recovery mode LTV.
+                    assert(!self.exceeds_recovery_mode_ltv(end_trove_health), 'SH: Trove LTV is too high (RM)')
                 }
             }
         }
@@ -1241,11 +1238,11 @@ mod shrine {
         //
 
         fn get_recovery_mode_target_threshold(self: @ContractState, threshold: Ray) -> Ray {
-            threshold * RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into()
+            threshold * RECOVERY_MODE_TARGET_LTV_FACTOR.into()
         }
 
         // Helper function to check if recovery mode is triggered for Shrine
-        fn exceeds_recovery_mode_target_threshold(self: @ContractState, health: Health) -> bool {
+        fn exceeds_recovery_mode_ltv(self: @ContractState, health: Health) -> bool {
             health.ltv >= self.get_recovery_mode_target_threshold(health.threshold)
         }
 
@@ -1336,7 +1333,7 @@ mod shrine {
             let shrine_health: Health = self.get_shrine_health();
 
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
-                * (RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER + RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER_BUFFER).into();
+                * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
             if shrine_health.ltv <= recovery_mode_buffered_threshold {
                 return trove_health.threshold;
             }
