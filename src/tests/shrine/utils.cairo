@@ -675,11 +675,13 @@ mod shrine_utils {
         };
     }
 
-    fn assert_trove_ltv_above_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) {
+    // Helper to return a bool for whether the target trove's LTV is at or greater than
+    // its recovery mode target when setting up recovery mode
+    fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
         let target_rm_threshold: Ray = shrine_contract::RECOVERY_MODE_TARGET_THRESHOLD_MULTIPLIER.into()
             * trove_base_health.threshold;
-        assert(trove_base_health.ltv >= target_rm_threshold, 'trove threshold below rm target');
+        trove_base_health.ltv >= target_rm_threshold
     }
 
     //
