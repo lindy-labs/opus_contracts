@@ -523,26 +523,20 @@ mod purger_utils {
         decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
     }
 
-    fn trigger_recovery_mode(
-        shrine: IShrineDispatcher, abbot: IAbbotDispatcher, trove: u64, trove_owner: ContractAddress,
+    fn trigger_recovery_mode_exceeding_buffer(
+        shrine: IShrineDispatcher, seer: ISeerDispatcher, yangs: Span<ContractAddress>,
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into();
-        // Add 1% to the amount needed to activate RM
-        let amt_to_activate_rm: Wad = wadray::rmul_rw(
-            (RAY_ONE + RAY_PERCENT).into(), (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
+        let offset: Ray = 100000000_u128.into();
+        let threshold_factor: Ray = shrine_utils::get_recovery_mode_test_setup_threshold_factor(
+            shrine_utils::RecoveryModeSetupType::ExceedsBuffer, offset
         );
+        let target_ltv: Ray = shrine_health.threshold * threshold_factor;
+        let decrease_pct: Ray = shrine_utils::get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
 
-        // Sanity check that we are able to mint the amount of debt to trigger
-        // recovery mode for the given trove
-        let max_forge_amt: Wad = shrine.get_max_forge(trove);
-        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup #1');
+        decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
-        stop_prank(CheatTarget::One(abbot.contract_address));
-
-        assert(shrine.is_recovery_mode(), 'recovery mode setup #2');
+        assert(shrine.is_recovery_mode(), 'recovery mode setup');
     }
 
     //
