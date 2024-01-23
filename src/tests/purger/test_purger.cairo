@@ -2,6 +2,7 @@ mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::{max, min};
     use core::option::OptionTrait;
+    use debug::PrintTrait;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
@@ -23,8 +24,8 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
-        EventFetcher, event_name_hash
+        start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
+        event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
@@ -656,9 +657,7 @@ mod test_purger {
 
                                             let mut spy = spy_events(SpyOn::One(purger.contract_address));
 
-                                            if !(*is_recovery_mode) {
-                                                purger_utils::create_whale_trove(abbot, yangs, gates);
-                                            }
+                                            purger_utils::create_whale_trove(abbot, yangs, gates);
 
                                             // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
                                             // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
@@ -690,14 +689,6 @@ mod test_purger {
                                                     shrine, yangs, target_trove_yang_amts
                                                 );
 
-                                                if (*is_recovery_mode) {
-                                                    // Create another trove to trigger recovery mode
-                                                    dummy_trove =
-                                                        purger_utils::funded_healthy_trove(
-                                                            abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
-                                                        );
-                                                }
-
                                                 wadray::rmul_wr(trove_value, *target_ltv) + 1_u128.into()
                                             };
 
@@ -716,7 +707,7 @@ mod test_purger {
                                             let target_trove_start_health: Health = shrine
                                                 .get_trove_health(target_trove);
 
-                                            if target_ltv_above_cutoff {
+                                            if *threshold > low_ltv_cutoff && target_ltv_above_cutoff {
                                                 purger_utils::lower_prices_to_raise_trove_ltv(
                                                     shrine,
                                                     seer,
@@ -725,18 +716,15 @@ mod test_purger {
                                                     target_trove_start_health.debt,
                                                     *target_ltv
                                                 );
-                                            } else {
-                                                if (*is_recovery_mode) {
-                                                    let dummy_trove_health: Health = shrine
-                                                        .get_trove_health(dummy_trove);
 
-                                                    purger_utils::lower_prices_to_raise_trove_ltv(
-                                                        shrine,
-                                                        seer,
-                                                        yangs,
-                                                        dummy_trove_health.value,
-                                                        dummy_trove_health.debt,
-                                                        dummy_threshold
+                                                // Note that although recovery mode is parametrized, the limitation is that
+                                                // it is not reasonably feasible to trigger recovery mode in a sensible way
+                                                //  when the threshold is very low because we would essentially need to lower 
+                                                // the collateral prices to near zero, which would lead to an underflow in the
+                                                // helper function.
+                                                if (*is_recovery_mode) {
+                                                    purger_utils::trigger_recovery_mode_exceeding_buffer(
+                                                        shrine, seer, yangs
                                                     );
                                                 }
                                             }
