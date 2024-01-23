@@ -571,6 +571,11 @@ mod shrine_utils {
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
 
+    // Helper function to calculate the factor to be applied to the Shrine's threshold
+    // in order to get the LTV that the Shrine should be at for the given test.
+    // Since we are interested in testing the Shrine's behaviour when its LTV is at the boundaries
+    // of these different modes, an additional offset is used to adjust the factor to guarantee 
+    // that we are on the right side of the boundary even if there is some precision loss.
     fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: RecoveryModeSetupType, offset: Ray) -> Ray {
         match rm_setup_type {
             RecoveryModeSetupType::BeforeRecoveryMode => {
@@ -589,7 +594,7 @@ mod shrine_utils {
         }
     }
 
-    fn get_price_decrease_pct_for_recovery_mode_setup(shrine_health: Health, target_ltv: Ray) -> Ray {
+    fn get_price_decrease_pct_for_target_ltv(shrine_health: Health, target_ltv: Ray) -> Ray {
         let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
         wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value)
     }
@@ -603,7 +608,7 @@ mod shrine_utils {
 
         let threshold_factor: Ray = get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
         let target_ltv: Ray = shrine_health.threshold * threshold_factor;
-        let decrease_pct: Ray = get_price_decrease_pct_for_recovery_mode_setup(shrine_health, target_ltv);
+        let decrease_pct: Ray = get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
 
