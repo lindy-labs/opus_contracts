@@ -571,6 +571,7 @@ mod shrine_utils {
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
 
+    // TODO: do we still need this?
     fn create_whale_trove(shrine: IShrineDispatcher) {
         start_prank(CheatTarget::One(shrine.contract_address), admin());
         // Deposit 1000 of yang1
@@ -580,6 +581,24 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
+    fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: RecoveryModeSetupType, offset: Ray) -> Ray {
+        match rm_setup_type {
+            RecoveryModeSetupType::BeforeRecoveryMode => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() - offset
+            },
+            RecoveryModeSetupType::WithinBuffer => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                    - offset
+            },
+            RecoveryModeSetupType::ExceedsBuffer => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                    + offset
+            }
+        }
+    }
+
     fn recovery_mode_test_setup(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: RecoveryModeSetupType
     ) {
@@ -587,23 +606,10 @@ mod shrine_utils {
         // offset for values at the boundaries
         let offset: Ray = 100000000_u128.into();
 
-        // The target threshold multiplier that we want the offset from
-        let mut target_rm_threshold_multiplier: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into();
+        let threshold_factor: Ray = get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
+        let target_ltv: Ray = shrine_health.threshold * threshold_factor;
 
-        let threshold_multiplier: Ray = match rm_setup_type {
-            RecoveryModeSetupType::BeforeRecoveryMode => { target_rm_threshold_multiplier - offset },
-            RecoveryModeSetupType::WithinBuffer => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into();
-                target_rm_threshold_multiplier - offset
-            },
-            RecoveryModeSetupType::ExceedsBuffer => {
-                target_rm_threshold_multiplier += shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into();
-                target_rm_threshold_multiplier + offset
-            }
-        };
-        let rm_threshold: Ray = shrine_health.threshold * threshold_multiplier;
-
-        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / rm_threshold));
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
@@ -625,29 +631,13 @@ mod shrine_utils {
         let error_margin: Ray = offset;
         match rm_setup_type {
             RecoveryModeSetupType::BeforeRecoveryMode => {
-                let target: Ray = target_rm_threshold_multiplier * shrine_health.threshold;
-                common::assert_equalish(
-                    shrine_health.ltv,
-                    target_rm_threshold_multiplier * shrine_health.threshold,
-                    error_margin,
-                    'recovery mode test setup #1'
-                );
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #1');
             },
             RecoveryModeSetupType::WithinBuffer => {
-                common::assert_equalish(
-                    shrine_health.ltv,
-                    target_rm_threshold_multiplier * shrine_health.threshold,
-                    error_margin,
-                    'recovery mode test setup #2'
-                );
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #2');
             },
             RecoveryModeSetupType::ExceedsBuffer => {
-                common::assert_equalish(
-                    shrine_health.ltv,
-                    target_rm_threshold_multiplier * shrine_health.threshold,
-                    error_margin,
-                    'recovery mode test setup #3'
-                );
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #3');
             }
         };
     }
@@ -656,9 +646,8 @@ mod shrine_utils {
     // its recovery mode target when setting up recovery mode
     fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
-        let target_rm_threshold: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
-            * trove_base_health.threshold;
-        trove_base_health.ltv >= target_rm_threshold
+        let target_rm_ltv: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() * trove_base_health.threshold;
+        trove_base_health.ltv >= target_rm_ltv
     }
 
     //
