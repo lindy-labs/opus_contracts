@@ -150,6 +150,9 @@ mod test_shrine {
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
         assert(shrine_health.ltv == BoundedRay::max(), 'wrong shrine LTV');
+
+        // Check shrine is not in recovery mode
+        assert(!shrine.is_recovery_mode(), 'in recovery mode');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values

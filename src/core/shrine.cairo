@@ -554,6 +554,12 @@ mod shrine {
 
         fn is_recovery_mode(self: @ContractState) -> bool {
             let shrine_health: Health = self.get_shrine_health();
+
+            // LTV is max value if value is zero
+            if shrine_health.value.is_zero() {
+                return false;
+            }
+
             self.exceeds_recovery_mode_ltv(shrine_health)
         }
 
@@ -1330,7 +1336,13 @@ mod shrine {
 
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
                 * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
-            if shrine_health.ltv <= recovery_mode_buffered_threshold {
+            // Early return if any of the following is true
+            // 1. Shrine has no value, which results in the max value being returned for LTV
+            // 2. Trove is empty
+            // 3. Shrine's LTV is below its recovery mode target LTV with buffer.
+            if shrine_health.value.is_zero()
+                || trove_base_health.threshold.is_zero()
+                || shrine_health.ltv <= recovery_mode_buffered_threshold {
                 return trove_base_health.threshold;
             }
 
