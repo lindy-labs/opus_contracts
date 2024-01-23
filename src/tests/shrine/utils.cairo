@@ -589,6 +589,11 @@ mod shrine_utils {
         }
     }
 
+    fn get_price_decrease_pct_for_recovery_mode_setup(shrine_health: Health, target_ltv: Ray) -> Ray {
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
+        wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value)
+    }
+
     fn recovery_mode_test_setup(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: RecoveryModeSetupType
     ) {
@@ -598,9 +603,7 @@ mod shrine_utils {
 
         let threshold_factor: Ray = get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
         let target_ltv: Ray = shrine_health.threshold * threshold_factor;
-
-        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
-        let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
+        let decrease_pct: Ray = get_price_decrease_pct_for_recovery_mode_setup(shrine_health, target_ltv);
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
 
