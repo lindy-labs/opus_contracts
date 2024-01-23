@@ -571,16 +571,6 @@ mod shrine_utils {
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
 
-    // TODO: do we still need this?
-    fn create_whale_trove(shrine: IShrineDispatcher) {
-        start_prank(CheatTarget::One(shrine.contract_address), admin());
-        // Deposit 1000 of yang1
-        shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
-        // Mint 1 million yin (50% LTV at yang1's start price)
-        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
-        stop_prank(CheatTarget::One(shrine.contract_address));
-    }
-
     fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: RecoveryModeSetupType, offset: Ray) -> Ray {
         match rm_setup_type {
             RecoveryModeSetupType::BeforeRecoveryMode => {
