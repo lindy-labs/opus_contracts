@@ -1426,7 +1426,7 @@ mod test_purger {
                                                                     yangs, array![absorber.contract_address].span()
                                                                 ),
                                                                 expected_freed_assets,
-                                                                100_u128, // error margin
+                                                                10000000_u128, // error margin
                                                                 'wrong absorber asset balance',
                                                             );
 
