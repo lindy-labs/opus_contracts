@@ -580,30 +580,9 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    // fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
-    //     let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(shrine_class) };
-    //     shrine_setup(shrine.contract_address);
-
-    //     // Setting the debt and collateral ceilings high enough to accomodate a very large trove
-    //     start_prank(CheatTarget::One(shrine.contract_address), admin());
-    //     shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
-
-    //     // This creates the larger trove
-    //     create_whale_trove(shrine);
-
-    //     // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
-    //     let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
-    //     trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
-    //     trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
-    //     shrine
-    // }
-
     fn recovery_mode_test_setup(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: RecoveryModeSetupType
     ) {
-        // Setting the debt and collateral ceilings high enough to accomodate a very large trove
-        start_prank(CheatTarget::One(shrine.contract_address), admin());
-
         let shrine_health: Health = shrine.get_shrine_health();
         // offset for values at the boundaries
         let offset: Ray = 100000000_u128.into();
@@ -627,7 +606,7 @@ mod shrine_utils {
         let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / rm_threshold));
         let decrease_pct: Ray = wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value);
 
-        start_prank(CheatTarget::All, admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
 
         loop {
             match yangs.pop_front() {
