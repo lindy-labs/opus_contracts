@@ -846,7 +846,7 @@ mod shrine {
             self.charge(trove_id);
 
             let start_shrine_health: Health = self.get_shrine_health();
-            let start_trove_base_health: Health = self.get_trove_health_helper(trove_id);
+            let start_trove_base_health: Health = self.get_trove_base_health_helper(trove_id);
 
             self.withdraw_helper(yang, trove_id, amount);
             self.assert_valid_trove_action(start_shrine_health, start_trove_base_health, trove_id);
@@ -860,7 +860,7 @@ mod shrine {
             self.charge(trove_id);
 
             let start_shrine_health: Health = self.get_shrine_health();
-            let start_trove_base_health: Health = self.get_trove_health_helper(trove_id);
+            let start_trove_base_health: Health = self.get_trove_base_health_helper(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -1112,18 +1112,14 @@ mod shrine {
         // Returns a Health struct comprising the trove's threshold (adjusted for recovery mode), 
         // LTV based on compounded debt, trove value and compounded debt.
         fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
-            let mut trove_health: Health = self.get_trove_health_helper(trove_id);
-
-            if self.is_recovery_mode() {
-                let rm_threshold: Ray = self.scale_trove_threshold_for_recovery_mode(trove_health);
-                trove_health.threshold = rm_threshold;
-            }
-
+            let trove_base_health: Health = self.get_trove_base_health_helper(trove_id);
+            let mut trove_health = trove_base_health;
+            trove_health.threshold = self.scale_trove_threshold_for_recovery_mode(trove_base_health);
             trove_health
         }
 
         fn get_trove_base_health(self: @ContractState, trove_id: u64) -> Health {
-            self.get_trove_health_helper(trove_id)
+            self.get_trove_base_health_helper(trove_id)
         }
 
         fn get_redistributions_attributed_to_trove(self: @ContractState, trove_id: u64) -> (Span<YangBalance>, Wad) {
@@ -1190,10 +1186,10 @@ mod shrine {
             self: @ContractState, start_shrine_health: Health, start_trove_base_health: Health, trove_id: u64
         ) {
             // Note that the trove's threshold we want here is the base threshold, even if Shrine is in recovery mode
-            let end_trove_health: Health = self.get_trove_health_helper(trove_id);
-            assert(self.is_healthy_helper(end_trove_health), 'SH: Trove LTV is too high');
-            if end_trove_health.debt.is_non_zero() {
-                assert(end_trove_health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value');
+            let end_trove_base_health: Health = self.get_trove_base_health_helper(trove_id);
+            assert(self.is_healthy_helper(end_trove_base_health), 'SH: Trove LTV is too high');
+            if end_trove_base_health.debt.is_non_zero() {
+                assert(end_trove_base_health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value');
             }
 
             let end_shrine_health: Health = self.get_shrine_health();
@@ -1213,10 +1209,10 @@ mod shrine {
                     * RECOVERY_MODE_TARGET_LTV_FACTOR.into();
                 if start_trove_base_health.ltv >= rm_target_threshold {
                     // For (1), the trove's LTV cannot be worse off.
-                    assert(end_trove_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
+                    assert(end_trove_base_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
                 } else {
                     // For (2), the trove's LTV cannot be at or greater than its target recovery mode LTV.
-                    assert(!self.exceeds_recovery_mode_ltv(end_trove_health), 'SH: Trove LTV is too high (RM)')
+                    assert(!self.exceeds_recovery_mode_ltv(end_trove_base_health), 'SH: Trove LTV is too high (RM)')
                 }
             }
         }
@@ -1248,7 +1244,7 @@ mod shrine {
 
         // Returns a Health struct comprising the trove's base threshold, LTV based on compounded debt,
         // trove value and compounded debt.
-        fn get_trove_health_helper(self: @ContractState, trove_id: u64) -> Health {
+        fn get_trove_base_health_helper(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
 
             // Get threshold and trove value
@@ -1329,22 +1325,22 @@ mod shrine {
         // Helper function for applying the recovery mode threshold decrease to a threshold,
         // if recovery mode is active and the recovery mode margin has been crossed.
         // The maximum threshold decrease is capped to 50% of the "base threshold"
-        fn scale_trove_threshold_for_recovery_mode(self: @ContractState, trove_health: Health) -> Ray {
+        fn scale_trove_threshold_for_recovery_mode(self: @ContractState, trove_base_health: Health) -> Ray {
             let shrine_health: Health = self.get_shrine_health();
 
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
                 * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
             if shrine_health.ltv <= recovery_mode_buffered_threshold {
-                return trove_health.threshold;
+                return trove_base_health.threshold;
             }
 
             let trove_recovery_mode_target_threshold: Ray = self
-                .get_recovery_mode_target_threshold(trove_health.threshold);
+                .get_recovery_mode_target_threshold(trove_base_health.threshold);
             return max(
-                trove_health.threshold
+                trove_base_health.threshold
                     * THRESHOLD_DECREASE_FACTOR.into()
-                    * (trove_recovery_mode_target_threshold / trove_health.ltv),
-                (trove_health.threshold.val / 2_u128).into()
+                    * (trove_recovery_mode_target_threshold / trove_base_health.ltv),
+                (trove_base_health.threshold.val / 2_u128).into()
             );
         }
 
