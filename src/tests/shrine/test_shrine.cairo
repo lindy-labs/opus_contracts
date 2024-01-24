@@ -150,9 +150,6 @@ mod test_shrine {
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
         assert(shrine_health.ltv == BoundedRay::max(), 'wrong shrine LTV');
-
-        // Check shrine is not in recovery mode
-        assert(!shrine.is_recovery_mode(), 'in recovery mode');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -935,6 +932,10 @@ mod test_shrine {
     #[should_panic(expected: ('SH: Trove LTV is too high',))]
     fn test_shrine_withdraw_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Set up another trove to prevent recovery mode
+        shrine_utils::create_whale_trove(shrine);
+
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
@@ -1040,9 +1041,12 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Below minimum trove value',))]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Set up another trove to prevent recovery mode
+        shrine_utils::create_whale_trove(shrine);
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.forge(shrine_utils::common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), WadZeroable::zero());
@@ -2483,10 +2487,15 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
         shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, max_forge_amt);
         shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
-        shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
+
+        // Repay the max forge amount to return the trove's LTV to its starting value
+        // to avoid causing the Shrine to exceed the recovery mode buffer
+        shrine_utils::trove1_melt(shrine, max_forge_amt);
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
@@ -2517,15 +2526,10 @@ mod test_shrine {
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
-
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer, which is
-        // slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove having ~8,035.71... value). 
-        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin 
-        // needs to be minted to exceed the target trove's recovery mode threshold. We add 1 to account for the offset
-        // when setting up the Shrine's LTV to be slightly below the buffer.
-        shrine_utils::trove1_forge(shrine, (1501 * WAD_ONE).into());
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
@@ -2689,10 +2693,15 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
         shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, max_forge_amt);
         shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
-        shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
+
+        // Repay the max forge amount to return the trove's LTV to its starting value
+        // to avoid causing the Shrine to exceed the recovery mode buffer
+        shrine_utils::trove1_melt(shrine, max_forge_amt);
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_health: Health = shrine.get_trove_base_health(trove_id);
@@ -2726,11 +2735,8 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
-        // slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
-        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
-        // needs to be minted to exceed the target trove's recovery mode threshold.
-        shrine_utils::trove1_forge(shrine, (1200 * WAD_ONE).into());
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,

@@ -56,8 +56,8 @@ mod shrine_utils {
     const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
     const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
 
-    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 1000000000000000000000; // 1000 (wad)
-    const WHALE_TROVE_FORGE_AMT: u128 = 1000000000000000000000000; // 1,000,000 (wad)
+    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 100000000000000000000; // 100 (wad)
+    const WHALE_TROVE_FORGE_AMT: u128 = 10000000000000000000000; // 10,000 (wad)
 
     const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500000000000000000000; // 7500 (wad)
 
@@ -562,6 +562,15 @@ mod shrine_utils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
+    fn create_whale_trove(shrine: IShrineDispatcher) {
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
+        // Deposit 100 of yang1
+        shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
+        // Mint 10,000 yin (5% LTV at yang1's start price)
+        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     // Helper function to calculate the factor to be applied to the Shrine's threshold
