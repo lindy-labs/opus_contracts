@@ -2304,6 +2304,7 @@ mod test_shrine {
 
     //
     // Tests - Recovery mode
+    // Note: For tests within the buffer, we alternative between the lower bound and upper bound of the buffer.
     //
 
     // User cannot withdraw if it triggers recovery mode
@@ -2369,9 +2370,9 @@ mod test_shrine {
     fn test_withdraw_within_recovery_mode_buffer_above_rm_target_threshold_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        // Trove 1 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        shrine_utils::trove1_forge(shrine, (6000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -2381,7 +2382,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2475,7 +2476,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2512,19 +2513,19 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be within the buffer, which is
-        // slightly lower than 56% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
-        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer, which is
+        // slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove having ~8,035.71... value). 
+        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin 
         // needs to be minted to exceed the target trove's recovery mode threshold. We add 1 to account for the offset
         // when setting up the Shrine's LTV to be slightly below the buffer.
-        shrine_utils::trove1_forge(shrine, (1201 * WAD_ONE).into());
+        shrine_utils::trove1_forge(shrine, (1501 * WAD_ONE).into());
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
@@ -2554,8 +2555,8 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be within the buffer, which is
-        // slightly lower than 56% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be at the upper bound of the buffer, which is
+        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818. We decrease it by an
         // additional yin to account for the offset when setting up the Shrine's LTV to be slightly below the buffer.
         let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
@@ -2725,8 +2726,8 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be within the buffer, which is
-        // slightly lower than 56% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
+        // slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
         // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
         // needs to be minted to exceed the target trove's recovery mode threshold.
         shrine_utils::trove1_forge(shrine, (1200 * WAD_ONE).into());
@@ -2759,8 +2760,8 @@ mod test_shrine {
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be within the buffer, which is
-        // slightly lower than 56% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
+        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818.
         let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
         let value_to_withdraw: Wad = ((7500 - 6818) * WAD_ONE).into();
