@@ -1692,9 +1692,13 @@ mod test_purger {
                                                         shrine, yangs, 500
                                                     );
 
-                                                    let whale_trove: u64 = purger_utils::create_whale_trove(
-                                                        abbot, yangs, gates
-                                                    );
+                                                    // Create a whale trove if we are not testing recovery mode
+                                                    // Otherwise, Shrine will enter recovery mode when lowering prices below.
+                                                    let mut whale_trove: u64 = 0;
+                                                    if !is_recovery_mode {
+                                                        whale_trove =
+                                                            purger_utils::create_whale_trove(abbot, yangs, gates);
+                                                    }
 
                                                     let target_trove_start_health: Health = shrine
                                                         .get_trove_health(target_trove);
@@ -1714,6 +1718,13 @@ mod test_purger {
                                                         target_trove_start_health.debt,
                                                         target_ltv
                                                     );
+
+                                                    // sanity check
+                                                    if is_recovery_mode {
+                                                        assert(shrine.is_recovery_mode(), 'not in recovery mode');
+                                                    } else {
+                                                        assert(!shrine.is_recovery_mode(), 'in recovery mode');
+                                                    }
 
                                                     let target_trove_start_health: Health = shrine
                                                         .get_trove_health(target_trove);
@@ -1764,12 +1775,6 @@ mod test_purger {
                                                     );
                                                     abbot.forge(recipient_trove, max_close_amt, WadZeroable::zero());
 
-                                                    start_prank(
-                                                        CheatTarget::One(abbot.contract_address), target_trove_owner
-                                                    );
-                                                    abbot.close_trove(whale_trove);
-                                                    stop_prank(CheatTarget::One(abbot.contract_address));
-
                                                     let mut target_trove_updated_start_health: Health = shrine
                                                         .get_trove_health(target_trove);
 
@@ -1786,6 +1791,8 @@ mod test_purger {
 
                                                     let before_recipient_trove_health: Health = shrine
                                                         .get_trove_health(recipient_trove);
+                                                    let before_recipient_whale_trove_health: Health = shrine
+                                                        .get_trove_health(whale_trove);
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
@@ -1963,32 +1970,39 @@ mod test_purger {
                                                     // Check recipient trove's debt
                                                     let after_recipient_trove_health = shrine
                                                         .get_trove_health(recipient_trove);
+                                                    let after_recipient_whale_trove_health = shrine
+                                                        .get_trove_health(whale_trove);
                                                     let expected_redistributed_amt: Wad = max_close_amt - close_amt;
-                                                    let expected_recipient_trove_debt: Wad =
-                                                        before_recipient_trove_health
+                                                    let actual_redistributed_amt: Wad = (after_recipient_trove_health
                                                         .debt
-                                                        + expected_redistributed_amt;
-
+                                                        - before_recipient_trove_health.debt)
+                                                        + (after_recipient_whale_trove_health.debt
+                                                            - before_recipient_whale_trove_health.debt);
                                                     common::assert_equalish(
-                                                        after_recipient_trove_health.debt,
-                                                        expected_recipient_trove_debt,
+                                                        expected_redistributed_amt,
+                                                        actual_redistributed_amt,
                                                         (WAD_ONE / 100).into(), // error margin
-                                                        'wrong recipient trove debt'
+                                                        'wrong redistributed debt'
                                                     );
 
-                                                    let redistributed_value: Wad = wadray::rmul_wr(
+                                                    let expected_redistributed_value: Wad = wadray::rmul_wr(
                                                         expected_redistributed_amt, RAY_ONE.into() + penalty
                                                     );
-                                                    let expected_recipient_trove_value: Wad =
+                                                    expected_redistributed_value.print();
+                                                    let expected_recipient_troves_value: Wad =
                                                         before_recipient_trove_health
                                                         .value
-                                                        + redistributed_value;
+                                                        + before_recipient_whale_trove_health.value
+                                                        + expected_redistributed_value;
+                                                    let after_recipient_troves_value: Wad = after_recipient_trove_health
+                                                        .value
+                                                        + after_recipient_whale_trove_health.value;
 
                                                     common::assert_equalish(
-                                                        after_recipient_trove_health.value,
-                                                        expected_recipient_trove_value,
-                                                        (WAD_ONE / 100).into(), // error margin
-                                                        'wrong recipient trove value'
+                                                        after_recipient_troves_value,
+                                                        expected_recipient_troves_value,
+                                                        (WAD_ONE / 10).into(), // error margin
+                                                        'wrong redistributed value'
                                                     );
 
                                                     // Check remainder yang assets for redistributed trove is correct
