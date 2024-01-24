@@ -1988,7 +1988,6 @@ mod test_purger {
                                                     let expected_redistributed_value: Wad = wadray::rmul_wr(
                                                         expected_redistributed_amt, RAY_ONE.into() + penalty
                                                     );
-                                                    expected_redistributed_value.print();
                                                     let expected_recipient_troves_value: Wad =
                                                         before_recipient_trove_health
                                                         .value
@@ -2656,10 +2655,6 @@ mod test_purger {
                                                     // Set thresholds to provided value
                                                     purger_utils::set_thresholds(shrine, yangs, *threshold);
 
-                                                    let whale_trove: u64 = purger_utils::create_whale_trove(
-                                                        abbot, yangs, gates
-                                                    );
-
                                                     let trove_debt: Wad = (purger_utils::TARGET_TROVE_YIN * 5).into();
                                                     let target_trove: u64 = purger_utils::funded_healthy_trove(
                                                         abbot, yangs, gates, trove_debt
@@ -2703,26 +2698,16 @@ mod test_purger {
                                                         *target_ltv
                                                     );
 
-                                                    let mut target_trove_updated_start_health: Health = shrine
-                                                        .get_trove_health(target_trove);
-
                                                     if *is_recovery_mode {
-                                                        start_prank(
-                                                            CheatTarget::One(abbot.contract_address),
-                                                            purger_utils::target_trove_owner()
-                                                        );
-                                                        abbot.close_trove(whale_trove);
-                                                        stop_prank(CheatTarget::One(abbot.contract_address));
-
                                                         purger_utils::trigger_recovery_mode_exceeding_buffer(
                                                             shrine, seer, yangs
                                                         );
-
-                                                        target_trove_updated_start_health = shrine
-                                                            .get_trove_health(target_trove);
                                                     } else {
                                                         assert(!shrine.is_recovery_mode(), 'recovery mode');
                                                     }
+
+                                                    let mut target_trove_updated_start_health: Health = shrine
+                                                        .get_trove_health(target_trove);
 
                                                     purger_utils::assert_trove_is_absorbable(
                                                         shrine,
@@ -2739,10 +2724,13 @@ mod test_purger {
                                                     let (penalty, max_close_amt, expected_compensation_value) = purger
                                                         .preview_absorb(target_trove)
                                                         .expect('Should be absorbable');
-                                                    assert(
-                                                        max_close_amt < target_trove_updated_start_health.debt,
-                                                        'close amount == debt'
-                                                    );
+
+                                                    if !(*is_recovery_mode) {
+                                                        assert(
+                                                            max_close_amt < target_trove_updated_start_health.debt,
+                                                            'close amount == debt'
+                                                        );
+                                                    }
 
                                                     let caller: ContractAddress = purger_utils::random_user();
                                                     start_prank(CheatTarget::One(purger.contract_address), caller);
@@ -2759,10 +2747,15 @@ mod test_purger {
                                                         'wrong debt after liquidation'
                                                     );
 
-                                                    purger_utils::assert_ltv_at_safety_margin(
-                                                        target_trove_updated_start_health.threshold,
-                                                        target_trove_after_health.ltv
-                                                    );
+                                                    // Perform this check only if close amount is less than 
+                                                    // trove's debt. Close amount may be equal to trove's debt 
+                                                    // after recovery mode is triggered. 
+                                                    if max_close_amt != target_trove_updated_start_health.debt {
+                                                        purger_utils::assert_ltv_at_safety_margin(
+                                                            target_trove_updated_start_health.threshold,
+                                                            target_trove_after_health.ltv
+                                                        );
+                                                    }
 
                                                     let (expected_freed_pct, expected_freed_amts) =
                                                         purger_utils::get_expected_liquidation_assets(
