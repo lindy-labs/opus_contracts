@@ -2943,19 +2943,26 @@ mod test_purger {
                                         if *target_ltv >= ninety_nine_pct {
                                             assert(penalty.is_zero(), 'wrong penalty');
                                         } else {
-                                            common::assert_equalish(
-                                                penalty,
-                                                expected_penalty,
-                                                (RAY_PERCENT / 10).into(), // 0.1%
-                                                'wrong penalty'
-                                            )
+                                            let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
+                                            if is_recovery_mode {
+                                                if expected_penalty.is_zero() {
+                                                    assert_eq!(penalty, expected_penalty, "wrong rm penalty #1");
+                                                } else {
+                                                    assert(
+                                                        penalty < expected_penalty - error_margin, 'wrong rm penalty #2'
+                                                    );
+                                                }
+                                            } else {
+                                                common::assert_equalish(
+                                                    penalty, expected_penalty, error_margin, 'wrong penalty'
+                                                );
+                                            }
                                         }
 
                                         let caller: ContractAddress = purger_utils::random_user();
                                         start_prank(CheatTarget::One(purger.contract_address), caller);
                                         let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
-                                        // Check that LTV is close to safety margin
                                         let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
                                         assert(target_trove_after_health.ltv.is_zero(), 'wrong LTV after liquidation');
                                         assert(
