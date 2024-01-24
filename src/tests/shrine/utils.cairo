@@ -16,13 +16,6 @@ mod shrine_utils {
     };
     use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
-    #[derive(Copy, Drop, PartialEq)]
-    enum RecoveryModeSetupType {
-        BeforeRecoveryMode: (),
-        WithinBuffer: (),
-        ExceedsBuffer: (),
-    }
-
     //
     // Constants
     //
@@ -576,17 +569,20 @@ mod shrine_utils {
     // Since we are interested in testing the Shrine's behaviour when its LTV is at the boundaries
     // of these different modes, an additional offset is used to adjust the factor to guarantee 
     // that we are on the right side of the boundary even if there is some precision loss.
-    fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: RecoveryModeSetupType, offset: Ray) -> Ray {
+    fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: common::RecoveryModeSetupType, offset: Ray) -> Ray {
         match rm_setup_type {
-            RecoveryModeSetupType::BeforeRecoveryMode => {
+            common::RecoveryModeSetupType::BeforeRecoveryMode => {
                 shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() - offset
             },
-            RecoveryModeSetupType::WithinBuffer => {
+            common::RecoveryModeSetupType::BufferLowerBound => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() + offset
+            },
+            common::RecoveryModeSetupType::BufferUpperBound => {
                 shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
                     + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
                     - offset
             },
-            RecoveryModeSetupType::ExceedsBuffer => {
+            common::RecoveryModeSetupType::ExceedsBuffer => {
                 shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
                     + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
                     + offset
@@ -600,12 +596,10 @@ mod shrine_utils {
     }
 
     fn recovery_mode_test_setup(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: RecoveryModeSetupType
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: common::RecoveryModeSetupType
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
-        // offset for values at the boundaries
         let offset: Ray = 100000000_u128.into();
-
         let threshold_factor: Ray = get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
         let target_ltv: Ray = shrine_health.threshold * threshold_factor;
         let decrease_pct: Ray = get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
@@ -628,14 +622,17 @@ mod shrine_utils {
         let shrine_health: Health = shrine.get_shrine_health();
         let error_margin: Ray = offset;
         match rm_setup_type {
-            RecoveryModeSetupType::BeforeRecoveryMode => {
+            common::RecoveryModeSetupType::BeforeRecoveryMode => {
                 common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #1');
             },
-            RecoveryModeSetupType::WithinBuffer => {
+            common::RecoveryModeSetupType::BufferLowerBound => {
                 common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #2');
             },
-            RecoveryModeSetupType::ExceedsBuffer => {
+            common::RecoveryModeSetupType::BufferUpperBound => {
                 common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #3');
+            },
+            common::RecoveryModeSetupType::ExceedsBuffer => {
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #4');
             }
         };
     }

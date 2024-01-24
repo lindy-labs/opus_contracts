@@ -723,8 +723,11 @@ mod test_purger {
                                                 // the collateral prices to near zero, which would lead to an underflow in the
                                                 // helper function.
                                                 if (*is_recovery_mode) {
-                                                    purger_utils::trigger_recovery_mode_exceeding_buffer(
-                                                        shrine, seer, yangs
+                                                    purger_utils::trigger_recovery_mode(
+                                                        shrine,
+                                                        seer,
+                                                        yangs,
+                                                        common::RecoveryModeSetupType::ExceedsBuffer
                                                     );
                                                 }
                                             }
@@ -1014,7 +1017,9 @@ mod test_purger {
                                 );
 
                                 if (*is_recovery_mode) {
-                                    purger_utils::trigger_recovery_mode_exceeding_buffer(shrine, seer, yangs);
+                                    purger_utils::trigger_recovery_mode(
+                                        shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                                    );
                                 } else {
                                     // sanity check
                                     assert(!shrine.is_recovery_mode(), 'in recovery mode');
@@ -1310,8 +1315,11 @@ mod test_purger {
                                                             let mut target_trove_updated_start_health: Health = shrine
                                                                 .get_trove_health(target_trove);
                                                             if *is_recovery_mode {
-                                                                purger_utils::trigger_recovery_mode_exceeding_buffer(
-                                                                    shrine, seer, yangs
+                                                                purger_utils::trigger_recovery_mode(
+                                                                    shrine,
+                                                                    seer,
+                                                                    yangs,
+                                                                    common::RecoveryModeSetupType::ExceedsBuffer
                                                                 );
 
                                                                 target_trove_updated_start_health = shrine
@@ -2699,8 +2707,11 @@ mod test_purger {
                                                     );
 
                                                     if *is_recovery_mode {
-                                                        purger_utils::trigger_recovery_mode_exceeding_buffer(
-                                                            shrine, seer, yangs
+                                                        purger_utils::trigger_recovery_mode(
+                                                            shrine,
+                                                            seer,
+                                                            yangs,
+                                                            common::RecoveryModeSetupType::ExceedsBuffer
                                                         );
                                                     } else {
                                                         assert(!shrine.is_recovery_mode(), 'recovery mode');
@@ -2925,7 +2936,9 @@ mod test_purger {
                                             .get_trove_health(target_trove);
 
                                         if is_recovery_mode {
-                                            purger_utils::trigger_recovery_mode_exceeding_buffer(shrine, seer, yangs);
+                                            purger_utils::trigger_recovery_mode(
+                                                shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                                            );
                                             target_trove_updated_start_health = shrine.get_trove_health(target_trove);
                                         } else {
                                             assert(!shrine.is_recovery_mode(), 'recovery mode');
@@ -3347,8 +3360,11 @@ mod test_purger {
                                                                 abbot, yangs, gates
                                                             );
 
-                                                            purger_utils::trigger_recovery_mode_exceeding_buffer(
-                                                                shrine, seer, yangs
+                                                            purger_utils::trigger_recovery_mode(
+                                                                shrine,
+                                                                seer,
+                                                                yangs,
+                                                                common::RecoveryModeSetupType::ExceedsBuffer
                                                             );
                                                         // let (_, threshold_before_liquidation) = shrine
                                                         //     .get_yang_threshold(eth);
@@ -3640,8 +3656,11 @@ mod test_purger {
                                                             let trove_id: u64 = purger_utils::create_whale_trove(
                                                                 abbot, yangs, gates
                                                             );
-                                                            purger_utils::trigger_recovery_mode_exceeding_buffer(
-                                                                shrine, seer, yangs
+                                                            purger_utils::trigger_recovery_mode(
+                                                                shrine,
+                                                                seer,
+                                                                yangs,
+                                                                common::RecoveryModeSetupType::ExceedsBuffer
                                                             );
 
                                                             trove_id

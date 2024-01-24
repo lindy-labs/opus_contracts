@@ -2326,7 +2326,7 @@ mod test_shrine {
             );
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::BeforeRecoveryMode
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
         );
 
         assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
@@ -2354,7 +2354,7 @@ mod test_shrine {
             );
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::BeforeRecoveryMode
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
         );
 
         assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
@@ -2381,7 +2381,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2410,7 +2410,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2439,7 +2439,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2475,7 +2475,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2512,7 +2512,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2547,7 +2547,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::WithinBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2585,7 +2585,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2618,7 +2618,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2646,7 +2646,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2681,7 +2681,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2718,7 +2718,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2752,7 +2752,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), shrine_utils::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
