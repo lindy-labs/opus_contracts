@@ -1379,14 +1379,14 @@ mod shrine {
         fn withdraw_helper(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
+            self.charge(trove_id);
+
             // Fails if amount > amount of yang deposited in the given trove
             let trove_balance: Wad = self.deposits.read((yang_id, trove_id));
             assert(trove_balance >= amount, 'SH: Insufficient yang balance');
 
             let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
-
-            self.charge(trove_id);
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
