@@ -867,6 +867,44 @@ mod test_shrine {
     }
 
     #[test]
+    fn test_withdraw_with_pending_exc_redistributed_yang_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs();
+
+        // Setup two troves where the first trove deposits the first yang only, 
+        // and the second trove deposits the second yang only, then
+        // redistribute the first trove so that the second trove receives an exceptional redistribution
+        let yang1_addr: ContractAddress = *yangs[0];
+        let yang2_addr: ContractAddress = *yangs[1];
+        let yang1_deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
+        let yang2_deposit_amt: Wad = shrine_utils::TROVE1_YANG2_DEPOSIT.into();
+
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        let redistributed_trove: u64 = common::TROVE_1;
+        let recipient_trove: u64 = common::TROVE_2;
+        shrine.deposit(yang1_addr, redistributed_trove, yang1_deposit_amt);
+        shrine.deposit(yang2_addr, recipient_trove, yang2_deposit_amt);
+
+        // Exceptionally redistribute the first trove
+        shrine.redistribute(redistributed_trove, WadZeroable::zero(), RAY_ONE.into());
+        assert(shrine.get_trove_health(redistributed_trove).value.is_zero(), 'redistribution sanity check');
+
+        // Sanity check that it was an exceptional redistribution
+        let expected_redistribution_id: u32 = 1;
+        assert(
+            shrine
+                .get_exceptional_redistribution_for_yang_to_yang(yang2_addr, expected_redistribution_id, yang1_addr)
+                .unit_yang
+                .is_non_zero(),
+            'not exceptional redistribution'
+        );
+
+        // Withdraw the exceptionally redistributed yang from the recipient trove with some tolerance
+        // for loss of precision
+        shrine.withdraw(yang1_addr, recipient_trove, yang1_deposit_amt - 10_u128.into());
+    }
+
+    #[test]
     #[should_panic(expected: ('SH: Below minimum trove value',))]
     fn test_shrine_withdraw_trove_below_min_value_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
