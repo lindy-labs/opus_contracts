@@ -1122,12 +1122,7 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        let is_fully_absorbed: bool = target_trove_after_health.debt.is_zero();
-        if !is_fully_absorbed {
-            purger_utils::assert_ltv_at_safety_margin(
-                target_trove_start_health.threshold, target_trove_after_health.ltv
-            );
-        }
+        assert(target_trove_after_health.debt.is_zero(), 'not fully absorbed');
 
         // Check that caller has received compensation
         let target_trove_yang_asset_amts: Span<u128> = purger_utils::target_trove_yang_asset_amts();
@@ -1333,12 +1328,7 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        let is_fully_absorbed: bool = target_trove_after_health.debt.is_zero();
-        if !is_fully_absorbed {
-            purger_utils::assert_ltv_at_safety_margin(
-                target_trove_intermediate_health.threshold, target_trove_after_health.ltv
-            );
-        }
+        assert(target_trove_after_health.debt.is_zero(), 'not fully absorbed');
 
         // Check that caller has received compensation
         let expected_compensation_amts: Span<u128> = purger_utils::get_expected_compensation_assets(
