@@ -2529,6 +2529,15 @@ mod test_shrine {
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer, which is
+        // slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove having ~8,035.71... value). 
+        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin 
+        // needs to be minted to exceed the target trove's recovery mode threshold.
+        let expected_max_forge_amt: Wad = (1500 * WAD_ONE).into();
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
+
         shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
     }
 
@@ -2736,6 +2745,15 @@ mod test_shrine {
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
+        // slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
+        // needs to be minted to exceed the target trove's recovery mode threshold.
+        let expected_max_forge_amt: Wad = (1200 * WAD_ONE).into();
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
+
         shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
     }
 
