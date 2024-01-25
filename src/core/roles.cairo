@@ -228,6 +228,13 @@ pub mod shrine_roles {
     }
 }
 
+pub mod switchboard_roles {
+    #[inline(always)]
+    pub fn default_admin_role() -> u128 {
+        0
+    }
+}
+
 pub mod transmuter_roles {
     pub const ENABLE_RECLAIM: u128 = 1;
     pub const KILL: u128 = 2;

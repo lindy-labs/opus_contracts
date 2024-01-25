@@ -11,3 +11,5 @@ pub trait ITask<TContractState> {
     fn probe_task(self: @TContractState) -> bool;
     fn execute_task(ref self: TContractState);
 }
+
+pub trait ISwitchboardOracle<TContractState> {}
