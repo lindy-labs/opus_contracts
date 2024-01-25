@@ -899,9 +899,8 @@ mod test_shrine {
             'not exceptional redistribution'
         );
 
-        // Withdraw the exceptionally redistributed yang from the recipient trove with some tolerance
-        // for loss of precision
-        shrine.withdraw(yang1_addr, recipient_trove, yang1_deposit_amt - 10_u128.into());
+        // Withdraw the exceptionally redistributed yang from the recipient trove
+        shrine.withdraw(yang1_addr, recipient_trove, yang1_deposit_amt);
     }
 
     #[test]
