@@ -291,15 +291,17 @@ mod purger {
                 WadZeroable::zero()
             };
 
-            // Transfer a percentage of the penalty to the caller as compensation
-            let compensation_assets: Span<AssetBalance> = self.free(shrine, trove_id, pct_value_to_compensate, caller);
-
             // Melt the trove's debt using the absorber's yin directly
-            // This needs to be called even if `purge_amt` is 0 so that accrued interest
-            // will be charged on the trove before `shrine.redistribute`.
+            // This needs to be called even if `purge_amt` is 0 so that:
+            // 1. accrued interest will be charged on the trove before `shrine.redistribute`; and
+            // 2. any exceptionally redistributed yangs received by the redistributed trove will
+            //    be pulled into the trove before the compensation is transferred to the caller.
             // This step is also crucial because it would revert if the Shrine has been killed, thereby
             // preventing further liquidations.
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
+
+            // Transfer a percentage of the penalty to the caller as compensation
+            let compensation_assets: Span<AssetBalance> = self.free(shrine, trove_id, pct_value_to_compensate, caller);
 
             let can_absorb_some: bool = purge_amt.is_non_zero();
             let is_fully_absorbed: bool = purge_amt == max_purge_amt;
