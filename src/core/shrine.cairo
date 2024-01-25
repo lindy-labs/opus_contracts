@@ -1189,8 +1189,13 @@ mod shrine {
         // Checks that:
         // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
         // 2. the trove has at least the minimum value if it has non-zero debt
-        // 3. if Shrine is in normal mode, that recovery mode is not triggered; or if 
-        //    Shrine is in recovery mode, that Shrine's LTV does not worsen
+        // 3. if Shrine is in normal mode, that recovery mode is not triggered; or 
+        //    if Shrine is in recovery mode, then if:
+        //    a. the trove's LTV is at or greater than its recovery mode target LTV, the action
+        //       does not worsen the trove LTV; or
+        //    b. the trove's LTV is below its recovery mode target LTV, the action would not 
+        //       result cause the trove's LTV to be greater than or equal to its recovery mode 
+        //       target LTV.
         //
         // Note that the threshold in `start_trove_base_health` should be the base threshold even if the 
         // Shrine is in recovery mode
