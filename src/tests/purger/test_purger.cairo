@@ -919,18 +919,7 @@ mod test_purger {
                                 let (penalty, max_close_amt, _) = purger
                                     .preview_absorb(target_trove)
                                     .expect('Should be absorbable');
-                                if !(*is_recovery_mode) {
-                                    common::assert_equalish(
-                                        penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
-                                         'wrong penalty'
-                                    );
-                                    common::assert_equalish(
-                                        max_close_amt,
-                                        expected_max_close_amt,
-                                        (WAD_ONE / 10).into(),
-                                        'wrong max close amt'
-                                    );
-                                } else {
+                                if *is_recovery_mode {
                                     let expected_rm_threshold_upper_bound: Ray = *expected_rm_thresholds_upper_bound
                                         .pop_front()
                                         .unwrap();
@@ -944,6 +933,17 @@ mod test_purger {
                                     assert(
                                         max_close_amt > expected_rm_max_close_amt_lower_bound,
                                         'rm max close amt too low'
+                                    );
+                                } else {
+                                    common::assert_equalish(
+                                        penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
+                                         'wrong penalty'
+                                    );
+                                    common::assert_equalish(
+                                        max_close_amt,
+                                        expected_max_close_amt,
+                                        (WAD_ONE / 10).into(),
+                                        'wrong max close amt'
                                     );
                                 }
                             },
@@ -1614,11 +1614,10 @@ mod test_purger {
                                                     );
 
                                                     // sanity check
-                                                    if is_recovery_mode {
-                                                        assert(shrine.is_recovery_mode(), 'not in recovery mode');
-                                                    } else {
-                                                        assert(!shrine.is_recovery_mode(), 'in recovery mode');
-                                                    }
+                                                    assert(
+                                                        !(is_recovery_mode ^ shrine.is_recovery_mode()),
+                                                        'wrong recovery mode status'
+                                                    );
 
                                                     let target_trove_start_health: Health = shrine
                                                         .get_trove_health(target_trove);
@@ -3238,40 +3237,18 @@ mod test_purger {
                                                         start_warp(CheatTarget::All, current_timestamp + ts_diff);
 
                                                         // Check that the threshold has decreased to the desired value
+                                                        let threshold_before_liquidation = shrine
+                                                            .get_yang_threshold(eth);
 
-                                                        if *is_recovery_mode {
-                                                            let whale_trove_owner: ContractAddress =
-                                                                purger_utils::target_trove_owner();
-                                                            let whale_trove: u64 = purger_utils::create_whale_trove(
-                                                                abbot, yangs, gates
-                                                            );
-
-                                                            purger_utils::trigger_recovery_mode(
-                                                                shrine,
-                                                                seer,
-                                                                yangs,
-                                                                common::RecoveryModeSetupType::ExceedsBuffer
-                                                            );
-                                                        // let (_, threshold_before_liquidation) = shrine
-                                                        //     .get_yang_threshold(eth);
-                                                        // assert(
-                                                        //     threshold_before_liquidation < *desired_threshold
-                                                        //         - 100000000000000000000_u128.into(),
-                                                        //     'not recovery mode'
-                                                        // )
-                                                        } else { // let (_, threshold_before_liquidation) = shrine
-                                                        //     .get_yang_threshold(eth);
-
-                                                        // common::assert_equalish(
-                                                        //     threshold_before_liquidation,
-                                                        //     *desired_threshold,
-                                                        //     // 0.0000001 = 10^-7 (ray). Precision
-                                                        //     // is limited by the precision of timestamps,
-                                                        //     // which is only in seconds
-                                                        //     100000000000000000000_u128.into(),
-                                                        //     'wrong eth threshold'
-                                                        // );
-                                                        }
+                                                        common::assert_equalish(
+                                                            threshold_before_liquidation,
+                                                            *desired_threshold,
+                                                            // 0.0000001 = 10^-7 (ray). Precision
+                                                            // is limited by the precision of timestamps,
+                                                            // which is only in seconds
+                                                            100000000000000000000_u128.into(),
+                                                            'wrong eth threshold'
+                                                        );
 
                                                         // We want to compare the yin balance of the liquidator
                                                         // before and after the liquidation. In the case of absorption
@@ -3283,6 +3260,15 @@ mod test_purger {
                                                         } else {
                                                             yin_erc20.balance_of(searcher)
                                                         };
+
+                                                        if *is_recovery_mode {
+                                                            purger_utils::trigger_recovery_mode(
+                                                                shrine,
+                                                                seer,
+                                                                yangs,
+                                                                common::RecoveryModeSetupType::ExceedsBuffer
+                                                            );
+                                                        }
 
                                                         // Liquidate the trove
                                                         start_prank(

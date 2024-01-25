@@ -529,17 +529,14 @@ mod purger_utils {
         yangs: Span<ContractAddress>,
         rm_setup_type: common::RecoveryModeSetupType
     ) {
-        'trigger rm enter'.print();
         let shrine_health: Health = shrine.get_shrine_health();
         let offset: Ray = 100000000_u128.into();
         let threshold_factor: Ray = shrine_utils::get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
         let target_ltv: Ray = shrine_health.threshold * threshold_factor;
-        'getting decrease pct'.print();
         let decrease_pct: Ray = shrine_utils::get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
 
-        'decreasing'.print();
         decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
-        'decreased'.print();
+
         assert(shrine.is_recovery_mode(), 'recovery mode setup');
     }
 
