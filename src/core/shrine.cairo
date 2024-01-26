@@ -1379,6 +1379,8 @@ mod shrine {
         fn withdraw_helper(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
+            // Charge interest and pull exceptionally redistributed yangs into the trove
+            // before withdrawal
             self.charge(trove_id);
 
             // Fails if amount > amount of yang deposited in the given trove
