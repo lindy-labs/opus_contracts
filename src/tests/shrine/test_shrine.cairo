@@ -899,6 +899,9 @@ mod test_shrine {
             'not exceptional redistribution'
         );
 
+        // Check that exceptionally redistributed yang is not in the recipient trove yet
+        assert(shrine.get_deposit(yang1_addr, recipient_trove).is_zero(), 'sanity check');
+
         // Withdraw the exceptionally redistributed yang from the recipient trove
         shrine.withdraw(yang1_addr, recipient_trove, yang1_deposit_amt);
     }
