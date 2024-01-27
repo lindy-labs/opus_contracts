@@ -1,5 +1,5 @@
 use cmp::min;
-use core::fmt::{Debug, Display, DisplayInteger, Error, Formatter};
+use core::fmt::{Debug, Display, Error, Formatter};
 use integer::{u256_safe_div_rem, u256_try_as_non_zero};
 use opus::interfaces::IAbsorber::IBlesserDispatcher;
 use starknet::{ContractAddress, StorePacking};
@@ -11,6 +11,12 @@ const TWO_POW_122: felt252 = 0x4000000000000000000000000000000;
 const TWO_POW_128: felt252 = 0x100000000000000000000000000000000;
 const TWO_POW_250: felt252 = 0x400000000000000000000000000000000000000000000000000000000000000;
 
+impl DislayUsingDebug<T, impl TDebug: Debug<T>> of Display<T> {
+    fn fmt(self: @T, ref f: Formatter) -> Result<(), Error> {
+        TDebug::fmt(self, ref f)
+    }
+}
+
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
     None,
@@ -20,8 +26,9 @@ enum YangSuspensionStatus {
 
 #[derive(Copy, Debug, Drop, Serde)]
 struct Health {
-    // Threshold at which a trove can be liquidated, or at which
-    // recovery mode is triggered for Shrine
+    // Threshold at which a trove can be liquidated in normal mode,
+    // or in case of Shrine, the base threshold for
+    // calculating recovery mode status
     threshold: Ray,
     // Debt as a percentage of value
     ltv: Ray,
@@ -31,22 +38,10 @@ struct Health {
     debt: Wad,
 }
 
-impl DisplayHealth of Display<Health> {
-    fn fmt(self: @Health, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
-}
-
 #[derive(Copy, Debug, Drop, Serde)]
 struct YangBalance {
     yang_id: u32, //  ID of yang in Shrine
     amount: Wad, // Amount of yang in Wad
-}
-
-impl DisplayYangBalance of Display<YangBalance> {
-    fn fmt(self: @YangBalance, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
 }
 
 #[derive(Copy, Drop, PartialEq, Serde)]
@@ -60,12 +55,6 @@ struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     last_rate_era: u64,
     debt: Wad, // Normalized debt
-}
-
-impl DisplayTrove of Display<Trove> {
-    fn fmt(self: @Trove, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
 }
 
 impl TroveStorePacking of StorePacking<Trove, u256> {
@@ -105,12 +94,6 @@ struct YangRedistribution {
     exception: bool,
 }
 
-impl DisplayYangRedistribution of Display<YangRedistribution> {
-    fn fmt(self: @YangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
-}
-
 // 2 ** 122 - 1
 const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x3ffffffffffffffffffffffffffffff;
 
@@ -139,12 +122,6 @@ struct ExceptionalYangRedistribution {
     unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
 }
 
-impl DisplayExceptionalYangRedistribution of Display<ExceptionalYangRedistribution> {
-    fn fmt(self: @ExceptionalYangRedistribution, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
-}
-
 //
 // Absorber
 //
@@ -162,12 +139,6 @@ struct DistributionInfo {
     // to prevent redistributions from failing in this unlikely scenario, at the expense of providers
     // losing out on some absorbed assets.
     error: u128,
-}
-
-impl DisplayDistributionInfo of Display<DistributionInfo> {
-    fn fmt(self: @DistributionInfo, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
 }
 
 // 2 ** 123 - 1
@@ -203,12 +174,6 @@ struct Provision {
     shares: Wad, // Amount of shares for provider in the above epoch
 }
 
-impl DisplayProvision of Display<Provision> {
-    fn fmt(self: @Provision, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
-}
-
 impl ProvisionStorePacking of StorePacking<Provision, felt252> {
     fn pack(value: Provision) -> felt252 {
         value.epoch.into() + (value.shares.into() * TWO_POW_32)
@@ -228,12 +193,6 @@ struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
     has_removed: bool, // Whether provider has called `remove`
-}
-
-impl DisplayRequest of Display<Request> {
-    fn fmt(self: @Request, ref f: Formatter) -> Result<(), Error> {
-        Debug::fmt(self, ref f)
-    }
 }
 
 impl RequestStorePacking of StorePacking<Request, felt252> {
