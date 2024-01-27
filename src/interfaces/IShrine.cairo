@@ -60,7 +60,6 @@ trait IShrine<TContractState> {
     fn forge(ref self: TContractState, user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(ref self: TContractState, user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn charge(ref self: TContractState, trove_id: u64);
     fn redistribute(ref self: TContractState, trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray);
     fn inject(ref self: TContractState, receiver: ContractAddress, amount: Wad);
     fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
