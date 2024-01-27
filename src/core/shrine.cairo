@@ -1194,12 +1194,8 @@ mod shrine {
                 assert(end_trove_base_health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value');
             }
 
-            // If Shrine is not in recovery mode after trove action, check the trove's health using the base 
-            // threshold directly.
-            if !self.is_recovery_mode() {
-                assert(self.is_healthy_helper(end_trove_base_health), 'SH: Trove LTV >= threshol');
-            } else {
-                // Otherwise, assert that trove action did not move Shrine from normal mode into recovery mode
+            if self.is_recovery_mode() {
+                // Assert that trove action did not move Shrine from normal mode into recovery mode
                 assert(self.exceeds_recovery_mode_ltv(start_shrine_health), 'SH: Will trigger recovery mode');
 
                 // If we reach this line, then Shrine was in recovery mode, and still is after the trove action.
@@ -1213,8 +1209,11 @@ mod shrine {
                     assert(end_trove_base_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
                 } else {
                     // For (2), the trove's LTV cannot be at or greater than its target recovery mode LTV.
-                    assert(!self.exceeds_recovery_mode_ltv(end_trove_base_health), 'SH: Trove LTV is too high (RM)')
+                    assert(!self.exceeds_recovery_mode_ltv(end_trove_base_health), 'SH: Trove LTV > threshold (RM)')
                 }
+            } else {
+                // Otherwise, check the trove's health using the base threshold directly.
+                assert(self.is_healthy_helper(end_trove_base_health), 'SH: Trove LTV > threshold');
             }
         }
 
