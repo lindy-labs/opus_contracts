@@ -1209,7 +1209,7 @@ mod shrine {
                     assert(end_trove_base_health.ltv <= start_trove_base_health.ltv, 'SH: Trove LTV is worse off (RM)');
                 } else {
                     // For (2), the trove's LTV cannot be at or greater than its target recovery mode LTV.
-                    assert(!self.exceeds_recovery_mode_ltv(end_trove_base_health), 'SH: Trove LTV > threshold (RM)')
+                    assert(!self.exceeds_recovery_mode_ltv(end_trove_base_health), 'SH: Trove LTV > target LTV (RM)')
                 }
             } else {
                 // Otherwise, check the trove's health using the base threshold directly.

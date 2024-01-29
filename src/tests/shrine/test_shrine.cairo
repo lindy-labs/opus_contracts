@@ -2506,7 +2506,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV, 
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold (RM)',))]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_forge_within_recovery_mode_buffer_below_rm_target_threshold_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -2545,7 +2545,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV, 
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold (RM)',))]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_withdraw_within_recovery_mode_buffer_below_rm_target_threshold_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -2721,7 +2721,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV, 
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold (RM)',))]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_forge_exceeded_recovery_mode_buffer_below_rm_target_threshold_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -2761,7 +2761,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV, 
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold (RM)',))]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_withdraw_exceeded_recovery_mode_buffer_below_rm_target_threshold_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
