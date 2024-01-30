@@ -11,11 +11,11 @@ mod test_caretaker {
     use opus::tests::caretaker::utils::caretaker_utils;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, ExceptionalYangRedistribution, Health, YangBalance};
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     #[test]
     fn test_caretaker_setup() {
@@ -201,6 +201,153 @@ mod test_caretaker {
                 caretaker.contract_address,
                 caretaker_contract::Event::Release(
                     caretaker_contract::Release { user: user2, trove_id: trove2_id, assets: trove2_released_assets, }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    fn test_release_with_unpulled_yangs() {
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
+
+        let deposit_amts: Span<u128> = abbot_utils::open_trove_yang_asset_amts();
+        let yang0_asset_deposit_amt: u128 = *deposit_amts[0];
+        let yang1_asset_deposit_amt: u128 = *deposit_amts[1];
+
+        // user 1 deposits yang0 and mints 100 yin 
+        let user1 = common::trove1_owner_addr();
+        common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
+
+        let trove1_forge_amt: Wad = (100 * WAD_ONE).into();
+        let trove1_id = common::open_trove_helper(
+            abbot,
+            user1,
+            array![*yangs[0]].span(),
+            array![yang0_asset_deposit_amt].span(),
+            array![*gates[0]].span(),
+            trove1_forge_amt
+        );
+
+        // user 2 deposits yang1 and mints 100 yin
+        let user2 = common::trove2_owner_addr();
+        common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
+
+        let trove2_forge_amt: Wad = (100 * WAD_ONE).into();
+        let trove2_id = common::open_trove_helper(
+            abbot,
+            user2,
+            array![*yangs[1]].span(),
+            array![yang1_asset_deposit_amt].span(),
+            array![*gates[1]].span(),
+            trove1_forge_amt
+        );
+
+        let trove2_yang1_deposit: Wad = shrine.get_deposit(*yangs[1], trove2_id);
+
+        // redistribute trove 2 exceptionally so all yang0 goes to trove 1
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        shrine.redistribute(trove2_id, trove2_forge_amt, RAY_ONE.into());
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        // sanity check that exceptional redistribution occured
+        let expected_redistribution_id: u32 = 1;
+        let exc_yang_redistribution: ExceptionalYangRedistribution = shrine
+            .get_exceptional_redistribution_for_yang_to_yang(*yangs[0], expected_redistribution_id, *yangs[1],);
+        assert(exc_yang_redistribution.unit_yang.is_non_zero(), 'not exceptional redistribution');
+
+        let (unpulled_yangs, _) = shrine.get_redistributions_attributed_to_trove(trove1_id);
+        assert_eq!(unpulled_yangs.len(), 1, "wrong unpulled yangs len");
+
+        let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
+        let shrine_health: Health = shrine.get_shrine_health();
+        let backing: Ray = wadray::rdiv_ww(total_yin, shrine_health.value);
+
+        let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
+        let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
+
+        let user1_yang0_before_balance: u256 = y0.balance_of(user1);
+        let user1_yang1_before_balance: u256 = y1.balance_of(user1);
+
+        let yang0_total: Wad = shrine.get_yang_total(*yangs[0]);
+        let yang1_total: Wad = shrine.get_yang_total(*yangs[1]);
+
+        start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
+        caretaker.shut();
+
+        start_prank(CheatTarget::One(caretaker.contract_address), user1);
+        let trove1_released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
+
+        let user1_yang0_after_balance: u256 = y0.balance_of(user1);
+        let user1_yang1_after_balance: u256 = y1.balance_of(user1);
+
+        // assert released amount for eth
+        let eth_tolerance: Wad = 1000_u128.into(); // 1000 wei
+        let expected_release_y0: Wad = yang0_total - wadray::rmul_rw(backing, yang0_total);
+        common::assert_equalish(
+            (*trove1_released_assets.at(0).amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
+        );
+
+        // assert released amount for wbtc (need to deal w/ different decimals)
+        let wbtc_tolerance: Wad = 10000000000000_u128.into(); // 1000 satoshi
+        let expected_release_y1: Wad = yang1_total - wadray::rmul_rw(backing, yang1_total);
+        let actual_release_y1: Wad = fixed_point_to_wad(*trove1_released_assets.at(1).amount, common::WBTC_DECIMALS);
+        common::assert_equalish(actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release');
+
+        // assert all deposits were released and assets are back in user's account
+        assert(*trove1_released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
+        assert(*trove1_released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
+        assert(
+            user1_yang0_after_balance == user1_yang0_before_balance + (*trove1_released_assets.at(0).amount).into(),
+            'user1 yang0 after balance'
+        );
+        assert(
+            user1_yang1_after_balance == user1_yang1_before_balance + (*trove1_released_assets.at(1).amount).into(),
+            'user1 yang1 after balance'
+        );
+
+        // assert nothing's left in the shrine for the released trove
+        assert(shrine.get_deposit(*yangs[0], trove1_id).is_zero(), 'trove1 yang0 deposit');
+        assert(shrine.get_deposit(*yangs[1], trove1_id).is_zero(), 'trove1 yang1 deposit');
+
+        // assert no outstanding unattributed redistributions for trove 1
+        let (unpulled_yangs, _) = shrine.get_redistributions_attributed_to_trove(trove1_id);
+        assert(unpulled_yangs.len().is_zero(), 'unpulled yangs should not exist');
+
+        // assert that release does nothing when called again
+        let trove1_released_assets_dup: Span<AssetBalance> = caretaker.release(trove1_id);
+        assert((*trove1_released_assets_dup.at(0).amount).is_zero(), 'incorrect release #1');
+        assert((*trove1_released_assets_dup.at(1).amount).is_zero(), 'incorrect release #2');
+
+        let user1_yang0_balance_dup: u256 = y0.balance_of(user1);
+        let user1_yang1_balance_dup: u256 = y1.balance_of(user1);
+        assert_eq!(user1_yang0_after_balance, user1_yang0_balance_dup, "wrong yang0 asset bal");
+        assert_eq!(user1_yang1_after_balance, user1_yang1_balance_dup, "wrong yang1 asset bal");
+
+        // sanity check that for user with redistributed trove, release does nothing
+        start_prank(CheatTarget::One(caretaker.contract_address), user2);
+        let trove2_released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
+        assert((*trove2_released_assets.at(0).amount).is_zero(), 'incorrect release #3');
+        assert((*trove2_released_assets.at(1).amount).is_zero(), 'incorrect release #4');
+
+        let expected_events = array![
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: trove1_released_assets }
+                )
+            ),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user1, trove_id: trove1_id, assets: trove1_released_assets_dup }
+                )
+            ),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Release(
+                    caretaker_contract::Release { user: user2, trove_id: trove2_id, assets: trove2_released_assets }
                 )
             ),
         ];
