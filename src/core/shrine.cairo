@@ -1396,26 +1396,14 @@ mod shrine {
             self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
-        // Adds the accumulated interest as debt to the trove
-        fn charge(ref self: ContractState, trove_id: u64) {
-            // Do not charge accrued interest once Shrine is killed because total troves' debt
-            // and individual trove's debt are fixed at the time of shutdown.
-            if !self.is_live.read() {
-                return;
-            }
-
-            let trove: Trove = self.troves.read(trove_id);
-
-            // Get current interval and yang count
-            let current_interval: u64 = now();
-
-            // Get new debt amount
-            let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
-
-            // Pull undistributed debt and update state
-            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
-            let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) = self
-                .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, compounded_trove_debt);
+        // Helper function to update a trove's yang deposits with amounts it received from exceptional 
+        // redistributions, and the trove's last redistribution ID.
+        // Returns the updated amount of debt after including pulled exceptionally redistributed debt. 
+        fn update_trove_with_pulled_redistributions(
+            ref self: ContractState, trove_id: u64, mut trove_yang_balances: Span<YangBalance>, trove_debt: Wad,
+        ) -> Wad {
+            let (updated_trove_yang_balances, updated_trove_debt) = self
+                .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, trove_debt);
 
             // If there was any exceptional redistribution, write updated yang amounts to trove
             if updated_trove_yang_balances.is_some() {
@@ -1430,6 +1418,42 @@ mod shrine {
                 };
             }
 
+            self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
+
+            updated_trove_debt
+        }
+
+        // Adds the accumulated interest as debt to the trove
+        fn charge(ref self: ContractState, trove_id: u64) {
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+
+            // Do not charge accrued interest once Shrine is killed because total troves' debt
+            // and individual trove's debt are fixed at the time of shutdown.
+            if !self.is_live.read() {
+                // Pull the yangs into the trove before early return if Shrine is killed so that 
+                // exceptionally redistributed yangs can be released after shutdown. We can ignore
+                // the debt (by passing zero value as the trove's debt) after shutdown since all 
+                // debt will already be backed in Caretaker.
+                //
+                // Note that this cannot be moved outside of this `if` block because pulling 
+                // yangs into the trove would skew the calculation of accrued interest, which
+                // should be based on the trove deposits before pulling. 
+                self.update_trove_with_pulled_redistributions(trove_id, trove_yang_balances, WadZeroable::zero());
+                return;
+            }
+
+            let trove: Trove = self.troves.read(trove_id);
+
+            // Get current interval and yang count
+            let current_interval: u64 = now();
+
+            // Get new debt amount
+            let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
+
+            // Pull undistributed debt and update state
+            let compounded_trove_debt_with_redistributed_debt: Wad = self
+                .update_trove_with_pulled_redistributions(trove_id, trove_yang_balances, compounded_trove_debt);
+
             // Update trove
             let updated_trove: Trove = Trove {
                 charge_from: current_interval,
@@ -1437,7 +1461,6 @@ mod shrine {
                 last_rate_era: self.rates_latest_era.read()
             };
             self.troves.write(trove_id, updated_trove);
-            self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
 
             let charged: Wad = compounded_trove_debt - trove.debt;
 
