@@ -7,9 +7,8 @@ use wadray::{Ray, Wad};
 
 const TWO_POW_32: felt252 = 0x100000000;
 const TWO_POW_64: felt252 = 0x10000000000000000;
-const TWO_POW_122: felt252 = 0x4000000000000000000000000000000;
+const TWO_POW_123: felt252 = 0x8000000000000000000000000000000;
 const TWO_POW_128: felt252 = 0x100000000000000000000000000000000;
-const TWO_POW_250: felt252 = 0x400000000000000000000000000000000000000000000000000000000000000;
 
 impl DislayUsingDebug<T, impl TDebug: Debug<T>> of Display<T> {
     fn fmt(self: @T, ref f: Formatter) -> Result<(), Error> {
@@ -88,38 +87,25 @@ struct YangRedistribution {
     // value anyway to prevent redistributions from failing in this unlikely scenario, at the
     // expense of some amount of redistributed debt not being attributed to troves. These
     // unattributed amounts will be backed by the initial yang amounts instead.
-    error: Wad,
-    // Whether the exception flow is triggered to redistribute the yang across all yangs
-    // This is packed into bit 251
-    exception: bool,
+    error: Wad
 }
 
-// 2 ** 122 - 1
-const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x3ffffffffffffffffffffffffffffff;
+// 2 ** 123 - 1
+const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x7ffffffffffffffffffffffffffffff;
 
 impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252> {
     fn pack(value: YangRedistribution) -> felt252 {
         let capped_error: u128 = min(value.error.val, MAX_YANG_REDISTRIBUTION_ERROR);
-        (value.unit_debt.into() + (capped_error.into() * TWO_POW_128) + (value.exception.into() * TWO_POW_250))
+        (value.unit_debt.into() + (capped_error.into() * TWO_POW_128))
     }
 
     fn unpack(value: felt252) -> YangRedistribution {
         let value: u256 = value.into();
         let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_128.into()).unwrap();
-        let (rest, unit_debt) = u256_safe_div_rem(value, shift);
-        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_122.into()).unwrap();
-        let (exception, error) = u256_safe_div_rem(rest, shift);
+        let (error, unit_debt) = u256_safe_div_rem(value, shift);
 
-        YangRedistribution {
-            unit_debt: unit_debt.try_into().unwrap(), error: error.try_into().unwrap(), exception: exception == 1
-        }
+        YangRedistribution { unit_debt: unit_debt.try_into().unwrap(), error: error.try_into().unwrap() }
     }
-}
-
-#[derive(Copy, Debug, Drop, Serde, starknet::Store)]
-struct ExceptionalYangRedistribution {
-    unit_debt: Wad, // Amount of debt to be distributed to each wad unit of recipient yang
-    unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
 }
 
 //

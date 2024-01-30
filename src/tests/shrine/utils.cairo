@@ -617,19 +617,7 @@ mod shrine_utils {
                             break;
                         }
 
-                        let mut trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
-                        let (mut redistributed_yangs, _) = shrine.get_redistributions_attributed_to_trove(trove_id);
-
-                        loop {
-                            match redistributed_yangs.pop_front() {
-                                Option::Some(redistributed_yang) => {
-                                    if *redistributed_yang.yang_id == yang_id {
-                                        trove_amt += *redistributed_yang.amount;
-                                    }
-                                },
-                                Option::None => { break; },
-                            };
-                        };
+                        let trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
                         troves_cumulative_amt += trove_amt;
 
                         trove_id += 1;
@@ -651,10 +639,11 @@ mod shrine_utils {
         };
     }
 
-    // Asserts that the total troves debt is less than or equal to the sum of all troves' debt, 
+    // Asserts that the total troves debt is less than the sum of all troves' debt, 
     // including all unpulled redistributions.
-    // We do not check for strict equality because there may be loss of precision when 
-    // redistributed debt are pulled into troves.
+    // We do not check for strict equality primarily because exceptionally redistributed debt
+    // are added as a deficit to the budget. and secondarily because there may be loss of 
+    // precision when redistributed debt are pulled into troves, 
     fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
@@ -714,9 +703,6 @@ mod shrine_utils {
 
         let shrine_health: Health = shrine.get_shrine_health();
         assert(total <= shrine_health.debt, 'debt invariant failed #1');
-
-        let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #2');
     }
 
     fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64) {

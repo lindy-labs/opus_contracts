@@ -1,4 +1,4 @@
-use opus::types::{ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
+use opus::types::{Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
@@ -26,12 +26,6 @@ trait IShrine<TContractState> {
     fn get_redistribution_for_yang(
         self: @TContractState, yang: ContractAddress, redistribution_id: u32
     ) -> YangRedistribution;
-    fn get_exceptional_redistribution_for_yang_to_yang(
-        self: @TContractState,
-        recipient_yang: ContractAddress,
-        redistribution_id: u32,
-        redistributed_yang: ContractAddress
-    ) -> ExceptionalYangRedistribution;
     fn is_recovery_mode(self: @TContractState) -> bool;
     fn get_live(self: @TContractState) -> bool;
     // external setters
@@ -71,5 +65,5 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
-    fn get_redistributions_attributed_to_trove(self: @TContractState, trove_id: u64) -> (Span<YangBalance>, Wad);
+    fn get_unpulled_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
 }

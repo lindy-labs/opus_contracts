@@ -1,6 +1,4 @@
-use opus::types::{
-    DistributionInfo, ExceptionalYangRedistribution, Health, Provision, Request, Trove, YangBalance, YangRedistribution
-};
+use opus::types::{DistributionInfo, Health, Provision, Request, Trove, YangBalance, YangRedistribution};
 use wadray::{Wad, Ray};
 
 #[test]
@@ -20,15 +18,10 @@ fn test_display_and_debug() {
     assert_eq!(format!("{}", t), expected, "Trove display");
     assert_eq!(format!("{:?}", t), expected, "Trove debug");
 
-    let y = YangRedistribution { unit_debt: 123_u128.into(), error: 456_u128.into(), exception: true };
-    let expected = "YangRedistribution { unit_debt: 123, error: 456, exception: true }";
+    let y = YangRedistribution { unit_debt: 123_u128.into(), error: 456_u128.into() };
+    let expected = "YangRedistribution { unit_debt: 123, error: 456 }";
     assert_eq!(format!("{}", y), expected, "YangRedistribution display");
     assert_eq!(format!("{:?}", y), expected, "YangRedistribution debug");
-
-    let e = ExceptionalYangRedistribution { unit_debt: 123_u128.into(), unit_yang: 456_u128.into() };
-    let expected = "ExceptionalYangRedistribution { unit_debt: 123, unit_yang: 456 }";
-    assert_eq!(format!("{}", e), expected, "ExceptionalYangRedistribution display");
-    assert_eq!(format!("{:?}", e), expected, "ExceptionalYangRedistribution debug");
 
     let d = DistributionInfo { asset_amt_per_share: 123, error: 456 };
     let expected = "DistributionInfo { asset_amt_per_share: 123, error: 456 }";
