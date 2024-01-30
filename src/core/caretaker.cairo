@@ -12,7 +12,7 @@ mod caretaker {
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, RAY_ONE, Wad};
+    use wadray::{Ray, RAY_ONE, Wad, WadZeroable};
 
     //
     // Components
@@ -277,6 +277,10 @@ mod caretaker {
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
+
+            // Call `seize` for its side effect of pulling exceptionally redistributed 
+            // yangs into the trove.
+            shrine.seize(*yangs[0], trove_id, WadZeroable::zero());
 
             let mut released_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
