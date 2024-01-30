@@ -1771,18 +1771,26 @@ mod shrine {
                     Option::Some(yang_balance) => {
                         let trove_yang_amt: Wad = (*yang_balance).amount;
                         let yang_id_to_redistribute = (*yang_balance).yang_id;
+
+                        let redistributed_yang_total_supply: Wad = (*yang_totals
+                            .at(yang_id_to_redistribute - yang_id_to_array_idx_offset))
+                            .amount;
+
                         // Skip over this yang if it has not been deposited in the trove
                         if trove_yang_amt.is_zero() {
                             updated_trove_yang_balances.append(*yang_balance);
+                            new_yang_totals
+                                .append(
+                                    YangBalance {
+                                        yang_id: yang_id_to_redistribute, amount: redistributed_yang_total_supply
+                                    }
+                                );
                             continue;
                         }
 
                         let yang_amt_to_redistribute: Wad = wadray::rmul_wr(trove_yang_amt, pct_value_to_redistribute);
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
 
-                        let redistributed_yang_total_supply: Wad = (*yang_totals
-                            .at(yang_id_to_redistribute - yang_id_to_array_idx_offset))
-                            .amount;
                         let redistributed_yang_initial_amt: Wad = self.initial_yang_amts.read(yang_id_to_redistribute);
 
                         // Get the remainder amount of yangs in all other troves that can be redistributed
@@ -2047,7 +2055,6 @@ mod shrine {
                         self
                             .deposits
                             .write((updated_trove_yang_balance.yang_id, trove_id), updated_trove_yang_balance.amount);
-
                         self.yang_total.write(*total_yang_balance.yang_id, *total_yang_balance.amount);
                     },
                     Option::None => { break; },
