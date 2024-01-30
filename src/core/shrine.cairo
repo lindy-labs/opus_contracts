@@ -1679,7 +1679,6 @@ mod shrine {
                         // Adjust debt to distribute by adding the error from the last redistribution
                         let last_error: Wad = self_snap
                             .get_recent_redistribution_error_for_yang(yang_id_to_redistribute, redistribution_id - 1);
-                        let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang + last_error;
 
                         let mut redistributed_yang_unit_debt: Wad = WadZeroable::zero();
                         let mut updated_yang_total: Wad = redistributed_yang_total_supply - yang_amt_to_redistribute;
@@ -1746,6 +1745,7 @@ mod shrine {
                             // all redistributed debt will be attributed to user troves, with a negligible loss in
                             // yang assets for these troves as a result of some amount going towards the initial yang
                             // amount.
+                            let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang + last_error;
                             redistributed_yang_unit_debt = adjusted_debt_to_distribute_for_yang
                                 / redistributed_yang_recipient_pool;
 
@@ -1758,12 +1758,15 @@ mod shrine {
                             updated_trove_yang_balance = trove_yang_amt - yang_amt_to_redistribute;
 
                             // Add the debt to be redistributed for this yang as a deficit
+                            // This excludes any previous errors
                             self
                                 .budget
                                 .write(
-                                    self.budget.read()
-                                        + SignedWad { val: adjusted_debt_to_distribute_for_yang.val, sign: true }
+                                    self.budget.read() + SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
                                 );
+
+                            // Carry over last error to the next redistribution
+                            debt_error = last_error;
                         }
 
                         let redistributed_yang_info = YangRedistribution {
