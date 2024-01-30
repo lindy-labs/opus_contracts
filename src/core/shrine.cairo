@@ -1717,8 +1717,11 @@ mod shrine {
                         // `unit_yang_per_recipient_yang` is a very large value.
                         //
                         // This is expected to be the common case.
-                        // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
-
+                        // Otherwise, redistribute by:
+                        // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial 
+                        //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
+                        //     occurs);
+                        // (2) adding the trove's debt to the budget as a deficit.
                         let is_ordinary_redistribution: bool =
                             redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
                             .into();
