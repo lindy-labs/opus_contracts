@@ -1233,11 +1233,13 @@ mod shrine {
         // Helpers for getters and view functions
         //
 
+        #[inline(always)]
         fn get_recovery_mode_target_ltv(self: @ContractState, threshold: Ray) -> Ray {
             threshold * RECOVERY_MODE_TARGET_LTV_FACTOR.into()
         }
 
         // Helper function to check if recovery mode is triggered for Shrine
+        #[inline(always)]
         fn exceeds_recovery_mode_ltv(self: @ContractState, health: Health) -> bool {
             health.ltv >= self.get_recovery_mode_target_ltv(health.threshold)
         }
