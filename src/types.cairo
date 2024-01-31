@@ -31,7 +31,8 @@ struct Health {
     // calculating recovery mode status
     threshold: Ray,
     // Threshold at which a trove can be liquidated in recovery mode.
-    // This value is the same as threshold for Shrine.
+    // In the case of Shrine, there is no concept of a recovery mode threshold,
+    // so a dummy value is used.
     rm_threshold: Ray,
     // Debt as a percentage of value
     ltv: Ray,

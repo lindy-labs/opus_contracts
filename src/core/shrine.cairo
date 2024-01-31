@@ -1192,7 +1192,7 @@ mod shrine {
                 // There are two possibilities:
                 // 1. the trove's LTV is at or greater than its target recovery mode LTV before the trove action; or
                 // 2. the trove's LTV is below its target recovery mode LTV before the trove action. 
-                let rm_target_threshold: Ray = start_trove_health.threshold * RECOVERY_MODE_TARGET_LTV_FACTOR.into();
+                let rm_target_ltv: Ray = self.get_recovery_mode_target_ltv(start_trove_health.threshold);
                 if start_trove_health.ltv >= rm_target_threshold {
                     // For (1), the trove's LTV cannot be worse off.
                     assert(end_trove_health.ltv <= start_trove_health.ltv, 'SH: Trove LTV is worse off (RM)');
