@@ -1631,7 +1631,6 @@ mod shrine {
                         }
 
                         let yang_amt_to_redistribute: Wad = wadray::rmul_wr(trove_yang_amt, pct_value_to_redistribute);
-                        let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
 
                         let redistributed_yang_total_supply: Wad = self.yang_total.read(yang_id_to_redistribute);
                         let redistributed_yang_initial_amt: Wad = self.initial_yang_amts.read(yang_id_to_redistribute);
@@ -1676,31 +1675,10 @@ mod shrine {
                             debt_to_distribute_for_yang = debt_to_redistribute;
                         };
 
-                        // Adjust debt to distribute by adding the error from the last redistribution
-                        let last_error: Wad = self_snap
-                            .get_recent_redistribution_error_for_yang(yang_id_to_redistribute, redistribution_id - 1);
-
-                        let mut redistributed_yang_unit_debt: Wad = WadZeroable::zero();
+                        let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         let mut updated_yang_total: Wad = redistributed_yang_total_supply - yang_amt_to_redistribute;
-                        let mut debt_error: Wad = WadZeroable::zero();
 
-                        // If there is at least `MIN_RECIPIENT_POOL_YANG` amount of yang in other troves,
-                        // handle it as an ordinary redistribution by rebasing the redistributed yang, and
-                        // reallocating debt to other troves with the same yang. The minimum remainder amount
-                        // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below,
-                        // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when
-                        // `unit_yang_per_recipient_yang` is a very large value.
-                        //
-                        // This is expected to be the common case.
-                        // Otherwise, redistribute by:
-                        // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial 
-                        //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
-                        //     occurs);
-                        // (2) adding the trove's debt to the budget as a deficit.
-                        let is_ordinary_redistribution: bool =
-                            redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
-                            .into();
-                        if is_ordinary_redistribution {
+                        if updated_trove_yang_balance.is_non_zero() {
                             // Since the amount of assets in the Gate remains constant, decrementing the system's yang
                             // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating)
                             // the ratio of asset to yang for the remaining amount of that yang.
@@ -1738,14 +1716,40 @@ mod shrine {
 
                             let yang_offset: Wad = remaining_trove_yang - updated_trove_yang_balance;
                             updated_yang_total -= yang_offset;
+                        }
 
+                        let last_error: Wad = self_snap
+                            .get_recent_redistribution_error_for_yang(yang_id_to_redistribute, redistribution_id - 1);
+
+                        let mut redistributed_yang_unit_debt: Wad = WadZeroable::zero();
+                        let mut debt_error: Wad = WadZeroable::zero();
+
+                        // If there is at least `MIN_RECIPIENT_POOL_YANG` amount of yang in other troves,
+                        // handle it as an ordinary redistribution by rebasing the redistributed yang, and
+                        // reallocating debt to other troves with the same yang. The minimum remainder amount
+                        // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below,
+                        // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when
+                        // `unit_yang_per_recipient_yang` is a very large value.
+                        //
+                        // This is expected to be the common case.
+                        // Otherwise, redistribute by:
+                        // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial 
+                        //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
+                        //     occurs);
+                        // (2) adding the trove's debt to the budget as a deficit.
+                        let is_ordinary_redistribution: bool =
+                            redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
+                            .into();
+
+                        if is_ordinary_redistribution {
+                            // Adjust debt to distribute by adding the error from the last redistribution
+                            let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang + last_error;
                             // There is a slight discrepancy here because yang is redistributed by rebasing,
                             // which means the initial yang amount is included, but the distribution of debt excludes
                             // the initial yang amount. However, it is unlikely to have any material impact because
                             // all redistributed debt will be attributed to user troves, with a negligible loss in
                             // yang assets for these troves as a result of some amount going towards the initial yang
                             // amount.
-                            let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang + last_error;
                             redistributed_yang_unit_debt = adjusted_debt_to_distribute_for_yang
                                 / redistributed_yang_recipient_pool;
 
@@ -1755,8 +1759,6 @@ mod shrine {
                                 * redistributed_yang_recipient_pool;
                             debt_error = adjusted_debt_to_distribute_for_yang - actual_debt_distributed;
                         } else {
-                            updated_trove_yang_balance = trove_yang_amt - yang_amt_to_redistribute;
-
                             // Add the debt to be redistributed for this yang as a deficit
                             // This excludes any previous errors
                             self
@@ -1775,9 +1777,7 @@ mod shrine {
                         self
                             .yang_redistributions
                             .write((yang_id_to_redistribute, redistribution_id), redistributed_yang_info);
-
                         self.deposits.write((yang_id_to_redistribute, trove_id), updated_trove_yang_balance);
-
                         self.yang_total.write(yang_id_to_redistribute, updated_yang_total);
 
                         // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
