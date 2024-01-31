@@ -20,14 +20,14 @@ mod test_purger {
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, Health, YangRedistribution};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
         EventFetcher, event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests - Setup
@@ -1199,211 +1199,6 @@ mod test_purger {
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
-    // #[test]
-    // fn test_full_absorb_of_trove_with_pending_exc_redistributed_yangs_pass() {
-    //     let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
-
-    //     // Fund the user with `target_trove_yang_asset_amts` but setup two troves where the first trove
-    //     // deposits the first yang only, and the second trove deposits the second yang only, then
-    //     // redistribute the first trove so that the second trove receives an exceptional redistribution
-    //     let user: ContractAddress = purger_utils::target_trove_owner();
-    //     let target_trove_yang_asset_amts: Span<u128> = purger_utils::target_trove_yang_asset_amts();
-    //     common::fund_user(user, yangs, target_trove_yang_asset_amts);
-
-    //     let initial_trove_debt: Wad = (purger_utils::TARGET_TROVE_YIN / 2).into();
-
-    //     // Setup two troves 
-    //     let first_trove: u64 = common::open_trove_helper(
-    //         abbot,
-    //         user,
-    //         array![*yangs[0]].span(),
-    //         array![*target_trove_yang_asset_amts[0]].span(),
-    //         array![*gates[0]].span(),
-    //         initial_trove_debt
-    //     );
-
-    //     let target_trove: u64 = common::open_trove_helper(
-    //         abbot,
-    //         user,
-    //         array![*yangs[1]].span(),
-    //         array![*target_trove_yang_asset_amts[1]].span(),
-    //         array![*gates[1]].span(),
-    //         initial_trove_debt
-    //     );
-
-    //     // Accrue some interest
-    //     common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
-
-    //     let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
-    //     let accrued_interest: Wad = target_trove_start_health.debt - initial_trove_debt;
-    //     // Sanity check that some interest has accrued
-    //     assert(accrued_interest.is_non_zero(), 'no interest accrued');
-
-    //     // Exceptionally redistribute the first trove
-    //     start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-    //     shrine.melt(shrine_utils::admin(), first_trove, WadZeroable::zero());
-
-    //     let first_trove_health: Health = shrine.get_trove_health(first_trove);
-    //     shrine.redistribute(first_trove, first_trove_health.debt, RAY_ONE.into());
-    //     stop_prank(CheatTarget::One(shrine.contract_address));
-    //     assert(shrine.get_trove_health(first_trove).ltv.is_zero(), 'redistribution sanity check');
-
-    //     // Sanity check that it was an exceptional redistribution
-    //     let expected_redistribution_id: u32 = 1;
-    //     assert(
-    //         shrine
-    //             .get_exceptional_redistribution_for_yang_to_yang(*yangs[1], expected_redistribution_id, *yangs[0],)
-    //             .unit_yang
-    //             .is_non_zero(),
-    //         'not exceptional redistribution'
-    //     );
-
-    //     // Sanity check that target trove has received the redistribution
-    //     let target_trove_intermediate_health: Health = shrine.get_trove_health(target_trove);
-    //     let error_margin: Wad = (WAD_ONE / 100).into();
-
-    //     let expected_target_trove_value: Wad = target_trove_start_health.value + first_trove_health.value;
-    //     common::assert_equalish(
-    //         target_trove_intermediate_health.value,
-    //         expected_target_trove_value,
-    //         error_margin,
-    //         'wrong value redistributed'
-    //     );
-
-    //     let expected_target_trove_debt: Wad = target_trove_start_health.debt + first_trove_health.debt;
-    //     common::assert_equalish(
-    //         target_trove_intermediate_health.debt, expected_target_trove_debt, error_margin, 'wrong debt redistributed'
-    //     );
-
-    //     // Fund the absorber with twice the target trove's debt
-    //     let absorber_start_yin: Wad = (target_trove_intermediate_health.debt.val * 2).into();
-    //     purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
-
-    //     // sanity check
-    //     assert(
-    //         shrine.get_yin(absorber.contract_address) > target_trove_intermediate_health.debt, 'not full absorption'
-    //     );
-
-    //     let shrine_health: Health = shrine.get_shrine_health();
-    //     let before_total_debt: Wad = shrine_health.debt;
-
-    //     // Make the target trove absorbable
-    //     let target_ltv: Ray = (purger_contract::ABSORPTION_THRESHOLD + 1).into();
-    //     purger_utils::lower_prices_to_raise_trove_ltv(
-    //         shrine,
-    //         seer,
-    //         yangs,
-    //         target_trove_intermediate_health.value,
-    //         target_trove_intermediate_health.debt,
-    //         target_ltv
-    //     );
-    //     let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-    //     purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, target_trove_updated_start_health.ltv);
-
-    //     let (penalty, max_close_amt, expected_compensation_value) = purger
-    //         .preview_absorb(target_trove)
-    //         .expect('Should be absorbable');
-    //     let caller: ContractAddress = purger_utils::random_user();
-
-    //     let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![caller].span());
-    //     let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-    //         yangs, array![absorber.contract_address].span()
-    //     );
-
-    //     start_prank(CheatTarget::One(purger.contract_address), caller);
-    //     let compensation: Span<AssetBalance> = purger.absorb(target_trove);
-
-    //     // Assert that total debt includes accrued interest on liquidated trove
-    //     let shrine_health: Health = shrine.get_shrine_health();
-    //     let after_total_debt: Wad = shrine_health.debt;
-    //     assert(after_total_debt == before_total_debt + accrued_interest - max_close_amt, 'wrong total debt');
-
-    //     // Check absorption occured
-    //     assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
-
-    //     // Check trove debt and LTV
-    //     let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
-    //     assert(
-    //         target_trove_after_health.debt == target_trove_intermediate_health.debt - max_close_amt,
-    //         'wrong debt after liquidation'
-    //     );
-
-    //     assert(target_trove_after_health.debt.is_zero(), 'not fully absorbed');
-
-    //     // Check that caller has received compensation
-    //     let expected_compensation_amts: Span<u128> = purger_utils::get_expected_compensation_assets(
-    //         target_trove_yang_asset_amts, target_trove_updated_start_health.value, expected_compensation_value
-    //     );
-    //     let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-    //         yangs, expected_compensation_amts
-    //     );
-    //     purger_utils::assert_received_assets(
-    //         before_caller_asset_bals,
-    //         common::get_token_balances(yangs, array![caller].span()),
-    //         expected_compensation,
-    //         10000000_u128, // error margin
-    //         'wrong caller asset balance',
-    //     );
-
-    //     common::assert_asset_balances_equalish(
-    //         compensation, expected_compensation, 10_u128, // error margin
-    //          'wrong freed asset amount'
-    //     );
-
-    //     // Check absorber yin balance
-    //     assert(
-    //         shrine.get_yin(absorber.contract_address) == absorber_start_yin - max_close_amt,
-    //         'wrong absorber yin balance'
-    //     );
-
-    //     // Check that absorber has received collateral
-    //     let (_, expected_freed_asset_amts) = purger_utils::get_expected_liquidation_assets(
-    //         target_trove_yang_asset_amts,
-    //         target_trove_updated_start_health.value,
-    //         max_close_amt,
-    //         penalty,
-    //         Option::Some(expected_compensation_value)
-    //     );
-
-    //     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-    //         yangs, expected_freed_asset_amts,
-    //     );
-    //     purger_utils::assert_received_assets(
-    //         before_absorber_asset_bals,
-    //         common::get_token_balances(yangs, array![absorber.contract_address].span()),
-    //         expected_freed_assets,
-    //         10_u128, // error margin
-    //         'wrong absorber asset balance',
-    //     );
-
-    //     // let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
-    //     //     purger.contract_address
-    //     // )
-    //     //     .unwrap();
-    //     // common::assert_asset_balances_equalish(
-    //     //     purged_event.freed_assets,
-    //     //     expected_freed_assets,
-    //     //     10_u128,
-    //     //     'wrong freed assets for event'
-    //     // );
-    //     // assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
-    //     // assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
-    //     // assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
-    //     // assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
-    //     // assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
-
-    //     // let compensate_event: purger_contract::Compensate = common::pop_event_with_indexed_keys(
-    //     //     purger.contract_address
-    //     // )
-    //     //     .unwrap();
-    //     // assert(
-    //     //     compensate_event == purger_contract::Compensate { recipient: caller, compensation },
-    //     //     'wrong Compensate event'
-    //     // );
-
-    //     shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
-    // }
-
     fn test_partial_absorb_with_redistribution_entire_trove_debt(
         recipient_trove_yang_asset_amts_param: Span<Span<u128>>
     ) {
@@ -1520,6 +1315,7 @@ mod test_purger {
 
                                                             let shrine_health: Health = shrine.get_shrine_health();
                                                             let before_total_debt: Wad = shrine_health.debt;
+                                                            let before_budget: SignedWad = shrine.get_budget();
 
                                                             let recipient_trove_start_health: Health = shrine
                                                                 .get_trove_health(recipient_trove);
@@ -1621,7 +1417,7 @@ mod test_purger {
                                                             );
 
                                                             // Check that absorber has received proportionate share of collateral
-                                                            let (expected_freed_pct, expected_freed_asset_amts) =
+                                                            let (_, expected_freed_asset_amts) =
                                                                 purger_utils::get_expected_liquidation_assets(
                                                                 *target_trove_yang_asset_amts,
                                                                 target_trove_updated_start_health.value,
@@ -1650,38 +1446,58 @@ mod test_purger {
                                                                 'wrong redistributions count'
                                                             );
 
-                                                            // Check recipient trove's value and debt
-                                                            let recipient_trove_after_health: Health = shrine
-                                                                .get_trove_health(recipient_trove);
                                                             let redistributed_amt: Wad = max_close_amt - close_amt;
-                                                            let expected_recipient_trove_debt: Wad =
-                                                                recipient_trove_start_health
-                                                                .debt
-                                                                + redistributed_amt;
 
-                                                            common::assert_equalish(
-                                                                recipient_trove_after_health.debt,
-                                                                expected_recipient_trove_debt,
-                                                                (WAD_ONE / 100).into(), // error margin
-                                                                'wrong recipient trove debt'
-                                                            );
+                                                            let expected_redistribution_id = 1;
 
-                                                            let redistributed_value: Wad =
-                                                                target_trove_updated_start_health
-                                                                .value
-                                                                - wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty)
-                                                                - expected_compensation_value;
-                                                            let expected_recipient_trove_value: Wad =
-                                                                recipient_trove_start_health
-                                                                .value
-                                                                + redistributed_value;
+                                                            // Check if the redistribution was exceptional for all yangs
+                                                            // i.e. all value went to initial yangs and all debt went to budget
+                                                            let yang1_redistribution: YangRedistribution = shrine
+                                                                .get_redistribution_for_yang(
+                                                                    *yangs[0], expected_redistribution_id
+                                                                );
+                                                            let yang2_redistribution: YangRedistribution = shrine
+                                                                .get_redistribution_for_yang(
+                                                                    *yangs[1], expected_redistribution_id
+                                                                );
+                                                            let is_full_exceptional_redistribution: bool =
+                                                                yang1_redistribution
+                                                                .unit_debt
+                                                                .is_zero()
+                                                                && yang1_redistribution.error.is_zero()
+                                                                && yang2_redistribution.unit_debt.is_zero()
+                                                                && yang2_redistribution.error.is_zero();
 
-                                                            common::assert_equalish(
-                                                                recipient_trove_after_health.value,
-                                                                expected_recipient_trove_value,
-                                                                (WAD_ONE / 100).into(), // error margin
-                                                                'wrong recipient trove value'
-                                                            );
+                                                            if is_full_exceptional_redistribution {
+                                                                let after_budget: SignedWad = shrine.get_budget();
+                                                                assert_eq!(
+                                                                    after_budget,
+                                                                    before_budget
+                                                                        + SignedWad {
+                                                                            val: redistributed_amt.val, sign: true
+                                                                        },
+                                                                    "wrong budget"
+                                                                );
+                                                            } else {
+                                                                // Check recipient trove's value and debt
+                                                                let recipient_trove_after_health: Health = shrine
+                                                                    .get_trove_health(recipient_trove);
+
+                                                                // Relax the assertion because exceptional redistribution 
+                                                                // may be triggered                                               
+                                                                assert(
+                                                                    recipient_trove_after_health
+                                                                        .debt > recipient_trove_start_health
+                                                                        .debt,
+                                                                    'wrong recipient trove debt'
+                                                                );
+                                                                assert(
+                                                                    recipient_trove_after_health
+                                                                        .value > recipient_trove_start_health
+                                                                        .value,
+                                                                    'wrong recipient trove value'
+                                                                );
+                                                            }
 
                                                             // Check Purger events
                                                             purger_spy.fetch_events();
@@ -1742,7 +1558,6 @@ mod test_purger {
 
                                                             // Check Shrine event
 
-                                                            let expected_redistribution_id = 1;
                                                             let expected_events = array![
                                                                 (
                                                                     shrine.contract_address,
@@ -1998,6 +1813,7 @@ mod test_purger {
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
+                                                    let before_budget: SignedWad = shrine.get_budget();
 
                                                     // Fund absorber based on adjusted max close amount
                                                     // after recovery mode has been set up
@@ -2173,32 +1989,75 @@ mod test_purger {
                                                     let after_recipient_trove_health = shrine
                                                         .get_trove_health(recipient_trove);
                                                     let expected_redistributed_amt: Wad = max_close_amt - close_amt;
-                                                    let expected_recipient_trove_debt: Wad =
-                                                        before_recipient_trove_health
-                                                        .debt
-                                                        + expected_redistributed_amt;
 
-                                                    common::assert_equalish(
-                                                        after_recipient_trove_health.debt,
-                                                        expected_recipient_trove_debt,
-                                                        (WAD_ONE / 100).into(), // error margin
-                                                        'wrong recipient trove debt'
-                                                    );
+                                                    let expected_redistribution_id = 1;
 
-                                                    let redistributed_value: Wad = wadray::rmul_wr(
-                                                        expected_redistributed_amt, RAY_ONE.into() + penalty
-                                                    );
-                                                    let expected_recipient_trove_value: Wad =
-                                                        before_recipient_trove_health
-                                                        .value
-                                                        + redistributed_value;
+                                                    // Check if the redistribution was exceptional for all yangs
+                                                    // i.e. all value went to initial yangs and all debt went to budget
+                                                    let yang1_redistribution: YangRedistribution = shrine
+                                                        .get_redistribution_for_yang(
+                                                            *yangs[0], expected_redistribution_id
+                                                        );
+                                                    let yang2_redistribution: YangRedistribution = shrine
+                                                        .get_redistribution_for_yang(
+                                                            *yangs[1], expected_redistribution_id
+                                                        );
+                                                    let is_full_exceptional_redistribution: bool = yang1_redistribution
+                                                        .unit_debt
+                                                        .is_zero()
+                                                        && yang1_redistribution.error.is_zero()
+                                                        && yang2_redistribution.unit_debt.is_zero()
+                                                        && yang2_redistribution.error.is_zero();
 
-                                                    common::assert_equalish(
-                                                        after_recipient_trove_health.value,
-                                                        expected_recipient_trove_value,
-                                                        (WAD_ONE / 100).into(), // error margin
-                                                        'wrong recipient trove value'
-                                                    );
+                                                    if is_full_exceptional_redistribution {
+                                                        let after_budget: SignedWad = shrine.get_budget();
+                                                        let expected_budget = before_budget
+                                                            + SignedWad {
+                                                                val: expected_redistributed_amt.val, sign: true
+                                                            };
+                                                        let error_margin = SignedWad { val: WAD_ONE, sign: false };
+                                                        common::assert_equalish(
+                                                            after_budget, expected_budget, error_margin, 'wrong budget'
+                                                        );
+                                                    } else {
+                                                        // Check recipient trove's value and debt
+                                                        if absorber_yin_idx == 2 {
+                                                            // Loss of precision because redistributed debt is too small
+                                                            assert(
+                                                                after_recipient_trove_health
+                                                                    .debt == before_recipient_trove_health
+                                                                    .debt,
+                                                                'wrong recipient trove debt'
+                                                            );
+                                                            // Recipient trove value may decrease slightly due to rebasing 
+                                                            // if there was an exceptional redistribution and recipient 
+                                                            // trove did not receive any value since the amount of debt 
+                                                            // redistributed was very small
+                                                            let error_margin: Wad = 1000000000000_u128.into();
+                                                            assert(
+                                                                after_recipient_trove_health
+                                                                    .value >= before_recipient_trove_health
+                                                                    .value
+                                                                    - error_margin,
+                                                                'wrong recipient trove value'
+                                                            );
+                                                        } else {
+                                                            // Relax the assertion because exceptional redistribution may 
+                                                            // be triggered
+                                                            assert(
+                                                                after_recipient_trove_health
+                                                                    .debt > before_recipient_trove_health
+                                                                    .debt,
+                                                                'wrong recipient trove debt'
+                                                            );
+                                                            assert(
+                                                                after_recipient_trove_health
+                                                                    .value > before_recipient_trove_health
+                                                                    .value,
+                                                                'wrong recipient trove value'
+                                                            );
+                                                        }
+                                                    }
 
                                                     // Check remainder yang assets for redistributed trove is correct
                                                     let expected_remainder_pct: Ray = wadray::rdiv_ww(
@@ -2299,7 +2158,6 @@ mod test_purger {
 
                                                     // TODO: uncomment once gas limit can be increased
                                                     // Check Shrine event
-                                                    // let expected_redistribution_id = 1;
                                                     // let expected_events =
                                                     //     array![
                                                     //     (shrine.contract_address,
