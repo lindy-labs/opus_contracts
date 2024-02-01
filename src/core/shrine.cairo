@@ -12,7 +12,9 @@ mod shrine {
     use opus::utils::exp::{exp, neg_exp};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
-    use wadray::{BoundedRay, Ray, RayZeroable, RAY_ONE, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
+    use wadray::{
+        BoundedRay, Ray, RayZeroable, RAY_ONE, Signed, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+    };
 
     //
     // Components
@@ -117,6 +119,9 @@ mod shrine {
         // Total amount of debt accrued for troves
         // This includes any debt surplus already accounted for in the budget.
         total_troves_debt: Wad,
+        // Amount of deficit from exceptionally redistributed trove's debt
+        // This amount is included in the budget.
+        total_troves_deficit: SignedWad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
         // Current budget
@@ -204,6 +209,7 @@ mod shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         TotalTrovesDebtUpdated: TotalTrovesDebtUpdated,
+        TotalTrovesDeficitUpdated: TotalTrovesDeficitUpdated,
         BudgetAdjusted: BudgetAdjusted,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
@@ -242,6 +248,11 @@ mod shrine {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TotalTrovesDebtUpdated {
         total: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct TotalTrovesDeficitUpdated {
+        total: SignedWad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -835,8 +846,7 @@ mod shrine {
 
             self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read() + forge_fee.into());
 
-            let new_total_troves_debt = self.total_troves_debt.read() + debt_amount;
-            self.total_troves_debt.write(new_total_troves_debt);
+            self.increment_total_troves_debt(debt_amount.into());
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -852,7 +862,6 @@ mod shrine {
                 self.adjust_budget_helper(forge_fee.into());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
-            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
@@ -1297,10 +1306,35 @@ mod shrine {
         // Helpers for core functions
         //
 
+        fn increment_total_troves_debt(ref self: ContractState, mut amount: Wad) {
+            let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
+            // Prioritize reducing the troves deficit if any
+            if total_troves_deficit.is_negative() {
+                let troves_deficit_to_reduce: Wad = min(amount, total_troves_deficit.try_into().unwrap());
+                amount -= troves_deficit_to_reduce;
+                self.adjust_total_troves_deficit_helper(troves_deficit_to_reduce.into());
+            }
+
+            let total_troves_debt: Wad = self.total_troves_debt.read();
+            let new_total_troves_debt: Wad = total_troves_debt + amount.try_into().unwrap();
+
+            self.total_troves_debt.write(new_total_troves_debt);
+            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+        }
+
         fn adjust_budget_helper(ref self: ContractState, amount: SignedWad) {
             self.budget.write(self.budget.read() + amount);
 
             self.emit(BudgetAdjusted { amount });
+        }
+
+        fn adjust_total_troves_deficit_helper(ref self: ContractState, amount: SignedWad) {
+            let new_total_troves_deficit: SignedWad = self.total_troves_deficit.read() + amount;
+            assert(!self.total_troves_deficit.read().is_positive(), 'SH: Troves deficit > 0');
+
+            self.total_troves_deficit.write(new_total_troves_deficit);
+
+            self.emit(TotalTrovesDeficitUpdated { total: new_total_troves_deficit });
         }
 
         fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
@@ -1374,10 +1408,8 @@ mod shrine {
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
-                let new_total_troves_debt: Wad = self.total_troves_debt.read() + charged;
-                self.total_troves_debt.write(new_total_troves_debt);
+                self.increment_total_troves_debt(charged);
                 self.adjust_budget_helper(charged.into());
-                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             }
 
             // Emit only if there is a change in the `Trove` struct
@@ -1750,9 +1782,8 @@ mod shrine {
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
                             // the next ordinary redistribution instead.
                             self
-                                .budget
-                                .write(
-                                    self.budget.read() + SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
+                                .adjust_total_troves_deficit_helper(
+                                    SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
                                 );
                         }
 
