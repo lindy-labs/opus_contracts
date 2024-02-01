@@ -1,4 +1,4 @@
-use opus::types::{Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
+use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
@@ -23,9 +23,7 @@ trait IShrine<TContractState> {
     fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
-    fn get_redistribution_for_yang(
-        self: @TContractState, yang: ContractAddress, redistribution_id: u32
-    ) -> YangRedistribution;
+    fn get_redistribution_for_yang(self: @TContractState, yang: ContractAddress, redistribution_id: u32) -> Wad;
     fn is_recovery_mode(self: @TContractState) -> bool;
     fn get_live(self: @TContractState) -> bool;
     // external setters

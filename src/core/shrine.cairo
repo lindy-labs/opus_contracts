@@ -8,7 +8,7 @@ mod shrine {
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
     use opus::interfaces::ISRC5::ISRC5;
     use opus::interfaces::IShrine::IShrine;
-    use opus::types::{Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
+    use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
     use opus::utils::exp::{exp, neg_exp};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
@@ -182,11 +182,10 @@ mod shrine {
         // Last redistribution accounted for a trove
         // (trove_id) -> (Last Redistribution ID)
         trove_redistribution_id: LegacyMap::<u64, u32>,
-        // Mapping of yang ID and redistribution ID to
-        // 1. amount of debt in Wad to be redistributed to each Wad unit of yang
-        // 2. amount of debt to be added to the next ordinary redistribution to calculate (1)
-        // (yang_id, redistribution_id) -> YangRedistribution{debt_per_wad, debt_to_add_to_next}
-        yang_redistributions: LegacyMap::<(u32, u32), YangRedistribution>,
+        // Mapping of yang ID and redistribution ID to amount of debt in Wad to be redistributed 
+        // to each Wad unit of yang
+        // (yang_id, redistribution_id) -> debt_per_wad
+        yang_redistributions: LegacyMap::<(u32, u32), Wad>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
         // Yin storage
@@ -529,9 +528,7 @@ mod shrine {
             self.trove_redistribution_id.read(trove_id)
         }
 
-        fn get_redistribution_for_yang(
-            self: @ContractState, yang: ContractAddress, redistribution_id: u32
-        ) -> YangRedistribution {
+        fn get_redistribution_for_yang(self: @ContractState, yang: ContractAddress, redistribution_id: u32) -> Wad {
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_redistributions.read((yang_id, redistribution_id))
         }
@@ -1167,25 +1164,6 @@ mod shrine {
             threshold
         }
 
-        // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
-        // Otherwise, check `redistribution_id` - 1 recursively for the last error.
-        fn get_recent_redistribution_error_for_yang(self: @ContractState, yang_id: u32, redistribution_id: u32) -> Wad {
-            if redistribution_id == 0 {
-                return WadZeroable::zero();
-            }
-
-            let redistribution: YangRedistribution = self.yang_redistributions.read((yang_id, redistribution_id));
-
-            // If redistribution unit-debt is non-zero or the error is non-zero, return the error
-            // This catches both the case where the unit debt is non-zero and the error is zero, and the case
-            // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
-            if redistribution.unit_debt.is_non_zero() || redistribution.error.is_non_zero() {
-                return redistribution.error;
-            }
-
-            self.get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
-        }
-
         fn get_yang_suspension_status_helper(self: @ContractState, yang_id: u32) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
             if suspension_ts.is_zero() {
@@ -1690,9 +1668,6 @@ mod shrine {
                             debt_to_distribute_for_yang = debt_to_redistribute;
                         };
 
-                        let last_error: Wad = self_snap
-                            .get_recent_redistribution_error_for_yang(yang_id_to_redistribute, redistribution_id - 1);
-
                         // If there is at least `MIN_RECIPIENT_YANG_AMT` amount of yang in other troves,
                         // handle it as an ordinary redistribution by rebasing the redistributed yang, and
                         // reallocating debt to other troves with the same yang. The minimum remainder amount
@@ -1710,12 +1685,6 @@ mod shrine {
 
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         let mut updated_yang_total: Wad = yang_total;
-
-                        // In the case of exceptional redistribution, the unit debt and debt error are both zero
-                        //  so that the next ordinary redistribution can retrieve the error from the last ordinary 
-                        // redistribution via `get_recent_redistribution_error_for_yang`.
-                        let mut unit_debt: Wad = WadZeroable::zero();
-                        let mut debt_error: Wad = WadZeroable::zero();
 
                         if is_ordinary_redistribution {
                             // Since the amount of assets in the Gate remains constant, decrementing the system's yang
@@ -1755,8 +1724,6 @@ mod shrine {
                             let yang_offset: Wad = remaining_trove_yang - updated_trove_yang_balance;
                             updated_yang_total -= (yang_amt_to_redistribute + yang_offset);
 
-                            // Adjust debt to distribute by adding the error from the last redistribution
-                            let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang + last_error;
                             // There is a slight discrepancy here because yang is redistributed by rebasing,
                             // which means the initial yang amount is included, but the distribution of debt excludes
                             // the initial yang amount. However, it is unlikely to have any material impact because
@@ -1764,12 +1731,19 @@ mod shrine {
                             // yang assets for these troves as a result of some amount going towards the initial yang
                             // amount. Even though the initial yang amount may increase over time due to exceptional
                             // redistributions, this is expected to be rare.
-                            unit_debt = adjusted_debt_to_distribute_for_yang / recipient_yang_amt;
+                            let unit_debt: Wad = debt_to_distribute_for_yang / recipient_yang_amt;
+                            self.yang_redistributions.write((yang_id_to_redistribute, redistribution_id), unit_debt);
 
                             // Due to loss of precision from fixed point division, the actual debt distributed will be 
                             // less than or equal to the amount of debt to distribute.
                             let actual_debt_distributed_for_yang: Wad = unit_debt * recipient_yang_amt;
-                            debt_error = adjusted_debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
+                            let debt_error: Wad = debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
+
+                            self.adjust_budget_helper(SignedWad { val: debt_error.val, sign: true });
+                            self
+                                .adjust_total_troves_deficit_helper(
+                                    SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
+                                );
                         } else {
                             // Move the redistributed yang amount from the trove to the initial yang amounts
                             self
@@ -1781,21 +1755,13 @@ mod shrine {
 
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
                             // the next ordinary redistribution instead.
-                            self
-                                .budget
-                                .write(
-                                    self.budget.read() + SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
-                                );
+                            self.adjust_budget_helper(SignedWad { val: debt_to_distribute_for_yang.val, sign: true });
                             self
                                 .adjust_total_troves_deficit_helper(
                                     SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
                                 );
                         }
 
-                        let redistributed_yang_info = YangRedistribution { unit_debt: unit_debt, error: debt_error };
-                        self
-                            .yang_redistributions
-                            .write((yang_id_to_redistribute, redistribution_id), redistributed_yang_info);
                         self.deposits.write((yang_id_to_redistribute, trove_id), updated_trove_yang_balance);
                         self.yang_total.write(yang_id_to_redistribute, updated_yang_total);
 
@@ -1840,8 +1806,7 @@ mod shrine {
                         // Get the amount of debt per yang for the current redistribution
                         let unit_debt: Wad = self
                             .yang_redistributions
-                            .read((current_yang_id, current_redistribution_id_temp))
-                            .unit_debt;
+                            .read((current_yang_id, current_redistribution_id_temp));
 
                         if unit_debt.is_non_zero() {
                             redistributed_debt += unit_debt * deposited;

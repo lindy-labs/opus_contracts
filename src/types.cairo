@@ -76,38 +76,6 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
     }
 }
 
-#[derive(Copy, Debug, Drop, Serde)]
-struct YangRedistribution {
-    // Amount of debt in wad to be distributed to each wad unit of yang
-    // This is packed into bits 0 to 127.
-    unit_debt: Wad,
-    // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
-    // This is packed into bits 128 to 250.
-    // Note that the error should never approach close to 2 ** 122, but it is capped to this
-    // value anyway to prevent redistributions from failing in this unlikely scenario, at the
-    // expense of some amount of redistributed debt not being attributed to troves. These
-    // unattributed amounts will be backed by the initial yang amounts instead.
-    error: Wad
-}
-
-// 2 ** 123 - 1
-const MAX_YANG_REDISTRIBUTION_ERROR: u128 = 0x7ffffffffffffffffffffffffffffff;
-
-impl YangRedistributionStorePacking of StorePacking<YangRedistribution, felt252> {
-    fn pack(value: YangRedistribution) -> felt252 {
-        let capped_error: u128 = min(value.error.val, MAX_YANG_REDISTRIBUTION_ERROR);
-        (value.unit_debt.into() + (capped_error.into() * TWO_POW_128))
-    }
-
-    fn unpack(value: felt252) -> YangRedistribution {
-        let value: u256 = value.into();
-        let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_128.into()).unwrap();
-        let (error, unit_debt) = u256_safe_div_rem(value, shift);
-
-        YangRedistribution { unit_debt: unit_debt.try_into().unwrap(), error: error.try_into().unwrap() }
-    }
-}
-
 //
 // Absorber
 //
