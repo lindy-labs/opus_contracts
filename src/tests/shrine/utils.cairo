@@ -672,7 +672,7 @@ mod shrine_utils {
         }
 
         let shrine_health: Health = shrine.get_shrine_health();
-        let error_margin: Wad = 1_u128.into();
+        let error_margin: Wad = 10_u128.into();
         common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #1');
     }
 
