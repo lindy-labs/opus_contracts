@@ -1782,6 +1782,11 @@ mod shrine {
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
                             // the next ordinary redistribution instead.
                             self
+                                .budget
+                                .write(
+                                    self.budget.read() + SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
+                                );
+                            self
                                 .adjust_total_troves_deficit_helper(
                                     SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
                                 );
