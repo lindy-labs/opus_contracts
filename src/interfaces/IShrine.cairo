@@ -12,6 +12,7 @@ trait IShrine<TContractState> {
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
+    fn get_total_troves_deficit(self: @TContractState) -> SignedWad;
     fn get_budget(self: @TContractState) -> SignedWad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, rate_era: u64) -> Ray;

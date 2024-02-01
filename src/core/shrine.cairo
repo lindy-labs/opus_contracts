@@ -463,6 +463,10 @@ mod shrine {
             self.budget.read()
         }
 
+        fn get_total_troves_deficit(self: @ContractState) -> SignedWad {
+            self.total_troves_deficit.read()
+        }
+
         fn get_yang_price(self: @ContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_prices.read((yang_id, interval))
@@ -1740,10 +1744,7 @@ mod shrine {
                             let debt_error: Wad = debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
 
                             self.adjust_budget_helper(SignedWad { val: debt_error.val, sign: true });
-                            self
-                                .adjust_total_troves_deficit_helper(
-                                    SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
-                                );
+                            self.adjust_total_troves_deficit_helper(SignedWad { val: debt_error.val, sign: true });
                         } else {
                             // Move the redistributed yang amount from the trove to the initial yang amounts
                             self
