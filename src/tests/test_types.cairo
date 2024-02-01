@@ -1,4 +1,4 @@
-use opus::types::{DistributionInfo, Health, Provision, Request, Trove, YangBalance, YangRedistribution};
+use opus::types::{DistributionInfo, Health, Provision, Request, Trove, YangBalance};
 use wadray::{Wad, Ray};
 
 #[test]

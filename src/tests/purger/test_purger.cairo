@@ -20,7 +20,7 @@ mod test_purger {
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health, YangRedistribution};
+    use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
@@ -1452,21 +1452,18 @@ mod test_purger {
 
                                                             // Check if the redistribution was exceptional for all yangs
                                                             // i.e. all value went to initial yangs and all debt went to budget
-                                                            let yang1_redistribution: YangRedistribution = shrine
+                                                            let yang1_redistribution: Wad = shrine
                                                                 .get_redistribution_for_yang(
                                                                     *yangs[0], expected_redistribution_id
                                                                 );
-                                                            let yang2_redistribution: YangRedistribution = shrine
+                                                            let yang2_redistribution: Wad = shrine
                                                                 .get_redistribution_for_yang(
                                                                     *yangs[1], expected_redistribution_id
                                                                 );
                                                             let is_full_exceptional_redistribution: bool =
                                                                 yang1_redistribution
-                                                                .unit_debt
                                                                 .is_zero()
-                                                                && yang1_redistribution.error.is_zero()
-                                                                && yang2_redistribution.unit_debt.is_zero()
-                                                                && yang2_redistribution.error.is_zero();
+                                                                && yang2_redistribution.is_zero();
 
                                                             if is_full_exceptional_redistribution {
                                                                 let after_budget: SignedWad = shrine.get_budget();
@@ -1994,20 +1991,17 @@ mod test_purger {
 
                                                     // Check if the redistribution was exceptional for all yangs
                                                     // i.e. all value went to initial yangs and all debt went to budget
-                                                    let yang1_redistribution: YangRedistribution = shrine
+                                                    let yang1_redistribution: Wad = shrine
                                                         .get_redistribution_for_yang(
                                                             *yangs[0], expected_redistribution_id
                                                         );
-                                                    let yang2_redistribution: YangRedistribution = shrine
+                                                    let yang2_redistribution: Wad = shrine
                                                         .get_redistribution_for_yang(
                                                             *yangs[1], expected_redistribution_id
                                                         );
                                                     let is_full_exceptional_redistribution: bool = yang1_redistribution
-                                                        .unit_debt
                                                         .is_zero()
-                                                        && yang1_redistribution.error.is_zero()
-                                                        && yang2_redistribution.unit_debt.is_zero()
-                                                        && yang2_redistribution.error.is_zero();
+                                                        && yang2_redistribution.is_zero();
 
                                                     if is_full_exceptional_redistribution {
                                                         let after_budget: SignedWad = shrine.get_budget();
@@ -2630,21 +2624,18 @@ mod test_purger {
 
                                                                 // Check if the redistribution was exceptional for all yangs
                                                                 // i.e. all value went to initial yangs and all debt went to budget
-                                                                let yang1_redistribution: YangRedistribution = shrine
+                                                                let yang1_redistribution: Wad = shrine
                                                                     .get_redistribution_for_yang(
                                                                         *yangs[0], expected_redistribution_id
                                                                     );
-                                                                let yang2_redistribution: YangRedistribution = shrine
+                                                                let yang2_redistribution: Wad = shrine
                                                                     .get_redistribution_for_yang(
                                                                         *yangs[1], expected_redistribution_id
                                                                     );
                                                                 let is_full_exceptional_redistribution: bool =
                                                                     yang1_redistribution
-                                                                    .unit_debt
                                                                     .is_zero()
-                                                                    && yang1_redistribution.error.is_zero()
-                                                                    && yang2_redistribution.unit_debt.is_zero()
-                                                                    && yang2_redistribution.error.is_zero();
+                                                                    && yang2_redistribution.is_zero();
 
                                                                 if is_full_exceptional_redistribution {
                                                                     let after_budget: SignedWad = shrine.get_budget();
