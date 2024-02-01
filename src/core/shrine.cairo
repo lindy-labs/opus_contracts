@@ -1068,9 +1068,13 @@ mod shrine {
 
             // Get threshold and trove value
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
-            let (mut threshold, mut value) = self.get_threshold_and_value(trove_yang_balances, interval);
+            let (mut base_threshold, mut value) = self.get_threshold_and_value(trove_yang_balances, interval);
 
             let trove: Trove = self.troves.read(trove_id);
+            let shrine_health: Health = self.get_shrine_health();
+            let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
+                * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
+            let use_rm_threshold: bool = shrine_health.ltv >= recovery_mode_buffered_threshold;
 
             // Catch troves with no value
             if value.is_zero() {
@@ -1087,7 +1091,12 @@ mod shrine {
                     BoundedRay::min()
                 };
 
-                let rm_threshold: Ray = self.scale_trove_threshold_for_recovery_mode(threshold, ltv, trove.debt);
+                let rm_threshold: Ray = self.scale_trove_threshold_for_recovery_mode(base_threshold, ltv, trove.debt);
+                let threshold: Ray = if use_rm_threshold {
+                    rm_threshold
+                } else {
+                    base_threshold
+                };
                 return Health { threshold, rm_threshold, ltv, value, debt: trove.debt };
             }
 
@@ -1097,16 +1106,22 @@ mod shrine {
                 .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, compounded_debt);
 
             if updated_trove_yang_balances.is_some() {
-                let (new_threshold, new_value) = self
+                let (new_base_threshold, new_value) = self
                     .get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
 
-                threshold = new_threshold;
+                base_threshold = new_base_threshold;
                 value = new_value;
             }
 
             let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
             let rm_threshold: Ray = self
-                .scale_trove_threshold_for_recovery_mode(threshold, ltv, compounded_debt_with_redistributed_debt);
+                .scale_trove_threshold_for_recovery_mode(base_threshold, ltv, compounded_debt_with_redistributed_debt);
+
+            let threshold: Ray = if use_rm_threshold {
+                rm_threshold
+            } else {
+                base_threshold
+            };
 
             Health { threshold, rm_threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
