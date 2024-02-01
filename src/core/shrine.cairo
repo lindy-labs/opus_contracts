@@ -1046,15 +1046,16 @@ mod shrine {
 
             // Calculate debt
             let compounded_debt: Wad = self.compound(trove_id, trove, interval);
-            let compounded_debt_with_redistributed_debt: Wad = self.pull_redistributed_debt(trove_id, compounded_debt);
+            let compounded_debt_with_redistributed_debt: Wad = compounded_debt
+                + self.fetch_redistributed_debt(trove_id);
 
             let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
 
             Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
 
-        fn get_unpulled_debt_for_trove(self: @ContractState, trove_id: u64) -> Wad {
-            self.pull_redistributed_debt(trove_id, WadZeroable::zero())
+        fn get_redistributed_debt_for_trove(self: @ContractState, trove_id: u64) -> Wad {
+            self.fetch_redistributed_debt(trove_id)
         }
     }
 
@@ -1355,8 +1356,8 @@ mod shrine {
 
             // Get new debt amount
             let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
-            let compounded_trove_debt_with_redistributed_debt: Wad = self
-                .pull_redistributed_debt(trove_id, compounded_trove_debt);
+            let compounded_trove_debt_with_redistributed_debt: Wad = compounded_trove_debt
+                + self.fetch_redistributed_debt(trove_id);
 
             // Update trove
             let updated_trove: Trove = Trove {
@@ -1660,15 +1661,6 @@ mod shrine {
                         let last_error: Wad = self_snap
                             .get_recent_redistribution_error_for_yang(yang_id_to_redistribute, redistribution_id - 1);
 
-                        let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
-                        let mut updated_yang_total: Wad = yang_total;
-
-                        // In the case of exceptional redistribution, the unit debt and debt error are both zero
-                        //  so that the next ordinary redistribution can retrieve the error from the last ordinary 
-                        // redistribution via `get_recent_redistribution_error_for_yang`.
-                        let mut unit_debt: Wad = WadZeroable::zero();
-                        let mut debt_error: Wad = WadZeroable::zero();
-
                         // If there is at least `MIN_RECIPIENT_YANG_AMT` amount of yang in other troves,
                         // handle it as an ordinary redistribution by rebasing the redistributed yang, and
                         // reallocating debt to other troves with the same yang. The minimum remainder amount
@@ -1683,6 +1675,15 @@ mod shrine {
                         //     occurs);
                         // (2) adding the trove's debt to the budget as a deficit.
                         let is_ordinary_redistribution: bool = recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into();
+
+                        let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
+                        let mut updated_yang_total: Wad = yang_total;
+
+                        // In the case of exceptional redistribution, the unit debt and debt error are both zero
+                        //  so that the next ordinary redistribution can retrieve the error from the last ordinary 
+                        // redistribution via `get_recent_redistribution_error_for_yang`.
+                        let mut unit_debt: Wad = WadZeroable::zero();
+                        let mut debt_error: Wad = WadZeroable::zero();
 
                         if is_ordinary_redistribution {
                             // Since the amount of assets in the Gate remains constant, decrementing the system's yang
@@ -1773,28 +1774,28 @@ mod shrine {
             };
         }
 
-        // Takes in a value for the trove's debt, and returns the updated redistributed debt.
-        fn pull_redistributed_debt(self: @ContractState, trove_id: u64, mut trove_debt: Wad) -> Wad {
+        // Calculates the redistributed debt that has not been attributed for a trove.
+        fn fetch_redistributed_debt(self: @ContractState, trove_id: u64) -> Wad {
             let trove_last_redistribution_id: u32 = self.trove_redistribution_id.read(trove_id);
             let current_redistribution_id: u32 = self.redistributions_count.read();
 
+            let mut redistributed_debt = WadZeroable::zero();
             // Early termination if no redistributions since trove was last updated
             if current_redistribution_id == trove_last_redistribution_id {
-                return trove_debt;
+                return redistributed_debt;
             }
 
             // Outer loop iterating over the trove's yangs
             let mut current_yang_id: u32 = self.yangs_count.read();
             loop {
                 if current_yang_id == 0 {
-                    break;
+                    break redistributed_debt;
                 }
 
                 let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
                 if deposited.is_non_zero() {
                     // Inner loop iterating over the redistribution IDs for each of the trove's yangs
                     let mut current_redistribution_id_temp = current_redistribution_id;
-                    let mut debt_increment: Wad = 0_u128.into();
                     loop {
                         if trove_last_redistribution_id == current_redistribution_id_temp {
                             break;
@@ -1807,16 +1808,13 @@ mod shrine {
                             .unit_debt;
 
                         if unit_debt.is_non_zero() {
-                            debt_increment += unit_debt * deposited;
+                            redistributed_debt += unit_debt * deposited;
                         }
                         current_redistribution_id_temp -= 1;
                     };
-                    trove_debt += debt_increment;
                 }
                 current_yang_id -= 1;
-            };
-
-            trove_debt
+            }
         }
     }
 

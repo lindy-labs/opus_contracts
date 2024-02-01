@@ -65,5 +65,5 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
-    fn get_unpulled_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
+    fn get_redistributed_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
 }

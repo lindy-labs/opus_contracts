@@ -259,7 +259,7 @@ mod test_shrine_redistribution {
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
         shrine.redistribute(redistributed_trove, trove1_health.debt, RAY_ONE.into());
 
-        let unpulled_debt: Wad = shrine.get_unpulled_debt_for_trove(redistributed_trove);
+        let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove);
         assert(unpulled_debt.is_zero(), 'should be zero');
 
         let expected_redistribution_id: u32 = 1;
@@ -291,7 +291,7 @@ mod test_shrine_redistribution {
 
         assert(shrine.get_trove_redistribution_id(recipient_trove) == 0, 'wrong redistribution id');
 
-        let unpulled_debt: Wad = shrine.get_unpulled_debt_for_trove(recipient_trove);
+        let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove);
         assert(unpulled_debt == expected_trove2_debt_increment, 'wrong attributed debt');
 
         // Trigger an update in trove 2 with an empty melt
@@ -348,7 +348,7 @@ mod test_shrine_redistribution {
 
         shrine.redistribute(redistributed_trove2, redistributed_trove2_health.debt, RAY_ONE.into());
 
-        let unpulled_debt: Wad = shrine.get_unpulled_debt_for_trove(redistributed_trove2);
+        let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove2);
         assert(unpulled_debt.is_zero(), 'should be zero');
 
         let expected_redistribution_id: u32 = 2;
@@ -379,7 +379,7 @@ mod test_shrine_redistribution {
 
         assert(shrine.get_trove_redistribution_id(recipient_trove) == 0, 'wrong redistribution id');
 
-        let unpulled_debt: Wad = shrine.get_unpulled_debt_for_trove(recipient_trove);
+        let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove);
         let expected_recipient_trove_debt_total_increment = redistributed_trove1_health.debt
             + redistributed_trove2_start_health.debt;
         common::assert_equalish(
@@ -512,7 +512,7 @@ mod test_shrine_redistribution {
         shrine.melt(trove2_owner, redistributed_trove, WadZeroable::zero());
         shrine.redistribute(redistributed_trove, trove2_health.debt, RAY_ONE.into());
 
-        let unpulled_debt: Wad = shrine.get_unpulled_debt_for_trove(redistributed_trove);
+        let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove);
         assert(unpulled_debt.is_zero(), 'should be zero');
 
         // Check that yang 1 unit debt is zero
@@ -638,7 +638,7 @@ mod test_shrine_redistribution {
                     let expected_recipient_trove2_attr_debt: Wad = expected_redistributed_trove_yang2_debt
                         * (TROVE3_YANG2_DEPOSIT.into() / recipient_troves_yang2_amt);
 
-                    let recipient_trove1_attr_debt: Wad = shrine.get_unpulled_debt_for_trove(recipient_trove1);
+                    let recipient_trove1_attr_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove1);
                     common::assert_equalish(
                         recipient_trove1_attr_debt,
                         expected_recipient_trove1_attr_debt,
@@ -646,7 +646,7 @@ mod test_shrine_redistribution {
                         'wrong attributed debt #1'
                     );
 
-                    let recipient_trove2_attr_debt: Wad = shrine.get_unpulled_debt_for_trove(recipient_trove2);
+                    let recipient_trove2_attr_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove2);
                     common::assert_equalish(
                         recipient_trove2_attr_debt,
                         expected_recipient_trove2_attr_debt,
