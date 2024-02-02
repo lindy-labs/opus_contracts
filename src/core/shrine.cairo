@@ -1292,7 +1292,7 @@ mod shrine {
             let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
             // Prioritize reducing the troves deficit if any
             if total_troves_deficit.is_negative() {
-                let troves_deficit_to_reduce: Wad = min(amount, total_troves_deficit.try_into().unwrap());
+                let troves_deficit_to_reduce: Wad = min(amount, total_troves_deficit.val.into());
                 amount -= troves_deficit_to_reduce;
                 self.adjust_total_troves_deficit_helper(troves_deficit_to_reduce.into());
             }
