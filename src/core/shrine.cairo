@@ -13,7 +13,8 @@ mod shrine {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
     use wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Signed, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, Signed, SignedWad, SignedWadZeroable, Wad, WadZeroable, WAD_DECIMALS,
+        WAD_ONE, WAD_SCALE
     };
 
     //
@@ -1290,7 +1291,6 @@ mod shrine {
 
         fn increment_total_troves_debt(ref self: ContractState, amount: Wad) {
             let adjusted_amount: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
-
             let total_troves_debt: Wad = self.total_troves_debt.read();
             let new_total_troves_debt: Wad = total_troves_debt + adjusted_amount;
 
@@ -1305,9 +1305,9 @@ mod shrine {
         }
 
         // Helper to adjust the total troves deficit.
-        // - If the amount is positive and the total troves deficit is negative, return the 
+        // - If amount >= 0 and the total troves deficit is negative, return the 
         //   excess amount if any or zero. 
-        // - If the amount is positive and the total troves deficit is not negative, return the
+        // - If amount >= 0 and the total troves deficit is not negative, return the
         //   original amount.
         // - If the amount is negative, return none.
         fn adjust_total_troves_deficit_helper(ref self: ContractState, amount: SignedWad) -> Option<Wad> {
@@ -1315,8 +1315,13 @@ mod shrine {
             let mut deficit_adjustment: SignedWad = amount;
 
             let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
-            if amount.is_positive() {
-                let amount_wad: Wad = amount.try_into().unwrap();
+            if !amount.is_negative() {
+                // TODO: simplify to `try_into` once wadray lib is updated
+                let amount_wad: Wad = if amount.is_zero() {
+                    WadZeroable::zero()
+                } else {
+                    amount.try_into().unwrap()
+                };
                 // Early return if no deficit
                 if !total_troves_deficit.is_negative() {
                     return Option::Some(amount_wad);
