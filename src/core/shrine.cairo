@@ -1288,17 +1288,11 @@ mod shrine {
         // Helpers for core functions
         //
 
-        fn increment_total_troves_debt(ref self: ContractState, mut amount: Wad) {
-            let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
-            // Prioritize reducing the troves deficit if any
-            if total_troves_deficit.is_negative() {
-                let troves_deficit_to_reduce: Wad = min(amount, total_troves_deficit.val.into());
-                amount -= troves_deficit_to_reduce;
-                self.adjust_total_troves_deficit_helper(troves_deficit_to_reduce.into());
-            }
+        fn increment_total_troves_debt(ref self: ContractState, amount: Wad) {
+            let adjusted_amount: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
 
             let total_troves_debt: Wad = self.total_troves_debt.read();
-            let new_total_troves_debt: Wad = total_troves_debt + amount.try_into().unwrap();
+            let new_total_troves_debt: Wad = total_troves_debt + adjusted_amount;
 
             self.total_troves_debt.write(new_total_troves_debt);
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
@@ -1310,13 +1304,38 @@ mod shrine {
             self.emit(BudgetAdjusted { amount });
         }
 
-        fn adjust_total_troves_deficit_helper(ref self: ContractState, amount: SignedWad) {
-            let new_total_troves_deficit: SignedWad = self.total_troves_deficit.read() + amount;
-            assert(!self.total_troves_deficit.read().is_positive(), 'SH: Troves deficit > 0');
+        // Helper to adjust the total troves deficit.
+        // - If the amount is positive and the total troves deficit is negative, return the 
+        //   excess amount if any or zero. 
+        // - If the amount is positive and the total troves deficit is not negative, return the
+        //   original amount.
+        // - If the amount is negative, return none.
+        fn adjust_total_troves_deficit_helper(ref self: ContractState, amount: SignedWad) -> Option<Wad> {
+            let mut excess: Option<Wad> = Option::None;
+            let mut deficit_adjustment: SignedWad = amount;
 
+            let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
+            if amount.is_positive() {
+                let amount_wad: Wad = amount.try_into().unwrap();
+                // Early return if no deficit
+                if !total_troves_deficit.is_negative() {
+                    return Option::Some(amount_wad);
+                }
+
+                // Prioritize reducing the troves deficit if any, to the extent of the deficit.
+                // This ensures that the deficit will not be positive.
+                let troves_deficit_to_reduce: Wad = min(amount_wad, total_troves_deficit.val.into());
+                excess = Option::Some(amount_wad - troves_deficit_to_reduce);
+
+                deficit_adjustment = troves_deficit_to_reduce.into();
+            }
+
+            let new_total_troves_deficit: SignedWad = self.total_troves_deficit.read() + deficit_adjustment;
             self.total_troves_deficit.write(new_total_troves_deficit);
 
             self.emit(TotalTrovesDeficitUpdated { total: new_total_troves_deficit });
+
+            excess
         }
 
         fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
