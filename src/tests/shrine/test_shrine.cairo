@@ -2455,7 +2455,8 @@ mod test_shrine {
         shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert_eq!(trove_health.rm_threshold, trove_health.threshold, "rm threshold has been scaled");
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
     // If the Shrine's LTV is within the recovery mode buffer, 
@@ -2497,7 +2498,8 @@ mod test_shrine {
         shrine_utils::trove1_melt(shrine, max_forge_amt);
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert_eq!(trove_health.rm_threshold, trove_health.threshold, "rm threshold has been scaled");
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
     // If the Shrine's LTV is within the recovery mode buffer, 
@@ -2605,7 +2607,8 @@ mod test_shrine {
         assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert(trove_health.rm_threshold < trove_health.threshold, 'rm threshold not scaled');
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert(trove_health.threshold < trove_base_threshold, 'rm threshold not scaled');
 
         shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
     }
@@ -2668,7 +2671,8 @@ mod test_shrine {
         shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert_eq!(trove_health.rm_threshold, trove_health.threshold, "rm threshold has been scaled");
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
     // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, 
@@ -2709,7 +2713,8 @@ mod test_shrine {
         shrine_utils::trove1_melt(shrine, max_forge_amt);
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert_eq!(trove_health.rm_threshold, trove_health.threshold, "rm threshold has been scaled");
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer, 
@@ -2747,6 +2752,8 @@ mod test_shrine {
         // needs to be minted to exceed the target trove's recovery mode threshold.
         let expected_max_forge_amt: Wad = (1200 * WAD_ONE).into();
         let error_margin: Wad = 1000_u128.into();
+        max_forge_amt.print();
+        expected_max_forge_amt.print();
         common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
 
         shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
@@ -2862,7 +2869,7 @@ mod test_shrine {
                     let trove_health: Health = shrine.get_trove_health(trove_id);
                     let expected_rm_threshold: Ray = *expected_rm_thresholds.pop_front().unwrap();
                     common::assert_equalish(
-                        trove_health.rm_threshold, expected_rm_threshold, threshold_error_margin, 'wrong rm threshold'
+                        trove_health.threshold, expected_rm_threshold, threshold_error_margin, 'wrong rm threshold'
                     );
                 },
                 Option::None => { break; }

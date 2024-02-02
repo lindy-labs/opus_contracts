@@ -71,5 +71,6 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
+    fn get_trove_base_threshold(self: @TContractState, trove_id: u64) -> Ray;
     fn get_redistributions_attributed_to_trove(self: @TContractState, trove_id: u64) -> (Span<YangBalance>, Wad);
 }

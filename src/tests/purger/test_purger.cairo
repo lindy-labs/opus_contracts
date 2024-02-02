@@ -924,8 +924,7 @@ mod test_purger {
                                         .pop_front()
                                         .unwrap();
                                     assert(
-                                        target_trove_updated_start_health
-                                            .rm_threshold < expected_rm_threshold_upper_bound
+                                        target_trove_updated_start_health.threshold < expected_rm_threshold_upper_bound
                                             - (RAY_PERCENT / 100).into(),
                                         'wrong rm threshold'
                                     );

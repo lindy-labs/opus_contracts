@@ -5,14 +5,8 @@ use wadray::{Wad, Ray};
 
 #[test]
 fn test_display_and_debug() {
-    let h = Health {
-        threshold: 1_u128.into(),
-        rm_threshold: 2_u128.into(),
-        ltv: 3_u128.into(),
-        value: 4_u128.into(),
-        debt: 5_u128.into()
-    };
-    let expected = "Health { threshold: 1, rm_threshold: 2, ltv: 3, value: 4, debt: 5 }";
+    let h = Health { threshold: 1_u128.into(), ltv: 2_u128.into(), value: 3_u128.into(), debt: 4_u128.into() };
+    let expected = "Health { threshold: 1, ltv: 2, value: 3, debt: 4 }";
     assert_eq!(format!("{}", h), expected, "Health display");
     assert_eq!(format!("{:?}", h), expected, "Health debug");
 
