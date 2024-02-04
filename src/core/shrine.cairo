@@ -848,7 +848,9 @@ mod shrine {
 
             self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read() + forge_fee.into());
 
-            self.increment_total_troves_debt(debt_amount.into());
+            // Note that forge fee is accrued separately below
+            let new_total_troves_debt_wo_forge_fee = self.total_troves_debt.read() + amount;
+            self.total_troves_debt.write(new_total_troves_debt_wo_forge_fee);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -861,9 +863,10 @@ mod shrine {
 
             // Events
             if forge_fee.is_non_zero() {
-                self.adjust_budget_helper(forge_fee.into());
+                self.accrue_surplus_from_troves(forge_fee.into());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
+            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt_wo_forge_fee });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
@@ -1289,13 +1292,26 @@ mod shrine {
         // Helpers for core functions
         //
 
-        fn increment_total_troves_debt(ref self: ContractState, amount: Wad) {
+        // Helper to use surplus from troves to first reduce any troves deficit from exceptional
+        // redistributions. 
+        // - When there is a deficit, then the sum of all troves' debt is lower than `total_troves_debt`,
+        //   but the yin corresponding to the deficit has already been minted into circulation.
+        // - The effect of using a trove's surplus to reduce the deficit is to transfer the backing for 
+        //   the deficit from the initial yang amounts that received the exceptional redistributions to 
+        //   the trove that is incurring this surplus.
+        // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
+        //   so any excess can now be added to the budget and be minted.
+        fn accrue_surplus_from_troves(ref self: ContractState, amount: Wad) {
             let adjusted_amount: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
-            let total_troves_debt: Wad = self.total_troves_debt.read();
-            let new_total_troves_debt: Wad = total_troves_debt + adjusted_amount;
+            if adjusted_amount.is_non_zero() {
+                let total_troves_debt: Wad = self.total_troves_debt.read();
+                let new_total_troves_debt: Wad = total_troves_debt + adjusted_amount;
 
-            self.total_troves_debt.write(new_total_troves_debt);
-            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+                self.total_troves_debt.write(new_total_troves_debt);
+                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+
+                self.adjust_budget_helper(adjusted_amount.into());
+            }
         }
 
         fn adjust_budget_helper(ref self: ContractState, amount: SignedWad) {
@@ -1414,8 +1430,7 @@ mod shrine {
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
-                self.increment_total_troves_debt(charged);
-                self.adjust_budget_helper(charged.into());
+                self.accrue_surplus_from_troves(charged);
             }
 
             // Emit only if there is a change in the `Trove` struct
