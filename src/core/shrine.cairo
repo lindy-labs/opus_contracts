@@ -1654,8 +1654,10 @@ mod shrine {
             let (_, trove_value) = self.get_threshold_and_value(trove_yang_balances, current_interval);
             let trove_value_to_redistribute: Wad = wadray::rmul_wr(trove_value, pct_value_to_redistribute);
 
-            // Keep track of the total debt redistributed for the return value
+            // Keep track of the total debt redistributed, as well as the total deficit to be updated after 
+            // iterating over all yangs
             let mut redistributed_debt: Wad = WadZeroable::zero();
+            let mut deficit: SignedWad = SignedWadZeroable::zero();
             let mut trove_yang_balances_copy = trove_yang_balances;
             // Iterate over the yangs deposited in the trove to be redistributed
             loop {
@@ -1782,8 +1784,7 @@ mod shrine {
                             let actual_debt_distributed_for_yang: Wad = unit_debt * recipient_yang_amt;
                             let debt_error: Wad = debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
 
-                            self.adjust_budget_helper(SignedWad { val: debt_error.val, sign: true });
-                            self.adjust_total_troves_deficit_helper(SignedWad { val: debt_error.val, sign: true });
+                            deficit += SignedWad { val: debt_error.val, sign: true };
                         } else {
                             // Move the redistributed yang amount from the trove to the initial yang amounts
                             self
@@ -1795,11 +1796,7 @@ mod shrine {
 
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
                             // the next ordinary redistribution instead.
-                            self.adjust_budget_helper(SignedWad { val: debt_to_distribute_for_yang.val, sign: true });
-                            self
-                                .adjust_total_troves_deficit_helper(
-                                    SignedWad { val: debt_to_distribute_for_yang.val, sign: true }
-                                );
+                            deficit += SignedWad { val: debt_to_distribute_for_yang.val, sign: true };
                         }
 
                         self.deposits.write((yang_id_to_redistribute, trove_id), updated_trove_yang_balance);
@@ -1814,6 +1811,7 @@ mod shrine {
                     Option::None => { break; },
                 };
             };
+            self.adjust_total_troves_deficit_helper(deficit);
         }
 
         // Calculates the redistributed debt that has not been attributed for a trove.
