@@ -1302,15 +1302,15 @@ mod shrine {
         // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
         //   so any excess can now be added to the budget and be minted.
         fn accrue_surplus_from_troves(ref self: ContractState, amount: Wad) {
-            let adjusted_amount: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
-            if adjusted_amount.is_non_zero() {
+            let excess: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
+            if excess.is_non_zero() {
                 let total_troves_debt: Wad = self.total_troves_debt.read();
-                let new_total_troves_debt: Wad = total_troves_debt + adjusted_amount;
+                let new_total_troves_debt: Wad = total_troves_debt + excess;
 
                 self.total_troves_debt.write(new_total_troves_debt);
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
 
-                self.adjust_budget_helper(adjusted_amount.into());
+                self.adjust_budget_helper(excess.into());
             }
         }
 
