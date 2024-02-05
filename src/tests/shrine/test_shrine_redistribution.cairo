@@ -10,7 +10,7 @@ mod test_shrine_redistribution {
         EventAssertions
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, SignedWadZeroable, Wad, WadZeroable, WAD_ONE};
 
     //
     // Setup
@@ -74,7 +74,7 @@ mod test_shrine_redistribution {
     // - value liquidated for each yang
     // - unit debt after redistributing debt for each yang
     // - expected amount of yangs remaining after redistribution
-    // - total error from all yangs added to the budget as deficit
+    // - total error from all yangs added to the total troves' deficit
     // Note that once the remaining redistribution value falls below the threshold, an early
     // return will be performed, so yangs with dust value of debt will not be included.
     fn preview_trove_redistribution(
@@ -211,9 +211,10 @@ mod test_shrine_redistribution {
         let redistributed_trove: u64 = common::TROVE_1;
         let recipient_trove: u64 = common::TROVE_2;
         let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
-        let (trove1_yang_values, _, expected_remaining_yangs, _) = preview_trove_redistribution(
+        let (trove1_yang_values, _, expected_remaining_yangs, expected_error) = preview_trove_redistribution(
             shrine, yangs, redistributed_trove
         );
+        let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
 
         // Simulate purge with 0 yin to update the trove's debt
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -226,6 +227,9 @@ mod test_shrine_redistribution {
 
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove);
         assert(unpulled_debt.is_zero(), 'should be zero');
+
+        let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+        assert_eq!(after_troves_deficit, before_troves_deficit - expected_error.into(), "wrong troves deficit");
 
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
@@ -291,7 +295,6 @@ mod test_shrine_redistribution {
             shrine, yangs, redistributed_trove1
         );
         let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-        let before_budget: SignedWad = shrine.get_budget();
 
         // Perform first redistribution - covered by previous test
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -302,13 +305,11 @@ mod test_shrine_redistribution {
         shrine.redistribute(redistributed_trove1, redistributed_trove1_health.debt, RAY_ONE.into());
 
         let intermediate_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-        let intermediate_budget: SignedWad = shrine.get_budget();
         assert_eq!(
             intermediate_troves_deficit,
             before_troves_deficit - expected_redistributed_trove1_errors.into(),
             "wrong troves deficit #1"
         );
-        assert_eq!(intermediate_budget, before_budget - expected_redistributed_trove1_errors.into(), "wrong budget #1");
 
         let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
 
@@ -324,19 +325,13 @@ mod test_shrine_redistribution {
         shrine.redistribute(redistributed_trove2, redistributed_trove2_health.debt, RAY_ONE.into());
 
         let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-        let after_budget: SignedWad = shrine.get_budget();
-        let error_margin = SignedWad { val: 10_u128, sign: false };
+
+        let error_margin = SignedWad { val: 5_u128, sign: false };
         common::assert_equalish(
             after_troves_deficit,
             intermediate_troves_deficit - expected_redistributed_trove2_errors.into(),
             error_margin,
             'wrong troves deficit #2'
-        );
-        common::assert_equalish(
-            after_budget,
-            intermediate_budget - expected_redistributed_trove2_errors.into(),
-            error_margin,
-            'wrong budget #2'
         );
 
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove2);
@@ -403,7 +398,6 @@ mod test_shrine_redistribution {
         let mut pct_value_to_redistribute_arr = percentages.span();
         let mut pct_debt_to_redistribute_arr = percentages.span();
 
-        let mut salt: felt252 = 0;
         loop {
             match pct_value_to_redistribute_arr.pop_front() {
                 Option::Some(pct_value_to_redistribute) => {
@@ -415,12 +409,21 @@ mod test_shrine_redistribution {
 
                                 let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
                                 let redistributed_trove = common::TROVE_1;
+                                let recipient_trove1 = common::TROVE_2;
+                                let recipient_trove2 = common::TROVE_3;
 
                                 // Simulate purge with 0 yin to update the trove's debt
                                 start_prank(CheatTarget::All, shrine_utils::admin());
                                 let trove1_owner = common::trove1_owner_addr();
+
                                 let before_redistributed_trove_health: Health = shrine
                                     .get_trove_health(redistributed_trove);
+                                let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+
+                                let (_, _, _, expected_error) = preview_trove_redistribution(
+                                    shrine, yangs, redistributed_trove
+                                );
+
                                 shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
                                 assert(shrine.get_redistributions_count() == 0, 'wrong start state');
@@ -432,6 +435,16 @@ mod test_shrine_redistribution {
                                         redistributed_trove, debt_to_redistribute, *pct_value_to_redistribute
                                     );
 
+                                let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+                                let expected_troves_deficit: SignedWad = before_troves_deficit - expected_error.into();
+                                let error_margin: SignedWad = SignedWad { val: 10_u128, sign: false };
+                                common::assert_equalish(
+                                    after_troves_deficit,
+                                    expected_troves_deficit,
+                                    error_margin,
+                                    'wrong troves deficit #1'
+                                );
+
                                 let after_redistributed_trove_health: Health = shrine
                                     .get_trove_health(redistributed_trove);
                                 assert(
@@ -440,9 +453,35 @@ mod test_shrine_redistribution {
                                     'wrong redistributed trove debt'
                                 );
 
+                                let recipient_trove1_health: Health = shrine.get_trove_health(recipient_trove1);
+                                let recipient_trove2_health: Health = shrine.get_trove_health(recipient_trove2);
+
+                                // Accrue some interest
+                                common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+                                let updated_recipient_trove1_health: Health = shrine.get_trove_health(recipient_trove1);
+                                let updated_recipient_trove2_health: Health = shrine.get_trove_health(recipient_trove2);
+                                let accrued_interest: Wad = (updated_recipient_trove1_health.debt
+                                    - recipient_trove1_health.debt)
+                                    + (updated_recipient_trove2_health.debt - recipient_trove2_health.debt);
+                                let before_budget: SignedWad = shrine.get_budget();
+
+                                // Sanity check that we accrued more interest than the deficit for the next part of the test
+                                assert(accrued_interest.val > after_troves_deficit.val, 'interest sanity check');
+
+                                start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                                shrine.melt(trove1_owner, recipient_trove1, WadZeroable::zero());
+                                shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
+
+                                assert(shrine.get_total_troves_deficit().is_zero(), 'wrong deficit after interest');
+
+                                let excess: SignedWad = accrued_interest.into() + after_troves_deficit;
+                                let after_budget: SignedWad = shrine.get_budget();
+                                let expected_budget: SignedWad = before_budget + excess;
+                                assert_eq!(after_budget, expected_budget, "wrong budget");
+
                                 let expected_redistribution_id: u32 = 1;
 
-                                let expected_events = array![
+                                let mut expected_events = array![
                                     (
                                         shrine.contract_address,
                                         shrine_contract::Event::TroveRedistributed(
@@ -454,15 +493,40 @@ mod test_shrine_redistribution {
                                         )
                                     ),
                                 ];
+                                if after_troves_deficit.is_non_zero() {
+                                    expected_events
+                                        .append(
+                                            // deficit update for redistribution
+                                            (
+                                                shrine.contract_address,
+                                                shrine_contract::Event::TotalTrovesDeficitUpdated(
+                                                    shrine_contract::TotalTrovesDeficitUpdated {
+                                                        total: after_troves_deficit
+                                                    }
+                                                )
+                                            )
+                                        );
+                                    expected_events
+                                        .append(
+                                            // deficit update for interest accrual
+                                            (
+                                                shrine.contract_address,
+                                                shrine_contract::Event::TotalTrovesDeficitUpdated(
+                                                    shrine_contract::TotalTrovesDeficitUpdated {
+                                                        total: SignedWadZeroable::zero()
+                                                    }
+                                                )
+                                            ),
+                                        );
+                                }
 
                                 spy.assert_emitted(@expected_events);
 
                                 shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-                                // We are unable to test the trove value in a sensible way here because
-                                // the yang price has not been updated to reflect any rebasing of the
-                                // asset amount per yang wad. Instead, refer to the tests for purger
-                                // for assertions on the redistributed trove's value.
-                                salt += 1;
+                            // We are unable to test the trove value in a sensible way here because
+                            // the yang price has not been updated to reflect any rebasing of the
+                            // asset amount per yang wad. Instead, refer to the tests for purger
+                            // for assertions on the redistributed trove's value.
                             },
                             Option::None => { break; },
                         };
@@ -611,7 +675,6 @@ mod test_shrine_redistribution {
                         / expected_redistributed_value)
                         * before_redistributed_trove_health.debt;
 
-                    let before_budget: SignedWad = shrine.get_budget();
                     let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
 
                     // Simulate purge with 0 yin to update the trove's debt
@@ -691,22 +754,17 @@ mod test_shrine_redistribution {
                         "wrong initial yang3"
                     );
 
-                    // Check that the debt for yangs 1 and 3 have been added to the budget as deficit
-                    let after_budget: SignedWad = shrine.get_budget();
-                    let budget_diff: SignedWad = after_budget - before_budget;
-                    let expected_budget_deficit = SignedWad {
+                    // Check that the debt for yangs 1 and 3 have been added to the deficit
+                    let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+                    let expected_troves_deficit = SignedWad {
                         val: redistributed_trove_debt.val - expected_redistributed_trove_yang2_debt.val, sign: true
                     };
                     common::assert_equalish(
-                        budget_diff,
-                        expected_budget_deficit,
-                        SignedWad { val: WAD_ONE / 100, sign: false },
-                        'wrong budget deficit'
+                        after_troves_deficit,
+                        expected_troves_deficit,
+                        SignedWad { val: 10000_u128, sign: false },
+                        'wrong troves deficit'
                     );
-
-                    let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-                    let troves_deficit_diff: SignedWad = after_troves_deficit - before_troves_deficit;
-                    assert_eq!(troves_deficit_diff, budget_diff, "troves deficit != budget deficit");
 
                     // Trigger an update in recipient troves with an empty melt
                     shrine.melt(trove1_owner, recipient_trove1, WadZeroable::zero());
@@ -748,10 +806,30 @@ mod test_shrine_redistribution {
                     let yang2_redistribution_unit_debt: Wad = shrine
                         .get_redistribution_for_yang(yang2_addr, expected_redistribution_id);
                     let actual_redistributed_debt: Wad = recipient_troves_yang2_amt * yang2_redistribution_unit_debt;
+                    let troves_deficit_diff: Wad = (after_troves_deficit - before_troves_deficit).val.into();
                     assert(
-                        before_redistributed_trove_health.debt == actual_redistributed_debt + budget_diff.val.into(),
+                        before_redistributed_trove_health.debt == actual_redistributed_debt + troves_deficit_diff,
                         'debt invariant failed'
                     );
+
+                    // Accrue some interest
+                    common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+                    let accrued_recipient_trove2_health: Health = shrine.get_trove_health(recipient_trove2);
+                    let accrued_interest: Wad = accrued_recipient_trove2_health.debt
+                        - after_recipient_trove2_health.debt;
+                    let before_budget: SignedWad = shrine.get_budget();
+
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
+
+                    let accrued_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+                    let expected_troves_deficit: SignedWad = after_troves_deficit + accrued_interest.into();
+                    assert_eq!(accrued_troves_deficit, expected_troves_deficit, "wrong deficit after interest");
+
+                    // Since the amount accrued should be less than the amount redistributed earlier, budget
+                    // should remain unchanged
+                    let after_budget: SignedWad = shrine.get_budget();
+                    assert_eq!(after_budget, before_budget, "budget changed");
 
                     let expected_events = array![
                         (
@@ -762,6 +840,20 @@ mod test_shrine_redistribution {
                                     trove_id: redistributed_trove,
                                     debt: before_redistributed_trove_health.debt,
                                 }
+                            )
+                        ),
+                        // deficit update for redistribution
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::TotalTrovesDeficitUpdated(
+                                shrine_contract::TotalTrovesDeficitUpdated { total: after_troves_deficit }
+                            )
+                        ),
+                        // deficit update for interest accrual
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::TotalTrovesDeficitUpdated(
+                                shrine_contract::TotalTrovesDeficitUpdated { total: accrued_troves_deficit }
                             )
                         ),
                     ];

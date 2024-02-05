@@ -647,7 +647,7 @@ mod shrine_utils {
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
-        let mut total: Wad = WadZeroable::zero();
+        let mut cumulative_troves_debt: Wad = WadZeroable::zero();
         let mut trove_id: u64 = 1;
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
@@ -660,20 +660,24 @@ mod shrine_utils {
             shrine.melt(admin(), trove_id, WadZeroable::zero());
 
             let trove_health: Health = shrine.get_trove_health(trove_id);
-            total += trove_health.debt;
+            cumulative_troves_debt += trove_health.debt;
 
             trove_id += 1;
         };
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        let total_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-        if total_troves_deficit.is_negative() {
-            total += total_troves_deficit.val.into();
-        }
-
         let shrine_health: Health = shrine.get_shrine_health();
+        let total_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+        let total_troves_debt_adjusted_for_deficit: SignedWad = shrine_health.debt.into() + total_troves_deficit;
+
+        // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #1');
+        common::assert_equalish(
+            cumulative_troves_debt,
+            total_troves_debt_adjusted_for_deficit.try_into().unwrap(),
+            error_margin,
+            'debt invariant failed #1'
+        );
     }
 
     fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64) {
