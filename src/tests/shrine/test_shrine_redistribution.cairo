@@ -885,14 +885,14 @@ mod test_shrine_redistribution {
         let redistributed_trove_health: Health = shrine.get_trove_health(redistributed_trove);
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
-        let before_deficit: SignedWad = shrine.get_total_troves_deficit();
+        let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
         shrine.redistribute(redistributed_trove, redistributed_trove_health.debt, RAY_ONE.into());
 
-        let after_deficit: SignedWad = shrine.get_total_troves_deficit();
-        let expected_troves_deficit: SignedWad = before_deficit - redistributed_trove_health.debt.into();
-        assert_eq!(after_deficit, expected_troves_deficit, "wrong troves deficit");
+        let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+        let expected_troves_deficit: SignedWad = before_troves_deficit - redistributed_trove_health.debt.into();
+        assert_eq!(after_troves_deficit, expected_troves_deficit, "wrong troves deficit");
 
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');

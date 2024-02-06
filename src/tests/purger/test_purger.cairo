@@ -1315,7 +1315,7 @@ mod test_purger {
 
                                                             let shrine_health: Health = shrine.get_shrine_health();
                                                             let before_total_debt: Wad = shrine_health.debt;
-                                                            let before_deficit: SignedWad = shrine
+                                                            let before_troves_deficit: SignedWad = shrine
                                                                 .get_total_troves_deficit();
 
                                                             let recipient_trove_start_health: Health = shrine
@@ -1467,11 +1467,11 @@ mod test_purger {
                                                                 && yang2_redistribution.is_zero();
 
                                                             if is_full_exceptional_redistribution {
-                                                                let after_deficit: SignedWad = shrine
+                                                                let after_troves_deficit: SignedWad = shrine
                                                                     .get_total_troves_deficit();
                                                                 assert_eq!(
-                                                                    after_deficit,
-                                                                    before_deficit
+                                                                    after_troves_deficit,
+                                                                    before_troves_deficit
                                                                         + SignedWad {
                                                                             val: redistributed_amt.val, sign: true
                                                                         },
@@ -1812,7 +1812,8 @@ mod test_purger {
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
-                                                    let before_deficit: SignedWad = shrine.get_total_troves_deficit();
+                                                    let before_troves_deficit: SignedWad = shrine
+                                                        .get_total_troves_deficit();
 
                                                     // Fund absorber based on adjusted max close amount
                                                     // after recovery mode has been set up
@@ -2006,15 +2007,15 @@ mod test_purger {
                                                         && yang2_redistribution.is_zero();
 
                                                     if is_full_exceptional_redistribution {
-                                                        let after_deficit: SignedWad = shrine
+                                                        let after_troves_deficit: SignedWad = shrine
                                                             .get_total_troves_deficit();
-                                                        let expected_budget = before_deficit
+                                                        let expected_budget = before_troves_deficit
                                                             + SignedWad {
                                                                 val: expected_redistributed_amt.val, sign: true
                                                             };
                                                         let error_margin = SignedWad { val: WAD_ONE, sign: false };
                                                         common::assert_equalish(
-                                                            after_deficit,
+                                                            after_troves_deficit,
                                                             expected_budget,
                                                             error_margin,
                                                             'wrong troves deficit'
@@ -2496,7 +2497,7 @@ mod test_purger {
 
                                                                 let shrine_health: Health = shrine.get_shrine_health();
                                                                 let before_total_debt: Wad = shrine_health.debt;
-                                                                let before_deficit: SignedWad = shrine
+                                                                let before_troves_deficit: SignedWad = shrine
                                                                     .get_total_troves_deficit();
 
                                                                 let target_ltv: Ray =
@@ -2645,9 +2646,9 @@ mod test_purger {
                                                                     && yang2_redistribution.is_zero();
 
                                                                 if is_full_exceptional_redistribution {
-                                                                    let after_deficit: SignedWad = shrine
+                                                                    let after_troves_deficit: SignedWad = shrine
                                                                         .get_total_troves_deficit();
-                                                                    let expected_budget = before_deficit
+                                                                    let expected_budget = before_troves_deficit
                                                                         + SignedWad {
                                                                             val: target_trove_start_health.debt.val,
                                                                             sign: true
@@ -2656,7 +2657,7 @@ mod test_purger {
                                                                         val: WAD_ONE, sign: false
                                                                     };
                                                                     common::assert_equalish(
-                                                                        after_deficit,
+                                                                        after_troves_deficit,
                                                                         expected_budget,
                                                                         error_margin,
                                                                         'wrong troves deficit'
