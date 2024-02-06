@@ -868,9 +868,9 @@ mod test_shrine_redistribution {
 
     // Redistribution with only 1 trove.
     // Since the trove's yangs are zeroed, the initial yang would essentially "receive"
-    // the trove's value via rebasing. The trove's debt would also be zeroed even though
-    // it was not distributed at all. However, the debt would still be backed, and the
-    // value can be accessed in the event of a shutdown.
+    // the trove's value via rebasing and all the debt would go to the total troves' deficit. 
+    // The trove's debt would also be zeroed. However, the debt would still be backed by the 
+    // initial yangs, and the value can be accessed in the event of a shutdown.
     #[test]
     fn test_shrine_redistribution_only_one_trove_remaining() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -885,8 +885,14 @@ mod test_shrine_redistribution {
         let redistributed_trove_health: Health = shrine.get_trove_health(redistributed_trove);
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
+        let before_deficit: SignedWad = shrine.get_total_troves_deficit();
+
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
         shrine.redistribute(redistributed_trove, redistributed_trove_health.debt, RAY_ONE.into());
+
+        let after_deficit: SignedWad = shrine.get_total_troves_deficit();
+        let expected_troves_deficit: SignedWad = before_deficit - redistributed_trove_health.debt.into();
+        assert_eq!(after_deficit, expected_troves_deficit, "wrong troves deficit");
 
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
@@ -932,7 +938,15 @@ mod test_shrine_redistribution {
             idx += 1;
         };
 
-        shrine.redistribute(common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), RAY_ONE.into());
+        let redistributed_trove: u64 = common::TROVE_1;
+        let (_, _, _, expected_error) = preview_trove_redistribution(shrine, yangs, redistributed_trove);
+        let before_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+
+        shrine.redistribute(redistributed_trove, shrine_utils::TROVE1_FORGE_AMT.into(), RAY_ONE.into());
+
+        let after_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
+        let expected_troves_deficit: SignedWad = before_troves_deficit - expected_error.into();
+        assert_eq!(after_troves_deficit, expected_troves_deficit, "wrong troves deficit");
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, 13);
     }
