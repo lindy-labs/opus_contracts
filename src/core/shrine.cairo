@@ -117,11 +117,19 @@ mod shrine {
         // Keeps track of how much of each yang has been deposited into each Trove - Wad
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: LegacyMap::<(u32, u64), Wad>,
-        // Total amount of debt accrued for troves
-        // This includes any debt surplus already accounted for in the budget.
+        // Total amount of debt accrued for troves. This includes any debt surplus 
+        // already accounted for in the budget.
+        // The relationship between `total_troves_debt` and `total_troves_deficit` is:
+        // `total_troves_debt` - `total_troves_deficit` = sum(trove.debt) for all troves
         total_troves_debt: Wad,
-        // Amount of deficit from exceptionally redistributed trove's debt
-        // This amount is included in the budget.
+        // Amount of deficit from troves from:
+        // 1. errors from ordinarily redistributed debt; and 
+        // 2. exceptionally redistributed trove's debt.
+        // This value should never be positive.
+        // 
+        // If troves' deficit is less than zero, the priority is to use any surplus from troves 
+        // (i.e. interest and forge fees) to reduce this deficit to zero, before adding to the 
+        // budget.
         total_troves_deficit: SignedWad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
@@ -1292,13 +1300,11 @@ mod shrine {
         // Helpers for core functions
         //
 
-        // Helper to use surplus from troves to first reduce any troves deficit from exceptional
-        // redistributions. 
+        // Helper to use surplus from troves to first reduce any troves deficit
         // - When there is a deficit, then the sum of all troves' debt is lower than `total_troves_debt`,
         //   but the yin corresponding to the deficit has already been minted into circulation.
         // - The effect of using a trove's surplus to reduce the deficit is to transfer the backing for 
-        //   the deficit from the initial yang amounts that received the exceptional redistributions to 
-        //   the trove that is incurring this surplus.
+        //   the deficit from the initial yang amounts to the trove that is incurring this surplus.
         // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
         //   so any excess can now be added to the budget and be minted.
         fn accrue_surplus_from_troves(ref self: ContractState, amount: Wad) {
