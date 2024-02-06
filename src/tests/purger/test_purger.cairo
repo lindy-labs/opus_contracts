@@ -1452,7 +1452,8 @@ mod test_purger {
                                                             let expected_redistribution_id = 1;
 
                                                             // Check if the redistribution was exceptional for all yangs
-                                                            // i.e. all value went to initial yangs and all debt went to budget
+                                                            // i.e. all value went to initial yangs and all debt went to 
+                                                            // troves' deficit
                                                             let yang1_redistribution: Wad = shrine
                                                                 .get_redistribution_for_yang(
                                                                     *yangs[0], expected_redistribution_id
@@ -1993,7 +1994,7 @@ mod test_purger {
                                                     let expected_redistribution_id = 1;
 
                                                     // Check if the redistribution was exceptional for all yangs
-                                                    // i.e. all value went to initial yangs and all debt went to budget
+                                                    // i.e. all value went to initial yangs and all debt went to troves' deficit
                                                     let yang1_redistribution: Wad = shrine
                                                         .get_redistribution_for_yang(
                                                             *yangs[0], expected_redistribution_id
@@ -2009,16 +2010,12 @@ mod test_purger {
                                                     if is_full_exceptional_redistribution {
                                                         let after_troves_deficit: SignedWad = shrine
                                                             .get_total_troves_deficit();
-                                                        let expected_budget = before_troves_deficit
-                                                            + SignedWad {
-                                                                val: expected_redistributed_amt.val, sign: true
-                                                            };
-                                                        let error_margin = SignedWad { val: WAD_ONE, sign: false };
-                                                        common::assert_equalish(
+                                                        let expected_troves_deficit = before_troves_deficit
+                                                            - expected_redistributed_amt.into();
+                                                        assert_eq!(
                                                             after_troves_deficit,
-                                                            expected_budget,
-                                                            error_margin,
-                                                            'wrong troves deficit'
+                                                            expected_troves_deficit,
+                                                            "wrong troves deficit"
                                                         );
                                                     } else {
                                                         // Check recipient trove's value and debt
@@ -2030,18 +2027,6 @@ mod test_purger {
                                                                     .debt,
                                                                 'wrong recipient trove debt'
                                                             );
-                                                            // Recipient trove value may decrease slightly due to rebasing 
-                                                            // if there was an exceptional redistribution and recipient 
-                                                            // trove did not receive any value since the amount of debt 
-                                                            // redistributed was very small
-                                                            let error_margin: Wad = 1000000000000_u128.into();
-                                                            assert(
-                                                                after_recipient_trove_health
-                                                                    .value >= before_recipient_trove_health
-                                                                    .value
-                                                                    - error_margin,
-                                                                'wrong recipient trove value'
-                                                            );
                                                         } else {
                                                             // Relax the assertion because exceptional redistribution may 
                                                             // be triggered
@@ -2051,13 +2036,13 @@ mod test_purger {
                                                                     .debt,
                                                                 'wrong recipient trove debt'
                                                             );
-                                                            assert(
-                                                                after_recipient_trove_health
-                                                                    .value > before_recipient_trove_health
-                                                                    .value,
-                                                                'wrong recipient trove value'
-                                                            );
                                                         }
+                                                        assert(
+                                                            after_recipient_trove_health
+                                                                .value > before_recipient_trove_health
+                                                                .value,
+                                                            'wrong recipient trove value'
+                                                        );
                                                     }
 
                                                     // Check remainder yang assets for redistributed trove is correct
@@ -2631,7 +2616,8 @@ mod test_purger {
                                                                 let expected_redistribution_id = 1;
 
                                                                 // Check if the redistribution was exceptional for all yangs
-                                                                // i.e. all value went to initial yangs and all debt went to budget
+                                                                // i.e. all value went to initial yangs and all debt went to
+                                                                // troves' deficit
                                                                 let yang1_redistribution: Wad = shrine
                                                                     .get_redistribution_for_yang(
                                                                         *yangs[0], expected_redistribution_id
@@ -2648,19 +2634,12 @@ mod test_purger {
                                                                 if is_full_exceptional_redistribution {
                                                                     let after_troves_deficit: SignedWad = shrine
                                                                         .get_total_troves_deficit();
-                                                                    let expected_budget = before_troves_deficit
-                                                                        + SignedWad {
-                                                                            val: target_trove_start_health.debt.val,
-                                                                            sign: true
-                                                                        };
-                                                                    let error_margin = SignedWad {
-                                                                        val: WAD_ONE, sign: false
-                                                                    };
-                                                                    common::assert_equalish(
+                                                                    let expected_troves_deficit = before_troves_deficit
+                                                                        - target_trove_start_health.debt.into();
+                                                                    assert_eq!(
                                                                         after_troves_deficit,
-                                                                        expected_budget,
-                                                                        error_margin,
-                                                                        'wrong troves deficit'
+                                                                        expected_troves_deficit,
+                                                                        "wrong troves deficit"
                                                                     );
                                                                 } else {
                                                                     // Check recipient trove's value and debt

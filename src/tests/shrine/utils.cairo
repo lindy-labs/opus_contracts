@@ -597,10 +597,7 @@ mod shrine_utils {
     //
 
     // Asserts that for each yang, the total yang amount is less than or equal to the sum of
-    // all troves' deposited amount, including any unpulled exceptional redistributions, and
-    // the initial yang amount.
-    // We do not check for strict equality because there may be loss of precision when
-    // exceptionally redistributed yang are pulled into troves.
+    // all troves' deposited amount, and the initial yang amount.
     fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64) {
         let troves_loop_end: u64 = troves_count + 1;
 
@@ -625,12 +622,7 @@ mod shrine_utils {
 
                     let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
                     let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
-                    assert(derived_yang_amt <= actual_yang_amt, 'yang invariant failed #1');
-
-                    let error_margin: Wad = 100_u128.into();
-                    common::assert_equalish(
-                        derived_yang_amt, actual_yang_amt, error_margin, 'yang invariant failed #2'
-                    );
+                    assert_eq!(derived_yang_amt, actual_yang_amt, "yang invariant failed");
 
                     yang_id += 1;
                 },
@@ -641,7 +633,6 @@ mod shrine_utils {
 
     // Asserts that the total troves debt is less than the sum of all troves' debt, 
     // including all unpulled redistributions.
-    // Assumes that total troves deficit has not been paid down.
     fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
