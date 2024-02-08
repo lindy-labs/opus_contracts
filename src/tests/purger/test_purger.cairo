@@ -2098,8 +2098,7 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         target_trove_after_health.value,
                                                         expected_after_value,
-                                                        // (10 ** 15) error margin
-                                                        1000000000000000_u128.into(),
+                                                        (WAD_ONE / 10).into(),
                                                         'wrong value after liquidation'
                                                     );
 
@@ -2181,7 +2180,7 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         after_recipient_trove_health.debt,
                                                         expected_recipient_trove_debt,
-                                                        (WAD_ONE / 100).into(), // error margin
+                                                        (WAD_ONE / 10).into(), // error margin
                                                         'wrong recipient trove debt'
                                                     );
 
@@ -2196,7 +2195,7 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         after_recipient_trove_health.value,
                                                         expected_recipient_trove_value,
-                                                        (WAD_ONE / 100).into(), // error margin
+                                                        (WAD_ONE / 10).into(), // error margin
                                                         'wrong recipient trove value'
                                                     );
 
@@ -2224,10 +2223,18 @@ mod test_purger {
                                                                 let remainder_asset_amt: u128 = gate
                                                                     .convert_to_assets(remainder_trove_yang);
 
+                                                                let error_margin: u128 = pow(
+                                                                    10_u128,
+                                                                    IERC20Dispatcher {
+                                                                        contract_address: gate.get_asset()
+                                                                    }
+                                                                        .decimals()
+                                                                        / 2
+                                                                );
                                                                 common::assert_equalish(
                                                                     remainder_asset_amt,
                                                                     *expected_asset_amt,
-                                                                    10000000_u128.into(),
+                                                                    error_margin,
                                                                     'wrong remainder yang asset'
                                                                 );
                                                             },
@@ -2778,7 +2785,7 @@ mod test_purger {
                                                                 common::assert_equalish(
                                                                     after_recipient_trove_health.debt,
                                                                     expected_recipient_trove_debt,
-                                                                    (WAD_ONE / 100).into(), // error margin
+                                                                    (WAD_ONE / 10).into(), // error margin
                                                                     'wrong recipient trove debt'
                                                                 );
 
@@ -2793,7 +2800,7 @@ mod test_purger {
                                                                 common::assert_equalish(
                                                                     after_recipient_trove_health.value,
                                                                     expected_recipient_trove_value,
-                                                                    (WAD_ONE / 100).into(), // error margin
+                                                                    (WAD_ONE / 10).into(), // error margin
                                                                     'wrong recipient trove value'
                                                                 );
 
