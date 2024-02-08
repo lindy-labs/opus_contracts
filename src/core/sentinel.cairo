@@ -7,7 +7,7 @@ mod sentinel {
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::math::fixed_point_to_wad;
+    use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
     use wadray::{Ray, Wad, WadZeroable};
@@ -29,8 +29,6 @@ mod sentinel {
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
     const LOOP_START: u64 = 1;
-
-    const INITIAL_DEPOSIT_AMT: u128 = 1000;
 
     //
     // Storage
@@ -197,9 +195,12 @@ mod sentinel {
 
             // Require an initial deposit when adding a yang to prevent first depositor from front-running
             let yang_erc20 = IERC20Dispatcher { contract_address: yang };
+            let yang_decimals = yang_erc20.decimals();
+            let initial_deposit_amt: u128 = pow(10_u128, yang_decimals / 2);
+
             // scale `asset_amt` up by the difference to match `Wad` precision of yang
-            let initial_yang_amt: Wad = fixed_point_to_wad(INITIAL_DEPOSIT_AMT, yang_erc20.decimals());
-            let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
+            let initial_yang_amt: Wad = fixed_point_to_wad(initial_deposit_amt, yang_decimals);
+            let initial_deposit_amt: u256 = initial_deposit_amt.into();
 
             let caller: ContractAddress = get_caller_address();
             let success: bool = yang_erc20.transfer_from(caller, gate.contract_address, initial_deposit_amt);
