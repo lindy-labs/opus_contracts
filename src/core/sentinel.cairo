@@ -156,7 +156,7 @@ mod sentinel {
         // This can be used to simulate the effects of `enter`.
         fn convert_to_yang(self: @ContractState, yang: ContractAddress, asset_amt: u128) -> Wad {
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
-            self.assert_can_enter(yang, gate, asset_amt);
+            self.assert_valid_yang(yang, gate);
             gate.convert_to_yang(asset_amt)
         }
 
@@ -254,7 +254,14 @@ mod sentinel {
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
 
-            self.assert_can_enter(yang, gate, asset_amt);
+            self.assert_valid_yang(yang, gate);
+
+            let suspension_status: YangSuspensionStatus = self.shrine.read().get_yang_suspension_status(yang);
+            assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
+            let current_total: u128 = gate.get_total_assets();
+            let max_amt: u128 = self.yang_asset_max.read(yang);
+            assert(current_total + asset_amt <= max_amt, 'SE: Exceeds max amount allowed');
+
             gate.enter(user, trove_id, asset_amt)
         }
 
@@ -275,17 +282,11 @@ mod sentinel {
 
     #[generate_trait]
     impl SentinelHelpers of SentinelHelpersTrait {
-        // Helper function to check that `enter` is a valid operation at the current
-        // on-chain conditions
+        // Helper function to check that yang is valid
         #[inline(always)]
-        fn assert_can_enter(self: @ContractState, yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
+        fn assert_valid_yang(self: @ContractState, yang: ContractAddress, gate: IGateDispatcher) {
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
             assert(self.yang_is_live.read(yang), 'SE: Gate is not live');
-            let suspension_status: YangSuspensionStatus = self.shrine.read().get_yang_suspension_status(yang);
-            assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
-            let current_total: u128 = gate.get_total_assets();
-            let max_amt: u128 = self.yang_asset_max.read(yang);
-            assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
         }
     }
 }
