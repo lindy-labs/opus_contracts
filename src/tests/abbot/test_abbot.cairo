@@ -55,7 +55,7 @@ mod test_abbot {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let expected_initial_yang: Wad = fixed_point_to_wad(
-                        sentinel_contract::INITIAL_DEPOSIT_AMT, decimals
+                        sentinel_utils::get_initial_asset_amt(*yang), decimals
                     );
                     let expected_deposited_yang: Wad = fixed_point_to_wad(
                         *deposited_amts_copy.pop_front().unwrap(), decimals

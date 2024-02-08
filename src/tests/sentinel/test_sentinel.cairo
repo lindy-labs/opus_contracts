@@ -89,11 +89,11 @@ mod test_sentinel {
         assert(shrine.get_yang_rate(eth, expected_era) == shrine_utils::YANG1_BASE_RATE.into(), 'Wrong yang rate #1');
         assert(shrine.get_yang_rate(wbtc, expected_era) == shrine_utils::YANG2_BASE_RATE.into(), 'Wrong yang rate #2');
 
-        let expected_initial_eth_yang: Wad = pow(10_u128, eth_erc20.decimals() / 2).into();
+        let expected_initial_eth_yang: Wad = sentinel_utils::get_initial_asset_amt(eth).into();
         assert_eq!(shrine.get_yang_total(eth), expected_initial_eth_yang, "Wrong yang total #1");
 
         let expected_initial_wbtc_yang: Wad = fixed_point_to_wad(
-            pow(10_u128, wbtc_erc20.decimals() / 2).into(), wbtc_erc20.decimals()
+            sentinel_utils::get_initial_asset_amt(wbtc), wbtc_erc20.decimals()
         );
         assert_eq!(shrine.get_yang_total(wbtc), expected_initial_wbtc_yang, "Wrong yang total #2");
 
@@ -217,8 +217,9 @@ mod test_sentinel {
         assert(sentinel.get_yang_asset_max(eth) == new_asset_max - 1, 'Wrong asset max');
 
         // Test decreasing the max to below the current yang total
-        sentinel.set_yang_asset_max(eth, sentinel_contract::INITIAL_DEPOSIT_AMT - 1);
-        assert(sentinel.get_yang_asset_max(eth) == sentinel_contract::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max');
+        let initial_deposit_amt: u128 = sentinel_utils::get_initial_asset_amt(eth);
+        sentinel.set_yang_asset_max(eth, initial_deposit_amt - 1);
+        assert(sentinel.get_yang_asset_max(eth) == initial_deposit_amt - 1, 'Wrong asset max');
 
         let expected_events = array![
             (
@@ -241,7 +242,7 @@ mod test_sentinel {
                 sentinel.contract_address,
                 sentinel_contract::Event::YangAssetMaxUpdated(
                     sentinel_contract::YangAssetMaxUpdated {
-                        yang: eth, old_max: new_asset_max - 1, new_max: sentinel_contract::INITIAL_DEPOSIT_AMT - 1,
+                        yang: eth, old_max: new_asset_max - 1, new_max: initial_deposit_amt - 1,
                     }
                 )
             ),
@@ -287,7 +288,7 @@ mod test_sentinel {
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, common::TROVE_1, yang_amt);
 
-        let expected_initial_eth_amt: u128 = pow(10_u128, eth_erc20.decimals() / 2);
+        let expected_initial_eth_amt: u128 = sentinel_utils::get_initial_asset_amt(eth);
 
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
