@@ -1315,8 +1315,8 @@ mod test_purger {
 
                                                             let shrine_health: Health = shrine.get_shrine_health();
                                                             let before_total_debt: Wad = shrine_health.debt;
-                                                            let before_troves_deficit: SignedWad = shrine
-                                                                .get_total_troves_deficit();
+                                                            let before_protocol_owned_troves_debt: SignedWad = shrine
+                                                                .get_protocol_owned_troves_debt();
 
                                                             let recipient_trove_start_health: Health = shrine
                                                                 .get_trove_health(recipient_trove);
@@ -1468,11 +1468,11 @@ mod test_purger {
                                                                 && yang2_redistribution.is_zero();
 
                                                             if is_full_exceptional_redistribution {
-                                                                let after_troves_deficit: SignedWad = shrine
-                                                                    .get_total_troves_deficit();
+                                                                let after_protocol_owned_troves_debt: SignedWad = shrine
+                                                                    .get_protocol_owned_troves_debt();
                                                                 assert_eq!(
-                                                                    after_troves_deficit,
-                                                                    before_troves_deficit
+                                                                    after_protocol_owned_troves_debt,
+                                                                    before_protocol_owned_troves_debt
                                                                         + SignedWad {
                                                                             val: redistributed_amt.val, sign: true
                                                                         },
@@ -1813,8 +1813,8 @@ mod test_purger {
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
-                                                    let before_troves_deficit: SignedWad = shrine
-                                                        .get_total_troves_deficit();
+                                                    let before_protocol_owned_troves_debt: SignedWad = shrine
+                                                        .get_protocol_owned_troves_debt();
 
                                                     // Fund absorber based on adjusted max close amount
                                                     // after recovery mode has been set up
@@ -2008,13 +2008,14 @@ mod test_purger {
                                                         && yang2_redistribution.is_zero();
 
                                                     if is_full_exceptional_redistribution {
-                                                        let after_troves_deficit: SignedWad = shrine
-                                                            .get_total_troves_deficit();
-                                                        let expected_troves_deficit = before_troves_deficit
+                                                        let after_protocol_owned_troves_debt: SignedWad = shrine
+                                                            .get_protocol_owned_troves_debt();
+                                                        let expected_protocol_owned_troves_debt =
+                                                            before_protocol_owned_troves_debt
                                                             - expected_redistributed_amt.into();
                                                         assert_eq!(
-                                                            after_troves_deficit,
-                                                            expected_troves_deficit,
+                                                            after_protocol_owned_troves_debt,
+                                                            expected_protocol_owned_troves_debt,
                                                             "wrong troves deficit"
                                                         );
                                                     } else {
@@ -2482,8 +2483,9 @@ mod test_purger {
 
                                                                 let shrine_health: Health = shrine.get_shrine_health();
                                                                 let before_total_debt: Wad = shrine_health.debt;
-                                                                let before_troves_deficit: SignedWad = shrine
-                                                                    .get_total_troves_deficit();
+                                                                let before_protocol_owned_troves_debt: SignedWad =
+                                                                    shrine
+                                                                    .get_protocol_owned_troves_debt();
 
                                                                 let target_ltv: Ray =
                                                                     (purger_contract::ABSORPTION_THRESHOLD
@@ -2632,13 +2634,15 @@ mod test_purger {
                                                                     && yang2_redistribution.is_zero();
 
                                                                 if is_full_exceptional_redistribution {
-                                                                    let after_troves_deficit: SignedWad = shrine
-                                                                        .get_total_troves_deficit();
-                                                                    let expected_troves_deficit = before_troves_deficit
+                                                                    let after_protocol_owned_troves_debt: SignedWad =
+                                                                        shrine
+                                                                        .get_protocol_owned_troves_debt();
+                                                                    let expected_protocol_owned_troves_debt =
+                                                                        before_protocol_owned_troves_debt
                                                                         - target_trove_start_health.debt.into();
                                                                     assert_eq!(
-                                                                        after_troves_deficit,
-                                                                        expected_troves_deficit,
+                                                                        after_protocol_owned_troves_debt,
+                                                                        expected_protocol_owned_troves_debt,
                                                                         "wrong troves deficit"
                                                                     );
                                                                 } else {

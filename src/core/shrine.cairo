@@ -105,8 +105,8 @@ mod shrine {
         // Stores information about the total supply for each yang
         // (yang_id) -> (Total Supply)
         yang_total: LegacyMap::<u32, Wad>,
-        // Stores information about the initial yang amount minted to the system
-        initial_yang_amts: LegacyMap::<u32, Wad>,
+        // Stores information about the yang amount owned by the protocol
+        protocol_owned_yang_amts: LegacyMap::<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
         yangs_count: u32,
@@ -119,8 +119,8 @@ mod shrine {
         deposits: LegacyMap::<(u32, u64), Wad>,
         // Total amount of debt accrued for troves. This includes any debt surplus 
         // already accounted for in the budget.
-        // The relationship between `total_troves_debt` and `total_troves_deficit` is:
-        // `total_troves_debt` - `total_troves_deficit` = sum(trove.debt) for all troves
+        // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
+        // `total_troves_debt` - `protocol_owned_troves_debt` = sum(trove.debt) for all troves
         total_troves_debt: Wad,
         // Amount of deficit from troves from:
         // 1. errors from ordinarily redistributed debt; and 
@@ -130,7 +130,7 @@ mod shrine {
         // If troves' deficit is less than zero, the priority is to use any surplus from troves 
         // (i.e. interest and forge fees) to reduce this deficit to zero, before adding to the 
         // budget.
-        total_troves_deficit: SignedWad,
+        protocol_owned_troves_debt: SignedWad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
         // Current budget
@@ -454,9 +454,9 @@ mod shrine {
             self.yang_total.read(yang_id)
         }
 
-        fn get_initial_yang_amt(self: @ContractState, yang: ContractAddress) -> Wad {
+        fn get_protocol_owned_yang_amt(self: @ContractState, yang: ContractAddress) -> Wad {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.initial_yang_amts.read(yang_id)
+            self.protocol_owned_yang_amts.read(yang_id)
         }
 
         fn get_yangs_count(self: @ContractState) -> u32 {
@@ -472,8 +472,8 @@ mod shrine {
             self.budget.read()
         }
 
-        fn get_total_troves_deficit(self: @ContractState) -> SignedWad {
-            self.total_troves_deficit.read()
+        fn get_protocol_owned_troves_debt(self: @ContractState) -> SignedWad {
+            self.protocol_owned_troves_debt.read()
         }
 
         fn get_yang_price(self: @ContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad) {
@@ -589,7 +589,7 @@ mod shrine {
             // Update initial yang supply
             // Used upstream to prevent first depositor front running
             self.yang_total.write(yang_id, initial_yang_amt);
-            self.initial_yang_amts.write(yang_id, initial_yang_amt);
+            self.protocol_owned_yang_amts.write(yang_id, initial_yang_amt);
 
             // Since `start_price` is the first price in the price history, the cumulative price is also set to `start_price`
 
@@ -1308,7 +1308,7 @@ mod shrine {
         // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
         //   so any excess can now be added to the budget and be minted.
         fn accrue_surplus_from_troves(ref self: ContractState, amount: Wad) {
-            let excess: Wad = self.adjust_total_troves_deficit_helper(amount.into()).unwrap();
+            let excess: Wad = self.adjust_protocol_owned_troves_debt_helper(amount.into()).unwrap();
             if excess.is_non_zero() {
                 let total_troves_debt: Wad = self.total_troves_debt.read();
                 let new_total_troves_debt: Wad = total_troves_debt + excess;
@@ -1332,11 +1332,11 @@ mod shrine {
         // - If amount >= 0 and the total troves deficit is not negative, return the
         //   original amount.
         // - If the amount is negative, return none.
-        fn adjust_total_troves_deficit_helper(ref self: ContractState, amount: SignedWad) -> Option<Wad> {
+        fn adjust_protocol_owned_troves_debt_helper(ref self: ContractState, amount: SignedWad) -> Option<Wad> {
             let mut excess: Option<Wad> = Option::None;
             let mut deficit_adjustment: SignedWad = amount;
 
-            let total_troves_deficit: SignedWad = self.total_troves_deficit.read();
+            let protocol_owned_troves_debt: SignedWad = self.protocol_owned_troves_debt.read();
             if !amount.is_negative() {
                 // TODO: simplify to `try_into` once wadray lib is updated
                 let amount_wad: Wad = if amount.is_zero() {
@@ -1345,22 +1345,22 @@ mod shrine {
                     amount.try_into().unwrap()
                 };
                 // Early return if no deficit
-                if !total_troves_deficit.is_negative() {
+                if !protocol_owned_troves_debt.is_negative() {
                     return Option::Some(amount_wad);
                 }
 
                 // Prioritize reducing the troves deficit if any, to the extent of the deficit.
                 // This ensures that the deficit will not be positive.
-                let troves_deficit_to_reduce: Wad = min(amount_wad, total_troves_deficit.val.into());
+                let troves_deficit_to_reduce: Wad = min(amount_wad, protocol_owned_troves_debt.val.into());
                 excess = Option::Some(amount_wad - troves_deficit_to_reduce);
 
                 deficit_adjustment = troves_deficit_to_reduce.into();
             }
 
-            let new_total_troves_deficit: SignedWad = self.total_troves_deficit.read() + deficit_adjustment;
-            self.total_troves_deficit.write(new_total_troves_deficit);
+            let new_protocol_owned_troves_debt: SignedWad = self.protocol_owned_troves_debt.read() + deficit_adjustment;
+            self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
-            self.emit(TotalTrovesDeficitUpdated { total: new_total_troves_deficit });
+            self.emit(TotalTrovesDeficitUpdated { total: new_protocol_owned_troves_debt });
 
             excess
         }
@@ -1679,7 +1679,7 @@ mod shrine {
                         let yang_amt_to_redistribute: Wad = wadray::rmul_wr(trove_yang_amt, pct_value_to_redistribute);
 
                         let yang_total: Wad = self.yang_total.read(yang_id_to_redistribute);
-                        let initial_yang_amt: Wad = self.initial_yang_amts.read(yang_id_to_redistribute);
+                        let initial_yang_amt: Wad = self.protocol_owned_yang_amts.read(yang_id_to_redistribute);
 
                         // Get the remainder amount of yangs in all other troves that can be redistributed
                         // This excludes any remaining yang in the redistributed trove if the percentage to
@@ -1794,10 +1794,11 @@ mod shrine {
                         } else {
                             // Move the redistributed yang amount from the trove to the initial yang amounts
                             self
-                                .initial_yang_amts
+                                .protocol_owned_yang_amts
                                 .write(
                                     yang_id_to_redistribute,
-                                    self.initial_yang_amts.read(yang_id_to_redistribute) + yang_amt_to_redistribute,
+                                    self.protocol_owned_yang_amts.read(yang_id_to_redistribute)
+                                        + yang_amt_to_redistribute,
                                 );
 
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
@@ -1817,7 +1818,7 @@ mod shrine {
                     Option::None => { break; },
                 };
             };
-            self.adjust_total_troves_deficit_helper(deficit);
+            self.adjust_protocol_owned_troves_debt_helper(deficit);
         }
 
         // Calculates the redistributed debt that has not been attributed for a trove.

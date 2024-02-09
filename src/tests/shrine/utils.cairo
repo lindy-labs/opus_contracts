@@ -605,7 +605,7 @@ mod shrine_utils {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let initial_amt: Wad = shrine.get_initial_yang_amt(*yang);
+                    let initial_amt: Wad = shrine.get_protocol_owned_yang_amt(*yang);
 
                     let mut trove_id: u64 = 1;
                     let mut troves_cumulative_amt: Wad = WadZeroable::zero();
@@ -658,8 +658,8 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let shrine_health: Health = shrine.get_shrine_health();
-        let total_troves_deficit: SignedWad = shrine.get_total_troves_deficit();
-        let total_troves_debt_adjusted_for_deficit: SignedWad = shrine_health.debt.into() + total_troves_deficit;
+        let protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let total_troves_debt_adjusted_for_deficit: SignedWad = shrine_health.debt.into() + protocol_owned_troves_debt;
 
         // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
