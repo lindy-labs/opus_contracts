@@ -217,7 +217,7 @@ mod shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         TotalTrovesDebtUpdated: TotalTrovesDebtUpdated,
-        TotalTrovesDeficitUpdated: TotalTrovesDeficitUpdated,
+        ProtocolOwnedTrovesDebtUpdated: ProtocolOwnedTrovesDebtUpdated,
         BudgetAdjusted: BudgetAdjusted,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
@@ -259,7 +259,7 @@ mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TotalTrovesDeficitUpdated {
+    struct ProtocolOwnedTrovesDebtUpdated {
         total: SignedWad
     }
 
@@ -1360,7 +1360,7 @@ mod shrine {
             let new_protocol_owned_troves_debt: SignedWad = self.protocol_owned_troves_debt.read() + deficit_adjustment;
             self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
-            self.emit(TotalTrovesDeficitUpdated { total: new_protocol_owned_troves_debt });
+            self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
 
             excess
         }

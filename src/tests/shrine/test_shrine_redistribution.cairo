@@ -510,8 +510,8 @@ mod test_shrine_redistribution {
                                             // deficit update for redistribution
                                             (
                                                 shrine.contract_address,
-                                                shrine_contract::Event::TotalTrovesDeficitUpdated(
-                                                    shrine_contract::TotalTrovesDeficitUpdated {
+                                                shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
+                                                    shrine_contract::ProtocolOwnedTrovesDebtUpdated {
                                                         total: after_protocol_owned_troves_debt
                                                     }
                                                 )
@@ -522,8 +522,8 @@ mod test_shrine_redistribution {
                                             // deficit update for interest accrual
                                             (
                                                 shrine.contract_address,
-                                                shrine_contract::Event::TotalTrovesDeficitUpdated(
-                                                    shrine_contract::TotalTrovesDeficitUpdated {
+                                                shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
+                                                    shrine_contract::ProtocolOwnedTrovesDebtUpdated {
                                                         total: SignedWadZeroable::zero()
                                                     }
                                                 )
@@ -865,15 +865,19 @@ mod test_shrine_redistribution {
                         // deficit update for redistribution
                         (
                             shrine.contract_address,
-                            shrine_contract::Event::TotalTrovesDeficitUpdated(
-                                shrine_contract::TotalTrovesDeficitUpdated { total: after_protocol_owned_troves_debt }
+                            shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
+                                shrine_contract::ProtocolOwnedTrovesDebtUpdated {
+                                    total: after_protocol_owned_troves_debt
+                                }
                             )
                         ),
                         // deficit update for interest accrual
                         (
                             shrine.contract_address,
-                            shrine_contract::Event::TotalTrovesDeficitUpdated(
-                                shrine_contract::TotalTrovesDeficitUpdated { total: accrued_protocol_owned_troves_debt }
+                            shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
+                                shrine_contract::ProtocolOwnedTrovesDebtUpdated {
+                                    total: accrued_protocol_owned_troves_debt
+                                }
                             )
                         ),
                     ];
