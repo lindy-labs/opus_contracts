@@ -10,7 +10,7 @@ mod test_shrine_redistribution {
         EventAssertions
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, SignedWadZeroable, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
     // Setup
@@ -214,7 +214,7 @@ mod test_shrine_redistribution {
         let (trove1_yang_values, _, expected_remaining_yangs, expected_error) = preview_trove_redistribution(
             shrine, yangs, redistributed_trove
         );
-        let before_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
         // Simulate purge with 0 yin to update the trove's debt
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -228,11 +228,9 @@ mod test_shrine_redistribution {
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove);
         assert(unpulled_debt.is_zero(), 'should be zero');
 
-        let after_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
         assert_eq!(
-            after_protocol_owned_troves_debt,
-            before_protocol_owned_troves_debt - expected_error.into(),
-            "wrong troves deficit"
+            after_protocol_owned_troves_debt, before_protocol_owned_troves_debt + expected_error, "wrong protocol debt"
         );
 
         let expected_redistribution_id: u32 = 1;
@@ -298,7 +296,7 @@ mod test_shrine_redistribution {
         let (_, _, _, expected_redistributed_trove1_errors) = preview_trove_redistribution(
             shrine, yangs, redistributed_trove1
         );
-        let before_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
         // Perform first redistribution - covered by previous test
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -308,11 +306,11 @@ mod test_shrine_redistribution {
         let redistributed_trove2_start_health = shrine.get_trove_health(redistributed_trove2);
         shrine.redistribute(redistributed_trove1, redistributed_trove1_health.debt, RAY_ONE.into());
 
-        let intermediate_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let intermediate_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
         assert_eq!(
             intermediate_protocol_owned_troves_debt,
-            before_protocol_owned_troves_debt - expected_redistributed_trove1_errors.into(),
-            "wrong troves deficit #1"
+            before_protocol_owned_troves_debt + expected_redistributed_trove1_errors,
+            "wrong protocol debt #1"
         );
 
         let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
@@ -328,14 +326,14 @@ mod test_shrine_redistribution {
 
         shrine.redistribute(redistributed_trove2, redistributed_trove2_health.debt, RAY_ONE.into());
 
-        let after_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
-        let error_margin = SignedWad { val: 5_u128, sign: false };
+        let error_margin = 5_u128.into();
         common::assert_equalish(
             after_protocol_owned_troves_debt,
-            intermediate_protocol_owned_troves_debt - expected_redistributed_trove2_errors.into(),
+            intermediate_protocol_owned_troves_debt + expected_redistributed_trove2_errors,
             error_margin,
-            'wrong troves deficit #2'
+            'wrong protocol debt #2'
         );
 
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove2);
@@ -422,8 +420,7 @@ mod test_shrine_redistribution {
 
                                 let before_redistributed_trove_health: Health = shrine
                                     .get_trove_health(redistributed_trove);
-                                let before_protocol_owned_troves_debt: SignedWad = shrine
-                                    .get_protocol_owned_troves_debt();
+                                let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
                                 let (_, _, _, expected_error) = preview_trove_redistribution(
                                     shrine, yangs, redistributed_trove
@@ -440,16 +437,15 @@ mod test_shrine_redistribution {
                                         redistributed_trove, debt_to_redistribute, *pct_value_to_redistribute
                                     );
 
-                                let after_protocol_owned_troves_debt: SignedWad = shrine
-                                    .get_protocol_owned_troves_debt();
-                                let expected_protocol_owned_troves_debt: SignedWad = before_protocol_owned_troves_debt
-                                    - expected_error.into();
-                                let error_margin: SignedWad = SignedWad { val: 10_u128, sign: false };
+                                let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                                let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt
+                                    + expected_error;
+                                let error_margin: Wad = 10_u128.into();
                                 common::assert_equalish(
                                     after_protocol_owned_troves_debt,
                                     expected_protocol_owned_troves_debt,
                                     error_margin,
-                                    'wrong troves deficit #1'
+                                    'wrong protocol debt #1'
                                 );
 
                                 let after_redistributed_trove_health: Health = shrine
@@ -485,7 +481,8 @@ mod test_shrine_redistribution {
                                     shrine.get_protocol_owned_troves_debt().is_zero(), 'wrong deficit after interest'
                                 );
 
-                                let excess: SignedWad = accrued_interest.into() + after_protocol_owned_troves_debt;
+                                let excess: SignedWad = accrued_interest.into()
+                                    - after_protocol_owned_troves_debt.into();
                                 let after_budget: SignedWad = shrine.get_budget();
                                 let expected_budget: SignedWad = before_budget + excess;
                                 assert_eq!(after_budget, expected_budget, "wrong budget");
@@ -524,7 +521,7 @@ mod test_shrine_redistribution {
                                                 shrine.contract_address,
                                                 shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                                     shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                                        total: SignedWadZeroable::zero()
+                                                        total: WadZeroable::zero()
                                                     }
                                                 )
                                             ),
@@ -686,7 +683,7 @@ mod test_shrine_redistribution {
                         / expected_redistributed_value)
                         * before_redistributed_trove_health.debt;
 
-                    let before_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+                    let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
                     // Simulate purge with 0 yin to update the trove's debt
                     shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
@@ -766,15 +763,14 @@ mod test_shrine_redistribution {
                     );
 
                     // Check that the debt for yangs 1 and 3 have been added to the deficit
-                    let after_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
-                    let expected_protocol_owned_troves_debt = SignedWad {
-                        val: redistributed_trove_debt.val - expected_redistributed_trove_yang2_debt.val, sign: true
-                    };
+                    let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                    let expected_protocol_owned_troves_debt = redistributed_trove_debt
+                        - expected_redistributed_trove_yang2_debt;
                     common::assert_equalish(
                         after_protocol_owned_troves_debt,
                         expected_protocol_owned_troves_debt,
-                        SignedWad { val: 10000_u128, sign: false },
-                        'wrong troves deficit'
+                        10000_u128.into(),
+                        'wrong protocol debt'
                     );
 
                     // Trigger an update in recipient troves with an empty melt
@@ -837,9 +833,8 @@ mod test_shrine_redistribution {
                     start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
                     shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
 
-                    let accrued_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
-                    let expected_protocol_owned_troves_debt: SignedWad = after_protocol_owned_troves_debt
-                        + accrued_interest.into();
+                    let accrued_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                    let expected_protocol_owned_troves_debt: Wad = after_protocol_owned_troves_debt - accrued_interest;
                     assert_eq!(
                         accrued_protocol_owned_troves_debt,
                         expected_protocol_owned_troves_debt,
@@ -909,15 +904,15 @@ mod test_shrine_redistribution {
         let redistributed_trove_health: Health = shrine.get_trove_health(redistributed_trove);
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
-        let before_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
         shrine.redistribute(redistributed_trove, redistributed_trove_health.debt, RAY_ONE.into());
 
-        let after_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
-        let expected_protocol_owned_troves_debt: SignedWad = before_protocol_owned_troves_debt
-            - redistributed_trove_health.debt.into();
-        assert_eq!(after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong troves deficit");
+        let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+        let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt
+            + redistributed_trove_health.debt;
+        assert_eq!(after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong protocol debt");
 
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
@@ -965,13 +960,13 @@ mod test_shrine_redistribution {
 
         let redistributed_trove: u64 = common::TROVE_1;
         let (_, _, _, expected_error) = preview_trove_redistribution(shrine, yangs, redistributed_trove);
-        let before_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
+        let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
         shrine.redistribute(redistributed_trove, shrine_utils::TROVE1_FORGE_AMT.into(), RAY_ONE.into());
 
-        let after_protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
-        let expected_protocol_owned_troves_debt: SignedWad = before_protocol_owned_troves_debt - expected_error.into();
-        assert_eq!(after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong troves deficit");
+        let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+        let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt + expected_error;
+        assert_eq!(after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong protocol debt");
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, 13);
     }

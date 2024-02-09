@@ -658,16 +658,13 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let shrine_health: Health = shrine.get_shrine_health();
-        let protocol_owned_troves_debt: SignedWad = shrine.get_protocol_owned_troves_debt();
-        let total_troves_debt_adjusted_for_deficit: SignedWad = shrine_health.debt.into() + protocol_owned_troves_debt;
+        let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+        let total_troves_debt_without_protocol_owned: Wad = shrine_health.debt - protocol_owned_troves_debt;
 
         // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
         common::assert_equalish(
-            cumulative_troves_debt,
-            total_troves_debt_adjusted_for_deficit.try_into().unwrap(),
-            error_margin,
-            'debt invariant failed #1'
+            cumulative_troves_debt, total_troves_debt_without_protocol_owned, error_margin, 'debt invariant failed #1'
         );
     }
 

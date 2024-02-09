@@ -27,7 +27,7 @@ mod test_purger {
         EventFetcher, event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
     //
     // Tests - Setup
@@ -1315,7 +1315,7 @@ mod test_purger {
 
                                                             let shrine_health: Health = shrine.get_shrine_health();
                                                             let before_total_debt: Wad = shrine_health.debt;
-                                                            let before_protocol_owned_troves_debt: SignedWad = shrine
+                                                            let before_protocol_owned_troves_debt: Wad = shrine
                                                                 .get_protocol_owned_troves_debt();
 
                                                             let recipient_trove_start_health: Health = shrine
@@ -1468,14 +1468,12 @@ mod test_purger {
                                                                 && yang2_redistribution.is_zero();
 
                                                             if is_full_exceptional_redistribution {
-                                                                let after_protocol_owned_troves_debt: SignedWad = shrine
+                                                                let after_protocol_owned_troves_debt: Wad = shrine
                                                                     .get_protocol_owned_troves_debt();
                                                                 assert_eq!(
                                                                     after_protocol_owned_troves_debt,
                                                                     before_protocol_owned_troves_debt
-                                                                        + SignedWad {
-                                                                            val: redistributed_amt.val, sign: true
-                                                                        },
+                                                                        + redistributed_amt,
                                                                     "wrong troves deficit"
                                                                 );
                                                             } else {
@@ -1813,7 +1811,7 @@ mod test_purger {
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
-                                                    let before_protocol_owned_troves_debt: SignedWad = shrine
+                                                    let before_protocol_owned_troves_debt: Wad = shrine
                                                         .get_protocol_owned_troves_debt();
 
                                                     // Fund absorber based on adjusted max close amount
@@ -2008,11 +2006,11 @@ mod test_purger {
                                                         && yang2_redistribution.is_zero();
 
                                                     if is_full_exceptional_redistribution {
-                                                        let after_protocol_owned_troves_debt: SignedWad = shrine
+                                                        let after_protocol_owned_troves_debt: Wad = shrine
                                                             .get_protocol_owned_troves_debt();
                                                         let expected_protocol_owned_troves_debt =
                                                             before_protocol_owned_troves_debt
-                                                            - expected_redistributed_amt.into();
+                                                            + expected_redistributed_amt;
                                                         assert_eq!(
                                                             after_protocol_owned_troves_debt,
                                                             expected_protocol_owned_troves_debt,
@@ -2483,8 +2481,7 @@ mod test_purger {
 
                                                                 let shrine_health: Health = shrine.get_shrine_health();
                                                                 let before_total_debt: Wad = shrine_health.debt;
-                                                                let before_protocol_owned_troves_debt: SignedWad =
-                                                                    shrine
+                                                                let before_protocol_owned_troves_debt: Wad = shrine
                                                                     .get_protocol_owned_troves_debt();
 
                                                                 let target_ltv: Ray =
@@ -2634,12 +2631,11 @@ mod test_purger {
                                                                     && yang2_redistribution.is_zero();
 
                                                                 if is_full_exceptional_redistribution {
-                                                                    let after_protocol_owned_troves_debt: SignedWad =
-                                                                        shrine
+                                                                    let after_protocol_owned_troves_debt: Wad = shrine
                                                                         .get_protocol_owned_troves_debt();
                                                                     let expected_protocol_owned_troves_debt =
                                                                         before_protocol_owned_troves_debt
-                                                                        - target_trove_start_health.debt.into();
+                                                                        + target_trove_start_health.debt;
                                                                     assert_eq!(
                                                                         after_protocol_owned_troves_debt,
                                                                         expected_protocol_owned_troves_debt,
