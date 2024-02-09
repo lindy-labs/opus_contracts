@@ -7,7 +7,7 @@ mod test_allocator {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, contract_address_try_from_felt252};
     use wadray::Ray;
 
     #[test]
@@ -71,6 +71,43 @@ mod test_allocator {
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
         let new_recipients = equalizer_utils::new_recipients();
+        let new_percentages = equalizer_utils::new_percentages();
+        allocator.set_allocation(new_recipients, new_percentages);
+
+        let (recipients, percentages) = allocator.get_allocation();
+        assert(recipients == new_recipients, 'wrong recipients');
+        assert(percentages == new_percentages, 'wrong percentages');
+        assert(recipients.len() == 4, 'wrong array length');
+        assert(recipients.len() == percentages.len(), 'array length mismatch');
+
+        let expected_events = array![
+            (
+                allocator.contract_address,
+                allocator_contract::Event::AllocationUpdated(
+                    allocator_contract::AllocationUpdated { recipients, percentages }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    fn test_set_allocation_duplicate_address_pass() {
+        let allocator = equalizer_utils::allocator_deploy(
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+        );
+
+        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
+
+        start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
+        let new_recipients: Span<ContractAddress> = array![
+            contract_address_try_from_felt252('new recipient 1').unwrap(),
+            contract_address_try_from_felt252('new recipient 2').unwrap(),
+            contract_address_try_from_felt252('new recipient 3').unwrap(),
+            contract_address_try_from_felt252('new recipient 1').unwrap(),
+        ]
+            .span();
         let new_percentages = equalizer_utils::new_percentages();
         allocator.set_allocation(new_recipients, new_percentages);
 
