@@ -153,7 +153,9 @@ mod sentinel {
         // View functions
         //
 
-        // This can be used to simulate the effects of `enter`.
+        // This can be used to simulate the effects of `enter`. 
+        // However, it does not check if (1) the yang is suspended; and/or (2) depositing
+        // the amount would exceed the maximum amount of assets allowed.
         fn convert_to_yang(self: @ContractState, yang: ContractAddress, asset_amt: u128) -> Wad {
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             self.assert_valid_yang(yang, gate);
