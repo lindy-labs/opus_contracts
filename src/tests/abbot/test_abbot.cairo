@@ -399,7 +399,7 @@ mod test_abbot {
         let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt].span();
 
         common::fund_user(trove_owner, yangs, deposit_amts);
-        let forge_amt: Wad = WAD_ONE.into();
+        let forge_amt = WadZeroable::zero();
         let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposit_amts, gates, forge_amt);
 
         // Sanity check that max assets have been deposited
@@ -416,7 +416,6 @@ mod test_abbot {
 
         // Withdraw all ETH and WBTC
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.melt(trove_id, forge_amt);
         abbot.withdraw(trove_id, AssetBalance { address: eth, amount: deposit_eth_amt });
         abbot.withdraw(trove_id, AssetBalance { address: wbtc, amount: deposit_wbtc_amt });
 
@@ -424,6 +423,36 @@ mod test_abbot {
         assert(shrine.get_deposit(wbtc, trove_id).is_zero(), 'wrong yang amount #2');
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+    }
+
+    #[test]
+    fn test_withdraw_suspended_yang_pass() {
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let eth: ContractAddress = *yangs[0];
+        let eth_deposit_amt: u128 = abbot_utils::ETH_DEPOSIT_AMT;
+
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+
+        let deposit_yangs: Span<ContractAddress> = array![*yangs[0]].span();
+        let deposit_amts: Span<u128> = array![eth_deposit_amt].span();
+
+        common::fund_user(trove_owner, deposit_yangs, deposit_amts);
+        let forge_amt = WadZeroable::zero();
+        let trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner, deposit_yangs, deposit_amts, array![*gates[0]].span(), forge_amt
+        );
+
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        sentinel.suspend_yang(eth);
+        stop_prank(CheatTarget::One(sentinel.contract_address));
+
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.withdraw(trove_id, AssetBalance { address: eth, amount: eth_deposit_amt });
+
+        assert(shrine.get_deposit(eth, trove_id).is_zero(), 'wrong yang amount');
     }
 
     #[test]
