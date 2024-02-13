@@ -471,6 +471,9 @@ mod absorber {
             // Withdraw absorbed collateral before updating shares
             self.reap_helper(provider, provision);
 
+            // Removed yin amount
+            let mut yin_amt: Wad = WadZeroable::zero();
+
             // Fetch the shares for current epoch
             let current_epoch: u32 = self.current_epoch.read();
             let current_provider_shares: Wad = self
@@ -479,20 +482,14 @@ mod absorber {
             if current_provider_shares.is_zero() {
                 // If no remaining shares after converting across epochs,
                 // provider's deposit has been completely absorbed.
-                // Since absorbed collateral have been reaped,
+                // Since absorbed collateral has been reaped,
                 // we can update the provision to current epoch and shares.
                 self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() });
-
-                request.has_removed = true;
-                self.provider_request.write(provider, request);
-
-                // Event emission
-                self.emit(Remove { provider, epoch: current_epoch, yin: WadZeroable::zero() });
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
                 let max_removable_yin: Wad = self.convert_to_yin(current_provider_shares);
-                let yin_amt: Wad = min(amount, max_removable_yin);
+                yin_amt = min(amount, max_removable_yin);
 
                 // Due to precision loss, if the amount to remove is the max removable,
                 // set the shares to be removed as the provider's balance to avoid
@@ -502,26 +499,19 @@ mod absorber {
                     let (shares_to_remove_ceiled, _) = self.convert_to_shares(yin_amt, true);
                     shares_to_remove = shares_to_remove_ceiled;
                 }
-
                 self.total_shares.write(self.total_shares.read() - shares_to_remove);
 
                 // Update provision
                 let new_provider_shares: Wad = current_provider_shares - shares_to_remove;
                 self.provisions.write(provider, Provision { epoch: current_epoch, shares: new_provider_shares });
 
-                self
-                    .provider_request
-                    .write(
-                        provider,
-                        Request { timestamp: request.timestamp, timelock: request.timelock, has_removed: true }
-                    );
-
                 let success: bool = self.yin_erc20().transfer(provider, yin_amt.into());
                 assert(success, 'ABS: Transfer failed');
-
-                // Event emission
-                self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
             }
+
+            request.has_removed = true;
+            self.provider_request.write(provider, request);
+            self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
         }
 
         // Withdraw absorbed collateral only from the absorber
