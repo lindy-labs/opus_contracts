@@ -4,6 +4,7 @@ mod test_abbot {
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::abbot::utils::abbot_utils;
@@ -14,7 +15,7 @@ mod test_abbot {
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use wadray::{Wad, WadZeroable, WAD_SCALE};
+    use wadray::{Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
     //
     // Tests
@@ -370,6 +371,57 @@ mod test_abbot {
             shrine.get_deposit(asset_addr, trove_id) == (abbot_utils::ETH_DEPOSIT_AMT - amount).into(),
             'wrong yang amount'
         );
+
+        shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+    }
+
+    #[test]
+    fn test_deposit_maximum_asset_and_withdraw_pass() {
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let eth: ContractAddress = *yangs[0];
+        let eth_gate: IGateDispatcher = *gates[0];
+        let eth_erc20: IERC20Dispatcher = IERC20Dispatcher { contract_address: eth };
+        let eth_gate_balance: u128 = eth_erc20.balance_of(eth_gate.contract_address).try_into().unwrap();
+
+        let wbtc: ContractAddress = *yangs[1];
+        let wbtc_gate: IGateDispatcher = *gates[1];
+        let wbtc_erc20: IERC20Dispatcher = IERC20Dispatcher { contract_address: wbtc };
+        let wbtc_gate_balance: u128 = wbtc_erc20.balance_of(wbtc_gate.contract_address).try_into().unwrap();
+
+        // Open a trove with maximum asset amount deposited for ETH and WBTC
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+
+        let deposit_eth_amt: u128 = sentinel_utils::ETH_ASSET_MAX - eth_gate_balance;
+        let deposit_wbtc_amt: u128 = sentinel_utils::WBTC_ASSET_MAX - wbtc_gate_balance;
+        let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt].span();
+
+        common::fund_user(trove_owner, yangs, deposit_amts);
+        let forge_amt: Wad = WAD_ONE.into();
+        let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposit_amts, gates, forge_amt);
+
+        // Sanity check that max assets have been deposited
+        assert_eq!(
+            eth_erc20.balance_of(eth_gate.contract_address).try_into().unwrap(),
+            sentinel.get_yang_asset_max(eth),
+            "yang not at max #1"
+        );
+        assert_eq!(
+            wbtc_erc20.balance_of(wbtc_gate.contract_address).try_into().unwrap(),
+            sentinel.get_yang_asset_max(wbtc),
+            "yang not at max #2"
+        );
+
+        // Withdraw all ETH and WBTC
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.melt(trove_id, forge_amt);
+        abbot.withdraw(trove_id, AssetBalance { address: eth, amount: deposit_eth_amt });
+        abbot.withdraw(trove_id, AssetBalance { address: wbtc, amount: deposit_wbtc_amt });
+
+        assert(shrine.get_deposit(eth, trove_id).is_zero(), 'wrong yang amount #1');
+        assert(shrine.get_deposit(wbtc, trove_id).is_zero(), 'wrong yang amount #2');
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
