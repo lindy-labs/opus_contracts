@@ -93,7 +93,8 @@ mod test_allocator {
     }
 
     #[test]
-    fn test_set_allocation_duplicate_address_pass() {
+    #[should_panic(expected: ('AL: Duplicate address',))]
+    fn test_set_allocation_duplicate_address_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
@@ -110,23 +111,6 @@ mod test_allocator {
             .span();
         let new_percentages = equalizer_utils::new_percentages();
         allocator.set_allocation(new_recipients, new_percentages);
-
-        let (recipients, percentages) = allocator.get_allocation();
-        assert(recipients == new_recipients, 'wrong recipients');
-        assert(percentages == new_percentages, 'wrong percentages');
-        assert(recipients.len() == 4, 'wrong array length');
-        assert(recipients.len() == percentages.len(), 'array length mismatch');
-
-        let expected_events = array![
-            (
-                allocator.contract_address,
-                allocator_contract::Event::AllocationUpdated(
-                    allocator_contract::AllocationUpdated { recipients, percentages }
-                )
-            ),
-        ];
-
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]

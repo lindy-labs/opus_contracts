@@ -146,6 +146,18 @@ mod allocator {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
+                        // Check for duplicate address
+                        let mut inner_idx = LOOP_START;
+                        loop {
+                            if inner_idx == idx {
+                                break;
+                            }
+
+                            assert(self.recipients.read(inner_idx) != *recipient, 'AL: Duplicate address');
+
+                            inner_idx += 1;
+                        };
+
                         self.recipients.write(idx, *recipient);
 
                         let percentage: Ray = *(percentages_copy.pop_front().unwrap());
