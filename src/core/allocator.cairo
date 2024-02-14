@@ -42,9 +42,9 @@ mod allocator {
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
         recipients: LegacyMap::<u32, ContractAddress>,
-        // Keeps track of the percentage for each recipient by index
-        // (idx) -> (percentage)
-        percentages: LegacyMap::<u32, Ray>,
+        // Keeps track of the percentage for each recipient by address
+        // (Recipient Address) -> (percentage)
+        percentages: LegacyMap::<ContractAddress, Ray>,
     }
 
     //
@@ -103,7 +103,7 @@ mod allocator {
 
                 let recipient: ContractAddress = self.recipients.read(idx);
                 recipients.append(recipient);
-                percentages.append(self.percentages.read(idx));
+                percentages.append(self.percentages.read(recipient));
 
                 idx += 1;
             }
@@ -133,7 +133,6 @@ mod allocator {
         // - both arrays of recipient addresses and percentages are of equal length;
         // - there is at least one recipient;
         // - the percentages add up to one Ray.
-        // Note that this function allows duplicate addresses.
         fn set_allocation_helper(ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>) {
             let recipients_len: u32 = recipients.len();
             assert(recipients_len.is_non_zero(), 'AL: No recipients');
@@ -150,7 +149,7 @@ mod allocator {
                         self.recipients.write(idx, *recipient);
 
                         let percentage: Ray = *(percentages_copy.pop_front().unwrap());
-                        self.percentages.write(idx, percentage);
+                        self.percentages.write(*recipient, percentage);
 
                         total_percentage += percentage;
 
