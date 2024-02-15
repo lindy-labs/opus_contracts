@@ -423,7 +423,7 @@ mod test_purger {
                                 };
 
                                 common::assert_equalish(
-                                    penalty, expected_penalty, (RAY_ONE / 1000).into(), 'wrong penalty'
+                                    penalty, expected_penalty, (RAY_PERCENT / 1000).into(), 'wrong penalty'
                                 );
 
                                 let expected_max_close_amt = if (*is_recovery_mode) {
