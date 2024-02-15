@@ -280,6 +280,20 @@ mod test_abbot {
     }
 
     #[test]
+    #[should_panic(expected: ('ABB: Not trove owner',))]
+    fn test_deposit_not_trove_owner_fail() {
+        let (_, _, abbot, yangs, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let asset_addr = *yangs.at(0);
+        let amount: u128 = 1;
+
+        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
+    }
+
+    #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
