@@ -481,10 +481,6 @@ mod absorber_utils {
                     let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
                     let expected_bal: u128 = before_bal + absorbed_amt;
 
-                    'provider absorbed bal'.print();
-                    after_provider_bal.print();
-                    expected_bal.print();
-
                     common::assert_equalish(after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance');
 
                     // Check preview amounts are equal
