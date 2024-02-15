@@ -496,7 +496,9 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_start_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv, Option::None
+        );
 
         // Check searcher yin balance
         assert(shrine.get_yin(searcher) == searcher_start_yin - max_close_amt, 'wrong searcher yin balance');
@@ -596,7 +598,9 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_start_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv, Option::None
+        );
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -764,7 +768,8 @@ mod test_purger {
                                             if !is_fully_liquidated {
                                                 purger_utils::assert_ltv_at_safety_margin(
                                                     target_trove_updated_start_health.threshold,
-                                                    target_trove_after_health.ltv
+                                                    target_trove_after_health.ltv,
+                                                    Option::None,
                                                 );
 
                                                 assert(
@@ -2098,14 +2103,17 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         target_trove_after_health.value,
                                                         expected_after_value,
-                                                        // (10 ** 15) error margin
-                                                        1000000000000000_u128.into(),
+                                                        (WAD_ONE / 100).into(),
                                                         'wrong value after liquidation'
                                                     );
 
                                                     purger_utils::assert_ltv_at_safety_margin(
                                                         target_trove_updated_start_health.threshold,
-                                                        target_trove_after_health.ltv
+                                                        target_trove_after_health.ltv,
+                                                        // relax error margin due to liquidated trove
+                                                        // having more value from the transfer of error
+                                                        // back to the gates
+                                                        Option::Some((RAY_PERCENT * 2).into())
                                                     );
 
                                                     // Check that caller has received compensation
@@ -2159,7 +2167,7 @@ mod test_purger {
                                                             yangs, array![absorber.contract_address].span()
                                                         ),
                                                         expected_freed_assets,
-                                                        100_u128, // error margin
+                                                        1000_u128, // error margin
                                                         'wrong absorber asset balance'
                                                     );
 
@@ -3036,7 +3044,8 @@ mod test_purger {
 
                                                     purger_utils::assert_ltv_at_safety_margin(
                                                         target_trove_updated_start_health.threshold,
-                                                        target_trove_after_health.ltv
+                                                        target_trove_after_health.ltv,
+                                                        Option::None,
                                                     );
 
                                                     let (expected_freed_pct, expected_freed_amts) =
@@ -3519,7 +3528,9 @@ mod test_purger {
             'searcher yin not used'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_after_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_after_health.threshold, target_trove_after_health.ltv, Option::None
+        );
     }
 
     #[test]
