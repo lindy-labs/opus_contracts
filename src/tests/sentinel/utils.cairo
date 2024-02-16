@@ -10,6 +10,7 @@ mod sentinel_utils {
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_caller_address};
@@ -126,12 +127,13 @@ mod sentinel_utils {
         );
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
+        let initial_deposit_amt: u128 = get_initial_asset_amt(eth);
 
         // Transferring the initial deposit amounts to `admin()`
         start_prank(CheatTarget::One(eth), common::eth_hoarder());
-        eth_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        eth_erc20.transfer(admin(), initial_deposit_amt.into());
         start_prank(CheatTarget::One(eth), admin());
-        eth_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        eth_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_prank(CheatTarget::One(eth));
 
         start_prank(CheatTarget::One(sentinel.contract_address), admin());
@@ -163,12 +165,13 @@ mod sentinel_utils {
         );
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
+        let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc);
 
         // Transferring the initial deposit amounts to `admin()`
         start_prank(CheatTarget::One(wbtc), common::wbtc_hoarder());
-        wbtc_erc20.transfer(admin(), sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        wbtc_erc20.transfer(admin(), initial_deposit_amt.into());
         start_prank(CheatTarget::One(wbtc), admin());
-        wbtc_erc20.approve(sentinel.contract_address, sentinel_contract::INITIAL_DEPOSIT_AMT.into());
+        wbtc_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_prank(CheatTarget::One(wbtc));
 
         start_prank(CheatTarget::One(sentinel.contract_address), admin());
@@ -192,5 +195,9 @@ mod sentinel_utils {
         start_prank(CheatTarget::One(token), user);
         token_erc20.approve(gate.contract_address, BoundedU256::max());
         stop_prank(CheatTarget::One(token));
+    }
+
+    fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
+        pow(10_u128, IERC20Dispatcher { contract_address: asset_addr }.decimals() / 2)
     }
 }
