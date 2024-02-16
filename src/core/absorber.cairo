@@ -407,6 +407,7 @@ mod absorber {
             // The two values deviate only when it is the first provision of an epoch and
             // total shares is below the minimum initial shares.
             let (new_provision_shares, issued_shares) = self.convert_to_shares(amount, false);
+            assert(issued_shares.is_non_zero(), 'ABS: Amount too low');
 
             // If epoch has changed, convert shares in previous epoch to new epoch's shares
             let current_epoch: u32 = self.current_epoch.read();
