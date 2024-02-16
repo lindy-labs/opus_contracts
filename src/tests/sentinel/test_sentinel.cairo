@@ -10,7 +10,7 @@ mod test_sentinel {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
-    use opus::utils::math::fixed_point_to_wad;
+    use opus::utils::math::{fixed_point_to_wad, pow};
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         PrintTrait
@@ -34,6 +34,9 @@ mod test_sentinel {
 
         let eth = *assets.at(0);
         let wbtc = *assets.at(1);
+
+        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
+        let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
         assert(sentinel.get_gate_address(*assets.at(1)) == wbtc_gate.contract_address, 'Wrong gate address #2');
@@ -86,11 +89,13 @@ mod test_sentinel {
         assert(shrine.get_yang_rate(eth, expected_era) == shrine_utils::YANG1_BASE_RATE.into(), 'Wrong yang rate #1');
         assert(shrine.get_yang_rate(wbtc, expected_era) == shrine_utils::YANG2_BASE_RATE.into(), 'Wrong yang rate #2');
 
-        assert(shrine.get_yang_total(eth) == sentinel_contract::INITIAL_DEPOSIT_AMT.into(), 'Wrong yang total #1');
-        assert(
-            shrine.get_yang_total(wbtc) == fixed_point_to_wad(sentinel_contract::INITIAL_DEPOSIT_AMT, 8),
-            'Wrong yang total #2'
+        let expected_initial_eth_yang: Wad = sentinel_utils::get_initial_asset_amt(eth).into();
+        assert_eq!(shrine.get_yang_total(eth), expected_initial_eth_yang, "Wrong yang total #1");
+
+        let expected_initial_wbtc_yang: Wad = fixed_point_to_wad(
+            sentinel_utils::get_initial_asset_amt(wbtc), wbtc_erc20.decimals()
         );
+        assert_eq!(shrine.get_yang_total(wbtc), expected_initial_wbtc_yang, "Wrong yang total #2");
 
         let expected_events = array![
             (
@@ -212,8 +217,9 @@ mod test_sentinel {
         assert(sentinel.get_yang_asset_max(eth) == new_asset_max - 1, 'Wrong asset max');
 
         // Test decreasing the max to below the current yang total
-        sentinel.set_yang_asset_max(eth, sentinel_contract::INITIAL_DEPOSIT_AMT - 1);
-        assert(sentinel.get_yang_asset_max(eth) == sentinel_contract::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max');
+        let initial_deposit_amt: u128 = sentinel_utils::get_initial_asset_amt(eth);
+        sentinel.set_yang_asset_max(eth, initial_deposit_amt - 1);
+        assert(sentinel.get_yang_asset_max(eth) == initial_deposit_amt - 1, 'Wrong asset max');
 
         let expected_events = array![
             (
@@ -236,7 +242,7 @@ mod test_sentinel {
                 sentinel.contract_address,
                 sentinel_contract::Event::YangAssetMaxUpdated(
                     sentinel_contract::YangAssetMaxUpdated {
-                        yang: eth, old_max: new_asset_max - 1, new_max: sentinel_contract::INITIAL_DEPOSIT_AMT - 1,
+                        yang: eth, old_max: new_asset_max - 1, new_max: initial_deposit_amt - 1,
                     }
                 )
             ),
@@ -282,12 +288,12 @@ mod test_sentinel {
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, common::TROVE_1, yang_amt);
 
+        let expected_initial_eth_amt: u128 = sentinel_utils::get_initial_asset_amt(eth);
+
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
         assert(
-            eth_erc20
-                .balance_of(eth_gate.contract_address) == (sentinel_contract::INITIAL_DEPOSIT_AMT + deposit_amt.val)
-                .into(),
+            eth_erc20.balance_of(eth_gate.contract_address) == (expected_initial_eth_amt + deposit_amt.val).into(),
             'Wrong eth bal after enter'
         );
         assert(shrine.get_deposit(eth, common::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
@@ -300,9 +306,7 @@ mod test_sentinel {
         assert(eth_amt == WAD_ONE, 'Wrong yang bal after exit');
         assert(
             eth_erc20
-                .balance_of(
-                    eth_gate.contract_address
-                ) == (sentinel_contract::INITIAL_DEPOSIT_AMT + deposit_amt.val - WAD_ONE)
+                .balance_of(eth_gate.contract_address) == (expected_initial_eth_amt + deposit_amt.val - WAD_ONE)
                 .into(),
             'Wrong eth bal after exit'
         );
