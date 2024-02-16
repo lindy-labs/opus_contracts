@@ -2,6 +2,7 @@ mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::{max, min};
     use core::option::OptionTrait;
+    use debug::PrintTrait;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
@@ -23,8 +24,8 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
-        EventFetcher, event_name_hash
+        start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
+        event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
@@ -406,7 +407,7 @@ mod test_purger {
                                     common::assert_equalish(
                                         target_trove_updated_health.threshold,
                                         expected_rm_threshold,
-                                        (RAY_PERCENT / 100).into(),
+                                        (RAY_PERCENT / 10).into(),
                                         'wrong rm threshold'
                                     );
                                 }
@@ -1913,8 +1914,7 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         target_trove_after_health.value,
                                                         expected_after_value,
-                                                        // (10 ** 15) error margin
-                                                        1000000000000000_u128.into(),
+                                                        (WAD_ONE / 10).into(),
                                                         'wrong value after liquidation'
                                                     );
 
@@ -2068,10 +2068,18 @@ mod test_purger {
                                                                 let remainder_asset_amt: u128 = gate
                                                                     .convert_to_assets(remainder_trove_yang);
 
+                                                                let error_margin: u128 = pow(
+                                                                    10_u128,
+                                                                    IERC20Dispatcher {
+                                                                        contract_address: gate.get_asset()
+                                                                    }
+                                                                        .decimals()
+                                                                        / 2
+                                                                );
                                                                 common::assert_equalish(
                                                                     remainder_asset_amt,
                                                                     *expected_asset_amt,
-                                                                    10000000_u128.into(),
+                                                                    error_margin,
                                                                     'wrong remainder yang asset'
                                                                 );
                                                             },

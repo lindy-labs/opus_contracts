@@ -55,7 +55,7 @@ mod test_abbot {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let expected_initial_yang: Wad = fixed_point_to_wad(
-                        sentinel_contract::INITIAL_DEPOSIT_AMT, decimals
+                        sentinel_utils::get_initial_asset_amt(*yang), decimals
                     );
                     let expected_deposited_yang: Wad = fixed_point_to_wad(
                         *deposited_amts_copy.pop_front().unwrap(), decimals
@@ -246,32 +246,6 @@ mod test_abbot {
             };
         };
 
-        // Check that non-owner can deposit to trove
-        let non_owner: ContractAddress = common::trove2_owner_addr();
-        let mut non_owner_deposit_amts: Span<u128> = abbot_utils::subsequent_deposit_amts();
-        common::fund_user(non_owner, yangs, abbot_utils::initial_asset_amts());
-
-        let mut yangs_copy = yangs;
-        let mut gates_copy = gates;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    sentinel_utils::approve_max(*gates_copy.pop_front().unwrap(), *yang, non_owner);
-
-                    let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let deposit_amt: u128 = *non_owner_deposit_amts.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = fixed_point_to_wad(deposit_amt, decimals);
-
-                    start_prank(CheatTarget::One(abbot.contract_address), non_owner);
-                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
-                    let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    assert(after_trove_yang == before_trove_yang + expected_deposited_yang, 'wrong yang amount #3');
-                },
-                Option::None => { break; },
-            };
-        };
-
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
     }
 
@@ -290,7 +264,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Trove ID cannot be 0',))]
+    #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_deposit_zero_trove_id_fail() {
         let (_, _, abbot, yangs, _) = abbot_utils::abbot_deploy(
             Option::None, Option::None, Option::None, Option::None, Option::None
@@ -306,6 +280,20 @@ mod test_abbot {
     }
 
     #[test]
+    #[should_panic(expected: ('ABB: Not trove owner',))]
+    fn test_deposit_not_trove_owner_fail() {
+        let (_, _, abbot, yangs, _, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let asset_addr = *yangs.at(0);
+        let amount: u128 = 1;
+
+        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
+    }
+
+    #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
@@ -318,20 +306,6 @@ mod test_abbot {
         let amount: u128 = 0;
 
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[should_panic(expected: ('ABB: Non-existent trove',))]
-    fn test_deposit_non_existent_trove_fail() {
-        let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
-            Option::None, Option::None, Option::None, Option::None, Option::None
-        );
-
-        let asset_addr: ContractAddress = *yangs.at(0);
-        let amount: u128 = 1;
-
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.deposit(trove_id + 1, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
