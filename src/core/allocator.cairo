@@ -3,7 +3,7 @@ mod allocator {
     use access_control::access_control_component;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, contract_address_to_felt252};
     use wadray::{Ray, RayZeroable, RAY_ONE};
 
     //
@@ -138,6 +138,10 @@ mod allocator {
             assert(recipients_len.is_non_zero(), 'AL: No recipients');
             assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
 
+            // Initialize a dictionary that maps an address to its index to easily
+            // check for duplicates
+            let mut recipients_dict: Felt252Dict<u32> = Default::default();
+
             let mut total_percentage: Ray = RayZeroable::zero();
             let mut idx: u32 = LOOP_START;
 
@@ -146,17 +150,9 @@ mod allocator {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        // Check for duplicate address
-                        let mut inner_idx = LOOP_START;
-                        loop {
-                            if inner_idx == idx {
-                                break;
-                            }
-
-                            assert(self.recipients.read(inner_idx) != *recipient, 'AL: Duplicate address');
-
-                            inner_idx += 1;
-                        };
+                        let recipient_key: felt252 = contract_address_to_felt252(*recipient);
+                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address',);
+                        recipients_dict.insert(recipient_key, idx);
 
                         self.recipients.write(idx, *recipient);
 
