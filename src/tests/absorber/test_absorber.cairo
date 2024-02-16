@@ -744,6 +744,59 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
     }
 
+    #[test]
+    #[should_panic(expected: ('ABS: Amount too low',))]
+    fn test_provide_amount_too_low_zero_shares_fail() {
+        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let donor: ContractAddress = absorber_utils::provider_1();
+        let provider: ContractAddress = absorber_utils::provider_2();
+
+        let provider = absorber_utils::provider_1();
+        let provided_amt: Wad = (10000 * WAD_ONE).into();
+        let provider_amt: Wad = (5000 * WAD_ONE).into();
+
+        let yang_asset_amts: Span<u128> = absorber_utils::provider_asset_amts();
+        common::fund_user(donor, yangs, yang_asset_amts);
+        common::open_trove_helper(abbot, donor, yangs, yang_asset_amts, gates, provided_amt);
+
+        start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
+        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.transfer(provider, provider_amt.into());
+
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        // Donor provides INITIAL_SHARES amount of yin
+        let initial_shares_amt: Wad = absorber_contract::INITIAL_SHARES.into();
+        absorber.provide(initial_shares_amt);
+
+        let donor_provision: Provision = absorber.get_provision(donor);
+        assert(donor_provision.shares.is_zero(), 'donor shares not zero');
+
+        // Donor donates 1000 yin
+        let donation_amt: Wad = (1000 * WAD_ONE).into();
+        start_prank(CheatTarget::One(shrine.contract_address), donor);
+        yin.transfer(absorber.contract_address, donation_amt.into());
+        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]));
+
+        assert_eq!(
+            yin.balance_of(absorber.contract_address),
+            (donation_amt + initial_shares_amt).into(),
+            "wrong absorber yin bal"
+        );
+
+        // Provider provides a small amount
+        start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
+        yin.approve(absorber.contract_address, BoundedU256::max());
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        let provider_provide_amt: Wad = (WAD_ONE / 1000).into();
+        absorber.provide(provider_provide_amt);
+    }
+
     // Sequence of events
     // 1. Provider 1 provides.
     // 2. Full absorption occurs. Provider 1 receives 1 round of rewards.
