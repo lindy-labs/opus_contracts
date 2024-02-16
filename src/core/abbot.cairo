@@ -192,9 +192,8 @@ mod abbot {
             // There is no need to check the yang address is non-zero because the
             // Sentinel does not allow a zero address yang to be added.
 
-            assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
-            assert(trove_id <= self.troves_count.read(), 'ABB: Non-existent trove');
-            // note that caller does not need to be the trove's owner to deposit
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
 
             self.deposit_helper(trove_id, get_caller_address(), yang_asset);
         }
