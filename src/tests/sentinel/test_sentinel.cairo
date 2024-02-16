@@ -326,6 +326,7 @@ mod test_sentinel {
 
         sentinel_utils::approve_max(wbtc_gate, wbtc, user);
 
+        let initial_wbtc_amt: u128 = sentinel_utils::get_initial_asset_amt(wbtc);
         // Deposit a very small amount of WBTC
         let deposit_amt: u128 = 9_u128;
 
@@ -341,9 +342,7 @@ mod test_sentinel {
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == fixed_point_to_wad(deposit_amt, common::WBTC_DECIMALS), 'Wrong yang bal after enter');
         assert(
-            wbtc_erc20
-                .balance_of(wbtc_gate.contract_address) == (sentinel_contract::INITIAL_DEPOSIT_AMT + deposit_amt)
-                .into(),
+            wbtc_erc20.balance_of(wbtc_gate.contract_address) == (initial_wbtc_amt + deposit_amt).into(),
             'Wrong wbtc bal after enter'
         );
         assert(shrine.get_deposit(wbtc, common::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
@@ -355,8 +354,7 @@ mod test_sentinel {
         assert(preview_wbtc_amt == deposit_amt, 'Wrong preview exit WBTC amt');
         assert(wbtc_amt == deposit_amt, 'Wrong exit amt');
         assert(
-            wbtc_erc20.balance_of(wbtc_gate.contract_address) == sentinel_contract::INITIAL_DEPOSIT_AMT.into(),
-            'Wrong wbtc bal after exit'
+            wbtc_erc20.balance_of(wbtc_gate.contract_address) == initial_wbtc_amt.into(), 'Wrong wbtc bal after exit'
         );
         assert(shrine.get_deposit(wbtc, common::TROVE_1).is_zero(), 'Wrong yang bal in shrine');
     }
