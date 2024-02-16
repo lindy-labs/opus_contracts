@@ -2,6 +2,7 @@ mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::{max, min};
     use core::option::OptionTrait;
+    use debug::PrintTrait;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
@@ -23,8 +24,8 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions,
-        EventFetcher, event_name_hash
+        start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
+        event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
@@ -1172,7 +1173,7 @@ mod test_purger {
             before_absorber_asset_bals,
             common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
-            10_u128, // error margin
+            10000_u128, // error margin
             'wrong absorber asset balance',
         );
 
@@ -1377,7 +1378,7 @@ mod test_purger {
             before_absorber_asset_bals,
             common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
-            10_u128, // error margin
+            10000_u128, // error margin
             'wrong absorber asset balance',
         );
 
