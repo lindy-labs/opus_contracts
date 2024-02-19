@@ -192,24 +192,22 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
 struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
-    has_removed: bool, // Whether provider has called `remove`
+    is_valid: bool, // Whether the request is still valid i.e. provider has not called `remove` or `provide`
 }
 
 impl RequestStorePacking of StorePacking<Request, felt252> {
     fn pack(value: Request) -> felt252 {
-        value.timestamp.into() + (value.timelock.into() * TWO_POW_64) + (value.has_removed.into() * TWO_POW_128)
+        value.timestamp.into() + (value.timelock.into() * TWO_POW_64) + (value.is_valid.into() * TWO_POW_128)
     }
 
     fn unpack(value: felt252) -> Request {
         let value: u256 = value.into();
         let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
         let (rest, timestamp) = u256_safe_div_rem(value, shift);
-        let (has_removed, timelock) = u256_safe_div_rem(rest, shift);
+        let (is_valid, timelock) = u256_safe_div_rem(rest, shift);
 
         Request {
-            timestamp: timestamp.try_into().unwrap(),
-            timelock: timelock.try_into().unwrap(),
-            has_removed: has_removed == 1
+            timestamp: timestamp.try_into().unwrap(), timelock: timelock.try_into().unwrap(), is_valid: is_valid == 1
         }
     }
 }

@@ -40,8 +40,8 @@ fn test_display_and_debug() {
     assert_eq!(format!("{}", p), expected, "Provision display");
     assert_eq!(format!("{:?}", p), expected, "Provision debug");
 
-    let r = Request { timestamp: 123, timelock: 456, has_removed: true };
-    let expected = "Request { timestamp: 123, timelock: 456, has_removed: true }";
+    let r = Request { timestamp: 123, timelock: 456, is_valid: true };
+    let expected = "Request { timestamp: 123, timelock: 456, is_valid: true }";
     assert_eq!(format!("{}", r), expected, "Provision display");
     assert_eq!(format!("{:?}", r), expected, "Provision debug");
 }
