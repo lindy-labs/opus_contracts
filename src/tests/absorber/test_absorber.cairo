@@ -1325,7 +1325,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), first_provider);
 
         // Trigger an update of the provider's Provision
-        absorber.provide(WadZeroable::zero());
+        absorber.reap();
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         // FIrst provider has zero shares due to loss of precision
         assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
@@ -1338,14 +1338,6 @@ mod test_absorber {
                 absorber_contract::Event::EpochChanged(
                     absorber_contract::EpochChanged {
                         old_epoch: absorber_contract::FIRST_EPOCH, new_epoch: expected_epoch,
-                    }
-                )
-            ),
-            (
-                absorber.contract_address,
-                absorber_contract::Event::Provide(
-                    absorber_contract::Provide {
-                        provider: first_provider, epoch: expected_epoch, yin: WadZeroable::zero()
                     }
                 )
             ),
@@ -1588,7 +1580,7 @@ mod test_absorber {
                     let (_, preview_reward_assets) = absorber.preview_reap(first_provider);
 
                     // Trigger an update of the provider's Provision
-                    absorber.provide(WadZeroable::zero());
+                    absorber.reap();
                     let first_provider_info: Provision = absorber.get_provision(first_provider);
                     let expected_provider_shares: Wad = *remaining_yin_amt - absorber_contract::INITIAL_SHARES.into();
                     common::assert_equalish(
@@ -2131,7 +2123,7 @@ mod test_absorber {
 
         // Trigger rewards
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.provide(0_u128.into());
+        absorber.reap();
 
         let after_opus_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
@@ -2171,7 +2163,7 @@ mod test_absorber {
 
         // Trigger rewards
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.provide(0_u128.into());
+        absorber.reap();
 
         let final_opus_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
@@ -2229,7 +2221,7 @@ mod test_absorber {
 
         // Trigger rewards
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.provide(0_u128.into());
+        absorber.reap();
 
         let after_opus_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(opus_addr, expected_epoch);
