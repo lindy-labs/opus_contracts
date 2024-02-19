@@ -375,7 +375,6 @@ mod test_absorber {
 
         let mut percentages_to_drain = percentages_to_drain.span();
 
-        let mut salt: felt252 = 0;
         loop {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
@@ -606,8 +605,6 @@ mod test_absorber {
                         // Check `request` is used
                         assert(absorber.get_provider_request(provider).has_removed, 'request should be fulfilled');
                     }
-
-                    salt += 1;
                 },
                 Option::None => { break; },
             };
