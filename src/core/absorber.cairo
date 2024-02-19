@@ -60,9 +60,10 @@ mod absorber {
     // before the cooldown of the previous request has elapsed
     const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
 
-    // Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
+    // Amount of time, in seconds, for which a withdrawal can be made for a request, starting from expiry 
+    // of the timelock
     // 60 minutes * 60 seconds per minute
-    const REQUEST_VALIDITY_PERIOD: u64 = consteval_int!(60 * 60);
+    const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
@@ -418,6 +419,11 @@ mod absorber {
             // Update total shares for current epoch
             self.total_shares.write(self.total_shares.read() + issued_shares);
 
+            // Reset request if any
+            let mut request: Request = self.provider_request.read(provider);
+            request.is_valid = false;
+            self.provider_request.write(provider, request);
+
             // Perform transfer of yin
             let absorber: ContractAddress = get_contract_address();
 
@@ -433,7 +439,8 @@ mod absorber {
         // - This is intended to prevent atomic removals to avoid risk-free yield (from rewards and interest)
         //   frontrunning tactics.
         //   The timelock increases if another request is submitted before the previous has cooled down.
-        // - A request is expended by either (1) a removal; (2) expiry; or (3) submitting a new request.
+        // - A request is expended by either (1) a removal; (2) expiry; (3) submitting a new request; 
+        //   or (4) a provision.
         // - Note: A request may become valid in the next epoch if a provider in the previous epoch
         //         submitted a request, a draining absorption occurs, and the provider provides again
         //         in the next epoch. This is expected to be rare, and the maximum risk-free profit is
@@ -453,9 +460,7 @@ mod absorber {
             let capped_timelock: u64 = min(timelock, REQUEST_MAX_TIMELOCK);
             self
                 .provider_request
-                .write(
-                    provider, Request { timestamp: current_timestamp, timelock: capped_timelock, has_removed: false }
-                );
+                .write(provider, Request { timestamp: current_timestamp, timelock: capped_timelock, is_valid: true });
             self.emit(RequestSubmitted { provider, timestamp: current_timestamp, timelock: capped_timelock });
         }
 
@@ -509,7 +514,7 @@ mod absorber {
                 assert(success, 'ABS: Transfer failed');
             }
 
-            request.has_removed = true;
+            request.is_valid = false;
             self.provider_request.write(provider, request);
             self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
         }
@@ -889,12 +894,15 @@ mod absorber {
             }
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
-            assert(!request.has_removed, 'ABS: Only 1 removal per request');
+            assert(request.is_valid, 'ABS: Request is no longer valid');
 
             let current_timestamp: u64 = starknet::get_block_timestamp();
             let removal_start_timestamp: u64 = request.timestamp + request.timelock;
-            assert(removal_start_timestamp <= current_timestamp, 'ABS: Request is not valid yet');
-            assert(current_timestamp <= removal_start_timestamp + REQUEST_VALIDITY_PERIOD, 'ABS: Request has expired');
+            assert(removal_start_timestamp <= current_timestamp, 'ABS: Before withdrawal period');
+            assert(
+                current_timestamp <= removal_start_timestamp + REQUEST_WITHDRAWAL_PERIOD,
+                'ABS: Withdrawal period expired'
+            );
         }
 
         //
