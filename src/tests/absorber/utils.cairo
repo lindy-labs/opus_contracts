@@ -680,7 +680,6 @@ mod absorber_utils {
                         actual_asset_amt_per_share == expected_asset_amt_per_share, 'wrong absorbed amount per share'
                     );
 
-                    // TODO: pass token balance of gates to calculate errors
                     let yang_erc20 = IERC20Dispatcher { contract_address: *yang };
                     let gate: ContractAddress = sentinel.get_gate_address(*yang);
                     let updated_gate_balance: u128 = yang_erc20.balance_of(gate).try_into().unwrap();
