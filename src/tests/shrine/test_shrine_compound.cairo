@@ -716,14 +716,14 @@ mod test_shrine_compound {
         // O X O
         // X O X
         //
-        // where X is the constant `USE_PREV_BASE_RATE` value that sets the base rate to the previous value.
+        // where X is the constant `USE_PREV_ERA_BASE_RATE` value that sets the base rate to the previous value.
         //
         // Note that the arrays are created as a list of yang base rate updates
 
         // `yang_base_rates_history_to_update` is used to perform the rate updates, while
         // `yang_base_rates_history_to_compound` is used to perform calculation of the compounded interest
         // The main difference between the two arrays are:
-        // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_BASE_RATE`
+        // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_ERA_BASE_RATE`
         //     which is equivalent to `RAY_SCALE + 1`, whereas the actual value that is used to calculate
         //     compound interest is the previous base rate.
         // (2) `yang_base_rates_history_to_compound` has an extra item for the initial base rates at the time

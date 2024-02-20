@@ -7,7 +7,7 @@ mod test_allocator {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, contract_address_try_from_felt252};
     use wadray::Ray;
 
     #[test]
@@ -90,6 +90,27 @@ mod test_allocator {
         ];
 
         spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('AL: Duplicate address',))]
+    fn test_set_allocation_duplicate_address_fail() {
+        let allocator = equalizer_utils::allocator_deploy(
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+        );
+
+        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
+
+        start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
+        let new_recipients: Span<ContractAddress> = array![
+            contract_address_try_from_felt252('new recipient 1').unwrap(),
+            contract_address_try_from_felt252('new recipient 2').unwrap(),
+            contract_address_try_from_felt252('new recipient 3').unwrap(),
+            contract_address_try_from_felt252('new recipient 1').unwrap(),
+        ]
+            .span();
+        let new_percentages = equalizer_utils::new_percentages();
+        allocator.set_allocation(new_recipients, new_percentages);
     }
 
     #[test]

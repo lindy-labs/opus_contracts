@@ -459,8 +459,8 @@ mod test_shrine {
             .update_rates(
                 yangs,
                 array![
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     RAY_ONE.into(),
                 ]
                     .span()
@@ -495,9 +495,9 @@ mod test_shrine {
             .update_rates(
                 shrine_utils::three_yang_addrs(),
                 array![
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                 ]
                     .span()
             );
@@ -512,8 +512,8 @@ mod test_shrine {
             .update_rates(
                 shrine_utils::three_yang_addrs(),
                 array![
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     (RAY_ONE + 2).into(),
                 ]
                     .span()
@@ -528,7 +528,8 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
-                array![shrine_contract::USE_PREV_BASE_RATE.into(), shrine_contract::USE_PREV_BASE_RATE.into(),].span()
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                    .span()
             );
     }
 
@@ -540,7 +541,8 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::two_yang_addrs_reversed(),
-                array![shrine_contract::USE_PREV_BASE_RATE.into(), shrine_contract::USE_PREV_BASE_RATE.into(),].span()
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                    .span()
             );
     }
 
@@ -554,9 +556,9 @@ mod test_shrine {
                 array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr(),]
                     .span(),
                 array![
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                 ]
                     .span()
             );
@@ -571,8 +573,8 @@ mod test_shrine {
             .update_rates(
                 array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr(),].span(),
                 array![
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
-                    shrine_contract::USE_PREV_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
+                    shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     21000000000000000000000000_u128.into(), // 2.1% (Ray)
                 ]
                     .span()
