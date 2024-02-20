@@ -133,8 +133,7 @@ mod abbot {
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
-            let troves_count: u64 = self.troves_count.read();
-            let new_troves_count: u64 = troves_count + 1;
+            let new_troves_count: u64 = self.troves_count.read() + 1;
             self.troves_count.write(new_troves_count);
 
             let user = get_caller_address();
