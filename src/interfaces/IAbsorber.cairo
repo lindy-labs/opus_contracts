@@ -14,7 +14,7 @@ trait IAbsorber<TContractState> {
     fn get_provision(self: @TContractState, provider: ContractAddress) -> Provision;
     fn get_provider_last_absorption(self: @TContractState, provider: ContractAddress) -> u32;
     fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
-    fn get_asset_absorption(self: @TContractState, asset: ContractAddress, absorption_id: u32) -> DistributionInfo;
+    fn get_asset_absorption(self: @TContractState, asset: ContractAddress, absorption_id: u32) -> u128;
     fn get_cumulative_reward_amt_by_epoch(
         self: @TContractState, asset: ContractAddress, epoch: u32
     ) -> DistributionInfo;
