@@ -61,12 +61,11 @@ mod equalizer_roles {
 
 mod pragma_roles {
     const ADD_YANG: u128 = 1;
-    const SET_ORACLE_ADDRESS: u128 = 2;
-    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
+    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 2;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS
+        ADD_YANG + SET_PRICE_VALIDITY_THRESHOLDS
     }
 }
 

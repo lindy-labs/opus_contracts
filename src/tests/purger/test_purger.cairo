@@ -253,7 +253,7 @@ mod test_purger {
             .span();
 
         let mut expected_penalty: Span<Ray> = array![
-            (3 * RAY_PERCENT).into(), // 3% (0% threshold)
+            (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
             (3 * RAY_PERCENT).into(), // 3% (1% threshold)
             (3 * RAY_PERCENT).into(), // 3% (70% threshold)
             (3 * RAY_PERCENT).into(), // 3% (80% threshold)
@@ -278,13 +278,13 @@ mod test_purger {
             .span();
 
         let mut expected_rm_penalty: Span<Ray> = array![
-            (3 * RAY_PERCENT).into(), // 3% (0% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (1% threshold)
+            (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
+            (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (1% threshold)
             purger_contract::MAX_PENALTY.into(), // 3% (70% threshold, 49% rm threshold)
             purger_contract::MAX_PENALTY.into(), // 3% (80% threshold, 56% rm threshold)
-            purger_contract::MAX_PENALTY.into(), // 3% (90% threshold)
-            purger_contract::MAX_PENALTY.into(), // 3% (96% threshold)
-            purger_contract::MAX_PENALTY.into(), // 3% (97% threshold)
+            111111111111111111111111111_u128.into(), // 3% (90% threshold)
+            41666666666666666666666667_u128.into(), // 3% (96% threshold)
+            30927835051546391457587675_u128.into(), // 3% (97% threshold)
             10101000000000000000000000_u128.into(), // 1.0101% (99% threshold)
         ]
             .span();
@@ -423,7 +423,7 @@ mod test_purger {
                                 };
 
                                 common::assert_equalish(
-                                    penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty'
+                                    penalty, expected_penalty, (RAY_PERCENT / 1000).into(), 'wrong penalty'
                                 );
 
                                 let expected_max_close_amt = if (*is_recovery_mode) {
