@@ -43,7 +43,8 @@ mod sentinel {
         yang_to_gate: LegacyMap::<ContractAddress, IGateDispatcher>,
         // length of the yang_addresses array
         yang_addresses_count: u64,
-        // 0-based array of yang addresses added to the Shrine via this Sentinel
+        // array of yang addresses added to the Shrine via this Sentinel
+        // starts from index 1
         yang_addresses: LegacyMap::<u64, ContractAddress>,
         // The Shrine associated with this Sentinel
         shrine: IShrineDispatcher,
