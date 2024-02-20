@@ -252,20 +252,20 @@ mod test_absorber {
         );
 
         let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, first_update_assets);
-        // let expected_events = array![
-        //     (
-        //         absorber.contract_address,
-        //         absorber_contract::Event::Gain(
-        //             absorber_contract::Gain {
-        //                 assets: expected_absorbed_assets,
-        //                 total_recipient_shares: expected_recipient_shares,
-        //                 epoch: expected_epoch,
-        //                 absorption_id: expected_absorption_id
-        //             }
-        //         )
-        //     ),
-        // ];
-        // spy.assert_emitted(@expected_events);
+        let expected_events = array![
+            (
+                absorber.contract_address,
+                absorber_contract::Event::Gain(
+                    absorber_contract::Gain {
+                        assets: expected_absorbed_assets,
+                        total_recipient_shares: expected_recipient_shares,
+                        epoch: expected_epoch,
+                        absorption_id: expected_absorption_id
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         // Step 4
         let provider_before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
