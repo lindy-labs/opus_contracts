@@ -430,7 +430,7 @@ mod absorber {
 
         // Submit a request to `remove` that is valid for a fixed period of time after a variable timelock.
         // - This is intended to prevent atomic removals to avoid risk-free yield (from rewards and interest)
-        //   frontrunning tactics.
+        //   front-running tactics.
         //   The timelock increases if another request is submitted before the previous has cooled down.
         // - A request is expended by either (1) a removal; (2) expiry; or (3) submitting a new request.
         // - Note: A request may become valid in the next epoch if a provider in the previous epoch
