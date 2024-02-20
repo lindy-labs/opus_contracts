@@ -8,7 +8,7 @@ The Equalizer balances the budget of the Shrine by allowing the budget to be res
 
 ## Description of key functions
 
-1. `equalize`: mint debt surpluses in the form of `yin` to the Equalizer itself if the Shrine has a positive bduget (this ensures that the amount of `yin` in circulation matches the total amount of debt in the Shrine, so as to prevent an “[infinite debt treadmill that requires ever-growing loans to sustain, and is never repayable](https://bank.dev/vox)”, albeit with a time lag)
+1. `equalize`: mint debt surpluses in the form of `yin` to the Equalizer itself if the Shrine has a positive budget (this ensures that the amount of `yin` in circulation matches the total amount of debt in the Shrine, so as to prevent an “[infinite debt treadmill that requires ever-growing loans to sustain, and is never repayable](https://bank.dev/vox)”, albeit with a time lag)
 2. `normalize`: pay down the debt deficit in the Shrine using the caller's `yin`
 3. `allocate`: distribute the Equalizer's `yin` balance to the allocated recipients&#x20;
 
