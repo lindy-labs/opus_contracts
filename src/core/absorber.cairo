@@ -560,13 +560,11 @@ mod absorber {
                         let error: u128 = self
                             .update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
 
-                        if error.is_zero() {
-                            continue;
-                        }
-
                         // Transfer any excess error back to the Gate
-                        let gate: ContractAddress = sentinel.get_gate_address(*asset_balance.address);
-                        IERC20Dispatcher { contract_address: *asset_balance.address }.transfer(gate, error.into());
+                        if error.is_non_zero() {
+                            let gate: ContractAddress = sentinel.get_gate_address(*asset_balance.address);
+                            IERC20Dispatcher { contract_address: *asset_balance.address }.transfer(gate, error.into());
+                        }
                     },
                     Option::None => { break; }
                 };
