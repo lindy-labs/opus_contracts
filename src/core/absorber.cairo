@@ -39,12 +39,11 @@ mod absorber {
     const YIN_PER_SHARE_THRESHOLD: u128 = 1000000000000000; // 10**15 = 0.001 (Wad)
 
     // Shares to be minted without a provider to avoid first provider front-running
-    const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
+    const INITIAL_SHARES: u128 = 1000000000; // 10 ** 9 (Wad);
 
-    // Minimum total shares, including the initial shares, for each epoch
-    // to prevent overflows in fixed point operations when the divisor (total shares)
-    // is a very small number
-    const MINIMUM_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
+    // Minimum amount of shares, excluding the initial shares, that is needed to prevent overflows
+    // when calculating the amount of assets per share
+    const MINIMUM_RECIPIENT_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
     // First epoch of the Absorber
     const FIRST_EPOCH: u32 = 1;
@@ -317,8 +316,8 @@ mod absorber {
         // View
         //
 
-        // Returns true if the total shares in current epoch is at least `MINIMUM_SHARES`, so as
-        // to prevent underflows when distributing absorbed assets and rewards.
+        // Returns true if there is at least `MINIMUM_RECIPIENT_SHARES` amount of recipient shares, 
+        // so as to prevent underflows when distributing absorbed assets and rewards.
         fn is_operational(self: @ContractState) -> bool {
             is_operational_helper(self.total_shares.read())
         }
@@ -1084,6 +1083,6 @@ mod absorber {
 
     #[inline(always)]
     fn is_operational_helper(total_shares: Wad) -> bool {
-        total_shares >= MINIMUM_SHARES.into()
+        total_shares >= (INITIAL_SHARES + MINIMUM_RECIPIENT_SHARES).into()
     }
 }
