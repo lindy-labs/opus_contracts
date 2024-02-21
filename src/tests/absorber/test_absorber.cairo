@@ -194,9 +194,12 @@ mod test_absorber {
         absorber.remove(BoundedWad::max());
 
         // Loss of precision
-        let error_margin: Wad = absorber_contract::INITIAL_SHARES.into();
+        let error_margin: Wad = 1000_u128.into();
         common::assert_equalish(
-            shrine.get_yin(provider), before_provider_yin_bal + provided_amt, error_margin, 'wrong yin amount'
+            shrine.get_yin(provider),
+            before_provider_yin_bal + provided_amt - absorber_contract::INITIAL_SHARES.into(),
+            error_margin,
+            'wrong yin amount'
         );
 
         let expected_events = array![
