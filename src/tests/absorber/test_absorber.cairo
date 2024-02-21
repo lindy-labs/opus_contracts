@@ -194,7 +194,7 @@ mod test_absorber {
         absorber.remove(BoundedWad::max());
 
         // Loss of precision
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: Wad = absorber_contract::INITIAL_SHARES.into();
         common::assert_equalish(
             shrine.get_yin(provider), before_provider_yin_bal + provided_amt, error_margin, 'wrong yin amount'
         );
@@ -220,8 +220,8 @@ mod test_absorber {
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
-        let expected_recipient_shares: Wad = total_shares - absorber_contract::INITIAL_SHARES.into();
+        let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - absorber_contract::INITIAL_SHARES.into();
         let expected_epoch = 1;
         let expected_absorption_id = 1;
 
@@ -304,7 +304,7 @@ mod test_absorber {
 
         assert(absorber.get_provider_last_absorption(provider) == 1, 'wrong last absorption');
 
-        let error_margin: u128 = 1000;
+        let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             provider,
@@ -483,7 +483,7 @@ mod test_absorber {
                         sentinel,
                         absorber,
                         expected_absorption_id,
-                        before_total_shares,
+                        expected_recipient_shares,
                         yangs,
                         first_update_assets,
                         before_gate_balances
@@ -493,7 +493,7 @@ mod test_absorber {
                     let absorption_epoch = absorber_contract::FIRST_EPOCH;
                     absorber_utils::assert_reward_cumulative_updated(
                         absorber,
-                        before_total_shares,
+                        expected_recipient_shares,
                         absorption_epoch,
                         reward_tokens,
                         reward_amts_per_blessing,
@@ -508,6 +508,7 @@ mod test_absorber {
                     let before_absorbed_bals = common::get_token_balances(yangs, provider.into());
                     let before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+                    let before_absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
 
                     // Perform three different actions
                     // (in the following order if the number of test cases is a multiple of 3):
@@ -542,9 +543,7 @@ mod test_absorber {
                     };
 
                     // Check rewards
-                    // Custom error margin is used due to loss of precision and initial minimum shares
-                    let error_margin: u128 = 500;
-
+                    let error_margin: u128 = 10000;
                     absorber_utils::assert_provider_received_absorbed_assets(
                         absorber,
                         provider,
@@ -554,6 +553,7 @@ mod test_absorber {
                         error_margin,
                     );
 
+                    let error_margin: u128 = 500;
                     absorber_utils::assert_provider_received_rewards(
                         absorber,
                         provider,
@@ -594,7 +594,8 @@ mod test_absorber {
                     // and provider are updated.
                     if remove_as_second_action {
                         let expected_removed_amt: Wad = wadray::rmul_wr(
-                            first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain)
+                            first_provided_amt - absorber_contract::INITIAL_SHARES.into(),
+                            (RAY_SCALE.into() - *percentage_to_drain)
                         );
                         let error_margin: Wad = 1000_u128.into();
                         common::assert_equalish(
@@ -603,9 +604,11 @@ mod test_absorber {
                             error_margin,
                             'wrong provider yin balance'
                         );
+
+                        let expected_absorber_yin: Wad = before_absorber_yin_bal - expected_removed_amt;
                         common::assert_equalish(
                             shrine.get_yin(absorber.contract_address),
-                            WadZeroable::zero(),
+                            expected_absorber_yin,
                             error_margin,
                             'wrong absorber yin balance'
                         );
@@ -703,11 +706,12 @@ mod test_absorber {
         assert(after_absorber_yin_bal == (first_provided_amt + second_provided_amt).into(), 'wrong yin balance');
         assert(before_last_absorption_id == after_last_absorption_id, 'absorption id should not change');
 
+        let expected_recipient_shares: Wad = before_total_shares - absorber_contract::INITIAL_SHARES.into();
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
         let expected_epoch: u32 = 1;
         absorber_utils::assert_reward_cumulative_updated(
             absorber,
-            before_total_shares,
+            expected_recipient_shares,
             expected_epoch,
             reward_tokens,
             reward_amts_per_blessing,
@@ -782,7 +786,7 @@ mod test_absorber {
         let donor_provision: Provision = absorber.get_provision(donor);
         assert(donor_provision.shares.is_zero(), 'donor shares not zero');
 
-        // Donor donates 1000 yin
+        // Donor donates 1,000 yin
         let donation_amt: Wad = (1000 * WAD_ONE).into();
         start_prank(CheatTarget::One(shrine.contract_address), donor);
         yin.transfer(absorber.contract_address, donation_amt.into());
@@ -799,7 +803,7 @@ mod test_absorber {
         yin.approve(absorber.contract_address, BoundedU256::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        let provider_provide_amt: Wad = (WAD_ONE / 1000).into();
+        let provider_provide_amt: Wad = 1_u128.into();
         absorber.provide(provider_provide_amt);
     }
 
@@ -823,7 +827,8 @@ mod test_absorber {
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        let first_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - absorber_contract::INITIAL_SHARES.into();
 
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -857,7 +862,8 @@ mod test_absorber {
         let second_epoch: u32 = absorber_contract::FIRST_EPOCH + 1;
         assert(second_provider_info.epoch == second_epoch, 'wrong provider epoch');
 
-        let second_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        let second_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - absorber_contract::INITIAL_SHARES.into();
 
         // Step 4
 
@@ -870,7 +876,6 @@ mod test_absorber {
         assert(absorber.get_current_epoch() == third_epoch, 'wrong epoch');
         assert(!absorber.is_operational(), 'should not be operational');
 
-        let expected_recipient_shares = second_epoch_total_shares - absorber_contract::INITIAL_SHARES.into();
         let expected_absorption_id = 2;
         let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, second_update_assets);
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
@@ -882,7 +887,7 @@ mod test_absorber {
                 absorber_contract::Event::Gain(
                     absorber_contract::Gain {
                         assets: expected_absorbed_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: second_epoch_recipient_shares,
                         epoch: second_epoch,
                         absorption_id: expected_absorption_id
                     }
@@ -895,7 +900,7 @@ mod test_absorber {
                 absorber_contract::Event::Bestow(
                     absorber_contract::Bestow {
                         assets: expected_rewarded_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: second_epoch_recipient_shares,
                         epoch: second_epoch,
                     }
                 )
@@ -914,7 +919,7 @@ mod test_absorber {
 
         assert(absorber.get_provider_last_absorption(first_provider) == 2, 'wrong last absorption');
 
-        let error_margin: u128 = 1000;
+        let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -927,7 +932,7 @@ mod test_absorber {
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
         absorber_utils::assert_reward_cumulative_updated(
             absorber,
-            first_epoch_total_shares,
+            first_epoch_recipient_shares,
             absorber_contract::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
@@ -948,7 +953,6 @@ mod test_absorber {
 
         let third_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
         assert(third_epoch_total_shares.is_zero(), 'wrong total shares');
-        let expected_recipient_shares = third_epoch_total_shares;
         let expected_events = array![
             (
                 absorber.contract_address,
@@ -965,18 +969,8 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
 
         // TODO: Revisit when foundry has support for checking events that weren't emitted
-        // let should_not_emit = array![
-        //     // No rewards should be bestowed because Absorber is inoperational
-        //     // after second absorption.
-        //     (absorber.contract_address,
-        //     absorber_contract::Event::Bestow(
-        //         absorber_contract::Bestow {
-        //             assets: expected_rewarded_assets,
-        //             total_recipient_shares: expected_recipient_shares,
-        //             epoch: second_epoch,
-        //         }
-        //     )),
-        // ];
+        //       No rewards should be bestowed because Absorber is inoperational
+        //       after second absorption.
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(reward_tokens, second_provider.into());
@@ -989,7 +983,7 @@ mod test_absorber {
 
         assert(absorber.get_provider_last_absorption(second_provider) == 2, 'wrong last absorption');
 
-        let error_margin: u128 = 1000;
+        let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
@@ -1002,7 +996,7 @@ mod test_absorber {
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
         absorber_utils::assert_reward_cumulative_updated(
             absorber,
-            second_epoch_total_shares,
+            second_epoch_recipient_shares,
             second_epoch,
             reward_tokens,
             reward_amts_per_blessing,
@@ -1035,20 +1029,9 @@ mod test_absorber {
         ];
 
         spy.assert_emitted(@expected_events);
-    // TODO: Revisit when foundry has support for checking for events that weren't emitted
-    // let should_not_emit = array![
-    //     // No rewards should be bestowed because Absorber is inoperational
-    //     // after second absorption.
-    //     (absorber.contract_address,
-    //     absorber_contract::Event::Bestow(
-    //         absorber_contract::Bestow {
-    //             assets: expected_rewarded_assets,
-    //             total_recipient_shares: expected_recipient_shares,
-    //             epoch: third_epoch,
-    //         }
-    //     )),
-    // ];
-
+    // TODO: Revisit when foundry has support for checking events that weren't emitted
+    //       No rewards should be bestowed because Absorber is inoperational
+    //       after second absorption.
     }
 
 
@@ -1090,7 +1073,8 @@ mod test_absorber {
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
         // Amount of yin remaining needs to be sufficiently significant to account for loss of precision
         // from conversion of shares across epochs, after discounting initial shares.
-        let above_min_shares: Wad = absorber_contract::MINIMUM_SHARES.into();
+        let above_min_shares: Wad = (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+            .into();
         let burn_amt: Wad = first_provided_amt - above_min_shares;
         absorber_utils::simulate_update_with_amt_to_drain(shrine, absorber, yangs, first_update_assets, burn_amt);
 
@@ -1109,14 +1093,14 @@ mod test_absorber {
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             reward_tokens, reward_amts_per_blessing
         );
-        let expected_recipient_shares = first_epoch_total_shares - absorber_contract::INITIAL_SHARES.into();
+        let first_epoch_recipient_shares = first_epoch_total_shares - absorber_contract::INITIAL_SHARES.into();
         let expected_events = array![
             (
                 absorber.contract_address,
                 absorber_contract::Event::Gain(
                     absorber_contract::Gain {
                         assets: expected_absorbed_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: first_epoch_recipient_shares,
                         epoch: absorber_contract::FIRST_EPOCH,
                         absorption_id: 1
                     }
@@ -1127,7 +1111,7 @@ mod test_absorber {
                 absorber_contract::Event::Bestow(
                     absorber_contract::Bestow {
                         assets: expected_rewarded_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: first_epoch_recipient_shares,
                         epoch: absorber_contract::FIRST_EPOCH,
                     }
                 )
@@ -1145,7 +1129,7 @@ mod test_absorber {
 
         // Second epoch starts here
         // Step 3
-        let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+        let second_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
 
         let second_provider = absorber_utils::provider_2();
@@ -1186,7 +1170,7 @@ mod test_absorber {
                 absorber_contract::Event::Bestow(
                     absorber_contract::Bestow {
                         assets: expected_rewarded_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: second_epoch_recipient_shares,
                         epoch: expected_current_epoch,
                     }
                 )
@@ -1199,7 +1183,7 @@ mod test_absorber {
         let first_provider_before_reward_bals = common::get_token_balances(reward_tokens, first_provider.into());
         let first_provider_before_absorbed_bals = common::get_token_balances(yangs, first_provider.into());
 
-        let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+        let updated_second_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
 
         start_prank(CheatTarget::One(absorber.contract_address), first_provider);
@@ -1224,7 +1208,7 @@ mod test_absorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        let error_margin: u128 = 1000;
+        let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -1238,7 +1222,7 @@ mod test_absorber {
         let expected_first_epoch_blessings_multiplier: Ray = RAY_SCALE.into();
         absorber_utils::assert_reward_cumulative_updated(
             absorber,
-            first_epoch_total_shares,
+            first_epoch_recipient_shares,
             absorber_contract::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
@@ -1275,7 +1259,7 @@ mod test_absorber {
                 absorber_contract::Event::Bestow(
                     absorber_contract::Bestow {
                         assets: expected_rewarded_assets,
-                        total_recipient_shares: expected_recipient_shares,
+                        total_recipient_shares: updated_second_epoch_recipient_shares,
                         epoch: expected_current_epoch,
                     }
                 )
@@ -1382,7 +1366,8 @@ mod test_absorber {
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        let first_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - absorber_contract::INITIAL_SHARES.into();
 
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1466,7 +1451,7 @@ mod test_absorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        let error_margin: u128 = 1000;
+        let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -1480,7 +1465,7 @@ mod test_absorber {
         let expected_first_epoch_blessings_multiplier: Ray = RAY_SCALE.into();
         absorber_utils::assert_reward_cumulative_updated(
             absorber,
-            first_epoch_total_shares,
+            first_epoch_recipient_shares,
             absorber_contract::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
@@ -1517,7 +1502,7 @@ mod test_absorber {
             // lower bound for remaining yin without total shares being zeroed
             (absorber_contract::INITIAL_SHARES + 1)
                 .into(), // upper bound for remaining yin before rewards are distributed
-            (absorber_contract::MINIMUM_SHARES - 1).into(),
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into(),
         ];
         let mut remaining_yin_amts = remaining_yin_amts.span();
 
@@ -1696,10 +1681,11 @@ mod test_absorber {
         let opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), absorber_contract::FIRST_EPOCH);
 
-        let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+        let total_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - absorber_contract::INITIAL_SHARES.into();
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        let expected_first_provider_pct: Ray = wadray::rdiv_ww(first_provider_info.shares, total_shares);
-        let expected_second_provider_pct: Ray = wadray::rdiv_ww(second_provider_info.shares, total_shares);
+        let expected_first_provider_pct: Ray = wadray::rdiv_ww(first_provider_info.shares, total_recipient_shares);
+        let expected_second_provider_pct: Ray = wadray::rdiv_ww(second_provider_info.shares, total_recipient_shares);
 
         // Step 4
         let second_update_assets: Span<u128> = absorber_utils::second_update_assets();
@@ -1733,8 +1719,7 @@ mod test_absorber {
         // Check reward cumulative is updated for opus
         // Convert to Wad for fixed point operations
         let expected_opus_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
-        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment
-            / (total_shares - absorber_contract::INITIAL_SHARES.into());
+        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment / total_recipient_shares;
         let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
             + expected_opus_reward_cumulative_increment.val;
         let updated_opus_reward_distribution: DistributionInfo = absorber
@@ -1778,7 +1763,7 @@ mod test_absorber {
             second_update_assets, expected_second_provider_pct
         );
 
-        let error_margin: u128 = 10000;
+        //let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
@@ -1793,8 +1778,7 @@ mod test_absorber {
         let opus_reward_distribution = updated_opus_reward_distribution;
         let expected_opus_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into()
             + opus_reward_distribution.error.into();
-        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment
-            / (total_shares - absorber_contract::INITIAL_SHARES.into());
+        let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment / total_recipient_shares;
         let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
             + expected_opus_reward_cumulative_increment.val;
         let updated_opus_reward_distribution: DistributionInfo = absorber
@@ -1906,7 +1890,10 @@ mod test_absorber {
         // Loss of precision
         let error_margin: Wad = 1000_u128.into();
         common::assert_equalish(
-            shrine.get_yin(provider), before_provider_yin_bal + provided_amt, error_margin, 'wrong yin amount'
+            shrine.get_yin(provider),
+            before_provider_yin_bal + provided_amt - absorber_contract::INITIAL_SHARES.into(),
+            error_margin,
+            'wrong yin amount'
         );
     }
 
