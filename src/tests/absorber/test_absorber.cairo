@@ -194,7 +194,7 @@ mod test_absorber {
         absorber.remove(BoundedWad::max());
 
         // Loss of precision
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: Wad = 10_u128.into();
         common::assert_equalish(
             shrine.get_yin(provider),
             before_provider_yin_bal + provided_amt - absorber_contract::INITIAL_SHARES.into(),
