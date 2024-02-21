@@ -612,7 +612,7 @@ mod test_absorber {
                         );
 
                         // Check `request` is used
-                        assert(absorber.get_provider_request(provider).has_removed, 'request should be fulfilled');
+                        assert(!absorber.get_provider_request(provider).is_valid, 'request should be fulfilled');
                     }
 
                     salt += 1;
@@ -1172,7 +1172,7 @@ mod test_absorber {
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
+        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 1000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1422,7 +1422,7 @@ mod test_absorber {
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
+        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 1000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1792,7 +1792,7 @@ mod test_absorber {
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        let mut idx = 0;
+        let mut idx: u128 = 0;
         let mut expected_timelock = absorber_contract::REQUEST_BASE_TIMELOCK;
         let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
         loop {
@@ -1813,7 +1813,13 @@ mod test_absorber {
             start_warp(CheatTarget::All, removal_ts);
 
             // This should not revert
-            absorber.remove(1_u128.into());
+            if idx % 2 == 0 {
+                absorber.remove(1_u128.into());
+            } else {
+                absorber.provide(1_u128.into());
+            }
+            let request: Request = absorber.get_provider_request(provider);
+            assert(!request.is_valid, 'request should not be valid');
 
             expected_events
                 .append(
@@ -1907,7 +1913,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Only 1 removal per request',))]
+    #[should_panic(expected: ('ABS: Request is no longer valid',))]
     fn test_remove_fulfilled_request_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
@@ -1926,7 +1932,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Request is not valid yet',))]
+    #[should_panic(expected: ('ABS: Before withdrawal period',))]
     fn test_remove_request_not_valid_yet_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
@@ -1942,7 +1948,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Request has expired',))]
+    #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
     fn test_remove_request_expired_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
@@ -1957,7 +1963,7 @@ mod test_absorber {
             CheatTarget::All,
             get_block_timestamp()
                 + absorber_contract::REQUEST_BASE_TIMELOCK
-                + absorber_contract::REQUEST_VALIDITY_PERIOD
+                + absorber_contract::REQUEST_WITHDRAWAL_PERIOD
                 + 1
         );
         absorber.remove(1_u128.into());
