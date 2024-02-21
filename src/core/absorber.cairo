@@ -60,8 +60,8 @@ mod absorber {
     // before the cooldown of the previous request has elapsed
     const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
 
-    // Amount of time, in seconds, for which a withdrawal can be made for a request, starting from expiry 
-    // of the timelock
+    // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
+    // has elapsed
     // 60 minutes * 60 seconds per minute
     const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
 
@@ -419,7 +419,7 @@ mod absorber {
             // Update total shares for current epoch
             self.total_shares.write(self.total_shares.read() + issued_shares);
 
-            // Reset request if any
+            // Reset request
             let mut request: Request = self.provider_request.read(provider);
             request.is_valid = false;
             self.provider_request.write(provider, request);
@@ -901,7 +901,7 @@ mod absorber {
             assert(removal_start_timestamp <= current_timestamp, 'ABS: Before withdrawal period');
             assert(
                 current_timestamp <= removal_start_timestamp + REQUEST_WITHDRAWAL_PERIOD,
-                'ABS: Withdrawal period expired'
+                'ABS: Withdrawal period elapsed'
             );
         }
 

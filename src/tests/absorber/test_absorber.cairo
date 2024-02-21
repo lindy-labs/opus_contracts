@@ -1935,7 +1935,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Withdrawal period expired',))]
+    #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
     fn test_remove_request_expired_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
