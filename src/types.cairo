@@ -80,18 +80,17 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
 // Absorber
 //
 
-// For absorptions, the `asset_amt_per_share` is tied to an absorption ID and is not changed once set.
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
 #[derive(Copy, Debug, Drop, Serde)]
 struct DistributionInfo {
     // Amount of asset in its decimal precision per share wad
     // This is packed into bits 0 to 127.
     asset_amt_per_share: u128,
-    // Error to be added to next absorption
+    // Error to be added to next distribution of rewards
     // This is packed into bits 128 to 251.
     // Note that the error should never approach close to 2 ** 123, but it is capped to this value anyway
     // to prevent redistributions from failing in this unlikely scenario, at the expense of providers
-    // losing out on some absorbed assets.
+    // losing out on some rewards.
     error: u128,
 }
 
