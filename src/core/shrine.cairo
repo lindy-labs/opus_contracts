@@ -63,6 +63,9 @@ mod shrine {
     // (ray): MAX_YANG_RATE + 1
     const USE_PREV_ERA_BASE_RATE: u128 = 1000000000000000000000000001;
 
+    // First era for base rates, to be set in the constructor
+    const INITIAL_RATE_ERA: u64 = 1;
+
     // Forge fee function parameters
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
     const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
@@ -397,8 +400,7 @@ mod shrine {
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         self.multiplier.write(prev_interval, (init_multiplier, init_multiplier));
 
-        // Setting initial rate era to 1
-        self.rates_latest_era.write(1);
+        self.rates_latest_era.write(INITIAL_RATE_ERA);
 
         // Setting initial yin spot price to 1
         self.yin_spot_price.write(WAD_ONE.into());
