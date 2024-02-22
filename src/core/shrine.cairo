@@ -818,6 +818,10 @@ mod shrine {
 
             self.charge(trove_id);
 
+            if amount.is_zero() {
+                return;
+            }
+
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Update yang balance of system
@@ -849,6 +853,10 @@ mod shrine {
             self.assert_live();
 
             self.charge(trove_id);
+
+            if amount.is_zero() {
+                return;
+            }
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -895,6 +903,10 @@ mod shrine {
             // This is nice for UX so that maximum debt can be melted without knowing the exact
             // of debt in the trove down to the 10**-18.
             let melt_amt: Wad = min(trove.debt, amount);
+            if melt_amt.is_zero() {
+                return;
+            }
+
             let new_total_troves_debt: Wad = self.total_troves_debt.read() - melt_amt;
             self.total_troves_debt.write(new_total_troves_debt);
 
@@ -1381,14 +1393,18 @@ mod shrine {
         fn withdraw_helper(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
+            self.charge(trove_id);
+
+            if amount.is_zero() {
+                return;
+            }
+
             // Fails if amount > amount of yang deposited in the given trove
             let trove_balance: Wad = self.deposits.read((yang_id, trove_id));
             assert(trove_balance >= amount, 'SH: Insufficient yang balance');
 
             let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
-
-            self.charge(trove_id);
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
