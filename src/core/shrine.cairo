@@ -1314,6 +1314,13 @@ mod shrine {
             loop {
                 match yang_balances.pop_front() {
                     Option::Some(yang_balance) => {
+                        if self
+                            .get_yang_suspension_status_helper(
+                                *yang_balance.yang_id
+                            ) == YangSuspensionStatus::Permanent {
+                            continue;
+                        }
+
                         // Update cumulative values only if the yang balance is greater than 0
                         if (*yang_balance.amount).is_non_zero() {
                             let yang_threshold: Ray = self.get_yang_threshold_helper(*yang_balance.yang_id);
