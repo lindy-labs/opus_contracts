@@ -126,12 +126,14 @@ mod abbot {
         // Core functions
         //
 
-        // create a new trove in the system with Yang deposits,
-        // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
+        // Create a new trove in the system with Yang deposits
+        // Note that since amount must be greater than zero, the Shrine would also enforce
+        // that the minimum trove value has been deposited.
         fn open_trove(
             ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
+            assert(forge_amount.is_non_zero(), 'ABB: No debt forged');
 
             let new_troves_count: u64 = self.troves_count.read() + 1;
             self.troves_count.write(new_troves_count);
