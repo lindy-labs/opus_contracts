@@ -59,9 +59,6 @@ fn exp(x: Wad) -> Wad {
     // exp(x) = k_0 * a_0 * k_1 * a_1 * ... + k_n * a_n * exp(remainder), where each k_n equals either 0 or 1.
     // We mutate x by subtracting x_n, making it the remainder of the decomposition.
 
-    // For each x_n, we test if that term is present in the decomposition (if x is larger than it), and if so deduct
-    // it and compute the accumulated product.
-
     let firstAN: u256 = 1; // One with no decimal places
 
     // We now transform x into a 20 decimal fixed point number, to have enhanced precision when computing the
