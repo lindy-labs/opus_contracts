@@ -127,7 +127,7 @@ mod abbot {
         //
 
         // Create a new trove in the system with Yang deposits
-        // Note that since amount must be greater than zero, the Shrine would also enforce
+        // Note that since the forge amount must be greater than zero, the Shrine would also enforce
         // that the minimum trove value has been deposited.
         fn open_trove(
             ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
