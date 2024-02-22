@@ -174,7 +174,7 @@ mod test_absorber {
 
     #[test]
     fn test_kill_and_remove_pass() {
-        let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, _, absorber, _, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
@@ -213,7 +213,7 @@ mod test_absorber {
     #[test]
     fn test_update_after_kill_pass() {
         // Setup
-        let (shrine, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
+        let (shrine, _, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
         );
@@ -381,6 +381,7 @@ mod test_absorber {
                 Option::Some(percentage_to_drain) => {
                     let (
                         shrine,
+                        sentinel,
                         _,
                         absorber,
                         yangs,
@@ -407,6 +408,7 @@ mod test_absorber {
 
                     // total shares is equal to amount provided
                     let before_total_shares: Wad = first_provided_amt;
+                    let before_gate_balances: Span<u128> = absorber_utils::get_gate_balances(sentinel, yangs);
 
                     let expected_absorption_id = 1;
 
@@ -479,7 +481,13 @@ mod test_absorber {
                     assert(absorber.get_absorptions_count() == expected_absorption_id, 'wrong absorption id');
 
                     absorber_utils::assert_update_is_correct(
-                        absorber, expected_absorption_id, before_total_shares, yangs, first_update_assets,
+                        sentinel,
+                        absorber,
+                        expected_absorption_id,
+                        before_total_shares,
+                        yangs,
+                        first_update_assets,
+                        before_gate_balances
                     );
 
                     let expected_blessings_multiplier: Ray = RAY_SCALE.into();
@@ -604,7 +612,7 @@ mod test_absorber {
                         );
 
                         // Check `request` is used
-                        assert(absorber.get_provider_request(provider).has_removed, 'request should be fulfilled');
+                        assert(!absorber.get_provider_request(provider).is_valid, 'request should be fulfilled');
                     }
 
                     salt += 1;
@@ -619,7 +627,7 @@ mod test_absorber {
     fn test_update_unauthorized_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, yangs, _, _, _, _, _, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, yangs, _, _, _, _, _, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
@@ -641,6 +649,7 @@ mod test_absorber {
 
         let (
             shrine,
+            _,
             abbot,
             absorber,
             yangs,
@@ -757,7 +766,7 @@ mod test_absorber {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
 
-        let (shrine, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, first_provider, _) =
+        let (shrine, _, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, first_provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
@@ -1006,6 +1015,7 @@ mod test_absorber {
 
         let (
             shrine,
+            _,
             abbot,
             absorber,
             yangs,
@@ -1162,7 +1172,7 @@ mod test_absorber {
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
+        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 1000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1244,7 +1254,7 @@ mod test_absorber {
     fn test_provider_shares_after_threshold_absorption_with_minimum_shares() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (shrine, _, absorber, yangs, _, reward_tokens, _, _, first_provider, first_provided_amt) =
+        let (shrine, _, _, absorber, yangs, _, reward_tokens, _, _, first_provider, first_provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
@@ -1313,6 +1323,7 @@ mod test_absorber {
             absorber_utils::declare_contracts();
         let (
             shrine,
+            _,
             abbot,
             absorber,
             yangs,
@@ -1411,7 +1422,7 @@ mod test_absorber {
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
+        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 1000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1473,6 +1484,7 @@ mod test_absorber {
                 Option::Some(remaining_yin_amt) => {
                     let (
                         shrine,
+                        _,
                         _,
                         absorber,
                         yangs,
@@ -1586,6 +1598,7 @@ mod test_absorber {
             absorber_utils::declare_contracts();
         let (
             shrine,
+            _,
             abbot,
             absorber,
             yangs,
@@ -1772,14 +1785,14 @@ mod test_absorber {
     fn test_request_pass() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        let mut idx = 0;
+        let mut idx: u128 = 0;
         let mut expected_timelock = absorber_contract::REQUEST_BASE_TIMELOCK;
         let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
         loop {
@@ -1800,7 +1813,13 @@ mod test_absorber {
             start_warp(CheatTarget::All, removal_ts);
 
             // This should not revert
-            absorber.remove(1_u128.into());
+            if idx % 2 == 0 {
+                absorber.remove(1_u128.into());
+            } else {
+                absorber.provide(1_u128.into());
+            }
+            let request: Request = absorber.get_provider_request(provider);
+            assert(!request.is_valid, 'request should not be valid');
 
             expected_events
                 .append(
@@ -1822,7 +1841,7 @@ mod test_absorber {
 
     #[test]
     fn test_shrine_killed_and_remove_pass() {
-        let (shrine, abbot, absorber, yangs, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, abbot, absorber, yangs, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
@@ -1854,7 +1873,7 @@ mod test_absorber {
     fn test_remove_exceeds_limit_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (shrine, _, absorber, yangs, _, _, _, _, provider, _) =
+        let (shrine, _, _, absorber, yangs, _, _, _, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
@@ -1879,7 +1898,7 @@ mod test_absorber {
     fn test_remove_no_request_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
@@ -1888,11 +1907,11 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Only 1 removal per request',))]
+    #[should_panic(expected: ('ABS: Request is no longer valid',))]
     fn test_remove_fulfilled_request_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
@@ -1907,11 +1926,11 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Request is not valid yet',))]
+    #[should_panic(expected: ('ABS: Before withdrawal period',))]
     fn test_remove_request_not_valid_yet_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
@@ -1923,11 +1942,11 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Request has expired',))]
+    #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
     fn test_remove_request_expired_fail() {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
-        let (_, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );
 
@@ -1938,7 +1957,7 @@ mod test_absorber {
             CheatTarget::All,
             get_block_timestamp()
                 + absorber_contract::REQUEST_BASE_TIMELOCK
-                + absorber_contract::REQUEST_VALIDITY_PERIOD
+                + absorber_contract::REQUEST_WITHDRAWAL_PERIOD
                 + 1
         );
         absorber.remove(1_u128.into());
@@ -2048,7 +2067,7 @@ mod test_absorber {
         let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
             absorber_utils::declare_contracts();
 
-        let (_, _, absorber, _, _, reward_tokens, blessers, _, provider, _) =
+        let (_, _, _, absorber, _, _, reward_tokens, blessers, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
         );

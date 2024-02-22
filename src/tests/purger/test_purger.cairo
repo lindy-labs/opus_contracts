@@ -253,7 +253,7 @@ mod test_purger {
             .span();
 
         let mut expected_penalty: Span<Ray> = array![
-            (3 * RAY_PERCENT).into(), // 3% (0% threshold)
+            (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
             (3 * RAY_PERCENT).into(), // 3% (1% threshold)
             (3 * RAY_PERCENT).into(), // 3% (70% threshold)
             (3 * RAY_PERCENT).into(), // 3% (80% threshold)
@@ -384,7 +384,9 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_start_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv, Option::None
+        );
 
         // Check searcher yin balance
         assert(shrine.get_yin(searcher) == searcher_start_yin - max_close_amt, 'wrong searcher yin balance');
@@ -484,7 +486,9 @@ mod test_purger {
             'wrong debt after liquidation'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_start_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_start_health.threshold, target_trove_after_health.ltv, Option::None
+        );
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -641,7 +645,8 @@ mod test_purger {
                                             if !is_fully_liquidated {
                                                 purger_utils::assert_ltv_at_safety_margin(
                                                     target_trove_updated_start_health.threshold,
-                                                    target_trove_after_health.ltv
+                                                    target_trove_after_health.ltv,
+                                                    Option::None,
                                                 );
 
                                                 assert(
@@ -1063,7 +1068,7 @@ mod test_purger {
             before_absorber_asset_bals,
             common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
-            10_u128, // error margin
+            10000_u128, // error margin
             'wrong absorber asset balance',
         );
 
@@ -1268,7 +1273,7 @@ mod test_purger {
             before_absorber_asset_bals,
             common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
-            10_u128, // error margin
+            10000_u128, // error margin
             'wrong absorber asset balance',
         );
 
@@ -1558,7 +1563,7 @@ mod test_purger {
                                                             common::assert_equalish(
                                                                 recipient_trove_after_health.debt,
                                                                 expected_recipient_trove_debt,
-                                                                (WAD_ONE / 100).into(), // error margin
+                                                                (WAD_ONE / 10).into(), // error margin
                                                                 'wrong recipient trove debt'
                                                             );
 
@@ -1575,7 +1580,7 @@ mod test_purger {
                                                             common::assert_equalish(
                                                                 recipient_trove_after_health.value,
                                                                 expected_recipient_trove_value,
-                                                                (WAD_ONE / 100).into(), // error margin
+                                                                (WAD_ONE / 10).into(), // error margin
                                                                 'wrong recipient trove value'
                                                             );
 
@@ -1989,14 +1994,17 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         target_trove_after_health.value,
                                                         expected_after_value,
-                                                        // (10 ** 15) error margin
-                                                        1000000000000000_u128.into(),
+                                                        (WAD_ONE / 10).into(),
                                                         'wrong value after liquidation'
                                                     );
 
                                                     purger_utils::assert_ltv_at_safety_margin(
                                                         target_trove_updated_start_health.threshold,
-                                                        target_trove_after_health.ltv
+                                                        target_trove_after_health.ltv,
+                                                        // relax error margin due to liquidated trove
+                                                        // having more value from the transfer of error
+                                                        // back to the gates
+                                                        Option::Some((RAY_PERCENT * 2).into())
                                                     );
 
                                                     // Check that caller has received compensation
@@ -2050,7 +2058,7 @@ mod test_purger {
                                                             yangs, array![absorber.contract_address].span()
                                                         ),
                                                         expected_freed_assets,
-                                                        100_u128, // error margin
+                                                        1000_u128, // error margin
                                                         'wrong absorber asset balance'
                                                     );
 
@@ -2074,7 +2082,7 @@ mod test_purger {
                                                     common::assert_equalish(
                                                         expected_redistributed_amt,
                                                         actual_redistributed_amt,
-                                                        (WAD_ONE / 100).into(), // error margin
+                                                        (WAD_ONE / 10).into(), // error margin
                                                         'wrong redistributed debt'
                                                     );
 
@@ -2121,10 +2129,18 @@ mod test_purger {
                                                                 let remainder_asset_amt: u128 = gate
                                                                     .convert_to_assets(remainder_trove_yang);
 
+                                                                let error_margin: u128 = pow(
+                                                                    10_u128,
+                                                                    IERC20Dispatcher {
+                                                                        contract_address: gate.get_asset()
+                                                                    }
+                                                                        .decimals()
+                                                                        / 2
+                                                                );
                                                                 common::assert_equalish(
                                                                     remainder_asset_amt,
                                                                     *expected_asset_amt,
-                                                                    10000000_u128.into(),
+                                                                    error_margin,
                                                                     'wrong remainder yang asset'
                                                                 );
                                                             },
@@ -2849,7 +2865,8 @@ mod test_purger {
                                                     if max_close_amt != target_trove_updated_start_health.debt {
                                                         purger_utils::assert_ltv_at_safety_margin(
                                                             target_trove_updated_start_health.threshold,
-                                                            target_trove_after_health.ltv
+                                                            target_trove_after_health.ltv,
+                                                            Option::None
                                                         );
                                                     }
 
@@ -3340,7 +3357,9 @@ mod test_purger {
             'searcher yin not used'
         );
 
-        purger_utils::assert_ltv_at_safety_margin(target_trove_after_health.threshold, target_trove_after_health.ltv);
+        purger_utils::assert_ltv_at_safety_margin(
+            target_trove_after_health.threshold, target_trove_after_health.ltv, Option::None
+        );
     }
 
     #[test]

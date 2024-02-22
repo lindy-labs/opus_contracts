@@ -259,6 +259,7 @@ mod absorber_utils {
         blesser_class: Option<ContractClass>,
     ) -> (
         IShrineDispatcher,
+        ISentinelDispatcher,
         IAbbotDispatcher,
         IAbsorberDispatcher,
         Span<ContractAddress>, // yangs
@@ -281,7 +282,7 @@ mod absorber_utils {
             Option::None => declare('blesser')
         };
 
-        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
+        let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
             abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
         );
 
@@ -294,6 +295,7 @@ mod absorber_utils {
 
         (
             shrine,
+            sentinel,
             abbot,
             absorber,
             yangs,
@@ -391,27 +393,45 @@ mod absorber_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         // Simulate transfer of "freed" assets to absorber
-        start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
-        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
-        absorber.update(absorbed_assets);
-        stop_prank(CheatTarget::One(absorber.contract_address));
-
+        let mut yang_asset_amts_copy = yang_asset_amts;
+        let mut yangs_copy = yangs;
         loop {
-            match yangs.pop_front() {
+            match yangs_copy.pop_front() {
                 Option::Some(yang) => {
-                    let yang_asset_amt: u256 = (*yang_asset_amts.pop_front().unwrap()).into();
+                    let yang_asset_amt: u256 = (*yang_asset_amts_copy.pop_front().unwrap()).into();
                     let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
                     yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
                 },
                 Option::None => { break; },
             };
         };
+
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
+
+        start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
+        absorber.update(absorbed_assets);
+        stop_prank(CheatTarget::One(absorber.contract_address));
     }
 
     fn kill_absorber(absorber: IAbsorberDispatcher) {
         start_prank(CheatTarget::One(absorber.contract_address), admin());
         absorber.kill();
         stop_prank(CheatTarget::One(absorber.contract_address));
+    }
+
+    fn get_gate_balances(sentinel: ISentinelDispatcher, mut yangs: Span<ContractAddress>) -> Span<u128> {
+        let mut balances: Array<u128> = ArrayTrait::new();
+
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let yang_erc20 = IERC20Dispatcher { contract_address: *yang };
+                    let balance: u128 = yang_erc20.balance_of(sentinel.get_gate_address(*yang)).try_into().unwrap();
+                    balances.append(balance);
+                },
+                Option::None => { break balances.span(); }
+            };
+        }
     }
 
     //
@@ -637,38 +657,39 @@ mod absorber_utils {
     }
 
     fn assert_update_is_correct(
+        sentinel: ISentinelDispatcher,
         absorber: IAbsorberDispatcher,
         absorption_id: u32,
         total_shares: Wad,
         mut yangs: Span<ContractAddress>,
         mut yang_asset_amts: Span<u128>,
+        mut gate_balances: Span<u128>,
     ) {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let prev_error: Wad = if absorption_id.is_zero() {
-                        WadZeroable::zero()
-                    } else {
-                        absorber.get_asset_absorption(*yang, absorption_id - 1).error.into()
-                    };
-                    let actual_distribution: DistributionInfo = absorber.get_asset_absorption(*yang, absorption_id);
+                    let actual_asset_amt_per_share: u128 = absorber.get_asset_absorption(*yang, absorption_id);
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
-                    let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
+                    let expected_asset_amt_per_share: u128 = (asset_amt
                         / (total_shares - absorber_contract::INITIAL_SHARES.into()))
                         .val;
 
                     // Check asset amt per share is correct
                     assert(
-                        actual_distribution.asset_amt_per_share == expected_asset_amt_per_share,
-                        'wrong absorbed amount per share'
+                        actual_asset_amt_per_share == expected_asset_amt_per_share, 'wrong absorbed amount per share'
                     );
 
-                    // Check update amount = (total_shares * asset_amt per share) - prev_error + error
+                    let yang_erc20 = IERC20Dispatcher { contract_address: *yang };
+                    let gate: ContractAddress = sentinel.get_gate_address(*yang);
+                    let updated_gate_balance: u128 = yang_erc20.balance_of(gate).try_into().unwrap();
+                    let actual_distribution_error: u128 = updated_gate_balance - *gate_balances.pop_front().unwrap();
+
+                    // Check update amount = (total_shares * asset_amt per share) + error
                     // Convert to Wad for fixed point operations
                     let distributed_amt: Wad = ((total_shares - absorber_contract::INITIAL_SHARES.into())
-                        * actual_distribution.asset_amt_per_share.into())
-                        + actual_distribution.error.into();
+                        * actual_asset_amt_per_share.into())
+                        + actual_distribution_error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
                 Option::None => { break; }

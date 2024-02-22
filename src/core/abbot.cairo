@@ -133,14 +133,14 @@ mod abbot {
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
-            let troves_count: u64 = self.troves_count.read();
-            self.troves_count.write(troves_count + 1);
+            let new_troves_count: u64 = self.troves_count.read() + 1;
+            self.troves_count.write(new_troves_count);
 
             let user = get_caller_address();
             let user_troves_count: u64 = self.user_troves_count.read(user);
             self.user_troves_count.write(user, user_troves_count + 1);
 
-            let new_trove_id: u64 = troves_count + 1;
+            let new_trove_id: u64 = new_troves_count;
             self.user_troves.write((user, user_troves_count), new_trove_id);
             self.trove_owner.write(new_trove_id, user);
 
@@ -192,9 +192,8 @@ mod abbot {
             // There is no need to check the yang address is non-zero because the
             // Sentinel does not allow a zero address yang to be added.
 
-            assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
-            assert(trove_id <= self.troves_count.read(), 'ABB: Non-existent trove');
-            // note that caller does not need to be the trove's owner to deposit
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
 
             self.deposit_helper(trove_id, get_caller_address(), yang_asset);
         }

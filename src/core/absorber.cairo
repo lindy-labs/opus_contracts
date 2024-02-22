@@ -60,9 +60,10 @@ mod absorber {
     // before the cooldown of the previous request has elapsed
     const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
 
-    // Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
+    // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
+    // has elapsed
     // 60 minutes * 60 seconds per minute
-    const REQUEST_VALIDITY_PERIOD: u64 = consteval_int!(60 * 60);
+    const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
@@ -104,10 +105,9 @@ mod absorber {
         absorption_epoch: LegacyMap::<u32, u32>,
         // total number of shares for current epoch
         total_shares: Wad,
-        // mapping of a tuple of asset and absorption ID to a struct of
-        // 1. the amount of that asset in its decimal precision absorbed per share Wad for an absorption
-        // 2. the rounding error from calculating (1) that is to be added to the next absorption
-        asset_absorption: LegacyMap::<(ContractAddress, u32), DistributionInfo>,
+        // mapping of a tuple of asset and absorption ID to the amount of that asset in its 
+        // decimal precision absorbed per share Wad for an absorption
+        asset_absorption: LegacyMap::<(ContractAddress, u32), u128>,
         // conversion rate of an epoch's shares to the next
         // if an update causes the yin per share to drop below the threshold,
         // the epoch is incremented and yin per share is reset to one Ray.
@@ -293,7 +293,7 @@ mod absorber {
             self.provider_request.read(provider)
         }
 
-        fn get_asset_absorption(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> DistributionInfo {
+        fn get_asset_absorption(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> u128 {
             self.asset_absorption.read((asset, absorption_id))
         }
 
@@ -418,6 +418,11 @@ mod absorber {
             // Update total shares for current epoch
             self.total_shares.write(self.total_shares.read() + issued_shares);
 
+            // Reset request
+            let mut request: Request = self.provider_request.read(provider);
+            request.is_valid = false;
+            self.provider_request.write(provider, request);
+
             // Perform transfer of yin
             let absorber: ContractAddress = get_contract_address();
 
@@ -431,9 +436,10 @@ mod absorber {
 
         // Submit a request to `remove` that is valid for a fixed period of time after a variable timelock.
         // - This is intended to prevent atomic removals to avoid risk-free yield (from rewards and interest)
-        //   frontrunning tactics.
+        //   front-running tactics.
         //   The timelock increases if another request is submitted before the previous has cooled down.
-        // - A request is expended by either (1) a removal; (2) expiry; or (3) submitting a new request.
+        // - A request is expended by either (1) a removal; (2) expiry; (3) submitting a new request; 
+        //   or (4) a provision.
         // - Note: A request may become valid in the next epoch if a provider in the previous epoch
         //         submitted a request, a draining absorption occurs, and the provider provides again
         //         in the next epoch. This is expected to be rare, and the maximum risk-free profit is
@@ -453,9 +459,7 @@ mod absorber {
             let capped_timelock: u64 = min(timelock, REQUEST_MAX_TIMELOCK);
             self
                 .provider_request
-                .write(
-                    provider, Request { timestamp: current_timestamp, timelock: capped_timelock, has_removed: false }
-                );
+                .write(provider, Request { timestamp: current_timestamp, timelock: capped_timelock, is_valid: true });
             self.emit(RequestSubmitted { provider, timestamp: current_timestamp, timelock: capped_timelock });
         }
 
@@ -471,6 +475,9 @@ mod absorber {
             // Withdraw absorbed collateral before updating shares
             self.reap_helper(provider, provision);
 
+            // Removed yin amount
+            let mut yin_amt: Wad = WadZeroable::zero();
+
             // Fetch the shares for current epoch
             let current_epoch: u32 = self.current_epoch.read();
             let current_provider_shares: Wad = self
@@ -479,20 +486,14 @@ mod absorber {
             if current_provider_shares.is_zero() {
                 // If no remaining shares after converting across epochs,
                 // provider's deposit has been completely absorbed.
-                // Since absorbed collateral have been reaped,
+                // Since absorbed collateral has been reaped,
                 // we can update the provision to current epoch and shares.
                 self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() });
-
-                request.has_removed = true;
-                self.provider_request.write(provider, request);
-
-                // Event emission
-                self.emit(Remove { provider, epoch: current_epoch, yin: WadZeroable::zero() });
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
                 let max_removable_yin: Wad = self.convert_to_yin(current_provider_shares);
-                let yin_amt: Wad = min(amount, max_removable_yin);
+                yin_amt = min(amount, max_removable_yin);
 
                 // Due to precision loss, if the amount to remove is the max removable,
                 // set the shares to be removed as the provider's balance to avoid
@@ -502,26 +503,19 @@ mod absorber {
                     let (shares_to_remove_ceiled, _) = self.convert_to_shares(yin_amt, true);
                     shares_to_remove = shares_to_remove_ceiled;
                 }
-
                 self.total_shares.write(self.total_shares.read() - shares_to_remove);
 
                 // Update provision
                 let new_provider_shares: Wad = current_provider_shares - shares_to_remove;
                 self.provisions.write(provider, Provision { epoch: current_epoch, shares: new_provider_shares });
 
-                self
-                    .provider_request
-                    .write(
-                        provider,
-                        Request { timestamp: request.timestamp, timelock: request.timelock, has_removed: true }
-                    );
-
                 let success: bool = self.yin_erc20().transfer(provider, yin_amt.into());
                 assert(success, 'ABS: Transfer failed');
-
-                // Event emission
-                self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
             }
+
+            request.is_valid = false;
+            self.provider_request.write(provider, request);
+            self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
         }
 
         // Withdraw absorbed collateral only from the absorber
@@ -541,7 +535,8 @@ mod absorber {
             self.provisions.write(provider, Provision { epoch: current_epoch, shares: current_provider_shares });
         }
 
-        // Update assets received after an absorption
+        // Update assets received after an absorption and absorbed assets have been transferred
+        // to this Absorber contract
         fn update(ref self: ContractState, asset_balances: Span<AssetBalance>) {
             self.access_control.assert_has_role(absorber_roles::UPDATE);
 
@@ -561,11 +556,20 @@ mod absorber {
             let total_shares: Wad = self.total_shares.read();
             let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
+            let sentinel: ISentinelDispatcher = self.sentinel.read();
+
             let mut asset_balances_copy = asset_balances;
             loop {
                 match asset_balances_copy.pop_front() {
                     Option::Some(asset_balance) => {
-                        self.update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
+                        let error: u128 = self
+                            .update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
+
+                        // Transfer any excess error back to the Gate
+                        if error.is_non_zero() {
+                            let gate: ContractAddress = sentinel.get_gate_address(*asset_balance.address);
+                            IERC20Dispatcher { contract_address: *asset_balance.address }.transfer(gate, error.into());
+                        }
                     },
                     Option::None => { break; }
                 };
@@ -720,42 +724,24 @@ mod absorber {
         // Internal - helpers for `update`
         //
 
-        // Helper function to update each provider's entitlement of an absorbed asset
+        // Helper function to update each provider's entitlement of an absorbed asset and returns the
+        // leftover error.
         fn update_absorbed_asset(
             ref self: ContractState, absorption_id: u32, total_recipient_shares: Wad, asset_balance: AssetBalance
-        ) {
+        ) -> u128 {
             if asset_balance.amount.is_zero() {
-                return;
+                return 0;
             }
 
-            let last_error: u128 = self.get_recent_asset_absorption_error(asset_balance.address, absorption_id);
-            let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
+            let total_amount_to_distribute: u128 = asset_balance.amount;
 
             let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.val);
             let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.val);
             let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
-            self
-                .asset_absorption
-                .write((asset_balance.address, absorption_id), DistributionInfo { asset_amt_per_share, error });
-        }
+            self.asset_absorption.write((asset_balance.address, absorption_id), asset_amt_per_share);
 
-        // Returns the last error for an asset at a given `absorption_id` if the `asset_amt_per_share` is non-zero.
-        // Otherwise, check `absorption_id - 1` recursively for the last error.
-        fn get_recent_asset_absorption_error(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> u128 {
-            if absorption_id == 0 {
-                return 0;
-            }
-
-            let absorption: DistributionInfo = self.asset_absorption.read((asset, absorption_id));
-            // asset_amt_per_share is checked because it is possible for the error to be zero.
-            // On the other hand, asset_amt_per_share may be zero in extreme edge cases with
-            // a non-zero error that is spilled over to the next absorption.
-            if absorption.asset_amt_per_share.is_non_zero() || absorption.error.is_non_zero() {
-                return absorption.error;
-            }
-
-            self.get_recent_asset_absorption_error(asset, absorption_id - 1)
+            error
         }
 
         //
@@ -858,11 +844,9 @@ mod absorber {
                                 break;
                             }
 
-                            let absorption: DistributionInfo = self
-                                .asset_absorption
-                                .read((*asset, start_absorption_id));
+                            let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
 
-                            absorbed_amt += u128_wmul(adjusted_shares.val, absorption.asset_amt_per_share);
+                            absorbed_amt += u128_wmul(adjusted_shares.val, asset_amt_per_share);
                         };
 
                         absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
@@ -899,12 +883,15 @@ mod absorber {
             }
 
             assert(request.timestamp.is_non_zero(), 'ABS: No request found');
-            assert(!request.has_removed, 'ABS: Only 1 removal per request');
+            assert(request.is_valid, 'ABS: Request is no longer valid');
 
             let current_timestamp: u64 = starknet::get_block_timestamp();
             let removal_start_timestamp: u64 = request.timestamp + request.timelock;
-            assert(removal_start_timestamp <= current_timestamp, 'ABS: Request is not valid yet');
-            assert(current_timestamp <= removal_start_timestamp + REQUEST_VALIDITY_PERIOD, 'ABS: Request has expired');
+            assert(removal_start_timestamp <= current_timestamp, 'ABS: Before withdrawal period');
+            assert(
+                current_timestamp <= removal_start_timestamp + REQUEST_WITHDRAWAL_PERIOD,
+                'ABS: Withdrawal period elapsed'
+            );
         }
 
         //

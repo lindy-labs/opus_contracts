@@ -613,9 +613,12 @@ mod purger_utils {
         assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
-    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
+    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray, error_margin: Option<Ray>) {
         let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
+        let error_margin: Ray = match error_margin {
+            Option::Some(e) => { e },
+            Option::None => { (RAY_PERCENT / 10).into() }, // 0.1%
+        };
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 

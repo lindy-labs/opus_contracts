@@ -129,18 +129,17 @@ struct ExceptionalYangRedistribution {
 // Absorber
 //
 
-// For absorptions, the `asset_amt_per_share` is tied to an absorption ID and is not changed once set.
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
 #[derive(Copy, Debug, Drop, Serde)]
 struct DistributionInfo {
     // Amount of asset in its decimal precision per share wad
     // This is packed into bits 0 to 127.
     asset_amt_per_share: u128,
-    // Error to be added to next absorption
+    // Error to be added to next distribution of rewards
     // This is packed into bits 128 to 251.
     // Note that the error should never approach close to 2 ** 123, but it is capped to this value anyway
     // to prevent redistributions from failing in this unlikely scenario, at the expense of providers
-    // losing out on some absorbed assets.
+    // losing out on some rewards.
     error: u128,
 }
 
@@ -195,24 +194,22 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
 struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
-    has_removed: bool, // Whether provider has called `remove`
+    is_valid: bool, // Whether the request is still valid i.e. provider has not called `remove` or `provide`
 }
 
 impl RequestStorePacking of StorePacking<Request, felt252> {
     fn pack(value: Request) -> felt252 {
-        value.timestamp.into() + (value.timelock.into() * TWO_POW_64) + (value.has_removed.into() * TWO_POW_128)
+        value.timestamp.into() + (value.timelock.into() * TWO_POW_64) + (value.is_valid.into() * TWO_POW_128)
     }
 
     fn unpack(value: felt252) -> Request {
         let value: u256 = value.into();
         let shift: NonZero<u256> = u256_try_as_non_zero(TWO_POW_64.into()).unwrap();
         let (rest, timestamp) = u256_safe_div_rem(value, shift);
-        let (has_removed, timelock) = u256_safe_div_rem(rest, shift);
+        let (is_valid, timelock) = u256_safe_div_rem(rest, shift);
 
         Request {
-            timestamp: timestamp.try_into().unwrap(),
-            timelock: timelock.try_into().unwrap(),
-            has_removed: has_removed == 1
+            timestamp: timestamp.try_into().unwrap(), timelock: timelock.try_into().unwrap(), is_valid: is_valid == 1
         }
     }
 }

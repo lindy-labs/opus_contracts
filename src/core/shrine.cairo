@@ -59,9 +59,12 @@ mod shrine {
     // Maximum interest rate a yang can have (ray): RAY_ONE
     const MAX_YANG_RATE: u128 = 1000000000000000000000000000;
 
-    // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
+    // Flag for setting the yang's new base rate to its previous era's base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
+    const USE_PREV_ERA_BASE_RATE: u128 = 1000000000000000000000000001;
+
+    // First era for base rates, to be set in the constructor
+    const INITIAL_RATE_ERA: u64 = 1;
 
     // Forge fee function parameters
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
@@ -414,8 +417,7 @@ mod shrine {
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         self.multiplier.write(prev_interval, (init_multiplier, init_multiplier));
 
-        // Setting initial rate era to 1
-        self.rates_latest_era.write(1);
+        self.rates_latest_era.write(INITIAL_RATE_ERA);
 
         // Setting initial yin spot price to 1
         self.yin_spot_price.write(WAD_ONE.into());
@@ -659,7 +661,7 @@ mod shrine {
         }
 
         // Update the base rates of all yangs
-        // A base rate of USE_PREV_BASE_RATE means the base rate for the yang stays the same
+        // A base rate of USE_PREV_ERA_BASE_RATE means the base rate for the yang stays the same
         // Takes an array of yangs and their updated rates.
         // yangs[i]'s base rate will be set to new_rates[i]
         // yangs's length must equal the number of yangs available.
@@ -687,8 +689,8 @@ mod shrine {
                 self.rates_intervals.write(rate_era, current_interval);
             }
 
-            // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
-            // yang's rate isn't being updated, and so we get the previous value.
+            // ALL yangs must have a new rate value. A new rate value of `USE_PREV_ERA_BASE_RATE` means the
+            // yang's rate isn't being updated, and so we get the previous era's value.
             let mut yangs_copy = yangs;
             let mut new_rates_copy = new_rates;
             // TODO: temporary workaround for issue with borrowing snapshots in loops
@@ -697,7 +699,7 @@ mod shrine {
                 match new_rates_copy.pop_front() {
                     Option::Some(rate) => {
                         let current_yang_id: u32 = self_snap.get_valid_yang_id(*yangs_copy.pop_front().unwrap());
-                        if *rate.val == USE_PREV_BASE_RATE {
+                        if *rate.val == USE_PREV_ERA_BASE_RATE {
                             // Setting new era rate to the previous era's rate
                             self
                                 .yang_rates
