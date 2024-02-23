@@ -725,8 +725,6 @@ mod shrine {
         fn advance(ref self: ContractState, yang: ContractAddress, price: Wad) {
             self.access_control.assert_has_role(shrine_roles::ADVANCE);
 
-            assert(price.is_non_zero(), 'SH: Price cannot be 0');
-
             let interval: u64 = now();
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
