@@ -1650,6 +1650,53 @@ mod test_shrine {
     //
 
     #[test]
+    fn test_advance_zero_price_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        let yang: ContractAddress = shrine_utils::yang1_addr();
+        let trove_id: u64 = common::TROVE_1;
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_non_zero(), 'sanity check');
+
+        let (_, prev_cumulative_price, _) = shrine.get_current_yang_price(yang);
+
+        common::advance_intervals(1);
+
+        let zero_price = WadZeroable::zero();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.advance(yang, zero_price);
+
+        let expected_interval = shrine_utils::get_interval(get_block_timestamp());
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YangPriceUpdated(
+                    shrine_contract::YangPriceUpdated {
+                        yang, price: zero_price, cumulative_price: prev_cumulative_price, interval: expected_interval,
+                    }
+                ),
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
+
+        let (new_price, new_cumulative_price, _) = shrine.get_current_yang_price(yang);
+        assert(new_price == zero_price, 'wrong zero price');
+        assert_eq!(new_cumulative_price, prev_cumulative_price, "wrong cumulative price");
+
+        // Check effect of zero price on trove
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_zero(), 'trove value should be zero');
+
+        // Check effect of zero price on Shrine's health
+        let shrine_health: Health = shrine.get_shrine_health();
+        assert(shrine_health.value.is_zero(), 'shrine value should be zero');
+    }
+
+    #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_advance_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -1682,7 +1729,6 @@ mod test_shrine {
 
     #[test]
     fn test_shrine_inject_and_eject() {
-        assert(true, 'test');
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
@@ -1769,15 +1815,6 @@ mod test_shrine {
     //
     // Tests - Price and multiplier
     //
-
-    #[test]
-    #[should_panic(expected: ('SH: Price cannot be 0',))]
-    fn test_shrine_advance_zero_value_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-
-        start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.advance(shrine_utils::yang1_addr(), WadZeroable::zero());
-    }
 
     #[test]
     #[should_panic(expected: ('SH: Multiplier cannot be 0',))]
