@@ -18,6 +18,8 @@ mod test_seer {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::YangSuspensionStatus;
     use opus::types::pragma::PragmaPricesResponse;
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
@@ -25,7 +27,7 @@ mod test_seer {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
-    use wadray::{Wad, WAD_SCALE};
+    use wadray::{Wad, WadZeroable, WAD_SCALE};
 
     #[test]
     fn test_seer_setup() {
@@ -204,7 +206,7 @@ mod test_seer {
         IMintableDispatcher { contract_address: eth_addr }.mint(eth_gate.contract_address, gate_eth_bal.into());
         IMintableDispatcher { contract_address: wbtc_addr }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
 
-        let next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
+        let mut next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
         start_warp(CheatTarget::All, next_ts);
         eth_price += (100 * WAD_SCALE).into();
         wbtc_price += (1000 * WAD_SCALE).into();
@@ -221,6 +223,45 @@ mod test_seer {
         // shrine's price is rebased by 2
         assert(shrine_eth_price == eth_price + eth_price, 'wrong eth price in shrine 2');
         assert(shrine_wbtc_price == wbtc_price + wbtc_price, 'wrong wbtc price in shrine 2');
+
+        // Check that delisted yangs are skipped by suspending ETH
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        shrine.suspend_yang(eth_addr);
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        // avoid hitting iteration limit by splitting the suspension period into 4 parts
+        let mut period_div = 4;
+        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+
+        let mut expected_cumulative_eth_price: Wad = WadZeroable::zero();
+        let mut expected_eth_price_interval: u64 = 0;
+        loop {
+            if period_div.is_zero() {
+                break;
+            }
+
+            next_ts += suspension_grace_period_quarter;
+            start_warp(CheatTarget::All, next_ts);
+
+            pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
+            pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
+
+            seer.update_prices();
+
+            if period_div != 1 {
+                let (_, tmp_cumulative_eth_price, tmp_eth_price_interval) = shrine.get_current_yang_price(eth_addr);
+                expected_cumulative_eth_price = tmp_cumulative_eth_price;
+                expected_eth_price_interval = tmp_eth_price_interval;
+            }
+
+            period_div -= 1;
+        };
+
+        assert(shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Permanent, 'yang not suspended');
+
+        let (_, cumulative_eth_price, eth_price_interval) = shrine.get_current_yang_price(eth_addr);
+        assert_eq!(cumulative_eth_price, expected_cumulative_eth_price, "wrong delisted cumulative");
+        assert_eq!(eth_price_interval, expected_eth_price_interval, "wrong delisted price interval");
     }
 
     #[test]
