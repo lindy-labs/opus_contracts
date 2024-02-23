@@ -1180,7 +1180,7 @@ mod shrine {
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
             let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
 
-            if price.is_non_zero() {
+            if cumulative_price.is_non_zero() {
                 return (price, cumulative_price, interval);
             }
             self.get_recent_price_from(yang_id, interval - 1)
