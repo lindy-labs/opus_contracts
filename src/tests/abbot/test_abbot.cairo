@@ -143,6 +143,20 @@ mod test_abbot {
     }
 
     #[test]
+    #[should_panic(expected: ('ABB: No debt forged',))]
+    fn test_open_trove_zero_forge_amt_fail() {
+        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let forge_amt = WadZeroable::zero();
+        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
+        let deposited_amts: Span<u128> = abbot_utils::open_trove_yang_asset_amts();
+        let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposited_amts, gates, forge_amt);
+    }
+
+    #[test]
     #[should_panic(expected: ('ABB: No yangs',))]
     fn test_open_trove_no_yangs_fail() {
         let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(
