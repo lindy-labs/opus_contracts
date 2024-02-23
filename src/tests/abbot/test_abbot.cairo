@@ -373,7 +373,7 @@ mod test_abbot {
         let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt].span();
 
         common::fund_user(trove_owner, yangs, deposit_amts);
-        let forge_amt = WadZeroable::zero();
+        let forge_amt = 1_u128.into();
         let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposit_amts, gates, forge_amt);
 
         // Sanity check that max assets have been deposited
@@ -390,6 +390,7 @@ mod test_abbot {
 
         // Withdraw all ETH and WBTC
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.melt(trove_id, forge_amt);
         abbot.withdraw(trove_id, AssetBalance { address: eth, amount: deposit_eth_amt });
         abbot.withdraw(trove_id, AssetBalance { address: wbtc, amount: deposit_wbtc_amt });
 
@@ -414,10 +415,14 @@ mod test_abbot {
         let deposit_amts: Span<u128> = array![eth_deposit_amt].span();
 
         common::fund_user(trove_owner, deposit_yangs, deposit_amts);
-        let forge_amt = WadZeroable::zero();
+        let forge_amt = 1_u128.into();
         let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, deposit_yangs, deposit_amts, array![*gates[0]].span(), forge_amt
         );
+
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.melt(trove_id, forge_amt);
+        stop_prank(CheatTarget::One(abbot.contract_address));
 
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel.suspend_yang(eth);
@@ -500,12 +505,7 @@ mod test_abbot {
 
         // deploy another trove to prevent recovery mode        
         common::open_trove_helper(
-            abbot,
-            common::trove1_owner_addr(),
-            yangs,
-            abbot_utils::open_trove_yang_asset_amts(),
-            gates,
-            WadZeroable::zero()
+            abbot, common::trove1_owner_addr(), yangs, abbot_utils::open_trove_yang_asset_amts(), gates, 1_u128.into()
         );
 
         assert(!shrine.is_recovery_mode(), 'recovery mode');
