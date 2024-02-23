@@ -6,8 +6,6 @@ use wadray::{Wad, WAD_ONE};
 // Constants
 //
 
-const ONE_18: u128 = 1000000000000000000;
-
 // Higher precision numbers are used internally
 const ONE_20: u128 = 100000000000000000000;
 
