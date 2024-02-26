@@ -872,10 +872,12 @@ mod shrine {
 
             // Events
             if forge_fee.is_non_zero() {
+                // This also emits `TotalTrovesDebtUpdated` with both the forged amount and the forge fee
                 self.accrue_surplus_from_troves(forge_fee.into());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
+            } else {
+                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt_wo_forge_fee });
             }
-            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt_wo_forge_fee });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
