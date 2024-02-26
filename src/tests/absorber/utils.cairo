@@ -599,7 +599,7 @@ mod absorber_utils {
     //
     fn assert_reward_cumulative_updated(
         absorber: IAbsorberDispatcher,
-        total_shares: Wad,
+        recipient_shares: Wad,
         epoch: u32,
         mut asset_addresses: Span<ContractAddress>,
         mut reward_amts_per_blessing: Span<u128>,
@@ -613,8 +613,7 @@ mod absorber_utils {
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
                     let expected_blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
-                    let expected_amt_per_share: Wad = expected_blessed_amt
-                        / (total_shares - absorber_contract::INITIAL_SHARES.into());
+                    let expected_amt_per_share: Wad = expected_blessed_amt / recipient_shares;
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
@@ -660,7 +659,7 @@ mod absorber_utils {
         sentinel: ISentinelDispatcher,
         absorber: IAbsorberDispatcher,
         absorption_id: u32,
-        total_shares: Wad,
+        recipient_shares: Wad,
         mut yangs: Span<ContractAddress>,
         mut yang_asset_amts: Span<u128>,
         mut gate_balances: Span<u128>,
@@ -671,9 +670,7 @@ mod absorber_utils {
                     let actual_asset_amt_per_share: u128 = absorber.get_asset_absorption(*yang, absorption_id);
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
-                    let expected_asset_amt_per_share: u128 = (asset_amt
-                        / (total_shares - absorber_contract::INITIAL_SHARES.into()))
-                        .val;
+                    let expected_asset_amt_per_share: u128 = (asset_amt / recipient_shares).val;
 
                     // Check asset amt per share is correct
                     assert(
@@ -687,8 +684,7 @@ mod absorber_utils {
 
                     // Check update amount = (total_shares * asset_amt per share) + error
                     // Convert to Wad for fixed point operations
-                    let distributed_amt: Wad = ((total_shares - absorber_contract::INITIAL_SHARES.into())
-                        * actual_asset_amt_per_share.into())
+                    let distributed_amt: Wad = (recipient_shares * actual_asset_amt_per_share.into())
                         + actual_distribution_error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
