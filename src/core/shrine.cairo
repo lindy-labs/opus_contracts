@@ -1180,6 +1180,9 @@ mod shrine {
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
             let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
 
+            // Since the price can be zero, the cumulative price is used to check if a price update is available
+            // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
+            // update is made because the initial yang price must be non-zero.
             if cumulative_price.is_non_zero() {
                 return (price, cumulative_price, interval);
             }
