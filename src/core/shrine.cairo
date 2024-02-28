@@ -725,8 +725,6 @@ mod shrine {
         fn advance(ref self: ContractState, yang: ContractAddress, price: Wad) {
             self.access_control.assert_has_role(shrine_roles::ADVANCE);
 
-            assert(price.is_non_zero(), 'SH: Price cannot be 0');
-
             let interval: u64 = now();
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
@@ -1182,7 +1180,10 @@ mod shrine {
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
             let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
 
-            if price.is_non_zero() {
+            // Since the price can be zero, the cumulative price is used to check if a price update is available
+            // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
+            // update is made because the initial yang price must be non-zero.
+            if cumulative_price.is_non_zero() {
                 return (price, cumulative_price, interval);
             }
             self.get_recent_price_from(yang_id, interval - 1)
