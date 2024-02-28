@@ -1642,7 +1642,7 @@ mod test_purger {
     //  - Index 0 is a dummy value for the absorber yin
     //    being a fraction of the trove's debt.
     //  - Index 1 is a dummy value for the lower bound
-    //    of the absorber's yin.
+    //    of the absorber's yin for absorber to be operational.
     //  - Index 2 is a dummy value for the trove's debt
     //    minus the smallest unit of Wad (which would amount to
     //    1001 wei after including the initial amount in Absorber)
@@ -1766,6 +1766,10 @@ mod test_purger {
                                                     // Provide the minimum to absorber.
                                                     // The actual amount will be provided after 
                                                     // recovery mode adjustment is made.
+                                                    let minimum_operational_shares: Wad =
+                                                        (absorber_contract::INITIAL_SHARES
+                                                        + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+                                                        .into();
                                                     let recipient_trove: u64 = absorber_utils::provide_to_absorber(
                                                         shrine,
                                                         abbot,
@@ -1774,7 +1778,7 @@ mod test_purger {
                                                         yangs,
                                                         *yang_asset_amts,
                                                         gates,
-                                                        absorber_contract::MINIMUM_SHARES.into(),
+                                                        minimum_operational_shares,
                                                     );
                                                     start_prank(
                                                         CheatTarget::One(abbot.contract_address), recipient_trove_owner
@@ -1827,31 +1831,23 @@ mod test_purger {
                                                         (max_close_amt.val / 3).into()
                                                     } else {
                                                         if absorber_yin_idx == 1 {
-                                                            absorber_contract::MINIMUM_SHARES.into()
+                                                            minimum_operational_shares
                                                         } else {
                                                             (max_close_amt.val - 1).into()
                                                         }
                                                     };
 
                                                     let close_amt = absorber_start_yin;
-                                                    absorber_start_yin -= absorber_contract::MINIMUM_SHARES.into();
+                                                    // Deduct the minimum operational shares from the amount to be provided to 
+                                                    // the Absorber so that the Absorber's yin balance matches the close amount.
+                                                    absorber_start_yin -= minimum_operational_shares;
 
                                                     if absorber_start_yin.is_non_zero() {
-                                                        start_prank(
-                                                            CheatTarget::One(shrine.contract_address),
-                                                            recipient_trove_owner
-                                                        );
-                                                        let yin = IERC20Dispatcher {
-                                                            contract_address: shrine.contract_address
-                                                        };
-                                                        stop_prank(CheatTarget::One(shrine.contract_address));
-
                                                         start_prank(
                                                             CheatTarget::One(absorber.contract_address),
                                                             recipient_trove_owner
                                                         );
                                                         absorber.provide(absorber_start_yin);
-
                                                         stop_prank(CheatTarget::One(absorber.contract_address));
                                                     }
 
@@ -3694,7 +3690,8 @@ mod test_purger {
                                                         // While it can be done, it is complicated to set up the absorber in such a
                                                         // way that the remaining yin is less than the minimum shares.
                                                         if *absorb_type == AbsorbType::Partial
-                                                            && trove_debt <= absorber_contract::MINIMUM_SHARES.into() {
+                                                            && trove_debt <= absorber_contract::MINIMUM_RECIPIENT_SHARES
+                                                                .into() {
                                                             continue;
                                                         }
                                                         // Resetting the thresholds to reasonable values
@@ -3774,7 +3771,9 @@ mod test_purger {
                                                                     .provide(
                                                                         max(
                                                                             trove_debt,
-                                                                            absorber_contract::MINIMUM_SHARES.into()
+                                                                            (absorber_contract::INITIAL_SHARES
+                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+                                                                                .into()
                                                                         )
                                                                     );
                                                             },
@@ -3786,7 +3785,9 @@ mod test_purger {
                                                                     .provide(
                                                                         max(
                                                                             (trove_debt.val / 2).into() + 1_u128.into(),
-                                                                            absorber_contract::MINIMUM_SHARES.into()
+                                                                            (absorber_contract::INITIAL_SHARES
+                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+                                                                                .into()
                                                                         )
                                                                     );
                                                             },
