@@ -124,8 +124,9 @@ mod controller {
             let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
 
             if i_gain.is_non_zero() {
+                let old_i_term = self.i_term.read();
                 let new_i_term: SignedRay = self.get_i_term_internal();
-                multiplier += i_gain * new_i_term;
+                multiplier += old_i_term + i_gain * new_i_term;
             }
 
             bound_multiplier(multiplier).try_into().unwrap()
@@ -163,8 +164,9 @@ mod controller {
 
             // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
             if i_gain.is_non_zero() {
+                let old_i_term = self.i_term.read();
                 let new_i_term: SignedRay = self.get_i_term_internal();
-                multiplier += i_gain * new_i_term;
+                multiplier += old_i_term + i_gain * new_i_term;
                 self.i_term.write(new_i_term);
                 self.i_term_last_updated.write(get_block_timestamp());
             }
@@ -247,15 +249,13 @@ mod controller {
         #[inline(always)]
         fn get_i_term_internal(self: @ContractState) -> SignedRay {
             let current_timestamp: u64 = get_block_timestamp();
-            let old_i_term = self.i_term.read();
 
             let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read()).into();
             let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
                 / (TIME_SCALE * RAY_ONE).into();
 
-            old_i_term
-                + nonlinear_transform(self.get_prev_error(), self.alpha_i.read(), self.beta_i.read())
-                    * time_since_last_update_scaled
+            nonlinear_transform(self.get_prev_error(), self.alpha_i.read(), self.beta_i.read())
+                * time_since_last_update_scaled
         }
 
         #[inline(always)]
