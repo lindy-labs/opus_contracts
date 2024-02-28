@@ -393,7 +393,7 @@ mod test_purger {
 
         let (expected_freed_pct, expected_freed_amts) = purger_utils::get_expected_liquidation_assets(
             purger_utils::target_trove_yang_asset_amts(),
-            target_trove_updated_start_health.value,
+            target_trove_updated_start_health,
             max_close_amt,
             penalty,
             Option::None
@@ -667,7 +667,7 @@ mod test_purger {
 
                                             let (expected_freed_pct, _) = purger_utils::get_expected_liquidation_assets(
                                                 purger_utils::target_trove_yang_asset_amts(),
-                                                target_trove_updated_start_health.value,
+                                                target_trove_updated_start_health,
                                                 max_close_amt,
                                                 penalty,
                                                 Option::None,
@@ -1055,7 +1055,7 @@ mod test_purger {
         // Check that absorber has received collateral
         let (_, expected_freed_asset_amts) = purger_utils::get_expected_liquidation_assets(
             target_trove_yang_asset_amts,
-            target_trove_updated_start_health.value,
+            target_trove_updated_start_health,
             max_close_amt,
             penalty,
             Option::Some(expected_compensation_value)
@@ -1260,7 +1260,7 @@ mod test_purger {
         // Check that absorber has received collateral
         let (_, expected_freed_asset_amts) = purger_utils::get_expected_liquidation_assets(
             target_trove_yang_asset_amts,
-            target_trove_updated_start_health.value,
+            target_trove_updated_start_health,
             max_close_amt,
             penalty,
             Option::Some(expected_compensation_value)
@@ -1525,7 +1525,7 @@ mod test_purger {
                                                             let (expected_freed_pct, expected_freed_asset_amts) =
                                                                 purger_utils::get_expected_liquidation_assets(
                                                                 *target_trove_yang_asset_amts,
-                                                                target_trove_updated_start_health.value,
+                                                                target_trove_updated_start_health,
                                                                 close_amt,
                                                                 penalty,
                                                                 Option::Some(expected_compensation_value),
@@ -1541,7 +1541,7 @@ mod test_purger {
                                                                     yangs, array![absorber.contract_address].span()
                                                                 ),
                                                                 expected_freed_assets,
-                                                                10000000_u128, // error margin
+                                                                100_u128, // error margin
                                                                 'wrong absorber asset balance',
                                                             );
 
@@ -2039,7 +2039,7 @@ mod test_purger {
                                                     let (expected_freed_pct, expected_freed_amts) =
                                                         purger_utils::get_expected_liquidation_assets(
                                                         *target_trove_yang_asset_amts,
-                                                        target_trove_updated_start_health.value,
+                                                        target_trove_updated_start_health,
                                                         close_amt,
                                                         penalty,
                                                         Option::Some(expected_compensation_value),
@@ -2869,7 +2869,7 @@ mod test_purger {
                                                     let (expected_freed_pct, expected_freed_amts) =
                                                         purger_utils::get_expected_liquidation_assets(
                                                         purger_utils::target_trove_yang_asset_amts(),
-                                                        target_trove_updated_start_health.value,
+                                                        target_trove_updated_start_health,
                                                         max_close_amt,
                                                         penalty,
                                                         Option::Some(expected_compensation_value)
@@ -3095,7 +3095,7 @@ mod test_purger {
                                         let (_, expected_freed_asset_amts) =
                                             purger_utils::get_expected_liquidation_assets(
                                             target_trove_yang_asset_amts,
-                                            target_trove_updated_start_health.value,
+                                            target_trove_updated_start_health,
                                             max_close_amt,
                                             penalty,
                                             Option::Some(expected_compensation_value)

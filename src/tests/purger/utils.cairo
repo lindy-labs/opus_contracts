@@ -554,26 +554,41 @@ mod purger_utils {
     // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
     fn get_expected_liquidation_assets(
-        trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray, compensation_value: Option<Wad>
+        trove_asset_amts: Span<u128>,
+        trove_health: Health,
+        close_amt: Wad,
+        penalty: Ray,
+        compensation_value: Option<Wad>
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
 
-        let value_offset: Wad = if compensation_value.is_some() {
-            compensation_value.unwrap()
-        } else {
-            WadZeroable::zero()
+        let mut value_after_compensation: Wad = trove_health.value;
+        if compensation_value.is_some() {
+            value_after_compensation -= compensation_value.unwrap()
         };
-        let value_after_compensation: Wad = trove_value - value_offset;
-        let expected_freed_pct_of_value_before_compensation: Ray = if freed_amt < value_after_compensation {
-            wadray::rdiv_ww(freed_amt, trove_value)
+
+        let mut expected_freed_pct_of_value_after_compensation = RayZeroable::zero();
+        let mut expected_freed_pct_of_value_before_compensation = RayZeroable::zero();
+
+        if trove_health.ltv <= RAY_ONE.into() {
+            expected_freed_pct_of_value_before_compensation =
+                if freed_amt < value_after_compensation {
+                    wadray::rdiv_ww(freed_amt, trove_health.value)
+                } else {
+                    wadray::rdiv_ww(value_after_compensation, trove_health.value)
+                };
+            expected_freed_pct_of_value_after_compensation =
+                if freed_amt < value_after_compensation {
+                    wadray::rdiv_ww(freed_amt, value_after_compensation)
+                } else {
+                    expected_freed_pct_of_value_before_compensation
+                };
         } else {
-            wadray::rdiv_ww(value_after_compensation, trove_value)
-        };
-        let expected_freed_pct_of_value_after_compensation: Ray = if freed_amt < value_after_compensation {
-            wadray::rdiv_ww(freed_amt, value_after_compensation)
-        } else {
-            expected_freed_pct_of_value_before_compensation
-        };
+            expected_freed_pct_of_value_after_compensation = wadray::rdiv_ww(close_amt, trove_health.debt);
+            expected_freed_pct_of_value_before_compensation = expected_freed_pct_of_value_after_compensation
+                * wadray::rdiv_ww(value_after_compensation, trove_health.value);
+        }
+
         (
             expected_freed_pct_of_value_after_compensation,
             common::scale_span_by_pct(trove_asset_amts, expected_freed_pct_of_value_before_compensation)
@@ -632,16 +647,18 @@ mod purger_utils {
         error_margin: u128,
         message: felt252
     ) {
+        assert_eq!(before_asset_bals.len(), after_asset_bals.len(), "balances array sanity check #1");
         loop {
             match expected_freed_assets.pop_front() {
                 Option::Some(expected_freed_asset) => {
                     let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
-                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
-
                     let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
-                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
+                    assert_eq!(before_asset_bal_arr.len(), after_asset_bal_arr.len(), "balances array sanity check #2");
 
+                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
                     let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
+
+                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
                     common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
                 },
