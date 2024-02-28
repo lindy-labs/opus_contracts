@@ -184,6 +184,7 @@ mod sentinel {
             self.access_control.assert_has_role(sentinel_roles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
             assert(gate.is_non_zero(), 'SE: Gate cannot be zero address');
+            assert(yang_price.is_non_zero(), 'SE: Start price cannot be zero');
             assert(self.yang_to_gate.read(yang).contract_address.is_zero(), 'SE: Yang already added');
 
             let gate = IGateDispatcher { contract_address: gate };

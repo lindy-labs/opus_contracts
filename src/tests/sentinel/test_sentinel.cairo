@@ -17,7 +17,7 @@ mod test_sentinel {
     };
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
-    use wadray::{Ray, Wad, WAD_ONE};
+    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -160,6 +160,22 @@ mod test_sentinel {
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
                 ContractAddressZeroable::zero()
+            );
+    }
+
+    #[test]
+    #[should_panic(expected: ('SE: Start price cannot be zero',))]
+    fn test_add_yang_zero_price() {
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        sentinel
+            .add_yang(
+                sentinel_utils::dummy_yang_addr(),
+                sentinel_utils::ETH_ASSET_MAX,
+                shrine_utils::YANG1_THRESHOLD.into(),
+                WadZeroable::zero(),
+                shrine_utils::YANG1_BASE_RATE.into(),
+                sentinel_utils::dummy_yang_gate_addr()
             );
     }
 

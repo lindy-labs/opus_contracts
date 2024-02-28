@@ -277,7 +277,7 @@ mod purger_utils {
         array![ // minimum amount that must be provided based on initial shares
             absorber_contract::INITIAL_SHARES
                 .into(), // largest possible amount of yin in Absorber based on initial shares
-            (absorber_contract::MINIMUM_SHARES - 1).into()
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into()
         ]
             .span()
     }
@@ -287,7 +287,7 @@ mod purger_utils {
     fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         array![
             // smallest possible amount of yin in Absorber based on initial shares
-            absorber_contract::MINIMUM_SHARES.into(),
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES).into(),
             (trove_debt.val / 3).into(),
             (trove_debt.val - 1000).into(),
             // trove's debt minus the smallest unit of Wad
