@@ -1319,11 +1319,9 @@ mod shrine {
                 amount
             } else {
                 // Prioritize reducing the troves deficit if any, to the extent of the deficit.
-                // This ensures that the deficit will not be positive.
                 let troves_deficit_to_reduce: Wad = min(amount, protocol_owned_troves_debt);
 
-                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
-                    - troves_deficit_to_reduce;
+                let new_protocol_owned_troves_debt: Wad = protocol_owned_troves_debt - troves_deficit_to_reduce;
                 self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
                 self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
@@ -1332,8 +1330,7 @@ mod shrine {
             };
 
             if excess.is_non_zero() {
-                let total_troves_debt: Wad = self.total_troves_debt.read();
-                let new_total_troves_debt: Wad = total_troves_debt + excess;
+                let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess;
 
                 self.total_troves_debt.write(new_total_troves_debt);
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
