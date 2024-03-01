@@ -1320,7 +1320,8 @@ mod shrine {
                 // Prioritize reducing the troves deficit if any, to the extent of the deficit.
                 let troves_deficit_to_reduce: Wad = min(amount, protocol_owned_troves_debt);
 
-                let new_protocol_owned_troves_debt: Wad = protocol_owned_troves_debt - troves_deficit_to_reduce;
+                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
+                    - troves_deficit_to_reduce;
                 self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
                 self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
