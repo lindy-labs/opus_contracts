@@ -45,6 +45,7 @@ mod controller {
         yin_previous_price: Wad,
         yin_price_last_updated: u64,
         i_term_last_updated: u64,
+        // last i_term with gain
         i_term: SignedRay,
         p_gain: SignedRay,
         i_gain: SignedRay,
@@ -118,15 +119,16 @@ mod controller {
 
     #[abi(embed_v0)]
     impl IControllerImpl of IController<ContractState> {
+        // Returns the multiplier value if an update was to be made at the time this was called
         fn get_current_multiplier(self: @ContractState) -> Ray {
             let i_gain = self.i_gain.read();
 
-            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
+            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term();
 
             if i_gain.is_non_zero() {
                 let old_i_term = self.i_term.read();
-                let new_i_term: SignedRay = self.get_i_term_internal();
-                multiplier += old_i_term + i_gain * new_i_term;
+                let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
+                multiplier += old_i_term + i_gain * new_i_term_without_gain;
             }
 
             bound_multiplier(multiplier).try_into().unwrap()
@@ -134,7 +136,7 @@ mod controller {
 
 
         fn get_p_term(self: @ContractState) -> SignedRay {
-            self.get_p_term_internal()
+            self.p_gain.read() * nonlinear_transform(self.get_current_error(), self.alpha_p.read(), self.beta_p.read())
         }
 
 
@@ -143,7 +145,7 @@ mod controller {
             if i_gain.is_zero() {
                 SignedRayZeroable::zero()
             } else {
-                i_gain * self.get_i_term_internal()
+                i_gain * self.get_i_term_without_gain()
             }
         }
 
@@ -160,14 +162,15 @@ mod controller {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             let i_gain = self.i_gain.read();
-            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
+            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term();
 
             // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
             if i_gain.is_non_zero() {
                 let old_i_term = self.i_term.read();
-                let new_i_term: SignedRay = self.get_i_term_internal();
-                multiplier += old_i_term + i_gain * new_i_term;
-                self.i_term.write(new_i_term);
+                let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
+                let new_i_term_with_gain = i_gain * new_i_term_without_gain;
+                multiplier += old_i_term + new_i_term_with_gain;
+                self.i_term.write(new_i_term_with_gain);
                 self.i_term_last_updated.write(get_block_timestamp());
             }
 
@@ -242,12 +245,7 @@ mod controller {
     #[generate_trait]
     impl ControllerInternalFunctions of ControllerInternalFunctionsTrait {
         #[inline(always)]
-        fn get_p_term_internal(self: @ContractState) -> SignedRay {
-            self.p_gain.read() * nonlinear_transform(self.get_current_error(), self.alpha_p.read(), self.beta_p.read())
-        }
-
-        #[inline(always)]
-        fn get_i_term_internal(self: @ContractState) -> SignedRay {
+        fn get_i_term_without_gain(self: @ContractState) -> SignedRay {
             let current_timestamp: u64 = get_block_timestamp();
 
             let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read()).into();
