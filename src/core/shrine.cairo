@@ -855,8 +855,17 @@ mod shrine {
             self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read() + forge_fee.into());
 
             // Note that forge fee is accrued separately below
-            let new_total_troves_debt_wo_forge_fee = self.total_troves_debt.read() + amount;
-            self.total_troves_debt.write(new_total_troves_debt_wo_forge_fee);
+            let forge_fee_adjustment_for_total_troves_debt: Wad = if forge_fee.is_non_zero() {
+                let excess_surplus: Wad = self.reduce_troves_deficit_with_surplus_from_troves(forge_fee.into());
+                self.adjust_budget_helper(excess_surplus.into());
+                excess_surplus
+            } else {
+                WadZeroable::zero()
+            };
+            let new_total_troves_debt = self.total_troves_debt.read()
+                + amount
+                + forge_fee_adjustment_for_total_troves_debt;
+            self.total_troves_debt.write(new_total_troves_debt);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
             let mut trove: Trove = self.troves.read(trove_id);
@@ -869,12 +878,9 @@ mod shrine {
 
             // Events
             if forge_fee.is_non_zero() {
-                // This also emits `TotalTrovesDebtUpdated` with both the forged amount and the forge fee
-                self.accrue_surplus_from_troves(forge_fee.into());
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
-            } else {
-                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt_wo_forge_fee });
             }
+            self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
             self.emit(TroveUpdated { trove_id, trove });
         }
 
@@ -1310,11 +1316,12 @@ mod shrine {
         // - The effect of using a trove's surplus to reduce the deficit is to transfer the backing for 
         //   the deficit from the protocol owned yang amounts to the trove that is incurring this surplus.
         // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
-        //   and the protocol owned troves' debt is back to zero, so any excess can now be added to the budget 
-        //   and be minted.
-        fn accrue_surplus_from_troves(ref self: ContractState, amount: Wad) {
+        //   and the protocol owned troves' debt will be back to zero.
+        //
+        // Returns the excess surplus for the caller to add to the budget.
+        fn reduce_troves_deficit_with_surplus_from_troves(ref self: ContractState, amount: Wad) -> Wad {
             let protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read();
-            let excess: Wad = if protocol_owned_troves_debt.is_zero() {
+            if protocol_owned_troves_debt.is_zero() {
                 amount
             } else {
                 // Prioritize reducing the troves deficit if any, to the extent of the deficit.
@@ -1327,15 +1334,6 @@ mod shrine {
                 self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
 
                 amount - troves_deficit_to_reduce
-            };
-
-            if excess.is_non_zero() {
-                let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess;
-
-                self.total_troves_debt.write(new_total_troves_debt);
-                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-
-                self.adjust_budget_helper(excess.into());
             }
         }
 
@@ -1416,7 +1414,13 @@ mod shrine {
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
-                self.accrue_surplus_from_troves(charged);
+                let excess_surplus: Wad = self.reduce_troves_deficit_with_surplus_from_troves(charged);
+                let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess_surplus;
+
+                self.total_troves_debt.write(new_total_troves_debt);
+                self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+
+                self.adjust_budget_helper(excess_surplus.into());
             }
 
             // Emit only if there is a change in the `Trove` struct
