@@ -127,9 +127,8 @@ mod shrine {
         // Amount of deficit from troves from:
         // 1. errors from ordinarily redistributed debt; and 
         // 2. exceptionally redistributed trove's debt.
-        // This value should never be positive.
         // 
-        // If troves' deficit is less than zero, the priority is to use any surplus from troves 
+        // If troves' deficit is greater than zero, the priority is to use any surplus from troves 
         // (i.e. interest and forge fees) to reduce this deficit to zero, before adding to the 
         // budget.
         protocol_owned_troves_debt: Wad,
