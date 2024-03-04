@@ -124,13 +124,12 @@ mod shrine {
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
         // `total_troves_debt` - `protocol_owned_troves_debt` = sum(trove.debt) for all troves
         total_troves_debt: Wad,
-        // Amount of deficit from troves from:
+        // Amount of debt originating from troves that is owned by the protocol due to:
         // 1. errors from ordinarily redistributed debt; and 
         // 2. exceptionally redistributed trove's debt.
         // 
-        // If troves' deficit is greater than zero, the priority is to use any surplus from troves 
-        // (i.e. interest and forge fees) to reduce this deficit to zero, before adding to the 
-        // budget.
+        // If this amount is greater than zero, the priority is to use any surplus from troves 
+        // (i.e. interest and forge fees) to reset it to zero, before adding to the budget.
         protocol_owned_troves_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
@@ -856,7 +855,7 @@ mod shrine {
 
             // Note that forge fee is accrued separately below
             let forge_fee_adjustment_for_total_troves_debt: Wad = if forge_fee.is_non_zero() {
-                let excess_surplus: Wad = self.reduce_troves_deficit_with_surplus_from_troves(forge_fee.into());
+                let excess_surplus: Wad = self.reduce_protocol_owned_troves_debt(forge_fee.into());
                 self.adjust_budget_helper(excess_surplus.into());
                 excess_surplus
             } else {
@@ -1309,31 +1308,31 @@ mod shrine {
         // Helpers for core functions
         //
 
-        // Helper to use surplus from troves to first reduce any troves deficit
-        // - When there is a deficit, then the sum of all troves' debt is lower than `total_troves_debt`,
-        //   because the yin corresponding to the difference has already been minted into circulation and 
-        //   is now owned by the protocol.
-        // - The effect of using a trove's surplus to reduce the deficit is to transfer the backing for 
-        //   the deficit from the protocol owned yang amounts to the trove that is incurring this surplus.
-        // - Once the deficit reaches zero, the sum of all troves' debt will now be equal to `total_troves_debt`,
-        //   and the protocol owned troves' debt will be back to zero.
+        // Helper to use surplus from troves to first reduce any protocol owned troves' debt
+        // - When the protocol owned troves' debt is greater than zero, then the sum of all troves' debt is 
+        //   lower than `total_troves_debt`, because the yin corresponding to the difference has already been 
+        //   minted into circulation and is now owned by the protocol.
+        // - The effect of using a trove's surplus to reduce the protocol owned troves' debt is to transfer the 
+        //   backing for the protocol owned troves' debt from the protocol owned yang amounts to the trove that is 
+        //   incurring this surplus.
+        // - Once the protocol owned trove's debt reaches zero, the sum of all troves' debt will again be equal to 
+        //   `total_troves_debt`.
         //
         // Returns the excess surplus for the caller to add to the budget.
-        fn reduce_troves_deficit_with_surplus_from_troves(ref self: ContractState, amount: Wad) -> Wad {
+        fn reduce_protocol_owned_troves_debt(ref self: ContractState, amount: Wad) -> Wad {
             let protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read();
             if protocol_owned_troves_debt.is_zero() {
                 amount
             } else {
-                // Prioritize reducing the troves deficit if any, to the extent of the deficit.
-                let troves_deficit_to_reduce: Wad = min(amount, protocol_owned_troves_debt);
+                // Prioritize reducing the protocol owned troves' debt if any.
+                let amt_to_reduce: Wad = min(amount, protocol_owned_troves_debt);
 
-                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
-                    - troves_deficit_to_reduce;
+                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read() - amt_to_reduce;
                 self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
                 self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
 
-                amount - troves_deficit_to_reduce
+                amount - amt_to_reduce
             }
         }
 
@@ -1414,7 +1413,7 @@ mod shrine {
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
-                let excess_surplus: Wad = self.reduce_troves_deficit_with_surplus_from_troves(charged);
+                let excess_surplus: Wad = self.reduce_protocol_owned_troves_debt(charged);
                 let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess_surplus;
 
                 self.total_troves_debt.write(new_total_troves_debt);
@@ -1623,7 +1622,7 @@ mod shrine {
         //
         // For yangs that have not been deposited by any other troves (i.e. exceptional redistribution), 
         // we transfer the redistributed trove's yang to the initial yang amount, and add the debt to 
-        // the budget as a deficit. This ensures that the redistributed debt can still be backed in 
+        // the protocol owned troves' debt. This ensures that the redistributed debt can still be backed in 
         // the event of a shutdown, but essentially locks the redistributed yang's value in Shrine, 
         //
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
@@ -1644,10 +1643,11 @@ mod shrine {
             let (_, trove_value) = self.get_threshold_and_value(trove_yang_balances, current_interval);
             let trove_value_to_redistribute: Wad = wadray::rmul_wr(trove_value, pct_value_to_redistribute);
 
-            // Keep track of the total debt redistributed, as well as the total deficit to be updated after 
-            // iterating over all yangs
+            // Keep track of the total debt redistributed, as well as the total amount of debt to be added 
+            // to the protocol owned troves' debt either from the errors of ordinary redistributions or the
+            // debt from exceptional redistributions
             let mut redistributed_debt: Wad = WadZeroable::zero();
-            let mut deficit: Wad = WadZeroable::zero();
+            let mut cumulative_protocol_owned_troves_debt: Wad = WadZeroable::zero();
             let mut trove_yang_balances_copy = trove_yang_balances;
             // Iterate over the yangs deposited in the trove to be redistributed
             loop {
@@ -1715,7 +1715,7 @@ mod shrine {
                         // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial 
                         //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
                         //     occurs);
-                        // (2) adding the trove's debt to the budget as a deficit.
+                        // (2) adding the trove's debt to the protocol owned troves' debt
                         let is_ordinary_redistribution: bool = recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into();
 
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
@@ -1774,7 +1774,7 @@ mod shrine {
                             let actual_debt_distributed_for_yang: Wad = unit_debt * recipient_yang_amt;
                             let debt_error: Wad = debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
 
-                            deficit += debt_error;
+                            cumulative_protocol_owned_troves_debt += debt_error;
                         } else {
                             // Move the redistributed yang amount from the trove to the initial yang amounts
                             self
@@ -1787,7 +1787,7 @@ mod shrine {
 
                             // The redistributed debt should exclude any previous errors, which should be carried over to 
                             // the next ordinary redistribution instead.
-                            deficit += debt_to_distribute_for_yang;
+                            cumulative_protocol_owned_troves_debt += debt_to_distribute_for_yang;
                         }
 
                         self.deposits.write((yang_id_to_redistribute, trove_id), updated_trove_yang_balance);
@@ -1803,8 +1803,9 @@ mod shrine {
                 };
             };
 
-            if deficit.is_non_zero() {
-                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read() + deficit;
+            if cumulative_protocol_owned_troves_debt.is_non_zero() {
+                let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
+                    + cumulative_protocol_owned_troves_debt;
                 self.protocol_owned_troves_debt.write(new_protocol_owned_troves_debt);
 
                 self.emit(ProtocolOwnedTrovesDebtUpdated { total: new_protocol_owned_troves_debt });
