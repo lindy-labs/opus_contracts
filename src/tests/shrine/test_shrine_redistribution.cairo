@@ -70,11 +70,32 @@ mod test_shrine_redistribution {
         shrine
     }
 
+    // Helper function to set up a trove and exceptionally redistributing it so that the entire
+    // trove's debt accrues to the protocol owned troves' debt.    
+    fn create_protocol_owned_troves_debt(shrine: IShrineDispatcher, amt: Wad) {
+        // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
+        // while the recipient troves (trove 2 and 3) uses only yang 2.
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
+
+        let trove1_owner = common::trove1_owner_addr();
+        let redistributed_trove: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        let redistributed_trove_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+        shrine.deposit(yang1_addr, redistributed_trove, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(trove1_owner, redistributed_trove, redistributed_trove_debt, amt.into());
+
+        shrine.redistribute(redistributed_trove, amt, RAY_ONE.into());
+
+        assert_eq!(shrine.get_protocol_owned_troves_debt(), amt, "setup: wrong protocol owned troves debt amt");
+    }
+
     // Returns a tuple of arrays which are the expected values from redistributing a trove
     // - value liquidated for each yang
     // - unit debt after redistributing debt for each yang
     // - expected amount of yangs remaining after redistribution
-    // - total error from all yangs added to the total troves' deficit
+    // - total error from all yangs added to the protocol owned troves' debt
     // Note that once the remaining redistribution value falls below the threshold, an early
     // return will be performed, so yangs with dust value of debt will not be included.
     fn preview_trove_redistribution(
@@ -468,7 +489,8 @@ mod test_shrine_redistribution {
                                     + (updated_recipient_trove2_health.debt - recipient_trove2_health.debt);
                                 let before_budget: SignedWad = shrine.get_budget();
 
-                                // Sanity check that we accrued more interest than the deficit for the next part of the test
+                                // Sanity check that we accrued more interest than the protocol owned troves' debt 
+                                // for the next part of the test
                                 assert(
                                     accrued_interest.val > after_protocol_owned_troves_debt.val, 'interest sanity check'
                                 );
@@ -478,7 +500,7 @@ mod test_shrine_redistribution {
                                 shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
 
                                 assert(
-                                    shrine.get_protocol_owned_troves_debt().is_zero(), 'wrong deficit after interest'
+                                    shrine.get_protocol_owned_troves_debt().is_zero(), 'wrong po debt after interest'
                                 );
 
                                 let excess: SignedWad = accrued_interest.into()
@@ -504,7 +526,7 @@ mod test_shrine_redistribution {
                                 if after_protocol_owned_troves_debt.is_non_zero() {
                                     expected_events
                                         .append(
-                                            // deficit update for redistribution
+                                            // protocol owned troves' debt update for redistribution
                                             (
                                                 shrine.contract_address,
                                                 shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
@@ -516,7 +538,7 @@ mod test_shrine_redistribution {
                                         );
                                     expected_events
                                         .append(
-                                            // deficit update for interest accrual
+                                            // protocol owned troves' debt update for interest accrual
                                             (
                                                 shrine.contract_address,
                                                 shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
@@ -762,7 +784,7 @@ mod test_shrine_redistribution {
                         "wrong initial yang3"
                     );
 
-                    // Check that the debt for yangs 1 and 3 have been added to the deficit
+                    // Check that the debt for yangs 1 and 3 have been added to the protocol owned' troves debt
                     let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
                     let expected_protocol_owned_troves_debt = redistributed_trove_debt
                         - expected_redistributed_trove_yang2_debt;
@@ -838,7 +860,7 @@ mod test_shrine_redistribution {
                     assert_eq!(
                         accrued_protocol_owned_troves_debt,
                         expected_protocol_owned_troves_debt,
-                        "wrong deficit after interest"
+                        "wrong po debt after interest"
                     );
 
                     // Since the amount accrued should be less than the amount redistributed earlier, budget
@@ -857,7 +879,7 @@ mod test_shrine_redistribution {
                                 }
                             )
                         ),
-                        // deficit update for redistribution
+                        // protocol owned troves' debt update for redistribution
                         (
                             shrine.contract_address,
                             shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
@@ -866,7 +888,7 @@ mod test_shrine_redistribution {
                                 }
                             )
                         ),
-                        // deficit update for interest accrual
+                        // protocol owned troves' debt update for interest accrual
                         (
                             shrine.contract_address,
                             shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
@@ -887,7 +909,7 @@ mod test_shrine_redistribution {
 
     // Redistribution with only 1 trove.
     // Since the trove's yangs are zeroed, the initial yang would essentially "receive"
-    // the trove's value via rebasing and all the debt would go to the total troves' deficit. 
+    // the trove's value via rebasing and all the debt would go to the protocol owned troves' debt. 
     // The trove's debt would also be zeroed. However, the debt would still be backed by the 
     // initial yangs, and the value can be accessed in the event of a shutdown.
     #[test]
@@ -978,5 +1000,171 @@ mod test_shrine_redistribution {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.redistribute(common::TROVE_1, 1_u128.into(), (RAY_ONE + RAY_PERCENT).into());
+    }
+
+    #[test]
+    fn test_reduction_of_protocol_owned_troves_debt() {
+        let shrine_class = shrine_utils::declare_shrine();
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang1_addr = *yangs.at(0);
+        let yang2_addr = *yangs.at(1);
+        let yang3_addr = *yangs.at(2);
+
+        let trove1_owner = common::trove1_owner_addr();
+        let target_trove: u64 = common::TROVE_1;
+
+        let trove2_owner = common::trove2_owner_addr();
+        let redistributed_trove: u64 = common::TROVE_2;
+
+        let yin_price: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
+
+        let num_cases = 4;
+        let mut idx = 0;
+
+        loop {
+            if idx == num_cases {
+                break;
+            }
+
+            let mut target_trove_forge_amts: Span<Wad> = array![WadZeroable::zero(), WAD_ONE.into(),].span();
+
+            match target_trove_forge_amts.pop_front() {
+                Option::Some(target_trove_forge_amt) => {
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
+
+                    // Create a trove and accrue some interest
+                    start_prank(CheatTarget::All, shrine_utils::admin());
+                    let target_trove_start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+                    shrine.deposit(yang1_addr, target_trove, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+                    shrine.forge(trove1_owner, target_trove, target_trove_start_debt, 0_u128.into());
+
+                    common::advance_intervals(200);
+
+                    let target_trove_health: Health = shrine.get_trove_health(target_trove);
+                    let accrued_interest: Wad = target_trove_health.debt - target_trove_start_debt;
+                    assert(accrued_interest.is_non_zero(), 'no interest accrued');
+
+                    // Update yin price for forge fee
+                    shrine.update_yin_spot_price(yin_price);
+                    let forge_fee_pct: Wad = shrine.get_forge_fee_pct();
+
+                    let expected_forge_fee: Wad = forge_fee_pct * *target_trove_forge_amt;
+                    let expected_forge_fee_and_accrued_interest: Wad = expected_forge_fee + accrued_interest;
+
+                    // Create a trove with different yangs and the amount of debt depending on the test case, and 
+                    // immediately redistribute it
+                    let protocol_owned_debt_amt: Wad = match idx {
+                        0 => (expected_forge_fee_and_accrued_interest.val * 2).into(),
+                        1 => (expected_forge_fee_and_accrued_interest.val + 1).into(),
+                        2 => expected_forge_fee_and_accrued_interest,
+                        3 => (expected_forge_fee_and_accrued_interest.val - 1).into(),
+                        _ => panic!("invalid idx"),
+                    };
+
+                    shrine.deposit(yang2_addr, redistributed_trove, shrine_utils::TROVE1_YANG2_DEPOSIT.into());
+                    shrine.deposit(yang3_addr, redistributed_trove, shrine_utils::TROVE1_YANG3_DEPOSIT.into());
+                    shrine.forge(trove2_owner, redistributed_trove, protocol_owned_debt_amt, forge_fee_pct);
+
+                    shrine.redistribute(redistributed_trove, protocol_owned_debt_amt, RAY_ONE.into());
+
+                    let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                    assert_eq!(
+                        protocol_owned_troves_debt,
+                        protocol_owned_debt_amt,
+                        "setup: wrong protocol owned troves debt amt"
+                    );
+
+                    let before_shrine_health: Health = shrine.get_shrine_health();
+                    let before_budget: SignedWad = shrine.get_budget();
+
+                    // Charge interest on the first trove
+                    let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+                    shrine.forge(trove1_owner, target_trove, *target_trove_forge_amt, forge_fee_pct);
+
+                    let expected_protocol_owned_troves_debt: Wad =
+                        if protocol_owned_debt_amt >= expected_forge_fee_and_accrued_interest {
+                        protocol_owned_debt_amt - expected_forge_fee_and_accrued_interest
+                    } else {
+                        WadZeroable::zero()
+                    };
+
+                    let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                    assert_eq!(
+                        protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong po troves' debt"
+                    );
+
+                    let after_budget: SignedWad = shrine.get_budget();
+                    let excess_interest: Wad = if protocol_owned_debt_amt < expected_forge_fee_and_accrued_interest {
+                        expected_forge_fee_and_accrued_interest - protocol_owned_debt_amt
+                    } else {
+                        WadZeroable::zero()
+                    };
+                    let expected_budget: SignedWad = before_budget + excess_interest.into();
+                    assert_eq!(after_budget, expected_budget, "wrong budget");
+
+                    let expected_total_troves_debt_increment: Wad = *target_trove_forge_amt + excess_interest;
+                    let expected_total_troves_debt: Wad = before_shrine_health.debt
+                        + expected_total_troves_debt_increment;
+
+                    let mut expected_events = array![
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
+                                shrine_contract::ProtocolOwnedTrovesDebtUpdated {
+                                    total: expected_protocol_owned_troves_debt
+                                }
+                            )
+                        ),
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::TotalTrovesDebtUpdated(
+                                shrine_contract::TotalTrovesDebtUpdated { total: expected_total_troves_debt }
+                            )
+                        )
+                    ];
+
+                    let should_have_excess: bool = if (idx == 3) & (*target_trove_forge_amt).is_non_zero() {
+                        true
+                    } else {
+                        false
+                    };
+                    if should_have_excess {
+                        expected_events
+                            .append(
+                                (
+                                    shrine.contract_address,
+                                    shrine_contract::Event::BudgetAdjusted(
+                                        shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
+                                    )
+                                )
+                            )
+                    }
+
+                    let should_have_forge_fee: bool = if (*target_trove_forge_amt).is_non_zero() {
+                        true
+                    } else {
+                        false
+                    };
+                    if should_have_forge_fee {
+                        expected_events
+                            .append(
+                                (
+                                    shrine.contract_address,
+                                    shrine_contract::Event::ForgeFeePaid(
+                                        shrine_contract::ForgeFeePaid {
+                                            trove_id: target_trove, fee: expected_forge_fee, fee_pct: forge_fee_pct
+                                        }
+                                    )
+                                )
+                            );
+                    }
+
+                    spy.assert_emitted(@expected_events);
+                },
+                Option::None => { break; },
+            };
+            idx += 1;
+        };
     }
 }
