@@ -128,7 +128,12 @@ mod controller {
             if i_gain.is_non_zero() {
                 let old_i_term = self.i_term.read();
                 let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
-                multiplier += old_i_term + i_gain * new_i_term_without_gain;
+                multiplier += old_i_term;
+
+                // Skip new i_term if timestamp did not advance from the last i_term
+                if get_block_timestamp() > self.i_term_last_updated.read() {
+                    multiplier += i_gain * new_i_term_without_gain;
+                }
             }
 
             bound_multiplier(multiplier).try_into().unwrap()
@@ -167,11 +172,17 @@ mod controller {
             // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
             if i_gain.is_non_zero() {
                 let old_i_term = self.i_term.read();
-                let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
-                let new_i_term_with_gain = i_gain * new_i_term_without_gain;
-                multiplier += old_i_term + new_i_term_with_gain;
-                self.i_term.write(new_i_term_with_gain);
-                self.i_term_last_updated.write(get_block_timestamp());
+                multiplier += old_i_term;
+
+                // Skip new i_term if timestamp did not advance from the last i_term
+                // to avoid overwriting the previous i_term
+                if get_block_timestamp() > self.i_term_last_updated.read() {
+                    let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
+                    let new_i_term_with_gain: SignedRay = i_gain * new_i_term_without_gain;
+                    multiplier += new_i_term_with_gain;
+                    self.i_term.write(new_i_term_with_gain);
+                    self.i_term_last_updated.write(get_block_timestamp());
+                }
             }
 
             // Updating the previous yin price for the next integral term update
