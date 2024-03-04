@@ -720,8 +720,6 @@ mod test_controller {
         let current_multiplier: Ray = controller.get_current_multiplier();
         controller.update_multiplier();
 
-        'current multiplier'.print();
-        current_multiplier.print();
         assert(current_multiplier > prev_multiplier, 'Multiplier should increase');
 
         // Suddenly the multiplier is updated multiple times within the same block.
@@ -729,9 +727,6 @@ mod test_controller {
         controller.update_multiplier();
         controller.update_multiplier();
         controller.update_multiplier();
-
-        'new multiplier'.print();
-        controller.get_current_multiplier().print();
 
         assert(current_multiplier == controller.get_current_multiplier(), 'Multiplier should not change');
     }
