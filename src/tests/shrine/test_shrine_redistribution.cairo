@@ -1031,8 +1031,8 @@ mod test_shrine_redistribution {
                     let expected_forge_fee: Wad = forge_fee_pct * *target_trove_forge_amt;
                     let expected_forge_fee_and_accrued_interest: Wad = expected_forge_fee + accrued_interest;
 
-                    // Create a trove with different yangs and the amount of debt depending on the test case, and 
-                    // immediately redistribute it
+                    // Create a trove with different yangs and with the amount of debt depending on the test case, 
+                    // then immediately redistribute it
                     let protocol_owned_debt_amt: Wad = match idx {
                         0 => (expected_forge_fee_and_accrued_interest.val * 2).into(),
                         1 => (expected_forge_fee_and_accrued_interest.val + 1).into(),
@@ -1103,12 +1103,7 @@ mod test_shrine_redistribution {
                         )
                     ];
 
-                    let should_have_excess: bool = if (idx == 3) & (*target_trove_forge_amt).is_non_zero() {
-                        true
-                    } else {
-                        false
-                    };
-                    if should_have_excess {
+                    if expected_forge_fee_and_accrued_interest > protocol_owned_debt_amt {
                         expected_events
                             .append(
                                 (
@@ -1120,12 +1115,7 @@ mod test_shrine_redistribution {
                             )
                     }
 
-                    let should_have_forge_fee: bool = if (*target_trove_forge_amt).is_non_zero() {
-                        true
-                    } else {
-                        false
-                    };
-                    if should_have_forge_fee {
+                    if (*target_trove_forge_amt).is_non_zero() {
                         expected_events
                             .append(
                                 (
