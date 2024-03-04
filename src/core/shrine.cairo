@@ -12,9 +12,7 @@ mod shrine {
     use opus::utils::exp::{exp, neg_exp};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::{get_block_timestamp, get_caller_address};
-    use wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Signed, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
-    };
+    use wadray::{BoundedRay, Ray, RayZeroable, RAY_ONE, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     //
     // Components
@@ -129,7 +127,7 @@ mod shrine {
         // 2. exceptionally redistributed trove's debt.
         // 
         // If this amount is greater than zero, the priority is to use any surplus from troves 
-        // (i.e. interest and forge fees) to reset it to zero, before adding to the budget.
+        // (i.e. interest and forge fees) to reduce it back to zero, before adding to the budget.
         protocol_owned_troves_debt: Wad,
         // Total amount of synthetic forged and injected
         total_yin: Wad,
@@ -1620,7 +1618,7 @@ mod shrine {
         // and the redistributed trove's yang.
         //
         // For yangs that have not been deposited by any other troves (i.e. exceptional redistribution), 
-        // we transfer the redistributed trove's yang to the initial yang amount, and add the debt to 
+        // we transfer the redistributed trove's yang to the protocol owned yang amount, and add the debt to 
         // the protocol owned troves' debt. This ensures that the redistributed debt can still be backed in 
         // the event of a shutdown, but essentially locks the redistributed yang's value in Shrine, 
         //
@@ -1662,12 +1660,12 @@ mod shrine {
                         let yang_amt_to_redistribute: Wad = wadray::rmul_wr(trove_yang_amt, pct_value_to_redistribute);
 
                         let yang_total: Wad = self.yang_total.read(yang_id_to_redistribute);
-                        let initial_yang_amt: Wad = self.protocol_owned_yang_amts.read(yang_id_to_redistribute);
+                        let protocol_owned_yang_amt: Wad = self.protocol_owned_yang_amts.read(yang_id_to_redistribute);
 
                         // Get the remainder amount of yangs in all other troves that can be redistributed
                         // This excludes any remaining yang in the redistributed trove if the percentage to
                         // be redistributed is less than 100%.
-                        let recipient_yang_amt: Wad = yang_total - trove_yang_amt - initial_yang_amt;
+                        let recipient_yang_amt: Wad = yang_total - trove_yang_amt - protocol_owned_yang_amt;
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
@@ -1741,15 +1739,15 @@ mod shrine {
                             //                                 (1 + unit_yang_per_recipient_yang)
                             //
                             // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be redistributed
-                            // to each Wad unit in `recipient_yang_amt + initial_yang_amt` - note
+                            // to each Wad unit in `recipient_yang_amt + protocol_owned_yang_amt` - note
                             // that the initial yang amount needs to be included because it also benefits from the rebasing:
                             //
-                            //                                       yang_amt_to_redistribute
-                            // unit_yang_per_recipient_yang = -------------------------------------
-                            //                                recipient_yang_amt + initial_yang_amt
+                            //                                          yang_amt_to_redistribute
+                            // unit_yang_per_recipient_yang = --------------------------------------------
+                            //                                recipient_yang_amt + protocol_owned_yang_amt
 
                             let unit_yang_per_recipient_yang: Ray = wadray::rdiv_ww(
-                                yang_amt_to_redistribute, (recipient_yang_amt + initial_yang_amt)
+                                yang_amt_to_redistribute, (recipient_yang_amt + protocol_owned_yang_amt)
                             );
                             let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
                             updated_trove_yang_balance =
