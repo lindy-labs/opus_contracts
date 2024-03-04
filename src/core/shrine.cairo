@@ -853,11 +853,10 @@ mod shrine {
 
             self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read() + forge_fee.into());
 
-            // Note that forge fee is accrued separately below
             let forge_fee_adjustment_for_total_troves_debt: Wad = if forge_fee.is_non_zero() {
-                let excess_surplus: Wad = self.reduce_protocol_owned_troves_debt(forge_fee.into());
-                self.adjust_budget_helper(excess_surplus.into());
-                excess_surplus
+                let excess: Wad = self.reduce_protocol_owned_troves_debt(forge_fee.into());
+                self.adjust_budget_helper(excess.into());
+                excess
             } else {
                 WadZeroable::zero()
             };
@@ -1413,13 +1412,13 @@ mod shrine {
             // budget only if there is a change in the trove's debt. This should not include
             // redistributed debt, as that is already included in the total.
             if charged.is_non_zero() {
-                let excess_surplus: Wad = self.reduce_protocol_owned_troves_debt(charged);
-                let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess_surplus;
+                let excess: Wad = self.reduce_protocol_owned_troves_debt(charged);
+                let new_total_troves_debt: Wad = self.total_troves_debt.read() + excess;
 
                 self.total_troves_debt.write(new_total_troves_debt);
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
 
-                self.adjust_budget_helper(excess_surplus.into());
+                self.adjust_budget_helper(excess.into());
             }
 
             // Emit only if there is a change in the `Trove` struct
