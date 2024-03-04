@@ -70,27 +70,6 @@ mod test_shrine_redistribution {
         shrine
     }
 
-    // Helper function to set up a trove and exceptionally redistributing it so that the entire
-    // trove's debt accrues to the protocol owned troves' debt.    
-    fn create_protocol_owned_troves_debt(shrine: IShrineDispatcher, amt: Wad) {
-        // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
-        // while the recipient troves (trove 2 and 3) uses only yang 2.
-        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
-        let yang1_addr = *yangs.at(0);
-
-        let trove1_owner = common::trove1_owner_addr();
-        let redistributed_trove: u64 = common::TROVE_1;
-
-        start_prank(CheatTarget::All, shrine_utils::admin());
-        let redistributed_trove_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        shrine.deposit(yang1_addr, redistributed_trove, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(trove1_owner, redistributed_trove, redistributed_trove_debt, amt.into());
-
-        shrine.redistribute(redistributed_trove, amt, RAY_ONE.into());
-
-        assert_eq!(shrine.get_protocol_owned_troves_debt(), amt, "setup: wrong protocol owned troves debt amt");
-    }
-
     // Returns a tuple of arrays which are the expected values from redistributing a trove
     // - value liquidated for each yang
     // - unit debt after redistributing debt for each yang
