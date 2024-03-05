@@ -105,7 +105,8 @@ mod shrine {
         // Stores information about the total supply for each yang
         // (yang_id) -> (Total Supply)
         yang_total: LegacyMap::<u32, Wad>,
-        // Stores information about the yang amount owned by the protocol
+        // Stores information about the yang amount owned by the protocol, including the
+        // initial yanga amount minted to the protocol
         protocol_owned_yang_amts: LegacyMap::<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
