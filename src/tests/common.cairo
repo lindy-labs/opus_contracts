@@ -234,7 +234,7 @@ fn open_trove_helper(
 
     start_prank(CheatTarget::One(abbot.contract_address), user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
-    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
+    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, 1_u128.into());
     stop_prank(CheatTarget::One(abbot.contract_address));
 
     trove_id
