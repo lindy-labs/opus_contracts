@@ -2184,6 +2184,9 @@ mod test_shrine {
         let trove_id: u64 = common::TROVE_1;
         shrine.deposit(yang, trove_id, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
+        let start_shrine_health: Health = shrine.get_shrine_health();
+        let start_trove_health: Health = shrine.get_trove_health(trove_id);
+
         // initiate yang's suspension, starting now
         shrine.suspend_yang(yang);
 
@@ -2274,6 +2277,10 @@ mod test_shrine {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.value.is_zero(), 'trove has value');
         assert(trove_health.threshold.is_zero(), 'wrong trove threshold #2');
+
+        let after_shrine_health: Health = shrine.get_shrine_health();
+        let expected_shrine_value: Wad = start_shrine_health.value - start_trove_health.value;
+        assert_eq!(after_shrine_health.value, expected_shrine_value, "wrong shrine value");
     }
 
     #[test]
