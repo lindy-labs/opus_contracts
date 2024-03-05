@@ -4,12 +4,12 @@ mod test_shrine_redistribution {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, YangBalance};
+    use opus::types::{Health, YangBalance, YangSuspensionStatus};
     use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, CheatTarget, spy_events, SpyOn, EventSpy,
+        declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy,
         EventAssertions
     };
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WadZeroable, WAD_ONE};
 
     //
@@ -970,6 +970,59 @@ mod test_shrine_redistribution {
         assert_eq!(after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong protocol debt");
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, 13);
+    }
+
+    // Check that a delisted yang is not redistributed
+    #[test]
+    fn test_shrine_redistribution_delisted_yang() {
+        let shrine: IShrineDispatcher = redistribution_setup(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang_to_delist: ContractAddress = *yangs[0];
+
+        let trove1_owner = common::trove1_owner_addr();
+        let redistributed_trove: u64 = common::TROVE_1;
+        let before_trove_delisted_yang_amt: Wad = shrine.get_deposit(yang_to_delist, redistributed_trove);
+
+        shrine.forge(trove1_owner, redistributed_trove, (100 * WAD_ONE).into(), 0_u128.into());
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.suspend_yang(yang_to_delist);
+
+        // avoid hitting iteration limit by splitting the suspension period into 4 parts
+        let mut period_div = 4;
+        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+        let mut next_ts: u64 = get_block_timestamp();
+
+        loop {
+            if period_div.is_zero() {
+                break;
+            }
+            next_ts += suspension_grace_period_quarter;
+            start_warp(CheatTarget::All, next_ts);
+
+            shrine.advance(yang_to_delist, shrine_utils::YANG1_START_PRICE.into());
+            shrine.advance(*yangs[1], shrine_utils::YANG1_START_PRICE.into());
+            shrine.advance(*yangs[2], shrine_utils::YANG1_START_PRICE.into());
+            shrine.set_multiplier(RAY_ONE.into());
+
+            period_div -= 1;
+        };
+
+        assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
+
+        // Simulate purge with 0 yin to update the trove's debt
+        let trove1_health: Health = shrine.get_trove_health(redistributed_trove);
+        shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
+
+        assert(shrine.get_redistributions_count() == 0, 'wrong start state');
+        shrine.redistribute(redistributed_trove, trove1_health.debt, RAY_ONE.into());
+
+        let after_trove_delisted_yang_amt: Wad = shrine.get_deposit(yang_to_delist, redistributed_trove);
+        assert_eq!(after_trove_delisted_yang_amt, before_trove_delisted_yang_amt, "delisted yang redistributed");
+        assert(shrine.get_deposit(*yangs[1], redistributed_trove).is_zero(), 'yang 2 should be zero');
+        assert(shrine.get_deposit(*yangs[2], redistributed_trove).is_zero(), 'yang 2 should be zero');
     }
 
     #[test]
