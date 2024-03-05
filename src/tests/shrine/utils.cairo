@@ -15,7 +15,7 @@ mod shrine_utils {
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
     };
-    use wadray::{Ray, RayZeroable, RAY_ONE, Signed, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     //
     // Constants
@@ -661,10 +661,12 @@ mod shrine_utils {
         let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
         let total_troves_debt_without_protocol_owned: Wad = shrine_health.debt - protocol_owned_troves_debt;
 
+        assert(cumulative_troves_debt <= total_troves_debt_without_protocol_owned, 'debt invariant failed #1');
+
         // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
         common::assert_equalish(
-            cumulative_troves_debt, total_troves_debt_without_protocol_owned, error_margin, 'debt invariant failed #1'
+            cumulative_troves_debt, total_troves_debt_without_protocol_owned, error_margin, 'debt invariant failed #2'
         );
     }
 

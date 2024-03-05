@@ -671,9 +671,9 @@ mod test_shrine_redistribution {
                     let before_yang2_total: Wad = shrine.get_yang_total(yang2_addr);
                     let before_yang3_total: Wad = shrine.get_yang_total(yang3_addr);
 
-                    let before_yang1_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang1_addr);
-                    let before_yang2_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang2_addr);
-                    let before_yang3_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang3_addr);
+                    let before_yang1_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang1_addr);
+                    let before_yang2_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang2_addr);
+                    let before_yang3_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang3_addr);
 
                     let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
                     let redistributed_trove_yang2_value: Wad = wadray::rmul_wr(
@@ -728,9 +728,9 @@ mod test_shrine_redistribution {
                     let after_yang2_total: Wad = shrine.get_yang_total(yang2_addr);
                     let after_yang3_total: Wad = shrine.get_yang_total(yang3_addr);
 
-                    let after_yang1_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang1_addr);
-                    let after_yang2_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang2_addr);
-                    let after_yang3_initial_amt: Wad = shrine.get_protocol_owned_yang_amt(yang3_addr);
+                    let after_yang1_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang1_addr);
+                    let after_yang2_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang2_addr);
+                    let after_yang3_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang3_addr);
 
                     if *pct_value_to_redistribute == RAY_ONE.into() {
                         // strict equality because there is no offset since redistributed trove 
@@ -748,18 +748,18 @@ mod test_shrine_redistribution {
                             'wrong yang2 total'
                         );
                     }
-                    assert_eq!(after_yang2_initial_amt, before_yang2_initial_amt, "wrong initial yang2");
+                    assert_eq!(after_yang2_protocol_owned_amt, before_yang2_protocol_owned_amt, "wrong initial yang2");
 
                     assert_eq!(after_yang1_total, before_yang1_total, "wrong yang1 total");
                     assert_eq!(
-                        after_yang1_initial_amt,
-                        before_yang1_initial_amt + before_redistributed_trove_yang1_amt,
+                        after_yang1_protocol_owned_amt,
+                        before_yang1_protocol_owned_amt + before_redistributed_trove_yang1_amt,
                         "wrong initial yang1"
                     );
                     assert_eq!(after_yang3_total, before_yang3_total, "wrong yang3 total");
                     assert_eq!(
-                        after_yang3_initial_amt,
-                        before_yang3_initial_amt + before_redistributed_trove_yang3_amt,
+                        after_yang3_protocol_owned_amt,
+                        before_yang3_protocol_owned_amt + before_redistributed_trove_yang3_amt,
                         "wrong initial yang3"
                     );
 
