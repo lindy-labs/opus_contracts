@@ -1048,7 +1048,6 @@ mod shrine {
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (mut threshold, mut value) = self.get_threshold_and_value(trove_yang_balances, interval);
             threshold = self.scale_threshold_for_recovery_mode(threshold);
-
             let trove: Trove = self.troves.read(trove_id);
 
             // Catch troves with no value
@@ -1511,14 +1510,11 @@ mod shrine {
                     break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
                 }
 
-                // Skip delisted yangs
-                if self.get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent {
-                    continue;
-                }
-
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
                 // Update cumulative values only if this yang has been deposited in the trove
-                if yang_deposited.is_non_zero() {
+                let is_delisted: bool = self
+                    .get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent;
+                if yang_deposited.is_non_zero() & !is_delisted {
                     let yang_rate: Ray = self.yang_rates.read((current_yang_id, rate_era));
                     let avg_price: Wad = self.get_avg_price(current_yang_id, start_interval, end_interval);
                     let yang_value: Wad = yang_deposited * avg_price;
