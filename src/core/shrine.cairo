@@ -1511,6 +1511,11 @@ mod shrine {
                     break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
                 }
 
+                // Skip delisted yangs
+                if self.get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent {
+                    continue;
+                }
+
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
                 // Update cumulative values only if this yang has been deposited in the trove
                 if yang_deposited.is_non_zero() {
@@ -1660,8 +1665,12 @@ mod shrine {
                     Option::Some(yang_balance) => {
                         let trove_yang_amt: Wad = (*yang_balance).amount;
                         let yang_id_to_redistribute = (*yang_balance).yang_id;
-                        // Skip over this yang if it has not been deposited in the trove
-                        if trove_yang_amt.is_zero() {
+                        // Skip over this yang if it has not been deposited in the trove or if it has been delisted
+                        if trove_yang_amt.is_zero()
+                            | (self_snap
+                                .get_yang_suspension_status_helper(
+                                    yang_id_to_redistribute
+                                ) == YangSuspensionStatus::Permanent) {
                             continue;
                         }
 
