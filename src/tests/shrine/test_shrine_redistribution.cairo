@@ -1022,7 +1022,7 @@ mod test_shrine_redistribution {
         let after_trove_delisted_yang_amt: Wad = shrine.get_deposit(yang_to_delist, redistributed_trove);
         assert_eq!(after_trove_delisted_yang_amt, before_trove_delisted_yang_amt, "delisted yang redistributed");
         assert(shrine.get_deposit(*yangs[1], redistributed_trove).is_zero(), 'yang 2 should be zero');
-        assert(shrine.get_deposit(*yangs[2], redistributed_trove).is_zero(), 'yang 2 should be zero');
+        assert(shrine.get_deposit(*yangs[2], redistributed_trove).is_zero(), 'yang 3 should be zero');
     }
 
     #[test]
