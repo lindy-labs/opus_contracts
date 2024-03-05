@@ -1,4 +1,4 @@
-use opus::types::{ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
+use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
@@ -9,7 +9,8 @@ trait IShrine<TContractState> {
     fn get_total_yin(self: @TContractState) -> Wad;
     fn get_yin_spot_price(self: @TContractState) -> Wad;
     fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
-    fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_protocol_owned_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_protocol_owned_troves_debt(self: @TContractState) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_budget(self: @TContractState) -> SignedWad;
@@ -23,15 +24,7 @@ trait IShrine<TContractState> {
     fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
-    fn get_redistribution_for_yang(
-        self: @TContractState, yang: ContractAddress, redistribution_id: u32
-    ) -> YangRedistribution;
-    fn get_exceptional_redistribution_for_yang_to_yang(
-        self: @TContractState,
-        recipient_yang: ContractAddress,
-        redistribution_id: u32,
-        redistributed_yang: ContractAddress
-    ) -> ExceptionalYangRedistribution;
+    fn get_redistribution_for_yang(self: @TContractState, yang: ContractAddress, redistribution_id: u32) -> Wad;
     fn is_recovery_mode(self: @TContractState) -> bool;
     fn get_live(self: @TContractState) -> bool;
     // external setters
@@ -71,5 +64,5 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
-    fn get_redistributions_attributed_to_trove(self: @TContractState, trove_id: u64) -> (Span<YangBalance>, Wad);
+    fn get_redistributed_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
 }
