@@ -890,6 +890,7 @@ mod shrine {
 
             // Charge interest
             self.charge(trove_id);
+
             let mut trove: Trove = self.troves.read(trove_id);
 
             // If `amount` exceeds `trove.debt`, then melt all the debt.
@@ -1047,6 +1048,7 @@ mod shrine {
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (mut threshold, mut value) = self.get_threshold_and_value(trove_yang_balances, interval);
             threshold = self.scale_threshold_for_recovery_mode(threshold);
+
             let trove: Trove = self.troves.read(trove_id);
 
             // Catch troves with no value
@@ -1510,10 +1512,10 @@ mod shrine {
                 }
 
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
-                // Update cumulative values only if this yang has been deposited in the trove
-                let is_delisted: bool = self
-                    .get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent;
-                if yang_deposited.is_non_zero() & !is_delisted {
+                // Update cumulative values only if this yang has been deposited in the trove and has not 
+                // been delisted
+                if yang_deposited.is_non_zero()
+                    & !(self.get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent) {
                     let yang_rate: Ray = self.yang_rates.read((current_yang_id, rate_era));
                     let avg_price: Wad = self.get_avg_price(current_yang_id, start_interval, end_interval);
                     let yang_value: Wad = yang_deposited * avg_price;
