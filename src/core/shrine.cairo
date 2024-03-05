@@ -890,7 +890,6 @@ mod shrine {
 
             // Charge interest
             self.charge(trove_id);
-
             let mut trove: Trove = self.troves.read(trove_id);
 
             // If `amount` exceeds `trove.debt`, then melt all the debt.
@@ -1507,7 +1506,7 @@ mod shrine {
                     // This operation would be a problem if the total trove value was ever zero.
                     // However, `cumulative_yang_value` cannot be zero because a trove with no yangs deposited
                     // cannot have any debt, meaning this code would never run (see `compound`)
-                    break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
+                    break;
                 }
 
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
@@ -1524,6 +1523,12 @@ mod shrine {
                     cumulative_yang_value += yang_value;
                 }
                 current_yang_id -= 1;
+            };
+
+            if cumulative_yang_value.is_zero() {
+                RayZeroable::zero()
+            } else {
+                wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value)
             }
         }
 
