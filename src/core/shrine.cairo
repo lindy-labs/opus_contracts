@@ -1669,11 +1669,7 @@ mod shrine {
                         let trove_yang_amt: Wad = (*yang_balance).amount;
                         let yang_id_to_redistribute = (*yang_balance).yang_id;
                         // Skip over this yang if it has not been deposited in the trove or if it has been delisted
-                        if trove_yang_amt.is_zero()
-                            | (self_snap
-                                .get_yang_suspension_status_helper(
-                                    yang_id_to_redistribute
-                                ) == YangSuspensionStatus::Permanent) {
+                        if trove_yang_amt.is_zero() {
                             continue;
                         }
 
@@ -1687,38 +1683,48 @@ mod shrine {
                         // be redistributed is less than 100%.
                         let recipient_yang_amt: Wad = yang_total - trove_yang_amt - protocol_owned_yang_amt;
 
-                        // Calculate the actual amount of debt that should be redistributed, including any
-                        // rounding of dust amounts of debt.
-                        let (redistributed_yang_price, _, _) = self_snap
-                            .get_recent_price_from(yang_id_to_redistribute, current_interval);
-
                         let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
                         let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
 
-                        if trove_value_to_redistribute.is_non_zero() {
-                            let yang_debt_pct: Ray = wadray::rdiv_ww(
-                                yang_amt_to_redistribute * redistributed_yang_price, trove_value_to_redistribute
-                            );
-                            raw_debt_to_distribute_for_yang = wadray::rmul_rw(yang_debt_pct, debt_to_redistribute);
-                            let (tmp_debt_to_distribute_for_yang, updated_redistributed_debt) = round_distributed_debt(
-                                debt_to_redistribute, raw_debt_to_distribute_for_yang, redistributed_debt
-                            );
+                        let is_delisted: bool = self_snap
+                            .get_yang_suspension_status_helper(
+                                yang_id_to_redistribute
+                            ) == YangSuspensionStatus::Permanent;
 
-                            redistributed_debt = updated_redistributed_debt;
-                            debt_to_distribute_for_yang = tmp_debt_to_distribute_for_yang;
-                        } else {
-                            // If `trove_value_to_redistribute` is zero due to loss of precision,
-                            // redistribute all of `debt_to_redistribute` to the first yang that the trove
-                            // has deposited. Note that `redistributed_debt` does not need to be updated because
-                            // setting `debt_to_distribute_for_yang` to a non-zero value would terminate the loop
-                            // after this iteration at
-                            // `debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang` (i.e. `1 != 0`).
-                            //
-                            // At worst, `debt_to_redistribute` will accrue to the error and
-                            // no yang is decremented from the redistributed trove, but redistribution should
-                            // not revert.
-                            debt_to_distribute_for_yang = debt_to_redistribute;
-                        };
+                        // Calculate the actual amount of debt that should be redistributed, including any
+                        // rounding of dust amounts of debt.
+                        // If yang is delisted, then no debt is redistributed at this point since the delisted yang
+                        // does not account for any of the trove's value.
+                        if !is_delisted {
+                            let (redistributed_yang_price, _, _) = self_snap
+                                .get_recent_price_from(yang_id_to_redistribute, current_interval);
+
+                            if trove_value_to_redistribute.is_non_zero() {
+                                let yang_debt_pct: Ray = wadray::rdiv_ww(
+                                    yang_amt_to_redistribute * redistributed_yang_price, trove_value_to_redistribute
+                                );
+                                raw_debt_to_distribute_for_yang = wadray::rmul_rw(yang_debt_pct, debt_to_redistribute);
+                                let (tmp_debt_to_distribute_for_yang, updated_redistributed_debt) =
+                                    round_distributed_debt(
+                                    debt_to_redistribute, raw_debt_to_distribute_for_yang, redistributed_debt
+                                );
+
+                                redistributed_debt = updated_redistributed_debt;
+                                debt_to_distribute_for_yang = tmp_debt_to_distribute_for_yang;
+                            } else {
+                                // If `trove_value_to_redistribute` is zero due to loss of precision,
+                                // redistribute all of `debt_to_redistribute` to the first yang that the trove
+                                // has deposited. Note that `redistributed_debt` does not need to be updated because
+                                // setting `debt_to_distribute_for_yang` to a non-zero value would terminate the loop
+                                // after this iteration at
+                                // `debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang` (i.e. `1 != 0`).
+                                //
+                                // At worst, `debt_to_redistribute` will accrue to the error and
+                                // no yang is decremented from the redistributed trove, but redistribution should
+                                // not revert.
+                                debt_to_distribute_for_yang = debt_to_redistribute;
+                            };
+                        }
 
                         // If there is at least `MIN_RECIPIENT_YANG_AMT` amount of yang in other troves,
                         // handle it as an ordinary redistribution by rebasing the redistributed yang, and
@@ -1733,7 +1739,8 @@ mod shrine {
                         //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
                         //     occurs);
                         // (2) adding the trove's debt to the protocol owned troves' debt
-                        let is_ordinary_redistribution: bool = recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into();
+                        let is_ordinary_redistribution: bool = (recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into())
+                            & !is_delisted;
 
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         let mut updated_yang_total: Wad = yang_total;
@@ -1819,6 +1826,12 @@ mod shrine {
                     Option::None => { break; },
                 };
             };
+
+            // If some debt remains undistributed, then it must be due to a trove that has deposited only delisted yangs.
+            // Hence, the debt is transferred to the protocol.
+            if redistributed_debt < debt_to_redistribute {
+                cumulative_protocol_owned_troves_debt += debt_to_redistribute - redistributed_debt;
+            }
 
             if cumulative_protocol_owned_troves_debt.is_non_zero() {
                 let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
