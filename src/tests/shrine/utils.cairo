@@ -325,6 +325,38 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
+    fn advance_prices_for_suspension_period(shrine: IShrineDispatcher, yangs: Span<ContractAddress>) {
+        // avoid hitting iteration limit by splitting the suspension period into 4 parts
+        let mut period_div = 4;
+        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+        let mut next_ts: u64 = get_block_timestamp();
+
+        start_prank(CheatTarget::All, admin());
+        loop {
+            if period_div.is_zero() {
+                break;
+            }
+            next_ts += suspension_grace_period_quarter;
+            start_warp(CheatTarget::All, next_ts);
+
+            let mut yangs_copy = yangs;
+            loop {
+                match yangs_copy.pop_front() {
+                    Option::Some(yang) => {
+                        let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                        shrine.advance(*yang, yang_price);
+                    },
+                    Option::None => { break; }
+                }
+            };
+
+            shrine.set_multiplier(RAY_ONE.into());
+
+            period_div -= 1;
+        };
+        stop_prank(CheatTarget::One(shrine.contract_address));
+    }
+
     //
     // Test helpers
     //

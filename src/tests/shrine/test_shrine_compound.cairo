@@ -981,29 +981,12 @@ mod test_shrine_compound {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.suspend_yang(yang_to_delist);
 
-        // avoid hitting iteration limit by splitting the suspension period into 4 parts
-        let mut period_div = 4;
-        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
-        let mut next_ts: u64 = get_block_timestamp();
-
-        loop {
-            if period_div.is_zero() {
-                break;
-            }
-            next_ts += suspension_grace_period_quarter;
-            start_warp(CheatTarget::All, next_ts);
-
-            shrine.advance(yang_to_delist, shrine_utils::YANG1_START_PRICE.into());
-            shrine.advance(*yangs[1], shrine_utils::YANG1_START_PRICE.into());
-            shrine.advance(*yangs[2], shrine_utils::YANG1_START_PRICE.into());
-            shrine.set_multiplier(RAY_ONE.into());
-
-            period_div -= 1;
-        };
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
 
         assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
 
         // Trigger charge and check no interest is accrued
+        start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.melt(trove1_owner, trove_id, WadZeroable::zero());
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
