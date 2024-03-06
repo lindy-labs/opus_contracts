@@ -691,14 +691,14 @@ mod shrine_utils {
 
         let shrine_health: Health = shrine.get_shrine_health();
         let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-        let total_troves_debt_without_protocol_owned: Wad = shrine_health.debt - protocol_owned_troves_debt;
+        let cumulative_troves_debt_with_protocol_owned: Wad = cumulative_troves_debt + protocol_owned_troves_debt;
 
-        assert(cumulative_troves_debt <= total_troves_debt_without_protocol_owned, 'debt invariant failed #1');
+        assert(cumulative_troves_debt_with_protocol_owned <= shrine_health.debt, 'debt invariant failed #1');
 
         // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
         common::assert_equalish(
-            cumulative_troves_debt, total_troves_debt_without_protocol_owned, error_margin, 'debt invariant failed #2'
+            cumulative_troves_debt_with_protocol_owned, shrine_health.debt, error_margin, 'debt invariant failed #2'
         );
     }
 
