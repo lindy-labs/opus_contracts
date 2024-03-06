@@ -3,6 +3,7 @@ mod shrine {
     use access_control::access_control_component;
     use cmp::{max, min};
     use core::starknet::event::EventEmitter;
+    use debug::PrintTrait;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
@@ -121,7 +122,7 @@ mod shrine {
         // Total amount of debt accrued for troves. This includes any debt surplus 
         // already accounted for in the budget.
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
-        // `total_troves_debt` - `protocol_owned_troves_debt` = sum(trove.debt) for all troves
+        // `total_troves_debt` = `protocol_owned_troves_debt` + sum(trove.debt) for all troves
         total_troves_debt: Wad,
         // Amount of debt originating from troves that is owned by the protocol due to:
         // 1. errors from ordinarily redistributed debt; and 
@@ -1714,14 +1715,12 @@ mod shrine {
                             } else {
                                 // If `trove_value_to_redistribute` is zero due to loss of precision,
                                 // redistribute all of `debt_to_redistribute` to the first yang that the trove
-                                // has deposited. Note that `redistributed_debt` does not need to be updated because
-                                // setting `debt_to_distribute_for_yang` to a non-zero value would terminate the loop
-                                // after this iteration at
-                                // `debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang` (i.e. `1 != 0`).
+                                // has deposited.
                                 //
                                 // At worst, `debt_to_redistribute` will accrue to the error and
                                 // no yang is decremented from the redistributed trove, but redistribution should
                                 // not revert.
+                                redistributed_debt += debt_to_redistribute;
                                 debt_to_distribute_for_yang = debt_to_redistribute;
                             };
                         }
@@ -1827,8 +1826,12 @@ mod shrine {
                 };
             };
 
-            // If some debt remains undistributed, then it must be due to a trove that has deposited only delisted yangs.
-            // Hence, the debt is transferred to the protocol.
+            // If some debt remains undistributed, transfer it to the protocol.
+            // This may happen due to:
+            // 1. the amount of debt to be redistributed is very small e.g. 1 wei,
+            //    causing the debt for each yang to round down to zero due to loss of 
+            //    precision;
+            // 2. the trove has deposited only delisted yangs.
             if redistributed_debt < debt_to_redistribute {
                 cumulative_protocol_owned_troves_debt += debt_to_redistribute - redistributed_debt;
             }
