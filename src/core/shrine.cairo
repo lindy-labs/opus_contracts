@@ -1634,10 +1634,13 @@ mod shrine {
         // and divide the debt by the recipient amount of yang (i.e. excluding the initial yang amount 
         // and the redistributed trove's yang.
         //
-        // For yangs that have not been deposited by any other troves (i.e. exceptional redistribution), 
-        // we transfer the redistributed trove's yang to the protocol owned yang amount, and add the debt to 
-        // the protocol owned troves' debt. This ensures that the redistributed debt can still be backed in 
-        // the event of a shutdown, but essentially locks the redistributed yang's value in Shrine, 
+        // For yangs that (1) have not been deposited by any other troves; or (2) has been delisted 
+        // (i.e. exceptional redistribution), 
+        // - for both (1) and (2), we transfer the redistributed trove's yang to the protocol owned yang 
+        //   amount;
+        // - for (1) only, add the debt to the protocol owned troves' debt. 
+        // This ensures that the redistributed debt can still be backed in the event of a shutdown, but 
+        // essentially locks the redistributed yang's value in Shrine, 
         //
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
         // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
@@ -1694,8 +1697,8 @@ mod shrine {
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
-                        // If yang is delisted, then no debt is redistributed at this point since the delisted yang
-                        // does not account for any of the trove's value.
+                        // If yang is delisted, no debt will be redistributed for this yang because it does not account 
+                        // for any of the trove's value.
                         if !is_delisted {
                             let (redistributed_yang_price, _, _) = self_snap
                                 .get_recent_price_from(yang_id_to_redistribute, current_interval);
