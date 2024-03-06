@@ -2016,12 +2016,10 @@ mod test_purger {
                                                         let expected_protocol_owned_troves_debt =
                                                             before_protocol_owned_troves_debt
                                                             + expected_redistributed_amt;
-                                                        let error_margin: Wad = 1_u128.into();
-                                                        common::assert_equalish(
+                                                        assert_eq!(
                                                             after_protocol_owned_troves_debt,
                                                             expected_protocol_owned_troves_debt,
-                                                            error_margin,
-                                                            'wrong troves deficit'
+                                                            "wrong troves deficit"
                                                         );
                                                     } else {
                                                         // Check recipient trove's value and debt
