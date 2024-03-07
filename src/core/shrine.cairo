@@ -3,7 +3,6 @@ mod shrine {
     use access_control::access_control_component;
     use cmp::{max, min};
     use core::starknet::event::EventEmitter;
-    use debug::PrintTrait;
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
@@ -1504,11 +1503,7 @@ mod shrine {
 
             let mut current_yang_id: u32 = self.yangs_count.read();
             loop {
-                // If all yangs have been iterated over, return the average rate
                 if current_yang_id == 0 {
-                    // This operation would be a problem if the total trove value was ever zero.
-                    // However, `cumulative_yang_value` cannot be zero because a trove with no yangs deposited
-                    // cannot have any debt, meaning this code would never run (see `compound`)
                     break;
                 }
 
@@ -1516,7 +1511,7 @@ mod shrine {
                 // Update cumulative values only if this yang has been deposited in the trove and has not 
                 // been delisted
                 if yang_deposited.is_non_zero()
-                    & !(self.get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent) {
+                    && !(self.get_yang_suspension_status_helper(current_yang_id) == YangSuspensionStatus::Permanent) {
                     let yang_rate: Ray = self.yang_rates.read((current_yang_id, rate_era));
                     let avg_price: Wad = self.get_avg_price(current_yang_id, start_interval, end_interval);
                     let yang_value: Wad = yang_deposited * avg_price;
@@ -1528,6 +1523,8 @@ mod shrine {
                 current_yang_id -= 1;
             };
 
+            // Handle the corner case where a trove with non-zero debt has zero value i.e. the trove previously
+            // forged debt using yangs that are now all delisted.
             if cumulative_yang_value.is_zero() {
                 RayZeroable::zero()
             } else {
@@ -1672,7 +1669,7 @@ mod shrine {
                     Option::Some(yang_balance) => {
                         let trove_yang_amt: Wad = (*yang_balance).amount;
                         let yang_id_to_redistribute = (*yang_balance).yang_id;
-                        // Skip over this yang if it has not been deposited in the trove or if it has been delisted
+                        // Skip over this yang if it has not been deposited in the trove
                         if trove_yang_amt.is_zero() {
                             continue;
                         }
@@ -1742,7 +1739,7 @@ mod shrine {
                         //     occurs);
                         // (2) adding the trove's debt to the protocol owned troves' debt
                         let is_ordinary_redistribution: bool = (recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into())
-                            & !is_delisted;
+                            && !is_delisted;
 
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         let mut updated_yang_total: Wad = yang_total;
