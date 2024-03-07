@@ -84,6 +84,18 @@ mod test_caretaker {
         let y0_backing = wadray::wmul_wr(g0_before_balance, backing).into();
         let y1_backing = wadray::wmul_wr(g1_before_balance, backing).into();
 
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    expected_after_yang_total_amts
+                        .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
+                },
+                Option::None => { break; }
+            };
+        };
+
         start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
 
@@ -106,6 +118,22 @@ mod test_caretaker {
         let caretaker_y1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
         common::assert_equalish(caretaker_y0_balance, y0_backing, tolerance, 'caretaker yang0 balance');
         common::assert_equalish(caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance');
+
+        // assert that protocol owned yangs have been rebased
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Span<Wad> = expected_after_yang_total_amts.span();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
+
+                    let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
+                    let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
+                    assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
+                },
+                Option::None => { break; }
+            };
+        };
 
         let expected_events = array![
             (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
