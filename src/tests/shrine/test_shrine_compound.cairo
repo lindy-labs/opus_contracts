@@ -991,6 +991,12 @@ mod test_shrine_compound {
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
         assert_eq!(after_trove_health.debt, start_debt, "interest accrued");
+
+        // Ensure iteration limit is not a problem
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.melt(trove1_owner, trove_id, start_debt);
     }
 
     //
