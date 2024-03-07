@@ -796,8 +796,9 @@ mod shrine {
             self.access_control.assert_has_role(shrine_roles::KILL);
             self.is_live.write(false);
 
-            // Set protocol owned yangs to zero, thereby rebasing the amount of asset per yang to the benefit of all 
-            // trove owners and yin holders
+            // Set protocol owned yangs to zero, thereby rebasing the amount of asset per yang to the benefit of 
+            // all trove owners. Note that yin holders already benefitted from a proportional share of the protocol
+            // owned yangs when the Caretaker transfers a proportion of all yangs to itself.
             let mut current_yang_id: u32 = START_YANG_IDX;
             let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
             loop {
