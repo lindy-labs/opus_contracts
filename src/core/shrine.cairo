@@ -796,6 +796,23 @@ mod shrine {
             self.access_control.assert_has_role(shrine_roles::KILL);
             self.is_live.write(false);
 
+            // Set protocol owned yangs to zero, thereby rebasing the amount of asset per yang to the benefit of all 
+            // trove owners and yin holders
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break;
+                }
+
+                let protocol_owned_yang_amt: Wad = self.protocol_owned_yang_amts.read(current_yang_id);
+                let total_yang_amt: Wad = self.yang_total.read(current_yang_id);
+                self.protocol_owned_yang_amts.write(current_yang_id, WadZeroable::zero());
+                self.yang_total.write(current_yang_id, total_yang_amt - protocol_owned_yang_amt);
+
+                current_yang_id += 1;
+            };
+
             // Event emission
             self.emit(Killed {});
         }
