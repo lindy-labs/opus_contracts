@@ -182,14 +182,15 @@ mod test_caretaker {
         let user1_yang1_after_balance: u256 = y1.balance_of(user1);
 
         // assert released amount for eth
-        let eth_tolerance: Wad = 10_u128.into(); // 10 wei
+        let eth_tolerance: Wad = 1000000000_u128.into(); // 10 ** 9 wei due to rebasing of initial yang amt
         let expected_release_y0: Wad = trove1_yang0_deposit - wadray::rmul_rw(backing, trove1_yang0_deposit);
         common::assert_equalish(
             (*trove1_released_assets.at(0).amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
         );
 
         // assert released amount for wbtc (need to deal w/ different decimals)
-        let wbtc_tolerance: Wad = (2 * 10000000000_u128).into(); // 2 satoshi
+        let wbtc_tolerance: Wad = (1000 * 100000000000000_u128)
+            .into(); // 10_000 satoshi due to rebasing of initial yang amt
         let wbtc_deposit: Wad = fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
         let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
         let actual_release_y1: Wad = fixed_point_to_wad(*trove1_released_assets.at(1).amount, common::WBTC_DECIMALS);
