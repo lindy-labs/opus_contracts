@@ -596,6 +596,19 @@ mod test_shrine {
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    expected_after_yang_total_amts
+                        .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
+                },
+                Option::None => { break; }
+            };
+        };
+
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.kill();
 
@@ -604,10 +617,20 @@ mod test_shrine {
 
         assert(!shrine.get_live(), 'should not be live');
 
-        let expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Killed(shrine_contract::Killed {}),
-        ]
-            .span();
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Span<Wad> = expected_after_yang_total_amts.span();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
+
+                    let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
+                    let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
+                    assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
+                },
+                Option::None => { break; }
+            };
+        };
 
         let expected_events = array![
             (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {}))
