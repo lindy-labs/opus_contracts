@@ -2218,20 +2218,33 @@ mod test_shrine {
         // the threshold should decrease by 1% in this amount of time
         let one_pct = shrine_contract::SUSPENSION_GRACE_PERIOD / 100;
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct);
-        shrine.advance(yang, yang_price);
+        let mut time_pcts: Span<u64> = array![1, 20, 35, 50, 75].span();
+        loop {
+            match time_pcts.pop_front() {
+                Option::Some(time_pct) => {
+                    // move time forward
+                    start_warp(CheatTarget::All, start_ts + (one_pct * *time_pct));
 
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 2');
+                    // check suspension status
+                    let status = shrine.get_yang_suspension_status(yang);
+                    assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+                    // check threshold
+                    let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+                    assert(
+                        raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * (100_u64 - *time_pct).into()).into(),
+                        'threshold 2'
+                    );
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct * 20);
+                    // intermediate price update to avoid iteration timeout
+                    shrine.advance(yang, yang_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        // move time forward to a second before permanent suspension
+        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
         shrine.advance(yang, yang_price);
 
         // check suspension status
@@ -2240,26 +2253,10 @@ mod test_shrine {
 
         // check threshold
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
-
-        // intermediate price update to avoid iteration timeout
-        start_warp(CheatTarget::All, start_ts + (50 * one_pct));
-        shrine.advance(yang, yang_price);
-
-        // move time forward to a second before permanent suspension
-        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
-        shrine.advance(yang, yang_price);
-
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 4');
-
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
         // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
         common::assert_equalish(
-            raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4'
+            raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 3'
         );
 
         // move time forward to end of temp suspension, start of permanent one
@@ -2268,11 +2265,11 @@ mod test_shrine {
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Permanent, 'status 5');
+        assert(status == YangSuspensionStatus::Permanent, 'status 4');
 
         // check threshold
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold.is_zero(), 'threshold 5');
+        assert(raw_threshold.is_zero(), 'threshold 4');
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.value.is_zero(), 'trove has value');
