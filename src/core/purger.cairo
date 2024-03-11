@@ -60,7 +60,7 @@ mod purger {
     const COMPENSATION_CAP: u128 = 50000000000000000000;
 
     // Minimum threshold for the penalty calculation, under which the
-    // minimum penalty is automatically returned to avoid division by zero/overflow
+    // maximum penalty is automatically returned to avoid division by zero/overflow
     const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
 
     //
@@ -557,7 +557,7 @@ mod purger {
         }
 
         // If the threshold is below the given minimum, we automatically
-        // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+        // return the maximum penalty to avoid division by zero/overflow, or the largest possible penalty,
         // whichever is smaller.
         if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
             // This check is to avoid overflow in the event that the
