@@ -189,7 +189,7 @@ mod test_caretaker {
         );
 
         // assert released amount for wbtc (need to deal w/ different decimals)
-        let wbtc_tolerance: Wad = (1000 * 100000000000000_u128)
+        let wbtc_tolerance: Wad = (10000 * 10000000000_u128)
             .into(); // 10_000 satoshi due to rebasing of initial yang amt
         let wbtc_deposit: Wad = fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
         let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
