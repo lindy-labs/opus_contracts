@@ -1527,8 +1527,7 @@ mod shrine {
                 }
 
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
-                // Update cumulative values only if this yang has been deposited in the trove and has not 
-                // been delisted
+                // Update cumulative values only if this yang has been deposited in the trove
                 if yang_deposited.is_non_zero() {
                     let yang_rate: Ray = self.yang_rates.read((current_yang_id, rate_era));
                     let avg_price: Wad = self.get_avg_price(current_yang_id, start_interval, end_interval);
@@ -1707,15 +1706,15 @@ mod shrine {
                         // be redistributed is less than 100%.
                         let recipient_yang_amt: Wad = yang_total - trove_yang_amt - protocol_owned_yang_amt;
 
-                        let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
-                        let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
-
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
-                        // If yang is delisted, no debt will be redistributed for this yang because it does not account 
-                        // for any of the trove's value.
+                        // Note that if yang is delisted, its price will be zero, and therefore no debt will be 
+                        // redistributed for this yang because it does not account for any of the trove's value.
                         let (redistributed_yang_price, _, _) = self_snap
                             .get_recent_price_from(yang_id_to_redistribute, current_interval);
+
+                        let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
+                        let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
 
                         if trove_value_to_redistribute.is_non_zero() {
                             let yang_debt_pct: Ray = wadray::rdiv_ww(
