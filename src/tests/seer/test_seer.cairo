@@ -229,12 +229,11 @@ mod test_seer {
         shrine.suspend_yang(eth_addr);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        // avoid hitting iteration limit by splitting the suspension period into 4 parts
-        let mut period_div = 4;
+        // avoid hitting iteration limit by splitting the suspension period into parts
+        let mut period_div = 8;
         let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
 
-        let mut expected_cumulative_eth_price: Wad = WadZeroable::zero();
-        let mut expected_eth_price_interval: u64 = 0;
+        let mut last_delisted_yang_interval: u64 = 0;
         loop {
             if period_div.is_zero() {
                 break;
@@ -249,9 +248,10 @@ mod test_seer {
             seer.update_prices();
 
             if period_div != 1 {
-                let (_, tmp_cumulative_eth_price, tmp_eth_price_interval) = shrine.get_current_yang_price(eth_addr);
-                expected_cumulative_eth_price = tmp_cumulative_eth_price;
-                expected_eth_price_interval = tmp_eth_price_interval;
+                assert(
+                    shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Temporary, 'yang suspended'
+                );
+                last_delisted_yang_interval = shrine_utils::get_interval(get_block_timestamp());
             }
 
             period_div -= 1;
@@ -259,9 +259,21 @@ mod test_seer {
 
         assert(shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Permanent, 'yang not suspended');
 
-        let (_, cumulative_eth_price, eth_price_interval) = shrine.get_current_yang_price(eth_addr);
-        assert_eq!(cumulative_eth_price, expected_cumulative_eth_price, "wrong delisted cumulative");
-        assert_eq!(eth_price_interval, expected_eth_price_interval, "wrong delisted price interval");
+        let (last_eth_price, last_cumulative_eth_price) = shrine.get_yang_price(eth_addr, last_delisted_yang_interval);
+        assert(last_eth_price.is_non_zero(), 'price should not be zero');
+        assert(last_cumulative_eth_price.is_non_zero(), 'wrong cumulative price #1');
+
+        let first_delisted_interval: u64 = last_delisted_yang_interval + 1;
+        let (first_delisted_price, first_delisted_cumulative_eth_price) = shrine
+            .get_yang_price(eth_addr, first_delisted_interval);
+        assert(first_delisted_price.is_zero(), 'price should be zero #1');
+        assert(first_delisted_cumulative_eth_price.is_zero(), 'wrong cumulative price #2');
+
+        let (eth_price, cumulative_eth_price, eth_price_interval) = shrine.get_current_yang_price(eth_addr);
+        assert(eth_price.is_zero(), 'price should be zero #2');
+        assert(cumulative_eth_price.is_zero(), 'wrong cumulative price #3');
+        let current_interval: u64 = shrine_utils::get_interval(get_block_timestamp());
+        assert_eq!(eth_price_interval, current_interval, "wrong delisted price interval");
     }
 
     #[test]
