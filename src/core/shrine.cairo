@@ -1176,10 +1176,6 @@ mod shrine {
 
             let mut current_interval: u64 = interval;
             loop {
-                if current_interval.is_zero() {
-                    break (WadZeroable::zero(), WadZeroable::zero(), current_interval);
-                }
-
                 let (price, cumulative_price) = self.yang_prices.read((yang_id, current_interval));
 
                 // Since the price can be zero, the cumulative price is used to check if a price update is available
