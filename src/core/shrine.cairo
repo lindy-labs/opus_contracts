@@ -82,18 +82,17 @@ mod shrine {
     // During recovery mode, this factor is also applied to a trove's threshold to determine 
     // the trove's target LTV during recovery mode, so `forge` and `withdraw` during recovery 
     // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
-    // target LTV. Note that this target LTV will be different from the trove's threshold
-    // for liquidation in recovery mode, which is adjusted based on how far the trove's LTV 
-    // exceeds this target LTV.
+    // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
+    // based on how far the trove's LTV exceeds this target LTV.
     const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
     // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
     // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
-    // thresholds start to be scaled.
+    // thresholds start to be scaled in recovery mode.
     // This acts as a buffer from when recovery mode is triggered until thresholds
     // are adjusted to mitigate against a trove intentionally triggering recovery mode to
     // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
-    // the accrual of fees or changes to yangs' prices.
+    // by the accrual of fees or changes to yangs' prices.
     const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
