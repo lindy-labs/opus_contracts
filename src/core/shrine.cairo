@@ -1168,21 +1168,29 @@ mod shrine {
         }
 
         // Returns the price for `yang_id` at `interval` if it is non-zero.
-        // Otherwise, check `interval` - 1 recursively for the last available price.
+        // Otherwise, check `interval` - 1 iteratively for the last available price.
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
             if self.is_delisted(yang_id) {
                 return (WadZeroable::zero(), WadZeroable::zero(), interval);
             }
 
-            let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
+            let mut current_interval: u64 = interval;
+            loop {
+                if current_interval.is_zero() {
+                    break (WadZeroable::zero(), WadZeroable::zero(), current_interval);
+                }
 
-            // Since the price can be zero, the cumulative price is used to check if a price update is available
-            // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
-            // update is made because the initial yang price must be non-zero.
-            if cumulative_price.is_non_zero() {
-                return (price, cumulative_price, interval);
+                let (price, cumulative_price) = self.yang_prices.read((yang_id, current_interval));
+
+                // Since the price can be zero, the cumulative price is used to check if a price update is available
+                // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
+                // update is made because the initial yang price must be non-zero.
+                if cumulative_price.is_non_zero() {
+                    break (price, cumulative_price, current_interval);
+                }
+
+                current_interval -= 1;
             }
-            self.get_recent_price_from(yang_id, interval - 1)
         }
 
         // Returns the multiplier at `interval` if it is non-zero.
