@@ -528,8 +528,7 @@ mod shrine {
             self.get_yang_threshold_helper(yang_id)
         }
 
-        // Returns a Health struct comprising the Shrine's threshold, a dummy value same as threshold
-        // since the Shrine does not have a recovery mode threshold, LTV, value and debt.
+        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt.
         fn get_shrine_health(self: @ContractState) -> Health {
             let (threshold, value) = self.get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_troves_debt.read();
@@ -1084,7 +1083,7 @@ mod shrine {
         }
 
         // Returns a Health struct comprising the trove's applicable threshold based on current on-chain conditins, 
-        // recovery mode threshold, LTV based on compounded debt, trove value and compounded debt.
+        // LTV based on compounded debt, trove value and compounded debt.
         fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
             let mut trove_health = trove_health_with_base_threshold;
@@ -1092,6 +1091,8 @@ mod shrine {
             trove_health
         }
 
+        // Returns the threshold for a trove based on its collateral composition, without taking into account
+        // whether the Shrine is in recovery mode.
         fn get_trove_base_threshold(self: @ContractState, trove_id: u64) -> Ray {
             let trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
             trove_health_with_base_threshold.threshold
