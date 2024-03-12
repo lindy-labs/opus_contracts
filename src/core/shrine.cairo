@@ -137,7 +137,7 @@ mod shrine {
         // Total amount of debt accrued for troves. This includes any debt surplus 
         // already accounted for in the budget.
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
-        // `total_troves_debt` - `protocol_owned_troves_debt` = sum(trove.debt) for all troves
+        // `total_troves_debt` = `protocol_owned_troves_debt` + sum(trove.debt) for all troves
         total_troves_debt: Wad,
         // Amount of debt originating from troves that is owned by the protocol due to:
         // 1. errors from ordinarily redistributed debt; and 
@@ -1191,6 +1191,10 @@ mod shrine {
             assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
         }
 
+        fn is_delisted(self: @ContractState, yang_id: u32) -> bool {
+            self.get_yang_suspension_status_helper(yang_id) == YangSuspensionStatus::Permanent
+        }
+
         //
         // Helpers for getters and view functions
         //
@@ -1215,17 +1219,25 @@ mod shrine {
         }
 
         // Returns the price for `yang_id` at `interval` if it is non-zero.
-        // Otherwise, check `interval` - 1 recursively for the last available price.
+        // Otherwise, check `interval` - 1 iteratively for the last available price.
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
-            let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
-
-            // Since the price can be zero, the cumulative price is used to check if a price update is available
-            // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
-            // update is made because the initial yang price must be non-zero.
-            if cumulative_price.is_non_zero() {
-                return (price, cumulative_price, interval);
+            if self.is_delisted(yang_id) {
+                return (WadZeroable::zero(), WadZeroable::zero(), interval);
             }
-            self.get_recent_price_from(yang_id, interval - 1)
+
+            let mut current_interval: u64 = interval;
+            loop {
+                let (price, cumulative_price) = self.yang_prices.read((yang_id, current_interval));
+
+                // Since the price can be zero, the cumulative price is used to check if a price update is available
+                // for the interval. Note that the cumulative price is guaranteed to be non-zero if a price
+                // update is made because the initial yang price must be non-zero.
+                if cumulative_price.is_non_zero() {
+                    break (price, cumulative_price, current_interval);
+                }
+
+                current_interval -= 1;
+            }
         }
 
         // Returns the multiplier at `interval` if it is non-zero.
@@ -1611,12 +1623,8 @@ mod shrine {
 
             let mut current_yang_id: u32 = self.yangs_count.read();
             loop {
-                // If all yangs have been iterated over, return the average rate
                 if current_yang_id == 0 {
-                    // This operation would be a problem if the total trove value was ever zero.
-                    // However, `cumulative_yang_value` cannot be zero because a trove with no yangs deposited
-                    // cannot have any debt, meaning this code would never run (see `compound`)
-                    break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
+                    break;
                 }
 
                 let yang_deposited: Wad = self.deposits.read((current_yang_id, trove_id));
@@ -1631,6 +1639,14 @@ mod shrine {
                     cumulative_yang_value += yang_value;
                 }
                 current_yang_id -= 1;
+            };
+
+            // Handle the corner case where a trove with non-zero debt has zero value i.e. the trove previously
+            // forged debt using yangs that are now all delisted.
+            if cumulative_yang_value.is_zero() {
+                RayZeroable::zero()
+            } else {
+                wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value)
             }
         }
 
@@ -1642,6 +1658,11 @@ mod shrine {
                 .get_recent_price_from(yang_id, start_interval);
             let (end_yang_price, end_cumulative_yang_price, available_end_interval) = self
                 .get_recent_price_from(yang_id, end_interval);
+
+            // Early return if price is 0 i.e. yang is delisted
+            if start_yang_price.is_zero() && end_yang_price.is_zero() {
+                return start_yang_price;
+            }
 
             // If the last available price for both start and end intervals are the same,
             // return that last available price
@@ -1733,10 +1754,13 @@ mod shrine {
         // and divide the debt by the recipient amount of yang (i.e. excluding the initial yang amount 
         // and the redistributed trove's yang.
         //
-        // For yangs that have not been deposited by any other troves (i.e. exceptional redistribution), 
-        // we transfer the redistributed trove's yang to the protocol owned yang amount, and add the debt to 
-        // the protocol owned troves' debt. This ensures that the redistributed debt can still be backed in 
-        // the event of a shutdown, but essentially locks the redistributed yang's value in Shrine, 
+        // For yangs that (1) have not been deposited by any other troves; or (2) has been delisted 
+        // (i.e. exceptional redistribution), 
+        // - for both (1) and (2), we transfer the redistributed trove's yang to the protocol owned yang 
+        //   amount;
+        // - for (1) only, add the debt to the protocol owned troves' debt. 
+        // This ensures that the redistributed debt can still be backed in the event of a shutdown, but 
+        // essentially locks the redistributed yang's value in Shrine, 
         //
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
         // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
@@ -1785,6 +1809,8 @@ mod shrine {
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
+                        // Note that if yang is delisted, its price will be zero, and therefore no debt will be 
+                        // redistributed for this yang because it does not account for any of the trove's value.
                         let (redistributed_yang_price, _, _) = self_snap
                             .get_recent_price_from(yang_id_to_redistribute, current_interval);
 
@@ -1805,14 +1831,12 @@ mod shrine {
                         } else {
                             // If `trove_value_to_redistribute` is zero due to loss of precision,
                             // redistribute all of `debt_to_redistribute` to the first yang that the trove
-                            // has deposited. Note that `redistributed_debt` does not need to be updated because
-                            // setting `debt_to_distribute_for_yang` to a non-zero value would terminate the loop
-                            // after this iteration at
-                            // `debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang` (i.e. `1 != 0`).
+                            // has deposited.
                             //
                             // At worst, `debt_to_redistribute` will accrue to the error and
                             // no yang is decremented from the redistributed trove, but redistribution should
                             // not revert.
+                            redistributed_debt += debt_to_redistribute;
                             debt_to_distribute_for_yang = debt_to_redistribute;
                         };
 
@@ -1829,7 +1853,8 @@ mod shrine {
                         //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
                         //     occurs);
                         // (2) adding the trove's debt to the protocol owned troves' debt
-                        let is_ordinary_redistribution: bool = recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into();
+                        let is_ordinary_redistribution: bool = (recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into())
+                            && !self_snap.is_delisted(yang_id_to_redistribute);
 
                         let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         let mut updated_yang_total: Wad = yang_total;
@@ -1915,6 +1940,16 @@ mod shrine {
                     Option::None => { break; },
                 };
             };
+
+            // If some debt remains undistributed, transfer it to the protocol.
+            // This may happen due to:
+            // 1. the amount of debt to be redistributed is very small e.g. 1 wei,
+            //    causing the debt for each yang to round down to zero due to loss of 
+            //    precision;
+            // 2. the trove has deposited only delisted yangs.
+            if redistributed_debt < debt_to_redistribute {
+                cumulative_protocol_owned_troves_debt += debt_to_redistribute - redistributed_debt;
+            }
 
             if cumulative_protocol_owned_troves_debt.is_non_zero() {
                 let new_protocol_owned_troves_debt: Wad = self.protocol_owned_troves_debt.read()
