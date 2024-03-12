@@ -7,6 +7,7 @@ mod seer {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::external::ITask;
+    use opus::types::YangSuspensionStatus;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
@@ -203,6 +204,10 @@ mod seer {
             loop {
                 match yangs.pop_front() {
                     Option::Some(yang) => {
+                        if shrine.get_yang_suspension_status(*yang) == YangSuspensionStatus::Permanent {
+                            continue;
+                        }
+
                         let mut oracle_index: u32 = LOOP_START;
                         loop {
                             let oracle: IOracleDispatcher = self.oracles.read(oracle_index);

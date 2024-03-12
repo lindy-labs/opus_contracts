@@ -2195,17 +2195,20 @@ mod test_shrine {
 
     #[test]
     fn test_yang_suspension_progress_temp_to_permanent() {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine_addr));
-
-        shrine_utils::shrine_setup(shrine_addr);
-        let shrine = shrine_utils::shrine(shrine_addr);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let yang = shrine_utils::yang1_addr();
-        let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
+        let (yang_price, _, _) = shrine.get_current_yang_price(yang);
+        let start_ts = get_block_timestamp();
 
-        start_warp(CheatTarget::All, start_ts);
         start_prank(CheatTarget::All, shrine_utils::admin());
+
+        let trove_id: u64 = common::TROVE_1;
+        shrine.deposit(yang, trove_id, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+
+        let start_shrine_health: Health = shrine.get_shrine_health();
+        let start_trove_health: Health = shrine.get_trove_health(trove_id);
 
         // initiate yang's suspension, starting now
         shrine.suspend_yang(yang);
@@ -2219,7 +2222,7 @@ mod test_shrine {
             .assert_emitted(
                 @array![
                     (
-                        shrine_addr,
+                        shrine.contract_address,
                         shrine_contract::Event::YangSuspended(
                             shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
                         )
@@ -2231,22 +2234,41 @@ mod test_shrine {
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
         assert(raw_threshold == shrine_utils::YANG1_THRESHOLD.into(), 'threshold 1');
 
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_non_zero(), 'trove has no value');
+        assert_eq!(trove_health.threshold, raw_threshold, "wrong trove threshold #1");
+
         // the threshold should decrease by 1% in this amount of time
         let one_pct = shrine_contract::SUSPENSION_GRACE_PERIOD / 100;
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct);
+        let mut time_pcts: Span<u64> = array![1, 20, 35, 50, 75].span();
+        loop {
+            match time_pcts.pop_front() {
+                Option::Some(time_pct) => {
+                    // move time forward
+                    start_warp(CheatTarget::All, start_ts + (one_pct * *time_pct));
 
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 2');
+                    // check suspension status
+                    let status = shrine.get_yang_suspension_status(yang);
+                    assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+                    // check threshold
+                    let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+                    assert(
+                        raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * (100_u64 - *time_pct).into()).into(),
+                        'threshold 2'
+                    );
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct * 20);
+                    // intermediate price update to avoid iteration timeout
+                    shrine.advance(yang, yang_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        // move time forward to a second before permanent suspension
+        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
+        shrine.advance(yang, yang_price);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
@@ -2254,33 +2276,31 @@ mod test_shrine {
 
         // check threshold
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
-
-        // move time forward to a second before permanent suspension
-        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
-
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 4');
-
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
         // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
         common::assert_equalish(
-            raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4'
+            raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 3'
         );
 
         // move time forward to end of temp suspension, start of permanent one
         start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
+        shrine.advance(yang, yang_price);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Permanent, 'status 5');
+        assert(status == YangSuspensionStatus::Permanent, 'status 4');
 
         // check threshold
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == RayZeroable::zero(), 'threshold 5');
+        assert(raw_threshold.is_zero(), 'threshold 4');
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_zero(), 'trove has value');
+        assert(trove_health.threshold.is_zero(), 'wrong trove threshold #2');
+
+        let after_shrine_health: Health = shrine.get_shrine_health();
+        let expected_shrine_value: Wad = start_shrine_health.value - start_trove_health.value;
+        assert_eq!(after_shrine_health.value, expected_shrine_value, "wrong shrine value");
     }
 
     #[test]
