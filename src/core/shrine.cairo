@@ -1146,11 +1146,7 @@ mod shrine {
                 );
             }
 
-            if self.is_recovery_mode() {
-                // (2a)
-                assert(self.exceeds_recovery_mode_ltv(start_shrine_health), 'SH: Will trigger recovery mode');
-
-                // If we reach this line, then Shrine was in recovery mode before, and still is after, the trove action.
+            if self.exceeds_recovery_mode_ltv(start_shrine_health) {
                 let rm_target_ltv: Ray = self
                     .get_recovery_mode_target_ltv(start_trove_health_with_base_threshold.threshold);
                 if start_trove_health_with_base_threshold.ltv >= rm_target_ltv {
@@ -1167,6 +1163,8 @@ mod shrine {
                     )
                 }
             } else {
+                // (2a)
+                assert(!self.is_recovery_mode(), 'SH: Will trigger recovery mode');
                 // (2b)
                 assert(self.is_healthy_helper(end_trove_health_with_base_threshold), 'SH: Trove LTV > threshold');
             }
