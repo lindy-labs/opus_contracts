@@ -199,7 +199,9 @@ mod gate {
                 // the same value is returned
                 yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
-                ((yang_amt * get_total_assets_helper(asset).into()) / total_yang).val
+                // use u256 to avoid precision loss from Wad multiplication
+                let res: u256 = (yang_amt.into() * get_total_assets_helper(asset).into()) / total_yang.into();
+                res.try_into().unwrap()
             }
         }
 
@@ -217,7 +219,9 @@ mod gate {
                 // value is returned
                 fixed_point_to_wad(asset_amt, decimals)
             } else {
-                (asset_amt.into() * total_yang) / get_total_assets_helper(asset).into()
+                // use u256 to avoid precision loss from Wad multiplication
+                let res: u256 = (asset_amt.into() * total_yang.into()) / get_total_assets_helper(asset).into();
+                res.try_into().unwrap()
             }
         }
     }

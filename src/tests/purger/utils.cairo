@@ -278,7 +278,7 @@ mod purger_utils {
         array![ // minimum amount that must be provided based on initial shares
             absorber_contract::INITIAL_SHARES
                 .into(), // largest possible amount of yin in Absorber based on initial shares
-            (absorber_contract::MINIMUM_SHARES - 1).into()
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into()
         ]
             .span()
     }
@@ -288,7 +288,7 @@ mod purger_utils {
     fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         array![
             // smallest possible amount of yin in Absorber based on initial shares
-            absorber_contract::MINIMUM_SHARES.into(),
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES).into(),
             (trove_debt.val / 3).into(),
             (trove_debt.val - 1000).into(),
             // trove's debt minus the smallest unit of Wad
@@ -619,9 +619,12 @@ mod purger_utils {
         assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
-    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
+    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray, error_margin: Option<Ray>) {
         let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
+        let error_margin: Ray = match error_margin {
+            Option::Some(e) => { e },
+            Option::None => { (RAY_PERCENT / 10).into() }, // 0.1%
+        };
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 

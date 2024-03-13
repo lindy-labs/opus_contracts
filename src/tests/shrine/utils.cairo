@@ -6,7 +6,7 @@ mod shrine_utils {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::types::{Health, YangRedistribution};
+    use opus::types::Health;
     use opus::utils::exp::exp;
     use snforge_std::{
         declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
@@ -325,6 +325,38 @@ mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
+    fn advance_prices_for_suspension_period(shrine: IShrineDispatcher, yangs: Span<ContractAddress>) {
+        // avoid hitting iteration limit by splitting the suspension period into 4 parts
+        let mut period_div = 4;
+        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+        let mut next_ts: u64 = get_block_timestamp();
+
+        start_prank(CheatTarget::All, admin());
+        loop {
+            if period_div.is_zero() {
+                break;
+            }
+            next_ts += suspension_grace_period_quarter;
+            start_warp(CheatTarget::All, next_ts);
+
+            let mut yangs_copy = yangs;
+            loop {
+                match yangs_copy.pop_front() {
+                    Option::Some(yang) => {
+                        let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                        shrine.advance(*yang, yang_price);
+                    },
+                    Option::None => { break; }
+                }
+            };
+
+            shrine.set_multiplier(RAY_ONE.into());
+
+            period_div -= 1;
+        };
+        stop_prank(CheatTarget::One(shrine.contract_address));
+    }
+
     //
     // Test helpers
     //
@@ -597,10 +629,7 @@ mod shrine_utils {
     //
 
     // Asserts that for each yang, the total yang amount is less than or equal to the sum of
-    // all troves' deposited amount, including any unpulled exceptional redistributions, and
-    // the initial yang amount.
-    // We do not check for strict equality because there may be loss of precision when
-    // exceptionally redistributed yang are pulled into troves.
+    // all troves' deposited amount, and the initial yang amount.
     fn assert_total_yang_invariant(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64) {
         let troves_loop_end: u64 = troves_count + 1;
 
@@ -608,7 +637,7 @@ mod shrine_utils {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let initial_amt: Wad = shrine.get_initial_yang_amt(*yang);
+                    let initial_amt: Wad = shrine.get_protocol_owned_yang_amt(*yang);
 
                     let mut trove_id: u64 = 1;
                     let mut troves_cumulative_amt: Wad = WadZeroable::zero();
@@ -617,19 +646,7 @@ mod shrine_utils {
                             break;
                         }
 
-                        let mut trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
-                        let (mut redistributed_yangs, _) = shrine.get_redistributions_attributed_to_trove(trove_id);
-
-                        loop {
-                            match redistributed_yangs.pop_front() {
-                                Option::Some(redistributed_yang) => {
-                                    if *redistributed_yang.yang_id == yang_id {
-                                        trove_amt += *redistributed_yang.amount;
-                                    }
-                                },
-                                Option::None => { break; },
-                            };
-                        };
+                        let trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
                         troves_cumulative_amt += trove_amt;
 
                         trove_id += 1;
@@ -637,12 +654,7 @@ mod shrine_utils {
 
                     let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
                     let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
-                    assert(derived_yang_amt <= actual_yang_amt, 'yang invariant failed #1');
-
-                    let error_margin: Wad = 100_u128.into();
-                    common::assert_equalish(
-                        derived_yang_amt, actual_yang_amt, error_margin, 'yang invariant failed #2'
-                    );
+                    assert_eq!(derived_yang_amt, actual_yang_amt, "yang invariant failed");
 
                     yang_id += 1;
                 },
@@ -651,16 +663,14 @@ mod shrine_utils {
         };
     }
 
-    // Asserts that the total troves debt is less than or equal to the sum of all troves' debt, 
+    // Asserts that the total troves debt is less than the sum of all troves' debt, 
     // including all unpulled redistributions.
-    // We do not check for strict equality because there may be loss of precision when 
-    // redistributed debt are pulled into troves.
     fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
-        let mut total: Wad = WadZeroable::zero();
+        let mut cumulative_troves_debt: Wad = WadZeroable::zero();
         let mut trove_id: u64 = 1;
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
@@ -673,50 +683,23 @@ mod shrine_utils {
             shrine.melt(admin(), trove_id, WadZeroable::zero());
 
             let trove_health: Health = shrine.get_trove_health(trove_id);
-            total += trove_health.debt;
+            cumulative_troves_debt += trove_health.debt;
 
             trove_id += 1;
         };
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        let redistributions_count: u32 = shrine.get_redistributions_count();
-
-        let mut errors = WadZeroable::zero();
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let mut redistribution_id: u32 = redistributions_count;
-                    loop {
-                        if redistribution_id == 0 {
-                            break;
-                        }
-                        let yang_redistribution: YangRedistribution = shrine
-                            .get_redistribution_for_yang(*yang, redistribution_id);
-
-                        // Find the last error for yang
-                        if yang_redistribution.error.is_non_zero() {
-                            errors += yang_redistribution.error;
-                            break;
-                        }
-
-                        if yang_redistribution.unit_debt.is_zero() {
-                            break;
-                        }
-
-                        redistribution_id -= 1;
-                    };
-                },
-                Option::None => { break; },
-            };
-        };
-
-        total += errors;
-
         let shrine_health: Health = shrine.get_shrine_health();
-        assert(total <= shrine_health.debt, 'debt invariant failed #1');
+        let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+        let cumulative_troves_debt_with_protocol_owned: Wad = cumulative_troves_debt + protocol_owned_troves_debt;
 
+        assert(cumulative_troves_debt_with_protocol_owned <= shrine_health.debt, 'debt invariant failed #1');
+
+        // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
-        common::assert_equalish(total, shrine_health.debt, error_margin, 'debt invariant failed #2');
+        common::assert_equalish(
+            cumulative_troves_debt_with_protocol_owned, shrine_health.debt, error_margin, 'debt invariant failed #2'
+        );
     }
 
     fn assert_shrine_invariants(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64) {

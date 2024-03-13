@@ -95,13 +95,6 @@ mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct OracleAddressUpdated {
-        old_address: ContractAddress,
-        new_address: ContractAddress
-    }
-
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct PriceValidityThresholdsUpdated {
         old_thresholds: PriceValidityThresholds,
         new_thresholds: PriceValidityThresholds

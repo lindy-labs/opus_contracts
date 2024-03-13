@@ -126,21 +126,23 @@ mod abbot {
         // Core functions
         //
 
-        // create a new trove in the system with Yang deposits,
-        // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
+        // Create a new trove in the system with Yang deposits
+        // Note that since the forge amount must be greater than zero, the Shrine would also enforce
+        // that the minimum trove value has been deposited.
         fn open_trove(
             ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
+            assert(forge_amount.is_non_zero(), 'ABB: No debt forged');
 
-            let troves_count: u64 = self.troves_count.read();
-            self.troves_count.write(troves_count + 1);
+            let new_troves_count: u64 = self.troves_count.read() + 1;
+            self.troves_count.write(new_troves_count);
 
             let user = get_caller_address();
             let user_troves_count: u64 = self.user_troves_count.read(user);
             self.user_troves_count.write(user, user_troves_count + 1);
 
-            let new_trove_id: u64 = troves_count + 1;
+            let new_trove_id: u64 = new_troves_count;
             self.user_troves.write((user, user_troves_count), new_trove_id);
             self.trove_owner.write(new_trove_id, user);
 
@@ -192,9 +194,8 @@ mod abbot {
             // There is no need to check the yang address is non-zero because the
             // Sentinel does not allow a zero address yang to be added.
 
-            assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
-            assert(trove_id <= self.troves_count.read(), 'ABB: Non-existent trove');
-            // note that caller does not need to be the trove's owner to deposit
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
 
             self.deposit_helper(trove_id, get_caller_address(), yang_asset);
         }

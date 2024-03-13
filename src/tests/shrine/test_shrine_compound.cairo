@@ -1,9 +1,10 @@
 mod test_shrine_compound {
+    use debug::PrintTrait;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, Trove};
+    use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::exp::exp;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
@@ -716,14 +717,14 @@ mod test_shrine_compound {
         // O X O
         // X O X
         //
-        // where X is the constant `USE_PREV_BASE_RATE` value that sets the base rate to the previous value.
+        // where X is the constant `USE_PREV_ERA_BASE_RATE` value that sets the base rate to the previous value.
         //
         // Note that the arrays are created as a list of yang base rate updates
 
         // `yang_base_rates_history_to_update` is used to perform the rate updates, while
         // `yang_base_rates_history_to_compound` is used to perform calculation of the compounded interest
         // The main difference between the two arrays are:
-        // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_BASE_RATE`
+        // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_ERA_BASE_RATE`
         //     which is equivalent to `RAY_SCALE + 1`, whereas the actual value that is used to calculate
         //     compound interest is the previous base rate.
         // (2) `yang_base_rates_history_to_compound` has an extra item for the initial base rates at the time
@@ -956,6 +957,46 @@ mod test_shrine_compound {
             );
 
         spy.assert_emitted(@expected_events);
+    }
+
+    // Check that a delisted yang is not taken into account for interest
+    #[test]
+    fn test_compound_and_charge_delisted_yang() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Advance one interval to avoid overwriting the last price
+        shrine_utils::advance_interval();
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang_to_delist: ContractAddress = *yangs[0];
+
+        let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, start_debt);
+
+        let trove1_owner = common::trove1_owner_addr();
+        let trove_id: u64 = common::TROVE_1;
+        let before_trove_delisted_yang_amt: Wad = shrine.get_deposit(yang_to_delist, trove_id);
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.suspend_yang(yang_to_delist);
+
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+
+        assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
+
+        // Trigger charge and check no interest is accrued
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.melt(trove1_owner, trove_id, WadZeroable::zero());
+
+        let after_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert_eq!(after_trove_health.debt, start_debt, "interest accrued");
+
+        // Ensure iteration limit is not a problem
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.melt(trove1_owner, trove_id, start_debt);
     }
 
     //

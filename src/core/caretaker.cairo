@@ -200,7 +200,7 @@ mod caretaker {
             assert(shrine.get_live(), 'CA: System is not live');
 
             // Mint surplus debt
-            // Note that the total system debt may stil be higher than total yin after this
+            // Note that the total system debt may still be higher than total yin after this
             // final minting of surplus debt due to loss of precision. However, any such
             // excess system debt is inconsequential because only the total yin supply will
             // be backed by collateral, and it would not be possible to mint this excess
@@ -316,7 +316,7 @@ mod caretaker {
         //          1. User A reclaims 100 yin, amounting to 100 / 1_000 = 10%, which entitles him to receive
         //             10% * 4_000 = 400 yang A assets from the Caretaker.
         //
-        //             After User A reclaims, total system yin decreaes to 900, and the Caretaker's balance of
+        //             After User A reclaims, total system yin decreases to 900, and the Caretaker's balance of
         //             yang A assets decreases to 3_600.
         //
         //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive
