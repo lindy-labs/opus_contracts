@@ -1290,7 +1290,7 @@ mod shrine {
             self: @ContractState, trove_health_with_base_threshold: Health
         ) -> Ray {
             // Early return if any of the following is true
-            // 1. Trove is empty
+            // 1. Trove has no debt
             // 2. Shrine's LTV is below its recovery mode target LTV with buffer
             let shrine_health: Health = self.get_shrine_health();
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
