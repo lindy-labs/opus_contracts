@@ -1060,22 +1060,21 @@ mod shrine {
 
         // Returns the maximum amount of yin that a trove can forge based on its current health.
         // Note that forging the return value from this getter may still revert in the following cases:
-        // 1. forging the amount triggers recovery mode, causing the trove to be unsafe based on its
-        //    recovery mode threshold instead of its usual threshold; or
+        // 1. forging the amount causes the Shrine to enter into recovery mode;
         // 2. forging the amount causes the debt ceiling to be exceeded.
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let base_health: Health = self.get_trove_health_with_base_threshold(trove_id);
+            let trove_health: Health = self.get_trove_health_with_base_threshold(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             let max_ltv: Ray = if self.is_recovery_mode() {
-                self.get_recovery_mode_target_ltv(base_health.threshold)
+                self.get_recovery_mode_target_ltv(trove_health.threshold)
             } else {
-                base_health.threshold
+                trove_health.threshold
             };
-            let max_debt: Wad = wadray::rmul_rw(max_ltv, base_health.value);
+            let max_debt: Wad = wadray::rmul_rw(max_ltv, trove_health.value);
 
-            if base_health.debt < max_debt {
-                return (max_debt - base_health.debt) / (WAD_ONE.into() + forge_fee_pct);
+            if trove_health.debt < max_debt {
+                return (max_debt - trove_health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
             WadZeroable::zero()
@@ -1093,8 +1092,7 @@ mod shrine {
         // Returns the threshold for a trove based on its collateral composition, without taking into account
         // whether the Shrine is in recovery mode.
         fn get_trove_base_threshold(self: @ContractState, trove_id: u64) -> Ray {
-            let trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
-            trove_health_with_base_threshold.threshold
+            self.get_trove_health_with_base_threshold(trove_id).threshold
         }
 
         fn get_redistributed_debt_for_trove(self: @ContractState, trove_id: u64) -> Wad {
@@ -1245,8 +1243,8 @@ mod shrine {
             self.get_recent_multiplier_from(interval - 1)
         }
 
-        // Returns a Health struct with the `threshold` value being the trove's base threshold rather 
-        // than the applicable threshold based on current on-chain conditions
+        // Returns a Health struct comprising the trove's base threshold, LTV based on compounded debt, trove value 
+        // and compounded debt.
         fn get_trove_health_with_base_threshold(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
 
@@ -1284,8 +1282,8 @@ mod shrine {
             Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
         }
 
-        // Helper function for applying the recovery mode threshold decrease to a threshold.
-        // The maximum threshold decrease is capped to 50% of the "base threshold"
+        // Helper function for applying the recovery mode threshold decrease to a base threshold.
+        // The maximum threshold decrease is capped to 50% of the base threshold.
         fn scale_trove_threshold_for_recovery_mode(
             self: @ContractState, trove_health_with_base_threshold: Health
         ) -> Ray {
