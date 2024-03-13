@@ -249,8 +249,8 @@ mod test_seer {
             next_ts += suspension_grace_period_quarter;
             start_warp(CheatTarget::All, next_ts);
 
-            pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
-            pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
+            pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, eth_addr, eth_price, next_ts);
+            pragma_utils::mock_valid_spot_price_update(mock_spot_pragma, wbtc_addr, wbtc_price, next_ts);
 
             seer.update_prices();
 
