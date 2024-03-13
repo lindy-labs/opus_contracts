@@ -1123,18 +1123,16 @@ mod shrine {
         }
 
         // Checks that:
-        // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
-        // 2. the trove has at least the minimum value if it has non-zero debt
-        // 3. if Shrine is in normal mode, that recovery mode is not triggered; or 
-        //    if Shrine is in recovery mode, then if:
-        //    a. the trove's LTV is at or greater than its recovery mode target LTV, the action
+        // 1. the trove has at least the minimum value if it has non-zero debt
+        // 2. if Shrine is in normal mode:
+        //    a. that recovery mode is not triggered; and
+        //    b. the trove is healthy i.e. its LTV is equal to or lower than its threshold
+        // 3. if Shrine is in recovery mode:
+        //    a. if the trove's LTV is at or greater than its recovery mode target LTV, the action
         //       does not worsen the trove LTV; or
-        //    b. the trove's LTV is below its recovery mode target LTV, the action would not 
-        //       result cause the trove's LTV to be greater than or equal to its recovery mode 
+        //    b. if the trove's LTV is below its recovery mode target LTV, the action would not 
+        //       cause the trove's LTV to be greater than or equal to its recovery mode 
         //       target LTV.
-        //
-        // Note that the threshold in normal node should be used for the checks below even if the 
-        // Shrine is in recovery mode
         fn assert_valid_trove_action(
             self: @ContractState,
             start_shrine_health: Health,
@@ -1142,6 +1140,7 @@ mod shrine {
             trove_id: u64
         ) {
             let end_trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
+            // (1)
             if end_trove_health_with_base_threshold.debt.is_non_zero() {
                 assert(
                     end_trove_health_with_base_threshold.value >= self.minimum_trove_value.read(),
@@ -1150,31 +1149,27 @@ mod shrine {
             }
 
             if self.is_recovery_mode() {
-                // Assert that trove action did not move Shrine from normal mode into recovery mode
+                // (2a)
                 assert(self.exceeds_recovery_mode_ltv(start_shrine_health), 'SH: Will trigger recovery mode');
 
-                // If we reach this line, then Shrine was in recovery mode, and still is after the trove action.
-                // There are two possibilities:
-                // 1. the trove's LTV is at or greater than its target recovery mode LTV before the trove action; or
-                // 2. the trove's LTV is below its target recovery mode LTV before the trove action. 
+                // If we reach this line, then Shrine was in recovery mode before, and still is after, the trove action.
                 let rm_target_ltv: Ray = self
                     .get_recovery_mode_target_ltv(start_trove_health_with_base_threshold.threshold);
                 if start_trove_health_with_base_threshold.ltv >= rm_target_ltv {
-                    // For (1), the trove's LTV cannot be worse off.
+                    // (3a)
                     assert(
                         end_trove_health_with_base_threshold.ltv <= start_trove_health_with_base_threshold.ltv,
                         'SH: Trove LTV is worse off (RM)'
                     );
                 } else {
-                    // For (2), the trove's LTV cannot be at or greater than its target recovery mode LTV.
+                    // (3b)
                     assert(
                         !self.exceeds_recovery_mode_ltv(end_trove_health_with_base_threshold),
                         'SH: Trove LTV > target LTV (RM)'
                     )
                 }
             } else {
-                // Otherwise, since the Shrine is in normal mode, check the trove's health using the 
-                // base threshold directly.
+                // (2b)
                 assert(self.is_healthy_helper(end_trove_health_with_base_threshold), 'SH: Trove LTV > threshold');
             }
         }
