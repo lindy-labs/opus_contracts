@@ -45,6 +45,16 @@ mod test_shrine {
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
         assert(shrine.get_minimum_trove_value().is_zero(), 'wrong min trove value');
+        assert_eq!(
+            shrine.get_recovery_mode_target_factor(),
+            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into(),
+            "wrong target factor"
+        );
+        assert_eq!(
+            shrine.get_recovery_mode_buffer_factor(),
+            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into(),
+            "wrong buffer factor"
+        );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
         assert(shrine_accesscontrol.get_admin() == shrine_utils::admin(), 'wrong admin');
@@ -581,6 +591,92 @@ mod test_shrine {
                 ]
                     .span()
             );
+    }
+
+    //
+    // Tests - Recovery mode parameters
+    //
+
+    #[test]
+    fn test_set_recovery_mode_factors() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        let target_factor: Ray = (75 * RAY_PERCENT).into();
+        shrine.set_recovery_mode_target_factor(target_factor);
+        assert_eq!(shrine.get_recovery_mode_target_factor(), target_factor, "wrong target factor");
+
+        let buffer_factor: Ray = (2 * RAY_PERCENT).into();
+        shrine.set_recovery_mode_buffer_factor(buffer_factor);
+        assert_eq!(shrine.get_recovery_mode_buffer_factor(), buffer_factor, "wrong buffer factor");
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeTargetFactorUpdated(
+                    shrine_contract::RecoveryModeTargetFactorUpdated { factor: target_factor }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeBufferFactorUpdated(
+                    shrine_contract::RecoveryModeBufferFactorUpdated { factor: buffer_factor }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    fn test_set_recovery_mode_target_factor_exceeds_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_target_factor: Ray = (100 * RAY_PERCENT + 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_target_factor(invalid_target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    fn test_set_recovery_mode_target_factor_below_min_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_target_factor: Ray = (50 * RAY_PERCENT - 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_target_factor(invalid_target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_recovery_mode_target_factor_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let target_factor: Ray = (50 * RAY_PERCENT).into();
+
+        start_prank(CheatTarget::All, common::badguy());
+        shrine.set_recovery_mode_target_factor(target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    fn test_set_recovery_mode_buffer_factor_exceeds_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_buffer_factor: Ray = (10 * RAY_PERCENT + 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_recovery_mode_buffer_factor_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let buffer_factor: Ray = (2 * RAY_PERCENT).into();
+
+        start_prank(CheatTarget::All, common::badguy());
+        shrine.set_recovery_mode_buffer_factor(buffer_factor);
     }
 
     //
