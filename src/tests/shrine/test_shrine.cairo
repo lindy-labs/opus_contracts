@@ -2450,7 +2450,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV is within the recovery mode buffer, 
-    // and the trove is already at or above its target recovery mode LTV, user cannot withdraw
+    // and the trove is already at or above its target recovery mode LTV, user cannot withdraw.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_withdraw_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
@@ -2479,7 +2479,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV is within the recovery mode buffer, 
-    // and the trove is already at or above its target recovery mode LTV, user cannot forge
+    // and the trove is already at or above its target recovery mode LTV, user cannot forge.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_forge_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
@@ -2507,9 +2507,9 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, WAD_ONE.into());
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, and the trove is already at
-    // or above its target recovery mode LTV, user can deposit and melt, and threshold has 
-    // not been scaled
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is already at or above its target recovery mode LTV, 
+    // user can deposit and melt, and threshold has not been scaled.
     #[test]
     fn test_deposit_and_melt_within_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -2545,7 +2545,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV, 
     // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
     // provided that the withdraw and forge does not result in the trove reaching its 
-    // target recovery mode LTV
+    // target recovery mode LTV.
     #[test]
     fn test_actions_within_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -2663,7 +2663,7 @@ mod test_shrine {
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, 
-    // threshold has been scaled and user cannot withdraw
+    // threshold has been scaled and user cannot withdraw.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_withdraw_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
@@ -2696,7 +2696,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
-    // and the trove is already at or above its target recovery mode LTV, user cannot forge
+    // and the trove is already at or above its target recovery mode LTV, user cannot forge.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_forge_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
@@ -2725,7 +2725,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
-    // and the trove is already at or above its target recovery mode LTV, user can deposit and melt
+    // and the trove is already at or above its target recovery mode LTV, user can deposit and melt.
     #[test]
     fn test_deposit_and_melt_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -2760,7 +2760,7 @@ mod test_shrine {
     // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, 
     // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
     // provided that the withdraw and forge does not result in the trove reaching its 
-    // target recovery mode LTV
+    // target recovery mode LTV.
     #[test]
     fn test_actions_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -2889,7 +2889,7 @@ mod test_shrine {
         ]
             .span();
 
-        // Since the trove only uses ETH, the recovery mode target LTV is 70% * 80% = 56%.
+        // Since the trove only uses ETH, the target recovery mode LTV is 70% * 80% = 56%.
         let mut expected_rm_thresholds: Span<Ray> = array![
             589473684210526397718397163_u128.into(), // 0.8 * (0.56/0.76) = 58.94...
             560000000000000053290705182_u128.into(), // 0.8 * (0,56/0.8) = 56.00...
@@ -2908,7 +2908,7 @@ mod test_shrine {
         let trove_debt: Wad = (5000 * WAD_ONE).into();
         let trove_id: u64 = common::TROVE_1;
 
-        let threshold_error_margin: Ray = (RAY_ONE / 1000).into(); // 0.1%
+        let threshold_error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
 
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
 

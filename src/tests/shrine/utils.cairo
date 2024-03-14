@@ -678,8 +678,8 @@ mod shrine_utils {
         };
     }
 
-    // Helper to return a bool for whether the target trove's LTV is at or greater than
-    // its recovery mode target when setting up recovery mode
+    // Helper to return a whether a trove's LTV is at or greater than its target recovery mode 
+    // LTV when setting up recovery mode
     fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let target_rm_ltv: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() * trove_health.threshold;
