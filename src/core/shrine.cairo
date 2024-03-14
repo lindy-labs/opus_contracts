@@ -77,11 +77,20 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
+    // Minimum (0.5) and maximum (0.9) factors to be applied to:
+    // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
+    // - a trove's threshold to determine its target recovery mode LTV.
     const MIN_RECOVERY_MODE_TARGET_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
-    const MAX_RECOVERY_MODE_TARGET_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
+    const MAX_RECOVERY_MODE_TARGET_FACTOR: u128 = 9000000000000000000000000000; // 0.9 (ray)
+
+    // Initial target factor at deployment
     const INITIAL_RECOVERY_MODE_TARGET_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
+    // Maximum (0.1) factor to be applied to the Shrine's LTV as a buffer before thresholds are scaled
+    // in recovery mode.
     const MAX_RECOVERY_MODE_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
+
+    // Initial buffer factor at deployment
     const INITIAL_RECOVERY_MODE_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
