@@ -198,7 +198,7 @@ mod shrine {
         // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
         // based on how far the trove's LTV exceeds this target LTV.
         recovery_mode_target_ltv_factor: Ray,
-        // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
+        // An additional factor to be added to `recovery_mode_target_ltv_factor`
         // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
         // thresholds start to be scaled in recovery mode.
         // This acts as a buffer from when recovery mode is triggered until thresholds
