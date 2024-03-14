@@ -165,6 +165,7 @@ mod shrine_roles {
         ADD_YANG
             + SET_DEBT_CEILING
             + SET_MINIMUM_TROVE_VALUE
+            + SET_RECOVERY_MODE_FACTORS
             + SET_THRESHOLD
             + KILL
             + UPDATE_RATES
@@ -218,6 +219,7 @@ mod shrine_roles {
             + SET_DEBT_CEILING
             + SET_MINIMUM_TROVE_VALUE
             + SET_MULTIPLIER
+            + SET_RECOVERY_MODE_FACTORS
             + SET_THRESHOLD
             + UPDATE_RATES
             + UPDATE_YANG_SUSPENSION
