@@ -661,6 +661,16 @@ mod test_shrine {
 
     #[test]
     #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    fn test_set_recovery_mode_buffer_factor_below_min_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_buffer_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_BUFFER_FACTOR - 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid buffer factor',))]
     fn test_set_recovery_mode_buffer_factor_exceeds_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_buffer_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_BUFFER_FACTOR + 1).into();

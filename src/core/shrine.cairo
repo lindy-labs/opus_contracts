@@ -86,8 +86,9 @@ mod shrine {
     // Initial target factor at deployment
     const INITIAL_RECOVERY_MODE_TARGET_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    // Maximum (0.1) factor to be applied to the Shrine's LTV as a buffer before thresholds are scaled
-    // in recovery mode.
+    // Minimum (0.01) and maximum (0.1) factor to be applied to the Shrine's LTV as a buffer before 
+    // thresholds are scaled in recovery mode.
+    const MIN_RECOVERY_MODE_BUFFER_FACTOR: u128 = 10000000000000000000000000; // 0.01 (ray)
     const MAX_RECOVERY_MODE_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
 
     // Initial buffer factor at deployment
@@ -881,7 +882,10 @@ mod shrine {
 
         fn set_recovery_mode_buffer_factor(ref self: ContractState, factor: Ray) {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
-            assert(factor.val <= MAX_RECOVERY_MODE_BUFFER_FACTOR, 'SH: Invalid buffer factor');
+            assert(
+                MIN_RECOVERY_MODE_BUFFER_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_BUFFER_FACTOR,
+                'SH: Invalid buffer factor'
+            );
             self.recovery_mode_buffer_factor.write(factor);
 
             self.emit(RecoveryModeBufferFactorUpdated { factor });
