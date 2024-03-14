@@ -229,9 +229,11 @@ pub mod shrine_roles {
 }
 
 pub mod switchboard_roles {
+    const ADD_YANG: u128 = 1;
+
     #[inline(always)]
     pub fn default_admin_role() -> u128 {
-        0
+        ADD_YANG
     }
 }
 

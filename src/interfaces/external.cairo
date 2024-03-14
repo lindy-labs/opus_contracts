@@ -12,4 +12,6 @@ pub trait ITask<TContractState> {
     fn execute_task(ref self: TContractState);
 }
 
-pub trait ISwitchboardOracle<TContractState> {}
+pub trait ISwitchboardOracle<TContractState> {
+    fn get_latest_result(self: @TContractState, pair_id: felt252) -> (u128, u64);
+}

@@ -205,3 +205,15 @@ pub mod pragma {
         pub sources: u32,
     }
 }
+
+//
+// Switchboard
+//
+
+mod switchboard {
+    #[derive(Copy, Drop, Serde)]
+    struct SwitchboardPriceResponse {
+        value: u128,
+        timestamp: u64,
+    }
+}

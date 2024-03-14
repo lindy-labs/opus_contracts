@@ -1,10 +1,12 @@
 #[starknet::contract]
 mod switchboard {
+    use access_control::access_control_component;
     use opus::core::roles::switchboard_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::ISwitchboard::ISwitchboard;
     use opus::interfaces::external::{ISwitchboardOracleDispatcher, ISwitchboardOracleDispatcherTrait};
     use starknet::{ContractAddress};
+    use wadray::Wad;
 
     //
     // Components
@@ -41,7 +43,15 @@ mod switchboard {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AccessControlEvent: access_control_component::Event,
+        InvalidPriceUpdate: InvalidPriceUpdate,
         YangPairIdSet: YangPairIdSet,
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct InvalidPriceUpdate {
+        yang: ContractAddress,
+        price: Wad,
+        timestamp: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -76,7 +86,7 @@ mod switchboard {
             assert(value.is_non_zero(), 'SWI: Invalid value');
             assert(timestamp.is_non_zero(), 'SWI: Invalid timestamp');
 
-            self.yang_pair_id.write(yang, pair_id);
+            self.yang_pair_ids.write(yang, pair_id);
 
             self.emit(YangPairIdSet { address: yang, pair_id });
         }
@@ -92,13 +102,26 @@ mod switchboard {
             'Switchboard'
         }
 
-        fn get_oracle_type(self: @ContractState) -> felt256 {
-            self.oracle.read()
+        fn get_oracle(self: @ContractState) -> ContractAddress {
+            self.oracle.read().contract_address
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252> {
-            // note: all feeds are in 10**18
-            Result::Err('TODO')
+            // Switchboard reports all feeds in 10**18 (i.e. in Wad)
+            let pair_id: felt252 = self.yang_pair_ids.read(yang);
+            let (price, timestamp) = self.oracle.read().get_latest_result(pair_id);
+
+            // default Switchboard functions updates "expedited tickers" (ETH & BTC)
+            // when the price difference is greater than 0.5% and the others
+            // when the price difference is greater than 1.5%; if the price diff
+            // is below these thresholds, the price won't be posted on chain
+
+            if force_update || self.is_valid_price_update(price, timestamp) {
+                return Result::Ok(price.into());
+            }
+
+            self.emit(InvalidPriceUpdate { yang, price: price.into(), timestamp });
+            Result::Err('SWI: Invalid price update')
         }
     }
 
@@ -107,5 +130,9 @@ mod switchboard {
     //
 
     #[generate_trait]
-    impl SwitchboardInternalFunctions of SwitchboardInternalFunctionsTrait {}
+    impl SwitchboardInternalFunctions of SwitchboardInternalFunctionsTrait {
+        fn is_valid_price_update(self: @ContractState, value: u128, timestamp: u64) -> bool {
+            value.is_non_zero() && timestamp.is_non_zero()
+        }
+    }
 }
