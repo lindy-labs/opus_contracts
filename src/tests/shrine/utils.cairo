@@ -1,5 +1,6 @@
 mod shrine_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use debug::PrintTrait;
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -8,9 +9,7 @@ mod shrine_utils {
     use opus::tests::common;
     use opus::types::Health;
     use opus::utils::exp::exp;
-    use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget, PrintTrait
-    };
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
@@ -57,8 +56,8 @@ mod shrine_utils {
     const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
     const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
 
-    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 1000000000000000000000; // 1000 (wad)
-    const WHALE_TROVE_FORGE_AMT: u128 = 1000000000000000000000000; // 1,000,000 (wad)
+    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 100000000000000000000; // 100 (wad)
+    const WHALE_TROVE_FORGE_AMT: u128 = 10000000000000000000000; // 10,000 (wad)
 
     const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500000000000000000000; // 7500 (wad)
 
@@ -599,29 +598,92 @@ mod shrine_utils {
 
     fn create_whale_trove(shrine: IShrineDispatcher) {
         start_prank(CheatTarget::One(shrine.contract_address), admin());
-        // Deposit 1000 of yang1
+        // Deposit 100 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
-        // Mint 1 million yin (50% LTV at yang1's start price)
+        // Mint 10,000 yin (5% LTV at yang1's start price)
         shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    fn recovery_mode_test_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy(shrine_class) };
-        shrine_setup(shrine.contract_address);
+    // Helper function to calculate the factor to be applied to the Shrine's threshold
+    // in order to get the LTV that the Shrine should be at for the given test.
+    // Since we are interested in testing the Shrine's behaviour when its LTV is at the boundaries
+    // of these different modes, an additional offset is used to adjust the factor to guarantee 
+    // that we are on the right side of the boundary even if there is some precision loss.
+    fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: common::RecoveryModeSetupType, offset: Ray) -> Ray {
+        match rm_setup_type {
+            common::RecoveryModeSetupType::BeforeRecoveryMode => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() - offset
+            },
+            common::RecoveryModeSetupType::BufferLowerBound => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() + offset
+            },
+            common::RecoveryModeSetupType::BufferUpperBound => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                    - offset
+            },
+            common::RecoveryModeSetupType::ExceedsBuffer => {
+                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                    + offset
+            }
+        }
+    }
 
-        // Setting the debt and collateral ceilings high enough to accomodate a very large trove
+    fn get_price_decrease_pct_for_target_ltv(shrine_health: Health, target_ltv: Ray) -> Ray {
+        let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
+        wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value)
+    }
+
+    fn recovery_mode_test_setup(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: common::RecoveryModeSetupType
+    ) {
+        let shrine_health: Health = shrine.get_shrine_health();
+        let offset: Ray = 100000000_u128.into();
+        let threshold_factor: Ray = get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
+        let target_ltv: Ray = shrine_health.threshold * threshold_factor;
+        let decrease_pct: Ray = get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
+
         start_prank(CheatTarget::One(shrine.contract_address), admin());
-        shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
 
-        // This creates the larger trove
-        create_whale_trove(shrine);
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+                    shrine.advance(*yang, new_price);
+                },
+                Option::None => { break; }
+            };
+        };
 
-        // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
-        let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
-        trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
-        trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
-        shrine
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        let shrine_health: Health = shrine.get_shrine_health();
+        let error_margin: Ray = offset;
+        match rm_setup_type {
+            common::RecoveryModeSetupType::BeforeRecoveryMode => {
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #1');
+            },
+            common::RecoveryModeSetupType::BufferLowerBound => {
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #2');
+            },
+            common::RecoveryModeSetupType::BufferUpperBound => {
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #3');
+            },
+            common::RecoveryModeSetupType::ExceedsBuffer => {
+                common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #4');
+            }
+        };
+    }
+
+    // Helper to return a whether a trove's LTV is at or greater than its target recovery mode 
+    // LTV when setting up recovery mode
+    fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let target_rm_ltv: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() * trove_health.threshold;
+        trove_health.ltv >= target_rm_ltv
     }
 
     //

@@ -21,7 +21,7 @@ trait IShrine<TContractState> {
     fn get_debt_ceiling(self: @TContractState) -> Wad;
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(self: @TContractState, yang: ContractAddress) -> YangSuspensionStatus;
-    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
+    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(self: @TContractState, yang: ContractAddress, redistribution_id: u32) -> Wad;
@@ -64,5 +64,6 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
+    fn get_trove_base_threshold(self: @TContractState, trove_id: u64) -> Ray;
     fn get_redistributed_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
 }

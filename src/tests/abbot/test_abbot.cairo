@@ -511,7 +511,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
     fn test_forge_ltv_unsafe_fail() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None

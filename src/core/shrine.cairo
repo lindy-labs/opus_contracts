@@ -77,7 +77,23 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+    // This factor is applied to the Shrine's threshold to determine the LTV at which 
+    // recovery mode will be triggered.
+    // During recovery mode, this factor is also applied to a trove's threshold to determine 
+    // the trove's target LTV during recovery mode, so `forge` and `withdraw` during recovery 
+    // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
+    // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
+    // based on how far the trove's LTV exceeds this target LTV.
+    const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
+
+    // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
+    // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
+    // thresholds start to be scaled in recovery mode.
+    // This acts as a buffer from when recovery mode is triggered until thresholds
+    // are adjusted to mitigate against a trove intentionally triggering recovery mode to
+    // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
+    // by the accrual of fees or changes to yangs' prices.
+    const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
@@ -505,17 +521,13 @@ mod shrine {
             self.get_yang_suspension_status_helper(yang_id)
         }
 
-        // Returns a tuple of
-        // 1. The "raw yang threshold"
-        // 2. The "scaled yang threshold" for recovery mode
-        // 1 and 2 will be the same if recovery mode is not in effect
-        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> (Ray, Ray) {
+        // Returns the yang threshold
+        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> Ray {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            let threshold = self.get_yang_threshold_helper(yang_id);
-            (threshold, self.scale_threshold_for_recovery_mode(threshold))
+            self.get_yang_threshold_helper(yang_id)
         }
 
-        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt;
+        // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt.
         fn get_shrine_health(self: @ContractState) -> Health {
             let (threshold, value) = self.get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_troves_debt.read();
@@ -546,7 +558,7 @@ mod shrine {
 
         fn is_recovery_mode(self: @ContractState) -> bool {
             let shrine_health: Health = self.get_shrine_health();
-            self.is_recovery_mode_helper(shrine_health)
+            self.exceeds_recovery_mode_ltv(shrine_health)
         }
 
         fn get_live(self: @ContractState) -> bool {
@@ -851,8 +863,13 @@ mod shrine {
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
+            self.charge(trove_id);
+
+            let start_shrine_health: Health = self.get_shrine_health();
+            let start_trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
+
             self.withdraw_helper(yang, trove_id, amount);
-            self.assert_valid_trove_action(trove_id);
+            self.assert_valid_trove_action(start_shrine_health, start_trove_health_with_base_threshold, trove_id);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -861,6 +878,9 @@ mod shrine {
             self.assert_live();
 
             self.charge(trove_id);
+
+            let start_shrine_health: Health = self.get_shrine_health();
+            let start_trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -887,9 +907,8 @@ mod shrine {
             trove.debt += debt_amount;
             self.troves.write(trove_id, trove);
 
-            self.assert_valid_trove_action(trove_id);
-
             self.forge_helper(user, amount);
+            self.assert_valid_trove_action(start_shrine_health, start_trove_health_with_base_threshold, trove_id);
 
             // Events
             if forge_fee.is_non_zero() {
@@ -935,6 +954,7 @@ mod shrine {
         // even if the trove is still unsafe.
         fn seize(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             self.access_control.assert_has_role(shrine_roles::SEIZE);
+            self.charge(trove_id);
             self.withdraw_helper(yang, trove_id, amount);
         }
 
@@ -1040,61 +1060,39 @@ mod shrine {
 
         // Returns the maximum amount of yin that a trove can forge based on its current health.
         // Note that forging the return value from this getter may still revert in the following cases:
-        // 1. forging the amount triggers recovery mode, causing the trove to be unsafe based on its
-        //    recovery mode threshold instead of its usual threshold; or
+        // 1. forging the amount causes the Shrine to enter into recovery mode;
         // 2. forging the amount causes the debt ceiling to be exceeded.
         fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let health: Health = self.get_trove_health(trove_id);
+            let trove_health: Health = self.get_trove_health_with_base_threshold(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            let max_debt: Wad = wadray::rmul_rw(health.threshold, health.value);
+            let max_ltv: Ray = if self.is_recovery_mode() {
+                self.get_recovery_mode_target_ltv(trove_health.threshold)
+            } else {
+                trove_health.threshold
+            };
+            let max_debt: Wad = wadray::rmul_rw(max_ltv, trove_health.value);
 
-            if health.debt < max_debt {
-                return (max_debt - health.debt) / (WAD_ONE.into() + forge_fee_pct);
+            if trove_health.debt < max_debt {
+                return (max_debt - trove_health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
             WadZeroable::zero()
         }
 
-        // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
-        // Returns a Health struct comprising the trove's threshold, LTV based on compounded debt,
-        // trove value and compounded debt;
+        // Returns a Health struct comprising the trove's applicable threshold based on current on-chain conditins, 
+        // LTV based on compounded debt, trove value and compounded debt.
         fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
-            let interval: u64 = now();
+            let trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
+            let mut trove_health = trove_health_with_base_threshold;
+            trove_health.threshold = self.scale_trove_threshold_for_recovery_mode(trove_health_with_base_threshold);
+            trove_health
+        }
 
-            // Get threshold and trove value
-            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
-            let (mut threshold, mut value) = self.get_threshold_and_value(trove_yang_balances, interval);
-            threshold = self.scale_threshold_for_recovery_mode(threshold);
-
-            let trove: Trove = self.troves.read(trove_id);
-
-            // Catch troves with no value
-            if value.is_zero() {
-                // This `if` branch handles a corner case where a trove without any yangs deposited (i.e. zero value)
-                // attempts to forge a non-zero debt. It ensures that the `assert_healthy` check in `forge` would
-                // fail and revert.
-                // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of
-                //   of debt / value will run into a zero division error.
-                // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
-                //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
-                let ltv: Ray = if trove.debt.is_non_zero() {
-                    BoundedRay::max()
-                } else {
-                    BoundedRay::min()
-                };
-
-                return Health { threshold, ltv, value, debt: trove.debt };
-            }
-
-            // Calculate debt
-            let compounded_debt: Wad = self.compound(trove_id, trove, interval);
-            let compounded_debt_with_redistributed_debt: Wad = compounded_debt
-                + self.fetch_redistributed_debt(trove_id);
-
-            let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
-
-            Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
+        // Returns the threshold for a trove based on its collateral composition, without taking into account
+        // whether the Shrine is in recovery mode.
+        fn get_trove_base_threshold(self: @ContractState, trove_id: u64) -> Ray {
+            self.get_trove_health_with_base_threshold(trove_id).threshold
         }
 
         fn get_redistributed_debt_for_trove(self: @ContractState, trove_id: u64) -> Wad {
@@ -1123,13 +1121,52 @@ mod shrine {
         }
 
         // Checks that:
-        // 1. the trove is healthy i.e. its LTV is equal to or lower than its threshold
-        // 2. the trove has at least the minimum value if it has non-zero debt
-        fn assert_valid_trove_action(self: @ContractState, trove_id: u64) {
-            let health: Health = self.get_trove_health(trove_id);
-            assert(self.is_healthy_helper(health), 'SH: Trove LTV is too high');
-            if health.debt.is_non_zero() {
-                assert(health.value >= self.minimum_trove_value.read(), 'SH: Below minimum trove value');
+        // 1. the trove has at least the minimum value if it has non-zero debt
+        // 2. if Shrine is in normal mode:
+        //    a. that recovery mode is not triggered; and
+        //    b. the trove is healthy i.e. its LTV is equal to or lower than its threshold
+        // 3. if Shrine is in recovery mode:
+        //    a. if the trove's LTV is at or greater than its target recovery mode LTV, the action
+        //       does not worsen the trove LTV; or
+        //    b. if the trove's LTV is below its target recovery mode LTV, the action would not 
+        //       cause the trove's LTV to be greater than or equal to its recovery mode 
+        //       target LTV.
+        fn assert_valid_trove_action(
+            self: @ContractState,
+            start_shrine_health: Health,
+            start_trove_health_with_base_threshold: Health,
+            trove_id: u64
+        ) {
+            let end_trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
+            // (1)
+            if end_trove_health_with_base_threshold.debt.is_non_zero() {
+                assert(
+                    end_trove_health_with_base_threshold.value >= self.minimum_trove_value.read(),
+                    'SH: Below minimum trove value'
+                );
+            }
+
+            if self.exceeds_recovery_mode_ltv(start_shrine_health) {
+                let rm_target_ltv: Ray = self
+                    .get_recovery_mode_target_ltv(start_trove_health_with_base_threshold.threshold);
+                if start_trove_health_with_base_threshold.ltv >= rm_target_ltv {
+                    // (3a)
+                    assert(
+                        end_trove_health_with_base_threshold.ltv <= start_trove_health_with_base_threshold.ltv,
+                        'SH: Trove LTV is worse off (RM)'
+                    );
+                } else {
+                    // (3b)
+                    assert(
+                        !self.exceeds_recovery_mode_ltv(end_trove_health_with_base_threshold),
+                        'SH: Trove LTV > target LTV (RM)'
+                    )
+                }
+            } else {
+                // (2a)
+                assert(!self.is_recovery_mode(), 'SH: Will trigger recovery mode');
+                // (2b)
+                assert(self.is_healthy_helper(end_trove_health_with_base_threshold), 'SH: Trove LTV > threshold');
             }
         }
 
@@ -1153,10 +1190,15 @@ mod shrine {
         // Helpers for getters and view functions
         //
 
+        #[inline(always)]
+        fn get_recovery_mode_target_ltv(self: @ContractState, threshold: Ray) -> Ray {
+            threshold * RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+        }
+
         // Helper function to check if recovery mode is triggered for Shrine
-        fn is_recovery_mode_helper(self: @ContractState, health: Health) -> bool {
-            let recovery_mode_threshold: Ray = health.threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-            health.ltv >= recovery_mode_threshold
+        #[inline(always)]
+        fn exceeds_recovery_mode_ltv(self: @ContractState, health: Health) -> bool {
+            health.ltv >= self.get_recovery_mode_target_ltv(health.threshold)
         }
 
         // Helper function to get the yang ID given a yang address, and throw an error if
@@ -1199,21 +1241,69 @@ mod shrine {
             self.get_recent_multiplier_from(interval - 1)
         }
 
-        // Helper function for applying the recovery mode threshold decrease to a threshold,
-        // if recovery mode is active
-        // The maximum threshold decrease is capped to 50% of the "base threshold"
-        fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
-            let shrine_health: Health = self.get_shrine_health();
+        // Returns a Health struct comprising the trove's base threshold, LTV based on compounded debt, trove value 
+        // and compounded debt.
+        fn get_trove_health_with_base_threshold(self: @ContractState, trove_id: u64) -> Health {
+            let interval: u64 = now();
 
-            if self.is_recovery_mode_helper(shrine_health) {
-                let recovery_mode_threshold: Ray = shrine_health.threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-                return max(
-                    threshold * THRESHOLD_DECREASE_FACTOR.into() * (recovery_mode_threshold / shrine_health.ltv),
-                    (threshold.val / 2_u128).into()
-                );
+            // Get threshold and trove value
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (threshold, value) = self.get_threshold_and_value(trove_yang_balances, interval);
+
+            let trove: Trove = self.troves.read(trove_id);
+
+            // Catch troves with no value
+            if value.is_zero() {
+                // This `if` branch handles a corner case where a trove without any yangs deposited (i.e. zero value)
+                // attempts to forge a non-zero debt. It ensures that the `assert_healthy` check in `forge` would
+                // fail and revert.
+                // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of
+                //   of debt / value will run into a zero division error.
+                // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
+                //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
+                let ltv: Ray = if trove.debt.is_non_zero() {
+                    BoundedRay::max()
+                } else {
+                    BoundedRay::min()
+                };
+
+                return Health { threshold, ltv, value, debt: trove.debt };
             }
 
-            threshold
+            // Calculate debt
+            let compounded_debt: Wad = self.compound(trove_id, trove, interval);
+            let compounded_debt_with_redistributed_debt: Wad = compounded_debt
+                + self.fetch_redistributed_debt(trove_id);
+
+            let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
+
+            Health { threshold, ltv, value, debt: compounded_debt_with_redistributed_debt }
+        }
+
+        // Helper function for applying the recovery mode threshold decrease to a base threshold.
+        // The maximum threshold decrease is capped to 50% of the base threshold.
+        fn scale_trove_threshold_for_recovery_mode(
+            self: @ContractState, trove_health_with_base_threshold: Health
+        ) -> Ray {
+            // Early return if any of the following is true
+            // 1. Trove has no debt
+            // 2. Shrine's LTV is below its target recovery mode LTV with buffer
+            let shrine_health: Health = self.get_shrine_health();
+            let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
+                * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
+            if trove_health_with_base_threshold.debt.is_zero() || shrine_health.ltv < recovery_mode_buffered_threshold {
+                return trove_health_with_base_threshold.threshold;
+            }
+
+            let trove_recovery_mode_target_ltv: Ray = self
+                .get_recovery_mode_target_ltv(trove_health_with_base_threshold.threshold);
+
+            return max(
+                trove_health_with_base_threshold.threshold
+                    * THRESHOLD_DECREASE_FACTOR.into()
+                    * (trove_recovery_mode_target_ltv / trove_health_with_base_threshold.ltv),
+                (trove_health_with_base_threshold.threshold.val / 2_u128).into()
+            );
         }
 
         fn get_yang_suspension_status_helper(self: @ContractState, yang_id: u32) -> YangSuspensionStatus {
@@ -1397,8 +1487,6 @@ mod shrine {
 
             let new_trove_balance: Wad = trove_balance - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
-
-            self.charge(trove_id);
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);

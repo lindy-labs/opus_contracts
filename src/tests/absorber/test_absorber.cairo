@@ -1870,18 +1870,12 @@ mod test_absorber {
 
     #[test]
     fn test_shrine_killed_and_remove_pass() {
-        let (shrine, _, abbot, absorber, _, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, abbot, absorber, yangs, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        // Increase debt ceiling for recovery mode to be triggered
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
-        shrine.set_debt_ceiling(debt_ceiling);
-        stop_prank(CheatTarget::One(shrine.contract_address));
-
-        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, provider);
+        shrine_utils::recovery_mode_test_setup(shrine, yangs, common::RecoveryModeSetupType::BufferLowerBound);
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.kill();

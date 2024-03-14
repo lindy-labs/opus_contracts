@@ -524,25 +524,20 @@ mod purger_utils {
     }
 
     fn trigger_recovery_mode(
-        shrine: IShrineDispatcher, abbot: IAbbotDispatcher, trove: u64, trove_owner: ContractAddress,
+        shrine: IShrineDispatcher,
+        seer: ISeerDispatcher,
+        yangs: Span<ContractAddress>,
+        rm_setup_type: common::RecoveryModeSetupType
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-        // Add 1% to the amount needed to activate RM
-        let amt_to_activate_rm: Wad = wadray::rmul_rw(
-            (RAY_ONE + RAY_PERCENT).into(), (wadray::rmul_rw(rm_threshold, shrine_health.value) - shrine_health.debt)
-        );
+        let offset: Ray = 100000000_u128.into();
+        let threshold_factor: Ray = shrine_utils::get_recovery_mode_test_setup_threshold_factor(rm_setup_type, offset);
+        let target_ltv: Ray = shrine_health.threshold * threshold_factor;
+        let decrease_pct: Ray = shrine_utils::get_price_decrease_pct_for_target_ltv(shrine_health, target_ltv);
 
-        // Sanity check that we are able to mint the amount of debt to trigger
-        // recovery mode for the given trove
-        let max_forge_amt: Wad = shrine.get_max_forge(trove);
-        assert(amt_to_activate_rm <= max_forge_amt, 'recovery mode setup #1');
+        decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.forge(trove, amt_to_activate_rm, WadZeroable::zero());
-        stop_prank(CheatTarget::One(abbot.contract_address));
-
-        assert(shrine.is_recovery_mode(), 'recovery mode setup #2');
+        assert(shrine.is_recovery_mode(), 'recovery mode setup');
     }
 
     //
@@ -559,26 +554,41 @@ mod purger_utils {
     // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
     fn get_expected_liquidation_assets(
-        trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray, compensation_value: Option<Wad>
+        trove_asset_amts: Span<u128>,
+        trove_health: Health,
+        close_amt: Wad,
+        penalty: Ray,
+        compensation_value: Option<Wad>
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
 
-        let value_offset: Wad = if compensation_value.is_some() {
-            compensation_value.unwrap()
-        } else {
-            WadZeroable::zero()
+        let mut value_after_compensation: Wad = trove_health.value;
+        if compensation_value.is_some() {
+            value_after_compensation -= compensation_value.unwrap()
         };
-        let value_after_compensation: Wad = trove_value - value_offset;
-        let expected_freed_pct_of_value_before_compensation: Ray = if freed_amt < value_after_compensation {
-            wadray::rdiv_ww(freed_amt, trove_value)
+
+        let mut expected_freed_pct_of_value_after_compensation = RayZeroable::zero();
+        let mut expected_freed_pct_of_value_before_compensation = RayZeroable::zero();
+
+        if trove_health.ltv <= RAY_ONE.into() {
+            expected_freed_pct_of_value_before_compensation =
+                if freed_amt < value_after_compensation {
+                    wadray::rdiv_ww(freed_amt, trove_health.value)
+                } else {
+                    wadray::rdiv_ww(value_after_compensation, trove_health.value)
+                };
+            expected_freed_pct_of_value_after_compensation =
+                if freed_amt < value_after_compensation {
+                    wadray::rdiv_ww(freed_amt, value_after_compensation)
+                } else {
+                    expected_freed_pct_of_value_before_compensation
+                };
         } else {
-            wadray::rdiv_ww(value_after_compensation, trove_value)
-        };
-        let expected_freed_pct_of_value_after_compensation: Ray = if freed_amt < value_after_compensation {
-            wadray::rdiv_ww(freed_amt, value_after_compensation)
-        } else {
-            expected_freed_pct_of_value_before_compensation
-        };
+            expected_freed_pct_of_value_after_compensation = wadray::rdiv_ww(close_amt, trove_health.debt);
+            expected_freed_pct_of_value_before_compensation = expected_freed_pct_of_value_after_compensation
+                * wadray::rdiv_ww(value_after_compensation, trove_health.value);
+        }
+
         (
             expected_freed_pct_of_value_after_compensation,
             common::scale_span_by_pct(trove_asset_amts, expected_freed_pct_of_value_before_compensation)
@@ -637,16 +647,18 @@ mod purger_utils {
         error_margin: u128,
         message: felt252
     ) {
+        assert_eq!(before_asset_bals.len(), after_asset_bals.len(), "balances array sanity check #1");
         loop {
             match expected_freed_assets.pop_front() {
                 Option::Some(expected_freed_asset) => {
                     let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
-                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
-
                     let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
-                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
+                    assert_eq!(before_asset_bal_arr.len(), after_asset_bal_arr.len(), "balances array sanity check #2");
 
+                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
                     let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
+
+                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
                     common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
                 },

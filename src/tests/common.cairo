@@ -14,6 +14,18 @@ use starknet::{ContractAddress, contract_address_to_felt252, contract_address_tr
 use wadray::{Ray, Wad, WadZeroable};
 
 //
+// Types
+//
+
+#[derive(Copy, Drop, PartialEq)]
+enum RecoveryModeSetupType {
+    BeforeRecoveryMode: (),
+    BufferLowerBound: (),
+    BufferUpperBound: (),
+    ExceedsBuffer: (),
+}
+
+//
 // Constants
 //
 
