@@ -77,12 +77,12 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const MIN_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
-    const MAX_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
-    const INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
+    const MIN_RECOVERY_MODE_TARGET_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
+    const MAX_RECOVERY_MODE_TARGET_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
+    const INITIAL_RECOVERY_MODE_TARGET_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    const MAX_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
-    const INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
+    const MAX_RECOVERY_MODE_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
+    const INITIAL_RECOVERY_MODE_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
@@ -197,15 +197,15 @@ mod shrine {
         // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
         // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
         // based on how far the trove's LTV exceeds this target LTV.
-        recovery_mode_target_ltv_factor: Ray,
-        // An additional factor to be added to `recovery_mode_target_ltv_factor`
+        recovery_mode_target_factor: Ray,
+        // An additional factor to be added to `recovery_mode_target_factor`
         // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
         // thresholds start to be scaled in recovery mode.
         // This acts as a buffer from when recovery mode is triggered until thresholds
         // are adjusted to mitigate against a trove intentionally triggering recovery mode to
         // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
         // by the accrual of fees or changes to yangs' prices.
-        recovery_mode_target_ltv_buffer_factor: Ray,
+        recovery_mode_buffer_factor: Ray,
         // Keeps track of how many redistributions have occurred
         redistributions_count: u32,
         // Last redistribution accounted for a trove
@@ -444,8 +444,8 @@ mod shrine {
         self.yin_spot_price.write(WAD_ONE.into());
 
         // Setting initial recovery mode factors
-        self.recovery_mode_target_ltv_factor.write(INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into());
-        self.recovery_mode_target_ltv_buffer_factor.write(INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into());
+        self.recovery_mode_target_factor.write(INITIAL_RECOVERY_MODE_TARGET_FACTOR.into());
+        self.recovery_mode_buffer_factor.write(INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into());
 
         // Emit event
         self
@@ -549,11 +549,11 @@ mod shrine {
         }
 
         fn get_recovery_mode_target_factor(self: @ContractState) -> Ray {
-            self.recovery_mode_target_ltv_factor.read()
+            self.recovery_mode_target_factor.read()
         }
 
         fn get_recovery_mode_buffer_factor(self: @ContractState) -> Ray {
-            self.recovery_mode_target_ltv_buffer_factor.read()
+            self.recovery_mode_buffer_factor.read()
         }
 
         // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt.
@@ -862,10 +862,10 @@ mod shrine {
         fn set_recovery_mode_target_factor(ref self: ContractState, factor: Ray) {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
             assert(
-                MIN_RECOVERY_MODE_TARGET_LTV_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_TARGET_LTV_FACTOR,
+                MIN_RECOVERY_MODE_TARGET_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_TARGET_FACTOR,
                 'SH: Invalid target LTV factor'
             );
-            self.recovery_mode_target_ltv_factor.write(factor);
+            self.recovery_mode_target_factor.write(factor);
 
             //Event emission
             self.emit(RecoveryModeTargetFactorUpdated { factor });
@@ -873,8 +873,8 @@ mod shrine {
 
         fn set_recovery_mode_buffer_factor(ref self: ContractState, factor: Ray) {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
-            assert(factor.val <= MAX_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR, 'SH: Invalid buffer factor');
-            self.recovery_mode_target_ltv_buffer_factor.write(factor);
+            assert(factor.val <= MAX_RECOVERY_MODE_BUFFER_FACTOR, 'SH: Invalid buffer factor');
+            self.recovery_mode_buffer_factor.write(factor);
 
             //Event emission
             self.emit(RecoveryModeBufferFactorUpdated { factor });
@@ -1243,7 +1243,7 @@ mod shrine {
 
         #[inline(always)]
         fn get_recovery_mode_target_ltv(self: @ContractState, threshold: Ray) -> Ray {
-            threshold * self.recovery_mode_target_ltv_factor.read()
+            threshold * self.recovery_mode_target_factor.read()
         }
 
         // Helper function to check if recovery mode is triggered for Shrine
@@ -1341,7 +1341,7 @@ mod shrine {
             // 2. Shrine's LTV is below its target recovery mode LTV with buffer
             let shrine_health: Health = self.get_shrine_health();
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
-                * (self.recovery_mode_target_ltv_factor.read() + self.recovery_mode_target_ltv_buffer_factor.read());
+                * (self.recovery_mode_target_factor.read() + self.recovery_mode_buffer_factor.read());
             if trove_health_with_base_threshold.debt.is_zero() || shrine_health.ltv < recovery_mode_buffered_threshold {
                 return trove_health_with_base_threshold.threshold;
             }

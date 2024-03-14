@@ -47,12 +47,12 @@ mod test_shrine {
         assert(shrine.get_minimum_trove_value().is_zero(), 'wrong min trove value');
         assert_eq!(
             shrine.get_recovery_mode_target_factor(),
-            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into(),
+            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
             "wrong target factor"
         );
         assert_eq!(
             shrine.get_recovery_mode_buffer_factor(),
-            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into(),
+            shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
             "wrong buffer factor"
         );
 
