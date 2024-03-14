@@ -867,7 +867,6 @@ mod shrine {
             );
             self.recovery_mode_target_factor.write(factor);
 
-            //Event emission
             self.emit(RecoveryModeTargetFactorUpdated { factor });
         }
 
@@ -876,7 +875,6 @@ mod shrine {
             assert(factor.val <= MAX_RECOVERY_MODE_BUFFER_FACTOR, 'SH: Invalid buffer factor');
             self.recovery_mode_buffer_factor.write(factor);
 
-            //Event emission
             self.emit(RecoveryModeBufferFactorUpdated { factor });
         }
 
