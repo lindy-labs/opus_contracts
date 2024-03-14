@@ -613,19 +613,19 @@ mod shrine_utils {
     fn get_recovery_mode_test_setup_threshold_factor(rm_setup_type: common::RecoveryModeSetupType, offset: Ray) -> Ray {
         match rm_setup_type {
             common::RecoveryModeSetupType::BeforeRecoveryMode => {
-                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() - offset
+                shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into() - offset
             },
             common::RecoveryModeSetupType::BufferLowerBound => {
-                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() + offset
+                shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into() + offset
             },
             common::RecoveryModeSetupType::BufferUpperBound => {
-                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
-                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
                     - offset
             },
             common::RecoveryModeSetupType::ExceedsBuffer => {
-                shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into()
-                    + shrine_contract::RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
+                shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+                    + shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into()
                     + offset
             }
         }
@@ -682,7 +682,8 @@ mod shrine_utils {
     // LTV when setting up recovery mode
     fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        let target_rm_ltv: Ray = shrine_contract::RECOVERY_MODE_TARGET_LTV_FACTOR.into() * trove_health.threshold;
+        let target_rm_ltv: Ray = shrine_contract::INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+            * trove_health.threshold;
         trove_health.ltv >= target_rm_ltv
     }
 
