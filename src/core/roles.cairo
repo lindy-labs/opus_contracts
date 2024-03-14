@@ -138,11 +138,12 @@ mod shrine_roles {
     const SET_DEBT_CEILING: u128 = 2048;
     const SET_MINIMUM_TROVE_VALUE: u128 = 4096;
     const SET_MULTIPLIER: u128 = 8192;
-    const SET_THRESHOLD: u128 = 16384;
-    const UPDATE_RATES: u128 = 32768;
-    const UPDATE_YANG_SUSPENSION: u128 = 65536;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 131072;
-    const WITHDRAW: u128 = 262144;
+    const SET_RECOVERY_MODE_FACTORS: u128 = 16384;
+    const SET_THRESHOLD: u128 = 32768;
+    const UPDATE_RATES: u128 = 65536;
+    const UPDATE_YANG_SUSPENSION: u128 = 131072;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 262144;
+    const WITHDRAW: u128 = 524288;
 
     #[inline(always)]
     fn abbot() -> u128 {

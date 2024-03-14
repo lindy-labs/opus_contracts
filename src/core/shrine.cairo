@@ -77,23 +77,12 @@ mod shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    // This factor is applied to the Shrine's threshold to determine the LTV at which 
-    // recovery mode will be triggered.
-    // During recovery mode, this factor is also applied to a trove's threshold to determine 
-    // the trove's target LTV during recovery mode, so `forge` and `withdraw` during recovery 
-    // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
-    // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
-    // based on how far the trove's LTV exceeds this target LTV.
-    const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
+    const MIN_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
+    const MAX_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
+    const INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
-    // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
-    // thresholds start to be scaled in recovery mode.
-    // This acts as a buffer from when recovery mode is triggered until thresholds
-    // are adjusted to mitigate against a trove intentionally triggering recovery mode to
-    // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
-    // by the accrual of fees or changes to yangs' prices.
-    const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
+    const MAX_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
+    const INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
@@ -201,6 +190,22 @@ mod shrine {
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
         thresholds: LegacyMap::<u32, Ray>,
+        // This factor is applied to the Shrine's threshold to determine the LTV at which 
+        // recovery mode will be triggered.
+        // During recovery mode, this factor is also applied to a trove's threshold to determine 
+        // the trove's target LTV during recovery mode, so `forge` and `withdraw` during recovery 
+        // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
+        // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
+        // based on how far the trove's LTV exceeds this target LTV.
+        recovery_mode_target_ltv_factor: Ray,
+        // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
+        // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
+        // thresholds start to be scaled in recovery mode.
+        // This acts as a buffer from when recovery mode is triggered until thresholds
+        // are adjusted to mitigate against a trove intentionally triggering recovery mode to
+        // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
+        // by the accrual of fees or changes to yangs' prices.
+        recovery_mode_target_ltv_buffer_factor: Ray,
         // Keeps track of how many redistributions have occurred
         redistributions_count: u32,
         // Last redistribution accounted for a trove
@@ -237,6 +242,8 @@ mod shrine {
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
         ThresholdUpdated: ThresholdUpdated,
+        RecoveryModeTargetFactorUpdated: RecoveryModeTargetFactorUpdated,
+        RecoveryModeBufferFactorUpdated: RecoveryModeBufferFactorUpdated,
         ForgeFeePaid: ForgeFeePaid,
         TroveUpdated: TroveUpdated,
         TroveRedistributed: TroveRedistributed,
@@ -305,6 +312,16 @@ mod shrine {
         #[key]
         yang: ContractAddress,
         threshold: Ray
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct RecoveryModeTargetFactorUpdated {
+        factor: Ray
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct RecoveryModeBufferFactorUpdated {
+        factor: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -426,6 +443,10 @@ mod shrine {
         // Setting initial yin spot price to 1
         self.yin_spot_price.write(WAD_ONE.into());
 
+        // Setting initial recovery mode factors
+        self.recovery_mode_target_ltv_factor.write(INITIAL_RECOVERY_MODE_TARGET_LTV_FACTOR.into());
+        self.recovery_mode_target_ltv_buffer_factor.write(INITIAL_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR.into());
+
         // Emit event
         self
             .emit(
@@ -525,6 +546,14 @@ mod shrine {
         fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> Ray {
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.get_yang_threshold_helper(yang_id)
+        }
+
+        fn get_recovery_mode_target_factor(self: @ContractState) -> Ray {
+            self.recovery_mode_target_ltv_factor.read()
+        }
+
+        fn get_recovery_mode_buffer_factor(self: @ContractState) -> Ray {
+            self.recovery_mode_target_ltv_buffer_factor.read()
         }
 
         // Returns a Health struct comprising the Shrine's threshold, LTV, value and debt.
@@ -829,6 +858,28 @@ mod shrine {
             // Event emission
             self.emit(Killed {});
         }
+
+        fn set_recovery_mode_target_factor(ref self: ContractState, factor: Ray) {
+            self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
+            assert(
+                MIN_RECOVERY_MODE_TARGET_LTV_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_TARGET_LTV_FACTOR,
+                'SH: Invalid target LTV factor'
+            );
+            self.recovery_mode_target_ltv_factor.write(factor);
+
+            //Event emission
+            self.emit(RecoveryModeTargetFactorUpdated { factor });
+        }
+
+        fn set_recovery_mode_buffer_factor(ref self: ContractState, factor: Ray) {
+            self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
+            assert(factor.val <= MAX_RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR, 'SH: Invalid buffer factor');
+            self.recovery_mode_target_ltv_buffer_factor.write(factor);
+
+            //Event emission
+            self.emit(RecoveryModeBufferFactorUpdated { factor });
+        }
+
 
         //
         // Core Functions - External
@@ -1192,7 +1243,7 @@ mod shrine {
 
         #[inline(always)]
         fn get_recovery_mode_target_ltv(self: @ContractState, threshold: Ray) -> Ray {
-            threshold * RECOVERY_MODE_TARGET_LTV_FACTOR.into()
+            threshold * self.recovery_mode_target_ltv_factor.read()
         }
 
         // Helper function to check if recovery mode is triggered for Shrine
@@ -1290,7 +1341,7 @@ mod shrine {
             // 2. Shrine's LTV is below its target recovery mode LTV with buffer
             let shrine_health: Health = self.get_shrine_health();
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
-                * (RECOVERY_MODE_TARGET_LTV_FACTOR + RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR).into();
+                * (self.recovery_mode_target_ltv_factor.read() + self.recovery_mode_target_ltv_buffer_factor.read());
             if trove_health_with_base_threshold.debt.is_zero() || shrine_health.ltv < recovery_mode_buffered_threshold {
                 return trove_health_with_base_threshold.threshold;
             }
