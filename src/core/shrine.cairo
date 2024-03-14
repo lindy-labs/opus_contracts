@@ -454,16 +454,20 @@ mod shrine {
         self.yin_spot_price.write(WAD_ONE.into());
 
         // Setting initial recovery mode factors
-        self.recovery_mode_target_factor.write(INITIAL_RECOVERY_MODE_TARGET_FACTOR.into());
-        self.recovery_mode_buffer_factor.write(INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into());
+        let init_target_factor: Ray = INITIAL_RECOVERY_MODE_TARGET_FACTOR.into();
+        self.recovery_mode_target_factor.write(init_target_factor);
+        let init_buffer_factor: Ray = INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into();
+        self.recovery_mode_buffer_factor.write(init_buffer_factor);
 
-        // Emit event
+        // Emit events
         self
             .emit(
                 MultiplierUpdated {
                     multiplier: init_multiplier, cumulative_multiplier: init_multiplier, interval: prev_interval
                 }
             );
+        self.emit(RecoveryModeTargetFactorUpdated { factor: init_target_factor });
+        self.emit(RecoveryModeBufferFactorUpdated { factor: init_buffer_factor });
 
         // ERC20
         self.yin_name.write(name);

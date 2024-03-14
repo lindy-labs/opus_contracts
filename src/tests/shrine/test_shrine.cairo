@@ -69,7 +69,23 @@ mod test_shrine {
                         interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
                     }
                 )
-            )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeTargetFactorUpdated(
+                    shrine_contract::RecoveryModeTargetFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
+                    }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeBufferFactorUpdated(
+                    shrine_contract::RecoveryModeBufferFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
+                    }
+                )
+            ),
         ];
 
         spy.assert_emitted(@expected_events);
