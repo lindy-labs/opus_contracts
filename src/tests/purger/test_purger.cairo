@@ -1253,6 +1253,11 @@ mod test_purger {
                                                                 yangs, array![absorber.contract_address].span()
                                                             );
 
+                                                            if *kill_absorber {
+                                                                absorber_utils::kill_absorber(absorber);
+                                                                assert(!absorber.get_live(), 'sanity check');
+                                                            }
+
                                                             start_prank(
                                                                 CheatTarget::One(purger.contract_address), caller
                                                             );
@@ -2330,6 +2335,19 @@ mod test_purger {
                                                         purger_utils::TARGET_TROVE_YIN.into()
                                                     );
 
+                                                    let recipient_trove_owner: ContractAddress =
+                                                        absorber_utils::provider_1();
+                                                    let recipient_trove: u64 = absorber_utils::provide_to_absorber(
+                                                        shrine,
+                                                        abbot,
+                                                        absorber,
+                                                        recipient_trove_owner,
+                                                        yangs,
+                                                        *yang_asset_amts,
+                                                        gates,
+                                                        *absorber_start_yin,
+                                                    );
+
                                                     // Accrue some interest
                                                     common::advance_intervals_and_refresh_prices_and_multiplier(
                                                         shrine, yangs, 500
@@ -2341,10 +2359,6 @@ mod test_purger {
                                                         - initial_trove_debt;
                                                     // Sanity check that some interest has accrued
                                                     assert(accrued_interest.is_non_zero(), 'no interest accrued');
-
-                                                    let mut recipient_trove: u64 = purger_utils::create_whale_trove(
-                                                        abbot, yangs, gates
-                                                    );
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
