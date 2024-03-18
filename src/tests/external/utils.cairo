@@ -55,7 +55,7 @@ pub mod pragma_utils {
             Option::None => declare("mock_pragma"),
         };
 
-        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy pragma');
+        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy mock pragma');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
@@ -136,5 +136,38 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
+    }
+}
+
+mod switchboard_utils {
+    use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
+    use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+
+    fn admin() -> ContractAddress {
+        contract_address_try_from_felt252('switchboard owner').unwrap()
+    }
+
+    fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
+        let mut calldata: Array<felt252> = ArrayTrait::new();
+        let mock_switchboard_addr = declare('mock_switchboard')
+            .deploy(@calldata)
+            .expect('failed deploy mock switchboard');
+        IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
+    }
+
+    fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy();
+
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()), contract_address_to_felt252(mock_switchboard.contract_address)
+        ];
+
+        let switchboard_addr = declare('switchboard').deploy(@calldata).expect('failed deploy switchboard');
+
+        let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
+
+        (switchboard, mock_switchboard)
     }
 }

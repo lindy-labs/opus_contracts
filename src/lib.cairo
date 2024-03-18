@@ -60,7 +60,7 @@ mod mock {
     pub mod flash_borrower;
     pub mod flash_liquidator;
     pub mod mock_pragma;
-    pub mod mock_switchboard
+    pub mod mock_switchboard;
 }
 
 #[cfg(test)]

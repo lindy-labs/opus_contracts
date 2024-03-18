@@ -78,13 +78,13 @@ mod switchboard {
     impl ISwitchboardImpl of ISwitchboard<ContractState> {
         fn set_yang_pair_id(ref self: ContractState, yang: ContractAddress, pair_id: felt252) {
             self.access_control.assert_has_role(switchboard_roles::ADD_YANG);
-            assert(pair_id != 0, 'SWI: Invalid pair ID');
+            assert(pair_id.is_non_zero(), 'SWI: Invalid pair ID');
             assert(yang.is_non_zero(), 'SWI: Invalid yang address');
 
             // sanity check that the feed actually exists
             let (value, timestamp) = self.oracle.read().get_latest_result(pair_id);
-            assert(value.is_non_zero(), 'SWI: Invalid value');
-            assert(timestamp.is_non_zero(), 'SWI: Invalid timestamp');
+            assert(value.is_non_zero(), 'SWI: Invalid feed value');
+            assert(timestamp.is_non_zero(), 'SWI: Invalid feed timestamp');
 
             self.yang_pair_ids.write(yang, pair_id);
 
