@@ -27,6 +27,3 @@ source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.13.1#e14
 name = "wadray"
 version = "0.2.0"
 source = "git+https://github.com/lindy-labs/wadray.git?tag=v0.2.1#69e506eb21ce96c00d31bdbfd02340e8e8199641"
-dependencies = [
- "snforge_std",
-]
