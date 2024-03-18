@@ -6,16 +6,12 @@ mod test_switchboard {
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::switchboard_utils;
+    use opus::tests::external::utils::{switchboard_utils, {switchboard_utils::ETH_PRICE, switchboard_utils::TIMESTAMP}};
     use snforge_std::{
         start_prank, stop_prank, spy_events, CheatTarget, ContractClassTrait, EventAssertions, EventSpy, SpyOn
     };
     use starknet::{ContractAddress, contract_address_try_from_felt252};
     use wadray::Wad;
-
-    fn mock_eth_token_addr() -> ContractAddress {
-        contract_address_try_from_felt252('ETH').unwrap()
-    }
 
     #[test]
     fn test_switchboard_setup() {
@@ -40,11 +36,8 @@ mod test_switchboard {
         start_prank(CheatTarget::All, switchboard_utils::admin());
         let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 1710000000;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, TIMESTAMP);
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
 
         spy
@@ -68,11 +61,9 @@ mod test_switchboard {
         let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
 
         let typo_eth: ContractAddress = 'whoops'.try_into().unwrap();
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 1710000000;
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
 
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, TIMESTAMP);
         switchboard.set_yang_pair_id(typo_eth, 'ETH/USD');
         spy
             .assert_emitted(
@@ -104,7 +95,7 @@ mod test_switchboard {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_switchboard_set_yang_pair_id_unauthorized_fail() {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
-        let eth: ContractAddress = mock_eth_token_addr();
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
     }
 
@@ -113,7 +104,7 @@ mod test_switchboard {
     fn test_switchboard_set_yang_pair_id_zero() {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         start_prank(CheatTarget::All, switchboard_utils::admin());
-        let eth: ContractAddress = mock_eth_token_addr();
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, 0);
     }
 
@@ -132,11 +123,8 @@ mod test_switchboard {
 
         start_prank(CheatTarget::All, switchboard_utils::admin());
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 0;
-        let timestamp: u64 = 1710000000;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', 0, TIMESTAMP);
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
     }
 
@@ -147,11 +135,8 @@ mod test_switchboard {
 
         start_prank(CheatTarget::All, switchboard_utils::admin());
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 0;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, 0);
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
     }
 
@@ -162,18 +147,15 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 1710000000;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
         assert(result.is_ok(), 'fetch price failed');
-        assert(result.unwrap() == price.into(), 'wrong price');
+        assert(result.unwrap() == ETH_PRICE.into(), 'wrong price');
     }
 
     #[test]
@@ -181,16 +163,13 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 1710000000;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
-        mock_switchboard.next_get_latest_result('ETH/USD', 0, timestamp);
+        mock_switchboard.next_get_latest_result('ETH/USD', 0, TIMESTAMP);
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
         assert(result.is_err(), 'fetch price should fail');
@@ -206,16 +185,13 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = mock_eth_token_addr();
-        let price: u128 = 3000000000000000000;
-        let timestamp: u64 = 1710000000;
-
-        mock_switchboard.next_get_latest_result('ETH/USD', price, timestamp);
+        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
-        mock_switchboard.next_get_latest_result('ETH/USD', price, 0);
+        mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, 0);
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
         assert(result.is_err(), 'fetch price should fail');
@@ -223,6 +199,6 @@ mod test_switchboard {
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, true); // forced fetch
         assert(result.is_ok(), 'forced fetch should pass');
-        assert(result.unwrap() == price.into(), 'wrong price');
+        assert(result.unwrap() == ETH_PRICE.into(), 'wrong price');
     }
 }

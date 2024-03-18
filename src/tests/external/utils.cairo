@@ -145,8 +145,15 @@ mod switchboard_utils {
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
 
+    const ETH_PRICE: u128 = 3000000000000000000;
+    const TIMESTAMP: u64 = 1710000000;
+
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('switchboard owner').unwrap()
+    }
+
+    fn mock_eth_token_addr() -> ContractAddress {
+        contract_address_try_from_felt252('ETH').unwrap()
     }
 
     fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
