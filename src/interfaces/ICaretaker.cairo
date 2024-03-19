@@ -2,7 +2,7 @@ use opus::types::AssetBalance;
 use wadray::Wad;
 
 #[starknet::interface]
-trait ICaretaker<TContractState> {
+pub trait ICaretaker<TContractState> {
     // view
     fn preview_release(self: @TContractState, trove_id: u64) -> Span<AssetBalance>;
     fn preview_reclaim(self: @TContractState, yin: Wad) -> (Wad, Span<AssetBalance>);

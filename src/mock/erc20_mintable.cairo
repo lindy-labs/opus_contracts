@@ -1,7 +1,8 @@
 #[starknet::contract]
 mod erc20_mintable {
+    use core::num::traits::Zero;
     use opus::interfaces::IERC20::{IERC20, IMintable};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::contract_address::ContractAddress;
     use starknet::get_caller_address;
 
     #[storage]
@@ -48,12 +49,7 @@ mod erc20_mintable {
         assert(!recipient.is_zero(), 'ERC20: mint to the 0 address');
         self.total_supply.write(initial_supply);
         self.balances.write(recipient, initial_supply);
-        self
-            .emit(
-                Event::Transfer(
-                    Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: initial_supply }
-                )
-            );
+        self.emit(Event::Transfer(Transfer { from: Zero::zero(), to: recipient, value: initial_supply }));
     }
 
     #[abi(embed_v0)]
@@ -110,7 +106,7 @@ mod erc20_mintable {
             self.total_supply.write(self.total_supply.read() + amount);
             let balance = self.balances.read(recipient);
             self.balances.write(recipient, balance + amount);
-            self.emit(Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: amount });
+            self.emit(Transfer { from: Zero::zero(), to: recipient, value: amount });
             true
         }
     }

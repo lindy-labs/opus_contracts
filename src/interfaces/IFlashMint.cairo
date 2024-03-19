@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait IFlashMint<TContractState> {
+pub trait IFlashMint<TContractState> {
     // external
     fn flash_loan(
         ref self: TContractState,

@@ -5,7 +5,7 @@ mod gate {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use wadray::{Wad, WadZero, WAD_DECIMALS, WAD_ONE};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -139,7 +139,7 @@ mod gate {
 
             let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
             if yang_amt.is_zero() {
-                return WadZeroable::zero();
+                return WadZero::zero();
             }
 
             let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());

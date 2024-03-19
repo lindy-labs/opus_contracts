@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, Wad};
 
 #[starknet::interface]
-trait ITransmuter<TContractState> {
+pub trait ITransmuter<TContractState> {
     // getters
     fn get_asset(self: @TContractState) -> ContractAddress;
     fn get_total_transmuted(self: @TContractState) -> Wad;
@@ -37,7 +37,7 @@ trait ITransmuter<TContractState> {
 }
 
 #[starknet::interface]
-trait ITransmuterRegistry<TContractState> {
+pub trait ITransmuterRegistry<TContractState> {
     // getters
     fn get_transmuters(self: @TContractState) -> Span<ContractAddress>;
     // setters

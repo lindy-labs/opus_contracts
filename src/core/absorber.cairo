@@ -7,8 +7,8 @@
 #[starknet::contract]
 mod absorber {
     use access_control::access_control_component;
-    use cmp::min;
-    use integer::u256_safe_divmod;
+    use core::cmp::min;
+    use core::traits::DivRem;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,7 +16,7 @@ mod absorber {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use wadray::{Ray, RayZeroable, u128_wdiv, u128_wmul, Wad, WadZeroable};
+    use wadray::{Ray, RayZero, u128_wdiv, u128_wmul, Wad, WadZero};
 
     //
     // Components
@@ -476,7 +476,7 @@ mod absorber {
             self.reap_helper(provider, provision);
 
             // Removed yin amount
-            let mut yin_amt: Wad = WadZeroable::zero();
+            let mut yin_amt: Wad = WadZero::zero();
 
             // Fetch the shares for current epoch
             let current_epoch: u32 = self.current_epoch.read();
@@ -488,7 +488,7 @@ mod absorber {
                 // provider's deposit has been completely absorbed.
                 // Since absorbed collateral has been reaped,
                 // we can update the provision to current epoch and shares.
-                self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() });
+                self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZero::zero() });
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
@@ -607,8 +607,8 @@ mod absorber {
                     // This would cause a negligible loss to the previous epoch's providers, but
                     // partially compensates the first provider in the new epoch for the deducted
                     // minimum initial amount.
-                    self.epoch_share_conversion_rate.write(current_epoch, RayZeroable::zero());
-                    self.total_shares.write(WadZeroable::zero());
+                    self.epoch_share_conversion_rate.write(current_epoch, RayZero::zero());
+                    self.total_shares.write(WadZero::zero());
                 }
 
                 self.emit(EpochChanged { old_epoch: current_epoch, new_epoch });
@@ -682,9 +682,8 @@ mod absorber {
             let absorber: ContractAddress = get_contract_address();
             let yin_balance: u256 = self.yin_erc20().balance_of(absorber);
 
-            let (computed_shares, r, _) = u256_safe_divmod(
-                yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
-            );
+            let numerator: u256 = yin_amt.into() * total_shares.into();
+            let (computed_shares, r) = DivRem::div_rem(numerator, yin_balance.try_into().expect('Division by zero'));
             let computed_shares: u128 = computed_shares.try_into().unwrap();
             if round_up && r.is_non_zero() {
                 return ((computed_shares + 1).into(), (computed_shares + 1).into());
@@ -699,7 +698,7 @@ mod absorber {
 
             // If no shares are issued yet, then it is a new epoch and absorber is emptied.
             if total_shares.is_zero() {
-                return WadZeroable::zero();
+                return WadZero::zero();
             }
 
             let absorber: ContractAddress = get_contract_address();

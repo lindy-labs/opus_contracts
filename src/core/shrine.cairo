@@ -1,18 +1,18 @@
 #[starknet::contract]
 mod shrine {
     use access_control::access_control_component;
-    use cmp::{max, min};
+    use core::cmp::{max, min};
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use core::starknet::event::EventEmitter;
-    use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
     use opus::interfaces::ISRC5::ISRC5;
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
     use opus::utils::exp::{exp, neg_exp};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use starknet::{get_block_timestamp, get_caller_address};
-    use wadray::{BoundedRay, Ray, RayZeroable, RAY_ONE, SignedWad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use wadray::{BoundedRay, Ray, RayZero, RAY_ONE, SignedWad, Wad, WadZero, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     //
     // Components
@@ -820,7 +820,7 @@ mod shrine {
 
                 let protocol_owned_yang_amt: Wad = self.protocol_owned_yang_amts.read(current_yang_id);
                 let total_yang_amt: Wad = self.yang_total.read(current_yang_id);
-                self.protocol_owned_yang_amts.write(current_yang_id, WadZeroable::zero());
+                self.protocol_owned_yang_amts.write(current_yang_id, WadZero::zero());
                 self.yang_total.write(current_yang_id, total_yang_amt - protocol_owned_yang_amt);
 
                 current_yang_id += 1;
@@ -895,7 +895,7 @@ mod shrine {
                 self.adjust_budget_helper(excess.into());
                 excess
             } else {
-                WadZeroable::zero()
+                WadZero::zero()
             };
             let new_total_troves_debt = self.total_troves_debt.read()
                 + amount
@@ -1035,7 +1035,7 @@ mod shrine {
             let yin_price: Wad = self.yin_spot_price.read();
 
             if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
-                return WadZeroable::zero();
+                return WadZero::zero();
             } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
                 return FORGE_FEE_CAP_PCT.into();
             }
@@ -1077,7 +1077,7 @@ mod shrine {
                 return (max_debt - trove_health.debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
-            WadZeroable::zero()
+            WadZero::zero()
         }
 
         // Returns a Health struct comprising the trove's applicable threshold based on current on-chain conditins, 
@@ -1176,7 +1176,7 @@ mod shrine {
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
             let budget_adjustment: Wad = match new_budget.try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { WadZeroable::zero() }
+                Option::None => { WadZero::zero() }
             };
             let new_total_debt: Wad = new_total_yin + budget_adjustment;
             assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
@@ -1213,7 +1213,7 @@ mod shrine {
         // Otherwise, check `interval` - 1 iteratively for the last available price.
         fn get_recent_price_from(self: @ContractState, yang_id: u32, interval: u64) -> (Wad, Wad, u64) {
             if self.is_delisted(yang_id) {
-                return (WadZeroable::zero(), WadZeroable::zero(), interval);
+                return (WadZero::zero(), WadZero::zero(), interval);
             }
 
             let mut current_interval: u64 = interval;
@@ -1329,7 +1329,7 @@ mod shrine {
                     let ts_diff: u64 = get_block_timestamp() - self.yang_suspension.read(yang_id);
                     base_threshold * ((SUSPENSION_GRACE_PERIOD - ts_diff).into() / SUSPENSION_GRACE_PERIOD.into())
                 },
-                YangSuspensionStatus::Permanent => { RayZeroable::zero() },
+                YangSuspensionStatus::Permanent => { RayZero::zero() },
             }
         }
 
@@ -1380,8 +1380,8 @@ mod shrine {
         fn get_threshold_and_value(
             self: @ContractState, mut yang_balances: Span<YangBalance>, interval: u64
         ) -> (Ray, Wad) {
-            let mut weighted_threshold_sum: Ray = RayZeroable::zero();
-            let mut total_value: Wad = WadZeroable::zero();
+            let mut weighted_threshold_sum: Ray = RayZero::zero();
+            let mut total_value: Wad = WadZero::zero();
 
             loop {
                 match yang_balances.pop_front() {
@@ -1404,7 +1404,7 @@ mod shrine {
             let threshold: Ray = if total_value.is_non_zero() {
                 wadray::wdiv_rw(weighted_threshold_sum, total_value)
             } else {
-                RayZeroable::zero()
+                RayZero::zero()
             };
 
             (threshold, total_value)
@@ -1464,7 +1464,7 @@ mod shrine {
             self.yin.write(user, self.yin.read(user) + amount);
             self.total_yin.write(self.total_yin.read() + amount);
 
-            self.emit(Transfer { from: ContractAddressZeroable::zero(), to: user, value: amount.into() });
+            self.emit(Transfer { from: Zero::zero(), to: user, value: amount.into() });
         }
 
         fn melt_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
@@ -1474,7 +1474,7 @@ mod shrine {
             self.yin.write(user, user_balance - amount);
             self.total_yin.write(self.total_yin.read() - amount);
 
-            self.emit(Transfer { from: user, to: ContractAddressZeroable::zero(), value: amount.into() });
+            self.emit(Transfer { from: user, to: Zero::zero(), value: amount.into() });
         }
 
         // Withdraw a specified amount of a Yang from a Trove
@@ -1557,7 +1557,7 @@ mod shrine {
             // Saves gas and prevents bugs for troves with no yangs deposited
             // Implicit assumption is that a trove with non-zero debt must have non-zero yangs
             if trove.debt.is_zero() {
-                return WadZeroable::zero();
+                return WadZero::zero();
             }
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
@@ -1609,8 +1609,8 @@ mod shrine {
         fn get_avg_rate_over_era(
             self: @ContractState, trove_id: u64, start_interval: u64, end_interval: u64, rate_era: u64
         ) -> Ray {
-            let mut cumulative_weighted_sum: Ray = RayZeroable::zero();
-            let mut cumulative_yang_value: Wad = WadZeroable::zero();
+            let mut cumulative_weighted_sum: Ray = RayZero::zero();
+            let mut cumulative_yang_value: Wad = WadZero::zero();
 
             let mut current_yang_id: u32 = self.yangs_count.read();
             loop {
@@ -1635,7 +1635,7 @@ mod shrine {
             // Handle the corner case where a trove with non-zero debt has zero value i.e. the trove previously
             // forged debt using yangs that are now all delisted.
             if cumulative_yang_value.is_zero() {
-                RayZeroable::zero()
+                RayZero::zero()
             } else {
                 wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value)
             }
@@ -1774,8 +1774,8 @@ mod shrine {
             // Keep track of the total debt redistributed, as well as the total amount of debt to be added 
             // to the protocol owned troves' debt either from the errors of ordinary redistributions or the
             // debt from exceptional redistributions
-            let mut redistributed_debt: Wad = WadZeroable::zero();
-            let mut cumulative_protocol_owned_troves_debt: Wad = WadZeroable::zero();
+            let mut redistributed_debt: Wad = WadZero::zero();
+            let mut cumulative_protocol_owned_troves_debt: Wad = WadZero::zero();
             let mut trove_yang_balances_copy = trove_yang_balances;
             // Iterate over the yangs deposited in the trove to be redistributed
             loop {
@@ -1805,8 +1805,8 @@ mod shrine {
                         let (redistributed_yang_price, _, _) = self_snap
                             .get_recent_price_from(yang_id_to_redistribute, current_interval);
 
-                        let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
-                        let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
+                        let mut raw_debt_to_distribute_for_yang: Wad = WadZero::zero();
+                        let mut debt_to_distribute_for_yang: Wad = WadZero::zero();
 
                         if trove_value_to_redistribute.is_non_zero() {
                             let yang_debt_pct: Ray = wadray::rdiv_ww(
@@ -1956,7 +1956,7 @@ mod shrine {
             let trove_last_redistribution_id: u32 = self.trove_redistribution_id.read(trove_id);
             let current_redistribution_id: u32 = self.redistributions_count.read();
 
-            let mut redistributed_debt = WadZeroable::zero();
+            let mut redistributed_debt = WadZero::zero();
             // Early termination if no redistributions since trove was last updated
             if current_redistribution_id == trove_last_redistribution_id {
                 return redistributed_debt;
@@ -2128,7 +2128,7 @@ mod shrine {
 
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
-            if current_allowance != BoundedU256::max() {
+            if current_allowance != BoundedInt::max() {
                 assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }

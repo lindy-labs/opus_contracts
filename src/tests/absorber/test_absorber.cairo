@@ -22,7 +22,7 @@ mod test_absorber {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZero, WAD_ONE, WAD_SCALE};
     //
     // Tests - Setup
     //
@@ -216,7 +216,7 @@ mod test_absorber {
     #[test]
     fn test_update_after_kill_pass() {
         // Setup
-        let (shrine, _, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
+        let (shrine, _, _, absorber, yangs, _, reward_tokens, _, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
         );
@@ -271,7 +271,6 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
 
         // Step 4
-        let provider_before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
         let provider_before_absorbed_bals = common::get_token_balances(yangs, provider.into());
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
@@ -459,7 +458,7 @@ mod test_absorber {
                         absorber_contract::FIRST_EPOCH
                     };
                     let expected_total_shares: Wad = if is_fully_absorbed {
-                        WadZeroable::zero()
+                        WadZero::zero()
                     } else {
                         first_provided_amt // total shares is equal to amount provided
                     };
@@ -767,7 +766,6 @@ mod test_absorber {
         let donor: ContractAddress = absorber_utils::provider_1();
         let provider: ContractAddress = absorber_utils::provider_2();
 
-        let provider = absorber_utils::provider_1();
         let provided_amt: Wad = (10000 * WAD_ONE).into();
         let provider_amt: Wad = (5000 * WAD_ONE).into();
 
@@ -1870,7 +1868,7 @@ mod test_absorber {
 
     #[test]
     fn test_shrine_killed_and_remove_pass() {
-        let (shrine, _, abbot, absorber, yangs, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );

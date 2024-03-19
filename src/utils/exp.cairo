@@ -43,7 +43,7 @@ const a9: u128 = 106449445891785942956; // eˆ(x9)
 // - once an int type is added, consider handling negative exponents too, although
 //   it may not be necessary for our purposes.
 
-fn exp(x: Wad) -> Wad {
+pub fn exp(x: Wad) -> Wad {
     let mut x: u128 = x.val;
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
@@ -161,6 +161,6 @@ fn exp(x: Wad) -> Wad {
 }
 
 // Computes 1/exp(x) = exp(-x)
-fn neg_exp(x: Wad) -> Wad {
+pub fn neg_exp(x: Wad) -> Wad {
     WAD_ONE.into() / exp(x)
 }

@@ -39,9 +39,7 @@ mod test_allocator {
         let mut recipients = equalizer_utils::initial_recipients();
         let _ = recipients.pop_front();
 
-        let test_allocator_deploy_input_arrays_mismatch_fail = equalizer_utils::allocator_deploy(
-            recipients, equalizer_utils::initial_percentages(), Option::None
-        );
+        equalizer_utils::allocator_deploy(recipients, equalizer_utils::initial_percentages(), Option::None);
     }
 
     #[test]
@@ -98,8 +96,6 @@ mod test_allocator {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
-
-        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
         let new_recipients: Span<ContractAddress> = array![

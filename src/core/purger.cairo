@@ -1,9 +1,8 @@
 #[starknet::contract]
 mod purger {
     use access_control::access_control_component;
-    use cmp::min;
-    use core::math::Oneable;
-    use core::zeroable::Zeroable;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
@@ -13,7 +12,7 @@ mod purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use wadray::{Ray, RayZero, RAY_ONE, Wad, WadZero};
 
     //
     // Components
@@ -288,7 +287,7 @@ mod purger {
             let purge_amt = if absorber.is_operational() {
                 min(max_purge_amt, shrine.get_yin(absorber.contract_address))
             } else {
-                WadZeroable::zero()
+                WadZero::zero()
             };
 
             // Melt the trove's debt using the absorber's yin directly
@@ -309,7 +308,7 @@ mod purger {
                     ltv_after_compensation, value_after_compensation, trove_health.debt, trove_penalty, purge_amt
                 )
             } else {
-                RayZeroable::zero()
+                RayZero::zero()
             };
 
             // Only update the absorber and emit the `Purged` event if Absorber has some yin
@@ -440,7 +439,7 @@ mod purger {
             // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case
             // to avoid underflow. Note that this also guarantees `ltv` is lesser than one.
             if ltv_after_compensation > RAY_ONE.into() {
-                return Option::Some(RayZeroable::zero());
+                return Option::Some(RayZero::zero());
             }
 
             // If the threshold is below the given minimum, we automatically
@@ -553,7 +552,7 @@ mod purger {
 
         // Handling the case where `ltv > 1` to avoid underflow
         if ltv >= RAY_ONE.into() {
-            return Option::Some(RayZeroable::zero());
+            return Option::Some(RayZero::zero());
         }
 
         // If the threshold is below the given minimum, we automatically

@@ -15,17 +15,17 @@
 //
 
 #[starknet::contract]
-mod flash_mint {
+pub mod flash_mint {
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Wad, WadZeroable};
+    use wadray::{Wad, WadZero};
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
-    const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
+    pub const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
@@ -121,7 +121,7 @@ mod flash_mint {
             let total_yin: Wad = shrine.get_total_yin();
             let budget_adjustment: Wad = match shrine.get_budget().try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { WadZeroable::zero() }
+                Option::None => { WadZero::zero() }
             };
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {

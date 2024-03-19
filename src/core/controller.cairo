@@ -6,7 +6,7 @@ mod controller {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, SignedRay, SignedRayZeroable, Wad};
+    use wadray::{Ray, RAY_ONE, SignedRay, SignedRayZero, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -140,7 +140,7 @@ mod controller {
         fn get_i_term(self: @ContractState) -> SignedRay {
             let i_gain = self.i_gain.read();
             if i_gain.is_zero() {
-                SignedRayZeroable::zero()
+                SignedRayZero::zero()
             } else {
                 i_gain * self.get_i_term_internal()
             }
@@ -197,7 +197,7 @@ mod controller {
 
             // Reset the integral term if the i_gain is set to zero
             if i_gain.is_zero() {
-                self.i_term.write(SignedRayZeroable::zero());
+                self.i_term.write(SignedRayZero::zero());
             }
 
             self.i_gain.write(i_gain.into());
@@ -260,13 +260,13 @@ mod controller {
 
         #[inline(always)]
         fn get_current_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.shrine.read().get_yin_spot_price().into()
+            RAY_ONE.into() - wad_to_signed_ray(self.shrine.read().get_yin_spot_price())
         }
 
         // Returns the error at the time of the last update to the multiplier
         #[inline(always)]
         fn get_prev_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.yin_previous_price.read().into()
+            RAY_ONE.into() - wad_to_signed_ray(self.yin_previous_price.read())
         }
     }
 

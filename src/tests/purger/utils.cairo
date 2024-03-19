@@ -28,7 +28,7 @@ mod purger_utils {
     use starknet::{
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     };
-    use wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WadZero, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -101,7 +101,7 @@ mod purger_utils {
 
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         array![
-            RayZeroable::zero(),
+            RayZero::zero(),
             RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
             (80 * RAY_PERCENT).into(),
@@ -307,9 +307,9 @@ mod purger_utils {
             // Fourth threshold of 96% (Ray)
             10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
             // Fifth threshold of 97% (Ray)
-            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
         ]
             .span()
     }
@@ -567,8 +567,8 @@ mod purger_utils {
             value_after_compensation -= compensation_value.unwrap()
         };
 
-        let mut expected_freed_pct_of_value_after_compensation = RayZeroable::zero();
-        let mut expected_freed_pct_of_value_before_compensation = RayZeroable::zero();
+        let mut expected_freed_pct_of_value_after_compensation = RayZero::zero();
+        let mut expected_freed_pct_of_value_before_compensation = RayZero::zero();
 
         if trove_health.ltv <= RAY_ONE.into() {
             expected_freed_pct_of_value_before_compensation =
@@ -669,7 +669,7 @@ mod purger_utils {
 
     // Helper function to calculate the sum of the value of the given yangs
     fn get_sum_of_value(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>) -> Wad {
-        let mut sum: Wad = WadZeroable::zero();
+        let mut sum: Wad = WadZero::zero();
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {

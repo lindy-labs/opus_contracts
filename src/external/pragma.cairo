@@ -8,6 +8,7 @@
 #[starknet::contract]
 mod pragma {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;

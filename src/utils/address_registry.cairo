@@ -1,7 +1,7 @@
 #[starknet::component]
-mod address_registry_component {
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress};
+pub mod address_registry_component {
+    use core::num::traits::Zero;
+    use starknet::ContractAddress;
 
     #[storage]
     struct Storage {
@@ -12,7 +12,7 @@ mod address_registry_component {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         EntryAdded: EntryAdded,
         EntryRemoved: EntryRemoved,
     }
@@ -30,7 +30,7 @@ mod address_registry_component {
     }
 
     #[generate_trait]
-    impl AddressRegistryHelpers<
+    pub impl AddressRegistryHelpers<
         TContractState, +HasComponent<TContractState>
     > of AddressRegistryHelpersTrait<TContractState> {
         //
@@ -89,7 +89,7 @@ mod address_registry_component {
 
             // Reset entry
             self.entry_ids.write(entry, 0);
-            self.entries.write(entry_id, ContractAddressZeroable::zero());
+            self.entries.write(entry_id, Zero::zero());
 
             self.emit(EntryRemoved { entry, entry_id });
 

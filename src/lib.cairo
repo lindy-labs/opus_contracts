@@ -1,54 +1,54 @@
 mod types;
 
 mod core {
-    mod abbot;
-    mod absorber;
-    mod allocator;
-    mod caretaker;
-    mod controller;
-    mod equalizer;
-    mod flash_mint;
-    mod gate;
-    mod purger;
-    mod roles;
-    mod seer;
-    mod sentinel;
-    mod shrine;
-    mod transmuter;
-    mod transmuter_registry;
+    pub mod abbot;
+    pub mod absorber;
+    pub mod allocator;
+    pub mod caretaker;
+    pub mod controller;
+    pub mod equalizer;
+    pub mod flash_mint;
+    pub mod gate;
+    pub mod purger;
+    pub mod roles;
+    pub mod seer;
+    pub mod sentinel;
+    pub mod shrine;
+    pub mod transmuter;
+    pub mod transmuter_registry;
 }
 
 mod external {
-    mod pragma;
+    pub mod pragma;
 }
 
 mod interfaces {
-    mod IAbbot;
-    mod IAbsorber;
-    mod IAllocator;
-    mod ICaretaker;
-    mod IController;
-    mod IERC20;
-    mod IEqualizer;
-    mod IFlashBorrower;
-    mod IFlashMint;
-    mod IGate;
-    mod IOracle;
-    mod IPragma;
-    mod IPurger;
-    mod ISRC5;
-    mod ISeer;
-    mod ISentinel;
-    mod IShrine;
-    mod ITransmuter;
-    mod external;
+    pub mod IAbbot;
+    pub mod IAbsorber;
+    pub mod IAllocator;
+    pub mod ICaretaker;
+    pub mod IController;
+    pub mod IERC20;
+    pub mod IEqualizer;
+    pub mod IFlashBorrower;
+    pub mod IFlashMint;
+    pub mod IGate;
+    pub mod IOracle;
+    pub mod IPragma;
+    pub mod IPurger;
+    pub mod ISRC5;
+    pub mod ISeer;
+    pub mod ISentinel;
+    pub mod IShrine;
+    pub mod ITransmuter;
+    pub mod external;
 }
 
 mod utils {
-    mod address_registry;
-    mod exp;
-    mod math;
-    mod reentrancy_guard;
+    pub mod address_registry;
+    pub mod exp;
+    pub mod math;
+    pub mod reentrancy_guard;
 }
 
 // mock used for local devnet deployment

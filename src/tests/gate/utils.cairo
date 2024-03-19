@@ -10,7 +10,7 @@ mod gate_utils {
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
-    use wadray::{Ray, Wad, WadZeroable};
+    use wadray::{Ray, Wad, WadZero};
 
     //
     // Address constants
@@ -65,7 +65,7 @@ mod gate_utils {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                WadZeroable::zero() // initial amount
+                WadZero::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -80,7 +80,7 @@ mod gate_utils {
                 shrine_utils::YANG2_THRESHOLD.into(),
                 shrine_utils::YANG2_START_PRICE.into(),
                 shrine_utils::YANG2_BASE_RATE.into(),
-                WadZeroable::zero() // initial amount
+                WadZero::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
         stop_prank(CheatTarget::One(shrine.contract_address));

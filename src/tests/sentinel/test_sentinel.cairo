@@ -17,7 +17,7 @@ mod test_sentinel {
     };
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, Wad, WadZero, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -35,7 +35,6 @@ mod test_sentinel {
         let eth = *assets.at(0);
         let wbtc = *assets.at(1);
 
-        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
@@ -173,7 +172,7 @@ mod test_sentinel {
                 sentinel_utils::dummy_yang_addr(),
                 sentinel_utils::ETH_ASSET_MAX,
                 shrine_utils::YANG1_THRESHOLD.into(),
-                WadZeroable::zero(),
+                WadZero::zero(),
                 shrine_utils::YANG1_BASE_RATE.into(),
                 sentinel_utils::dummy_yang_gate_addr()
             );

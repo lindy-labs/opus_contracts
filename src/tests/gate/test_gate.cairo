@@ -345,9 +345,6 @@ mod test_gate {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
-        // Unneeded but helps prevent 'Failed setting up runner' error
-        let shrine = IShrineDispatcher { contract_address: shrine };
-
         let eth = IERC20Dispatcher { contract_address: eth };
         let gate = IGateDispatcher { contract_address: gate };
 

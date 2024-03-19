@@ -1,7 +1,8 @@
 #[starknet::contract]
 mod caretaker {
     use access_control::access_control_component;
-    use cmp::min;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::caretaker_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;

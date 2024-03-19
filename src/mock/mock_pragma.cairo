@@ -19,6 +19,7 @@ trait IMockPragma<TContractState> {
 
 #[starknet::contract]
 mod mock_pragma {
+    use core::panic_with_felt252;
     use opus::interfaces::external::IPragmaOracle;
     use opus::types::pragma::{DataType, PragmaPricesResponse};
     use super::{IMockPragma, PragmaPricesResponseWrapper};

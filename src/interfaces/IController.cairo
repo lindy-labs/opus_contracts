@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, SignedRay};
 
 #[starknet::interface]
-trait IController<TContractState> {
+pub trait IController<TContractState> {
     // View Functions
     fn get_current_multiplier(self: @TContractState) -> Ray;
     fn get_p_term(self: @TContractState) -> SignedRay;

@@ -11,7 +11,7 @@ use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
-use wadray::{Ray, Wad, WadZeroable};
+use wadray::{Ray, Wad, WadZero};
 
 //
 // Types

@@ -108,7 +108,6 @@ mod seer_utils {
 
         let (pragma, _) = pragma_utils::pragma_deploy(pragma_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
-        let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
 
         start_prank(CheatTarget::One(seer.contract_address), admin());
         seer.set_oracles(oracles.span());

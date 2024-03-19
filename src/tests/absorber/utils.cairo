@@ -23,7 +23,7 @@ mod absorber_utils {
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use wadray::{Ray, Wad, WadZero, WAD_ONE, WAD_SCALE};
 
     //
     // Constants

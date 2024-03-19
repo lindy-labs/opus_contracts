@@ -191,7 +191,6 @@ mod sentinel_utils {
 
     fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
-        let prev_address: ContractAddress = get_caller_address();
         start_prank(CheatTarget::One(token), user);
         token_erc20.approve(gate.contract_address, BoundedU256::max());
         stop_prank(CheatTarget::One(token));

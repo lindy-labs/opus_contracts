@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::Wad;
 
 #[starknet::interface]
-trait IEqualizer<TContractState> {
+pub trait IEqualizer<TContractState> {
     // getter
     fn get_allocator(self: @TContractState) -> ContractAddress;
     // external

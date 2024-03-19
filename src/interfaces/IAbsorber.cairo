@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, Wad};
 
 #[starknet::interface]
-trait IAbsorber<TContractState> {
+pub trait IAbsorber<TContractState> {
     // getters
     fn get_rewards_count(self: @TContractState) -> u8;
     fn get_rewards(self: @TContractState) -> Span<Reward>;
@@ -36,7 +36,7 @@ trait IAbsorber<TContractState> {
 }
 
 #[starknet::interface]
-trait IBlesser<TContractState> {
+pub trait IBlesser<TContractState> {
     // external
     // If no reward tokens are to be distributed to the absorber, `preview_bless` and `bless`
     // should return 0 instead of reverting.

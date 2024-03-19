@@ -1,12 +1,13 @@
 #[starknet::contract]
 mod abbot {
+    use core::num::traits::Zero;
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{BoundedWad, Wad};
+    use wadray::{BoundedWad, Wad, WadZero};
 
     // 
     // Components 
@@ -92,7 +93,7 @@ mod abbot {
         //
 
         fn get_trove_owner(self: @ContractState, trove_id: u64) -> Option<ContractAddress> {
-            let owner = self.trove_owner.read(trove_id);
+            let owner: ContractAddress = self.trove_owner.read(trove_id);
             if owner.is_zero() {
                 Option::None
             } else {

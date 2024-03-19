@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 use wadray::Wad;
 
 #[starknet::interface]
-trait IAbbot<TContractState> {
+pub trait IAbbot<TContractState> {
     // getters
     fn get_trove_owner(self: @TContractState, trove_id: u64) -> Option<ContractAddress>;
     fn get_user_trove_ids(self: @TContractState, user: ContractAddress) -> Span<u64>;

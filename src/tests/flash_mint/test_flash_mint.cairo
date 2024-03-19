@@ -12,7 +12,7 @@ mod test_flash_mint {
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
-    use wadray::{SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{SignedWad, Wad, WadZero, WAD_ONE};
 
     //
     // Tests
@@ -51,7 +51,7 @@ mod test_flash_mint {
         shrine.advance(eth, eth_price);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
+        shrine_utils::trove1_deposit(shrine, WadZero::zero());
 
         let surplus: Wad = equalizer.equalize();
         assert(surplus.is_non_zero(), 'no surplus');

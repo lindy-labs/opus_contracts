@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait ISeer<TContractState> {
+pub trait ISeer<TContractState> {
     fn get_oracles(self: @TContractState) -> Span<ContractAddress>;
     fn get_update_frequency(self: @TContractState) -> u64;
     fn set_oracles(ref self: TContractState, oracles: Span<ContractAddress>);

@@ -16,7 +16,7 @@ mod test_equalizer {
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, SignedWad, Wad, WadZero, WAD_ONE};
 
     #[test]
     fn test_equalizer_deploy() {
@@ -102,7 +102,7 @@ mod test_equalizer {
             shrine.advance(eth, eth_price);
             stop_prank(CheatTarget::One(shrine.contract_address));
 
-            shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
+            shrine_utils::trove1_deposit(shrine, WadZero::zero());
             let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
             let expected_surplus: Wad = trove_health.debt - start_debt;
 
@@ -165,7 +165,7 @@ mod test_equalizer {
         let mut after_balances = common::get_token_balances(tokens.span(), recipients);
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
-        let mut allocated = WadZeroable::zero();
+        let mut allocated = WadZero::zero();
         let mut percentages_copy = percentages;
         loop {
             match percentages_copy.pop_front() {
@@ -212,7 +212,7 @@ mod test_equalizer {
 
         let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
-            WadZeroable::zero(),
+            WadZero::zero(),
             (inject_amt.val - 1).into(),
             inject_amt,
             (inject_amt.val + 1).into(), // exceeds deficit, but should be capped in `normalize`

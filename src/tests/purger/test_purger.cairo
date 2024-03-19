@@ -28,7 +28,7 @@ mod test_purger {
         event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use wadray::{BoundedWad, Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WadZero, WAD_ONE};
 
     //
     // Tests - Setup
@@ -267,7 +267,7 @@ mod test_purger {
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
-                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(classes);
 
                     purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -504,8 +504,6 @@ mod test_purger {
         let mut safe_ltv_count: usize = 0;
 
         let low_ltv_cutoff: Ray = (2 * RAY_PERCENT).into();
-
-        let dummy_threshold: Ray = (80 * RAY_PERCENT).into();
 
         loop {
             match thresholds.pop_front() {
@@ -1693,7 +1691,7 @@ mod test_purger {
                                                     start_prank(
                                                         CheatTarget::One(abbot.contract_address), recipient_trove_owner
                                                     );
-                                                    abbot.forge(recipient_trove, max_close_amt, WadZeroable::zero());
+                                                    abbot.forge(recipient_trove, max_close_amt, WadZero::zero());
 
                                                     let mut target_trove_updated_start_health: Health = shrine
                                                         .get_trove_health(target_trove);
@@ -2380,7 +2378,6 @@ mod test_purger {
                                                     let before_recipient_trove_health: Health = shrine
                                                         .get_trove_health(recipient_trove);
 
-                                                    let before_total_debt: Wad = shrine.get_shrine_health().debt;
                                                     let before_protocol_owned_troves_debt: Wad = shrine
                                                         .get_protocol_owned_troves_debt();
 
@@ -2651,9 +2648,9 @@ mod test_purger {
                                                     let absorber_start_yin: Wad = (target_trove_start_health.debt.val
                                                         * 2)
                                                         .into();
-                                                    let other_trove_owner: ContractAddress =
+                                                    let _other_trove_owner: ContractAddress =
                                                         absorber_utils::provider_1();
-                                                    let other_trove: u64 = purger_utils::funded_absorber(
+                                                    let _other_trove: u64 = purger_utils::funded_absorber(
                                                         shrine, abbot, absorber, yangs, gates, absorber_start_yin
                                                     );
 
@@ -2844,9 +2841,9 @@ mod test_purger {
             // Fourth threshold of 96% (Ray)
             10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
             // Fifth threshold of 97% (Ray)
-            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
+            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
         ]
             .span();
 
@@ -3149,7 +3146,7 @@ mod test_purger {
     #[test]
     #[ignore]
     fn test_liquidate_suspended_yang() {
-        let (shrine, abbot, _, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3455,7 +3452,7 @@ mod test_purger {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         // Parameters
-        let mut thresholds_param: Span<Ray> = array![RayZeroable::zero(), RAY_PERCENT.into(),].span();
+        let mut thresholds_param: Span<Ray> = array![RayZero::zero(), RAY_PERCENT.into(),].span();
 
         let absorb_type_param: Span<AbsorbType> = array![AbsorbType::Full, AbsorbType::Partial, AbsorbType::None]
             .span();
