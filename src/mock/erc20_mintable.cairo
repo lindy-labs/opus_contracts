@@ -21,6 +21,7 @@ pub mod erc20_mintable {
         Transfer: Transfer,
         Approval: Approval,
     }
+
     #[derive(Drop, starknet::Event)]
     struct Transfer {
         from: ContractAddress,
