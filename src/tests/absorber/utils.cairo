@@ -1,7 +1,8 @@
 pub mod absorber_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
+    use core::cmp::min;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
@@ -21,8 +22,7 @@ pub mod absorber_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Reward};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
+    use starknet::ContractAddress;
     use wadray::{Ray, Wad, WadZero, WAD_ONE, WAD_SCALE};
 
     //
@@ -65,19 +65,19 @@ pub mod absorber_utils {
     //
 
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('absorber owner').unwrap()
+        'absorber owner'.try_into().unwrap()
     }
 
     pub fn provider_1() -> ContractAddress {
-        contract_address_try_from_felt252('provider 1').unwrap()
+        'provider 1'.try_into().unwrap()
     }
 
     pub fn provider_2() -> ContractAddress {
-        contract_address_try_from_felt252('provider 2').unwrap()
+        'provider 2'.try_into().unwrap()
     }
 
     pub fn mock_purger() -> ContractAddress {
-        contract_address_try_from_felt252('mock purger').unwrap()
+        'mock purger'.try_into().unwrap()
     }
 
     //
@@ -106,9 +106,7 @@ pub mod absorber_utils {
         let admin: ContractAddress = admin();
 
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin),
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
+            admin.into(), shrine.contract_address.into(), sentinel.contract_address.into(),
         ];
 
         let absorber_class = match absorber_class {
@@ -159,10 +157,7 @@ pub mod absorber_utils {
         blesser_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(asset),
-            contract_address_to_felt252(absorber.contract_address),
-            bless_amt.into(),
+            admin().into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
         ];
 
         let blesser_class = match blesser_class {

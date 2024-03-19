@@ -1,6 +1,7 @@
 pub mod seer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -13,10 +14,7 @@ pub mod seer_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, ContractAddress
-    };
+    use starknet::{get_block_timestamp, ContractAddress};
     use wadray::Wad;
 
     //
@@ -33,15 +31,15 @@ pub mod seer_utils {
     //
 
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('seer owner').unwrap()
+        'seer owner'.try_into().unwrap()
     }
 
     pub fn dummy_eth() -> ContractAddress {
-        contract_address_try_from_felt252('eth token').unwrap()
+        'eth token'.try_into().unwrap()
     }
 
     pub fn dummy_wbtc() -> ContractAddress {
-        contract_address_try_from_felt252('wbtc token').unwrap()
+        'wbtc token'.try_into().unwrap()
     }
 
     pub fn deploy_seer(
@@ -49,10 +47,7 @@ pub mod seer_utils {
     ) -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
         let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(sentinel_dispatcher.contract_address),
-            UPDATE_FREQUENCY.into()
+            admin().into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into()
         ];
 
         let seer_class = match seer_class {
@@ -79,10 +74,7 @@ pub mod seer_utils {
         seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress
     ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(sentinel),
-            UPDATE_FREQUENCY.into()
+            admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into()
         ];
 
         let seer_class = match seer_class {

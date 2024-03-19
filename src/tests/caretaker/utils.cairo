@@ -1,6 +1,6 @@
 pub mod caretaker_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::IAbbotDispatcher;
@@ -13,10 +13,10 @@ pub mod caretaker_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
-    use starknet::{ContractAddress, contract_address_try_from_felt252, contract_address_to_felt252};
+    use starknet::ContractAddress;
 
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('caretaker admin').unwrap()
+        'caretaker admin'.try_into().unwrap()
     }
 
     // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
@@ -38,11 +38,11 @@ pub mod caretaker_utils {
         );
 
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(abbot.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
-            contract_address_to_felt252(equalizer.contract_address),
+            admin().into(),
+            shrine.contract_address.into(),
+            abbot.contract_address.into(),
+            sentinel.contract_address.into(),
+            equalizer.contract_address.into(),
         ];
 
         let caretaker_class = declare("caretaker");

@@ -1,6 +1,7 @@
 pub mod pragma_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::{pragma_roles, shrine_roles};
     use opus::external::pragma::pragma as pragma_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -18,10 +19,7 @@ pub mod pragma_utils {
     use opus::types::pragma::PragmaPricesResponse;
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    };
+    use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
     //
@@ -43,7 +41,7 @@ pub mod pragma_utils {
 
     #[inline(always)]
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('pragma owner').unwrap()
+        'pragma owner'.try_into().unwrap()
     }
 
     //
@@ -68,10 +66,7 @@ pub mod pragma_utils {
     ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(mock_pragma.contract_address),
-            FRESHNESS_THRESHOLD.into(),
-            SOURCES_THRESHOLD.into(),
+            admin().into(), mock_pragma.contract_address.into(), FRESHNESS_THRESHOLD.into(), SOURCES_THRESHOLD.into(),
         ];
 
         let pragma_class = match pragma_class {

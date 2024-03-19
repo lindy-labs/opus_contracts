@@ -1,8 +1,9 @@
 pub mod purger_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
+    use core::cmp::min;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use core::option::OptionTrait;
-    use debug::PrintTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
@@ -24,10 +25,7 @@ pub mod purger_utils {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
-    };
+    use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WadZero, WAD_DECIMALS, WAD_ONE};
 
     //
@@ -63,19 +61,19 @@ pub mod purger_utils {
     //
 
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('purger owner').unwrap()
+        'purger owner'.try_into().unwrap()
     }
 
     pub fn random_user() -> ContractAddress {
-        contract_address_try_from_felt252('random user').unwrap()
+        'random user'.try_into().unwrap()
     }
 
     pub fn searcher() -> ContractAddress {
-        contract_address_try_from_felt252('searcher').unwrap()
+        'searcher'.try_into().unwrap()
     }
 
     pub fn target_trove_owner() -> ContractAddress {
-        contract_address_try_from_felt252('target trove owner').unwrap()
+        'target trove owner'.try_into().unwrap()
     }
 
     //
@@ -354,11 +352,12 @@ pub mod purger_utils {
         let admin: ContractAddress = admin();
 
         let calldata = array![
-            contract_address_to_felt252(admin),
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
-            contract_address_to_felt252(absorber.contract_address),
-            contract_address_to_felt252(seer.contract_address)
+            admin.into(),
+            shrine.contract_address,
+            into(),
+            sentinel.contract_address.into(),
+            absorber.contract_address.into(),
+            seer.contract_address.into()
         ];
 
         let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
@@ -418,12 +417,7 @@ pub mod purger_utils {
         purger: ContractAddress,
         fl_class: Option<ContractClass>,
     ) -> IFlashLiquidatorDispatcher {
-        let calldata = array![
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(abbot),
-            contract_address_to_felt252(flashmint),
-            contract_address_to_felt252(purger)
-        ];
+        let calldata = array![shrine.into(), abbot.into(), flashmint.into(), purger.into()];
 
         let fl_class = match fl_class {
             Option::Some(class) => class,

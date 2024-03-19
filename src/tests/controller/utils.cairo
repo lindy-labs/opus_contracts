@@ -1,15 +1,13 @@
 pub mod controller_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp
-    };
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, SignedRay, Wad};
 
     // Controller update interval
@@ -27,7 +25,7 @@ pub mod controller_utils {
 
     #[inline(always)]
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('controller admin').unwrap()
+        'controller admin'.try_into().unwrap()
     }
 
     pub fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
@@ -35,8 +33,8 @@ pub mod controller_utils {
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine_addr),
+            admin().into(),
+            shrine_addr.into(),
             P_GAIN.into(),
             I_GAIN.into(),
             ALPHA_P.into(),
@@ -52,7 +50,7 @@ pub mod controller_utils {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
 
-        start_prank(CheatTarget::All, ContractAddressZeroable::zero());
+        start_prank(CheatTarget::All, Zero::zero());
 
         (
             IControllerDispatcher { contract_address: controller_addr },

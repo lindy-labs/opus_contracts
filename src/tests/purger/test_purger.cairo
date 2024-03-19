@@ -1,8 +1,8 @@
 mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::{max, min};
+    use core::debug::PrintTrait;
     use core::option::OptionTrait;
-    use debug::PrintTrait;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;

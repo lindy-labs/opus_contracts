@@ -1,6 +1,6 @@
 mod test_caretaker {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{caretaker_roles, shrine_roles};
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};

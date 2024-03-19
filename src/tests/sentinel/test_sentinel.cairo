@@ -1,5 +1,6 @@
 mod test_sentinel {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::roles::sentinel_roles;
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,7 +17,6 @@ mod test_sentinel {
         PrintTrait
     };
     use starknet::ContractAddress;
-    use starknet::contract_address::ContractAddressZeroable;
     use wadray::{Ray, Wad, WadZero, WAD_ONE};
 
     #[test]
@@ -49,7 +49,7 @@ mod test_sentinel {
             'Wrong yang addresses'
         );
 
-        assert(sentinel.get_yang(0) == ContractAddressZeroable::zero(), 'Should be zero address');
+        assert(sentinel.get_yang(0) == Zero::zero(), 'Should be zero address');
         assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
         assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
 
@@ -137,7 +137,7 @@ mod test_sentinel {
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel
             .add_yang(
-                ContractAddressZeroable::zero(),
+                Zero::zero(),
                 sentinel_utils::ETH_ASSET_MAX,
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
@@ -158,7 +158,7 @@ mod test_sentinel {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                ContractAddressZeroable::zero()
+                Zero::zero()
             );
     }
 

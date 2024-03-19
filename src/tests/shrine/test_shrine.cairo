@@ -1039,9 +1039,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: ContractAddressZeroable::zero(), to: trove1_owner_addr, value: forge_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner_addr, value: forge_amt.into(), }
                 )
             ),
         ];
@@ -1309,9 +1307,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: trove1_owner_addr, to: ContractAddressZeroable::zero(), value: melt_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: trove1_owner_addr, to: Zero::zero(), value: melt_amt.into(), }
                 )
             ),
         ];
@@ -1550,7 +1546,7 @@ mod test_shrine {
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedU256::max());
+        yin.approve(yin_user, BoundedInt::max());
 
         start_prank(CheatTarget::All, yin_user);
         yin.transfer_from(trove1_owner, yin_user, (shrine_utils::TROVE1_FORGE_AMT + 1).into());
@@ -1571,10 +1567,10 @@ mod test_shrine {
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedU256::max());
+        yin.approve(yin_user, BoundedInt::max());
 
         start_prank(CheatTarget::All, yin_user);
-        yin.transfer_from(trove1_owner, ContractAddressZeroable::zero(), 1_u256);
+        yin.transfer_from(trove1_owner, Zero::zero(), 1_u256);
     }
 
     #[test]
@@ -1777,9 +1773,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: ContractAddressZeroable::zero(), to: trove1_owner, value: inject_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner, value: inject_amt.into(), }
                 )
             ),
         ];
@@ -1800,9 +1794,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: trove1_owner, to: ContractAddressZeroable::zero(), value: inject_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: trove1_owner, to: Zero::zero(), value: inject_amt.into(), }
                 )
             ),
         ];

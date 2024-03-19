@@ -1,12 +1,12 @@
 pub mod flash_mint_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_borrower::flash_borrower as flash_borrower_contract;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, contract_address_to_felt252, SyscallResultTrait};
     use wadray::{Wad, WAD_ONE};
 
@@ -51,7 +51,7 @@ pub mod flash_mint_utils {
 
         // Mint some yin in shrine
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine_dispatcher.inject(ContractAddressZeroable::zero(), YIN_TOTAL_SUPPLY.into());
+        shrine_dispatcher.inject(Zero::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)
     }
 

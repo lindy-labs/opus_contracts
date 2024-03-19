@@ -3,7 +3,8 @@
 mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::array::SpanTrait;
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
@@ -25,8 +26,7 @@ mod test_seer {
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
+    use starknet::{get_block_timestamp, ContractAddress};
     use wadray::{Wad, WadZero, WAD_SCALE};
 
     #[test]
@@ -58,8 +58,7 @@ mod test_seer {
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 
@@ -76,8 +75,7 @@ mod test_seer {
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 

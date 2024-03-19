@@ -1,6 +1,7 @@
 mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;
     use opus::external::pragma::pragma as pragma_contract;
@@ -18,8 +19,7 @@ mod test_pragma {
     use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::pow;
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
     //
@@ -29,11 +29,11 @@ mod test_pragma {
     // TODO: this is not inlined as it would result in `Unknown ap change` error
     //       for `test_update_prices_invalid_gate`
     fn pepe_token_addr() -> ContractAddress {
-        contract_address_try_from_felt252('PEPE').unwrap()
+        'PEPE'.try_into().unwrap()
     }
 
     fn mock_eth_token_addr() -> ContractAddress {
-        contract_address_try_from_felt252('ETH').unwrap()
+        'ETH'.try_into().unwrap()
     }
 
     //
@@ -260,7 +260,7 @@ mod test_pragma {
     fn test_set_yang_pair_id_invalid_yang_address_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        let invalid_yang_addr = ContractAddressZeroable::zero();
+        let invalid_yang_addr = Zero::zero();
         pragma.set_yang_pair_id(invalid_yang_addr, pragma_utils::ETH_USD_PAIR_ID);
     }
 

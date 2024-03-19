@@ -1,5 +1,6 @@
 mod test_abbot {
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -14,7 +15,7 @@ mod test_abbot {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::ContractAddress;
     use wadray::{Wad, WadZero, WAD_ONE, WAD_SCALE};
 
     //
@@ -271,7 +272,7 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        let asset_addr = ContractAddressZeroable::zero();
+        let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -455,7 +456,7 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        let asset_addr = ContractAddressZeroable::zero();
+        let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);

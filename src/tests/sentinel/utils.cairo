@@ -1,5 +1,6 @@
 pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use integer::BoundedU256;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
@@ -12,8 +13,7 @@ pub mod sentinel_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address};
     use wadray::{Wad, Ray};
 
     const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
@@ -21,22 +21,22 @@ pub mod sentinel_utils {
 
     #[inline(always)]
     pub fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('sentinel admin').unwrap()
+        'sentinel admin'.try_into().unwrap()
     }
 
     #[inline(always)]
     pub fn mock_abbot() -> ContractAddress {
-        contract_address_try_from_felt252('mock abbot').unwrap()
+        'mock abbot'.try_into().unwrap()
     }
 
     #[inline(always)]
     pub fn dummy_yang_addr() -> ContractAddress {
-        contract_address_try_from_felt252('dummy yang').unwrap()
+        'dummy yang'.try_into().unwrap()
     }
 
     #[inline(always)]
     pub fn dummy_yang_gate_addr() -> ContractAddress {
-        contract_address_try_from_felt252('dummy yang token').unwrap()
+        'dummy yang token'.try_into().unwrap()
     }
 
     //
@@ -48,9 +48,7 @@ pub mod sentinel_utils {
     ) -> (ISentinelDispatcher, ContractAddress) {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(shrine_class);
 
-        let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
-        ];
+        let calldata: Array<felt252> = array![admin().into(), shrine_addr.into()];
 
         let sentinel_class = match sentinel_class {
             Option::Some(class) => class,

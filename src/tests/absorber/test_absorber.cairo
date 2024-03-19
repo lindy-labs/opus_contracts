@@ -1,7 +1,8 @@
 mod test_absorber {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
+    use core::cmp::min;
+    use core::debug::PrintTrait;
+    use core::num::traits::Zero;
     use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
@@ -20,7 +21,6 @@ mod test_absorber {
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
-    use starknet::contract_address::ContractAddressZeroable;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZero, WAD_ONE, WAD_SCALE};
     //
@@ -148,7 +148,7 @@ mod test_absorber {
         );
 
         let valid_address = common::non_zero_address();
-        let invalid_address = ContractAddressZeroable::zero();
+        let invalid_address = Zero::zero();
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.set_reward(valid_address, invalid_address, true);
@@ -162,7 +162,7 @@ mod test_absorber {
         );
 
         let valid_address = common::non_zero_address();
-        let invalid_address = ContractAddressZeroable::zero();
+        let invalid_address = Zero::zero();
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.set_reward(invalid_address, valid_address, true);

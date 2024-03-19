@@ -53,12 +53,12 @@ mod utils {
 
 // mock used for local devnet deployment
 mod mock {
-    mod blesser;
-    mod erc20;
-    mod erc20_mintable;
-    mod flash_borrower;
-    mod flash_liquidator;
-    mod mock_pragma;
+    pub mod blesser;
+    pub mod erc20;
+    pub mod erc20_mintable;
+    pub mod flash_borrower;
+    pub mod flash_liquidator;
+    pub mod mock_pragma;
 //mod oracle;
 }
 

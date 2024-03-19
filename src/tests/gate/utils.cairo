@@ -1,4 +1,5 @@
 pub mod gate_utils {
+    use core::num::traits::Zero;
     use integer::BoundedInt;
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
@@ -8,8 +9,7 @@ pub mod gate_utils {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
     use wadray::{Ray, Wad, WadZero};
 
     //
@@ -17,7 +17,7 @@ pub mod gate_utils {
     //
 
     pub fn mock_sentinel() -> ContractAddress {
-        contract_address_try_from_felt252('mock sentinel').unwrap()
+        'mock sentinel'.try_into().unwrap()
     }
 
     //
@@ -29,11 +29,7 @@ pub mod gate_utils {
     ) -> ContractAddress {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(token),
-            contract_address_to_felt252(sentinel),
-        ];
+        let calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into(),];
 
         let gate_class = match gate_class {
             Option::Some(class) => class,

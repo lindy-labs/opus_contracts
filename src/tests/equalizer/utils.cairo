@@ -1,5 +1,6 @@
 pub mod equalizer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::allocator::allocator as allocator_contract;
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::{equalizer_roles, shrine_roles};
@@ -8,8 +9,7 @@ pub mod equalizer_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
+    use starknet::ContractAddress;
     use wadray::Ray;
 
     //
@@ -18,19 +18,17 @@ pub mod equalizer_utils {
 
     pub fn initial_recipients() -> Span<ContractAddress> {
         let mut recipients: Array<ContractAddress> = array![
-            contract_address_try_from_felt252('recipient 1').unwrap(),
-            contract_address_try_from_felt252('recipient 2').unwrap(),
-            contract_address_try_from_felt252('recipient 3').unwrap(),
+            'recipient 1'.try_into().unwrap(), 'recipient 2'.try_into().unwrap(), 'recipient 3'.try_into().unwrap(),
         ];
         recipients.span()
     }
 
     pub fn new_recipients() -> Span<ContractAddress> {
         let mut recipients: Array<ContractAddress> = array![
-            contract_address_try_from_felt252('new recipient 1').unwrap(),
-            contract_address_try_from_felt252('new recipient 2').unwrap(),
-            contract_address_try_from_felt252('new recipient 3').unwrap(),
-            contract_address_try_from_felt252('new recipient 4').unwrap(),
+            'new recipient 1'.try_into().unwrap(),
+            'new recipient 2'.try_into().unwrap(),
+            'new recipient 3'.try_into().unwrap(),
+            'new recipient 4'.try_into().unwrap(),
         ];
         recipients.span()
     }
@@ -71,13 +69,11 @@ pub mod equalizer_utils {
     pub fn allocator_deploy(
         mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>
     ) -> IAllocatorDispatcher {
-        let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine_utils::admin()), recipients.len().into(),
-        ];
+        let mut calldata: Array<felt252> = array![shrine_utils::admin().into(), recipients.len().into(),];
 
         loop {
             match recipients.pop_front() {
-                Option::Some(recipient) => { calldata.append(contract_address_to_felt252(*recipient)); },
+                Option::Some(recipient) => { calldata.append((*recipient).into()); },
                 Option::None => { break; }
             };
         };
@@ -117,11 +113,7 @@ pub mod equalizer_utils {
         );
         let admin = shrine_utils::admin();
 
-        let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin),
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(allocator.contract_address),
-        ];
+        let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into(),];
 
         let equalizer_class = declare("equalizer");
         let equalizer_addr = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
