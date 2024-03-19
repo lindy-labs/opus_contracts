@@ -1,4 +1,4 @@
-mod controller_utils {
+pub mod controller_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::shrine_roles;
@@ -26,11 +26,11 @@ mod controller_utils {
     // Addresses
 
     #[inline(always)]
-    fn admin() -> ContractAddress {
+    pub fn admin() -> ContractAddress {
         contract_address_try_from_felt252('controller admin').unwrap()
     }
 
-    fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
+    pub fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
@@ -45,7 +45,7 @@ mod controller_utils {
             BETA_I.into()
         ];
 
-        let controller_class = declare('controller');
+        let controller_class = declare("controller");
         let controller_addr = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
@@ -61,19 +61,19 @@ mod controller_utils {
     }
 
     #[inline(always)]
-    fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
+    pub fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.update_yin_spot_price(spot_price);
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
     #[inline(always)]
-    fn fast_forward_1_hour() {
+    pub fn fast_forward_1_hour() {
         start_warp(CheatTarget::All, get_block_timestamp() + ONE_HOUR);
     }
 
     #[inline(always)]
-    fn fast_forward_by_x_minutes(x: u64) {
+    pub fn fast_forward_by_x_minutes(x: u64) {
         start_warp(CheatTarget::All, get_block_timestamp() + x * 60);
     }
 }

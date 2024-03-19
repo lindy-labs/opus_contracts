@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod purger {
+pub mod purger {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::num::traits::Zero;
@@ -91,7 +91,7 @@ mod purger {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,

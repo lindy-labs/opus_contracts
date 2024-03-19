@@ -1,4 +1,4 @@
-use debug::PrintTrait;
+use core::debug::PrintTrait;
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
@@ -10,7 +10,7 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw};
-use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp};
+use starknet::{ContractAddress, get_block_timestamp};
 use wadray::{Ray, Wad, WadZero};
 
 //
@@ -18,7 +18,7 @@ use wadray::{Ray, Wad, WadZero};
 //
 
 #[derive(Copy, Drop, PartialEq)]
-enum RecoveryModeSetupType {
+pub enum RecoveryModeSetupType {
     BeforeRecoveryMode: (),
     BufferLowerBound: (),
     BufferUpperBound: (),
@@ -29,48 +29,48 @@ enum RecoveryModeSetupType {
 // Constants
 //
 
-const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
-const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
-const WBTC_DECIMALS: u8 = 8;
-const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
+pub const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
+pub const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
+pub const WBTC_DECIMALS: u8 = 8;
+pub const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
 
 // Trove constants
-const TROVE_1: u64 = 1;
-const TROVE_2: u64 = 2;
-const TROVE_3: u64 = 3;
-const WHALE_TROVE: u64 = 0xb17b01;
+pub const TROVE_1: u64 = 1;
+pub const TROVE_2: u64 = 2;
+pub const TROVE_3: u64 = 3;
+pub const WHALE_TROVE: u64 = 0xb17b01;
 
 
 //
 // Constant addresses
 //
 
-fn badguy() -> ContractAddress {
-    contract_address_try_from_felt252('bad guy').unwrap()
+pub fn badguy() -> ContractAddress {
+    'bad guy'.try_into().unwrap()
 }
 
-fn trove1_owner_addr() -> ContractAddress {
-    contract_address_try_from_felt252('trove1 owner').unwrap()
+pub fn trove1_owner_addr() -> ContractAddress {
+    'trove1 owner'.try_into().unwrap()
 }
 
-fn trove2_owner_addr() -> ContractAddress {
-    contract_address_try_from_felt252('trove2 owner').unwrap()
+pub fn trove2_owner_addr() -> ContractAddress {
+    'trove2 owner'.try_into().unwrap()
 }
 
-fn trove3_owner_addr() -> ContractAddress {
-    contract_address_try_from_felt252('trove3 owner').unwrap()
+pub fn trove3_owner_addr() -> ContractAddress {
+    'trove3 owner'.try_into().unwrap()
 }
 
-fn non_zero_address() -> ContractAddress {
-    contract_address_try_from_felt252('nonzero address').unwrap()
+pub fn non_zero_address() -> ContractAddress {
+    'nonzero address'.try_into().unwrap()
 }
 
-fn eth_hoarder() -> ContractAddress {
-    contract_address_try_from_felt252('eth hoarder').unwrap()
+pub fn eth_hoarder() -> ContractAddress {
+    'eth hoarder'.try_into().unwrap()
 }
 
-fn wbtc_hoarder() -> ContractAddress {
-    contract_address_try_from_felt252('wbtc hoarder').unwrap()
+pub fn wbtc_hoarder() -> ContractAddress {
+    'wbtc hoarder'.try_into().unwrap()
 }
 
 
@@ -80,11 +80,11 @@ fn wbtc_hoarder() -> ContractAddress {
 
 // Taken from Alexandria
 // https://github.com/keep-starknet-strange/alexandria/blob/main/src/data_structures/src/array_ext.cairo
-trait SpanTraitExt<T> {
+pub trait SpanTraitExt<T> {
     fn contains<impl TPartialEq: PartialEq<T>>(self: Span<T>, item: T) -> bool;
 }
 
-impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
+pub impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
     fn contains<impl TPartialEq: PartialEq<T>>(mut self: Span<T>, item: T) -> bool {
         loop {
             match self.pop_front() {
@@ -97,7 +97,7 @@ impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
     }
 }
 
-impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
+pub impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     fn into(self: ContractAddress) -> Span<ContractAddress> {
         let mut tmp: Array<ContractAddress> = ArrayTrait::new();
         tmp.append(self);
@@ -105,7 +105,7 @@ impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     }
 }
 
-impl RewardPartialEq of PartialEq<Reward> {
+pub impl RewardPartialEq of PartialEq<Reward> {
     fn eq(mut lhs: @Reward, mut rhs: @Reward) -> bool {
         lhs.asset == rhs.asset
             && lhs.blesser.contract_address == rhs.blesser.contract_address
@@ -122,7 +122,7 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 
 // Helper function to advance timestamp by the given intervals
-fn advance_intervals_and_refresh_prices_and_multiplier(
+pub fn advance_intervals_and_refresh_prices_and_multiplier(
     shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64
 ) {
     // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
@@ -158,22 +158,22 @@ fn advance_intervals_and_refresh_prices_and_multiplier(
     stop_prank(CheatTarget::One(shrine.contract_address));
 }
 
-fn advance_intervals(intervals: u64) {
+pub fn advance_intervals(intervals: u64) {
     start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
 
 
-fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+pub fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
     deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
 }
 
-fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
     deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
 }
 
 
 // Helper function to deploy a token
-fn deploy_token(
+pub fn deploy_token(
     name: felt252,
     symbol: felt252,
     decimals: felt252,
@@ -187,19 +187,19 @@ fn deploy_token(
         decimals,
         initial_supply.low.into(), // u256.low
         initial_supply.high.into(), // u256.high
-        contract_address_to_felt252(recipient),
+        recipient.into(),
     ];
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare('erc20_mintable'),
+        Option::None => declare("erc20_mintable"),
     };
 
     token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 
 // Helper function to fund a user account with yang assets
-fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
+pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
@@ -211,7 +211,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
 }
 
 // Helper function to approve Gates to transfer tokens from user, and to open a trove
-fn open_trove_helper(
+pub fn open_trove_helper(
     abbot: IAbbotDispatcher,
     user: ContractAddress,
     yangs: Span<ContractAddress>,
@@ -247,7 +247,7 @@ fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
+pub fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {
@@ -276,7 +276,7 @@ fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<Contrac
 // Fetches the ERC20 asset balance of a given address, and
 // converts it to yang units.
 #[inline(always)]
-fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress) -> Wad {
+pub fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owner: ContractAddress) -> Wad {
     gate.convert_to_yang(IERC20Dispatcher { contract_address: asset }.balance_of(owner).try_into().unwrap())
 }
 
@@ -284,7 +284,7 @@ fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owner: C
 // Helpers - Assertions
 //
 
-fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(
+pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(
     a: T, b: T, error: T, message: felt252
 ) {
     if a >= b {
@@ -294,7 +294,9 @@ fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl T
     }
 }
 
-fn assert_asset_balances_equalish(mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252) {
+pub fn assert_asset_balances_equalish(
+    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
+) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -309,7 +311,7 @@ fn assert_asset_balances_equalish(mut a: Span<AssetBalance>, mut b: Span<AssetBa
     };
 }
 
-fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
+pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
     assert(a.len() == b.len(), message);
 
     loop {
@@ -328,7 +330,7 @@ fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalan
 // Helpers - Array functions
 //
 
-fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
+pub fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
     loop {
@@ -344,7 +346,7 @@ fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u12
 }
 
 // Helper function to multiply an array of values by a given percentage
-fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+pub fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     let mut split_asset_amts: Array<u128> = ArrayTrait::new();
     loop {
         match asset_amts.pop_front() {
@@ -362,7 +364,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
 
 // Helper function to combine two arrays of equal lengths into a single array by doing element-wise addition.
 // Assumes the arrays are ordered identically.
-fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
+pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     assert(lhs.len() == rhs.len(), 'combining diff array lengths');
     let mut combined_asset_amts: Array<u128> = ArrayTrait::new();
 
@@ -383,7 +385,7 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 // Debug helpers
 //
 
-impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
+pub impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
     fn print(self: Span<T>) {
         let mut copy = self;
 
@@ -403,7 +405,7 @@ impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of P
     }
 }
 
-impl ArrayPrintImpl<
+pub impl ArrayPrintImpl<
     T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
 > of PrintTrait<Array<T>> {
     fn print(self: Array<T>) {

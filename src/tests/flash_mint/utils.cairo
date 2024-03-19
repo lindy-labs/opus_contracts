@@ -1,4 +1,4 @@
-mod flash_mint_utils {
+pub mod flash_mint_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
@@ -15,12 +15,12 @@ mod flash_mint_utils {
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
-    fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
+    pub fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
         array![should_return_correct.into(), usage].span()
     }
 
-    fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
-        let flashmint_class = declare('flash_mint');
+    pub fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
+        let flashmint_class = declare("flash_mint");
         let flashmint_addr = flashmint_class
             .deploy(@array![contract_address_to_felt252(shrine)])
             .expect('flashmint deploy failed');
@@ -35,7 +35,7 @@ mod flash_mint_utils {
         flashmint
     }
 
-    fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
+    pub fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
         let shrine: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
 
@@ -55,12 +55,12 @@ mod flash_mint_utils {
         (shrine, flashmint)
     }
 
-    fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
-        let flash_borrower_class = declare('flash_borrower');
+    pub fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
+        let flash_borrower_class = declare("flash_borrower");
         flash_borrower_class.deploy(@array![contract_address_to_felt252(flashmint)]).expect('flsh brrwr deploy failed')
     }
 
-    fn flash_borrower_setup() -> (ContractAddress, IFlashMintDispatcher, ContractAddress) {
+    pub fn flash_borrower_setup() -> (ContractAddress, IFlashMintDispatcher, ContractAddress) {
         let (shrine, flashmint) = flashmint_setup();
         (shrine, flashmint, flash_borrower_deploy(flashmint.contract_address))
     }

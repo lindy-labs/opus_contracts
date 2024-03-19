@@ -1,7 +1,8 @@
 mod test_shrine {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
-    use integer::BoundedU256;
+    use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IERC20::{
@@ -15,8 +16,7 @@ mod test_shrine {
     use snforge_std::{
         ContractClass, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
-    use starknet::get_block_timestamp;
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{
         BoundedRay, Ray, RayZero, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WadZero, WAD_DECIMALS, WAD_PERCENT,
         WAD_ONE, WAD_SCALE
@@ -321,7 +321,7 @@ mod test_shrine {
         let yangs_count: u32 = shrine.get_yangs_count();
         assert(yangs_count == 3, 'incorrect yangs count');
 
-        let new_yang_address: ContractAddress = contract_address_try_from_felt252('new yang').unwrap();
+        let new_yang_address: ContractAddress = 'new yang'.try_into().unwrap();
         let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)
         let new_yang_start_price: Wad = 5000000000000000000_u128.into(); // 5 (Wad)
         let new_yang_rate: Ray = 60000000000000000000000000_u128.into(); // 6% (Ray)
@@ -1074,7 +1074,7 @@ mod test_shrine {
         shrine_utils::create_whale_trove(shrine);
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        shrine.forge(shrine_utils::common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), WadZero::zero());
+        shrine.forge(common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), WadZero::zero());
     }
 
     #[test]
@@ -1662,7 +1662,7 @@ mod test_shrine {
         let admin: ContractAddress = shrine_utils::admin();
         start_prank(CheatTarget::One(shrine_addr), admin);
 
-        let new_admin: ContractAddress = contract_address_try_from_felt252('new shrine admin').unwrap();
+        let new_admin: ContractAddress = 'new shrine admin'.try_into().unwrap();
 
         shrine_accesscontrol.grant_role(shrine_roles::SET_DEBT_CEILING, new_admin);
         shrine_accesscontrol.revoke_role(shrine_roles::SET_DEBT_CEILING, new_admin);

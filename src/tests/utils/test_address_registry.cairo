@@ -1,11 +1,12 @@
 mod test_address_registry {
+    use core::num::traits::Zero;
     use opus::tests::common;
     use opus::tests::utils::mock_address_registry::mock_address_registry;
     use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use opus::utils::address_registry::address_registry_component;
     use snforge_std::cheatcodes::events::EventAssertions;
     use snforge_std::{spy_events, SpyOn, EventSpy, EventFetcher, event_name_hash, Event, test_address,};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
 
     //
     // Constants
@@ -16,19 +17,19 @@ mod test_address_registry {
     const ENTRY3_ADDR: felt252 = 'entry 3';
 
     fn entry1() -> ContractAddress {
-        contract_address_try_from_felt252(ENTRY1_ADDR).unwrap()
+        ENTRY1_ADDR.try_into().unwrap()
     }
 
     fn entry2() -> ContractAddress {
-        contract_address_try_from_felt252(ENTRY2_ADDR).unwrap()
+        ENTRY2_ADDR.try_into().unwrap()
     }
 
     fn entry3() -> ContractAddress {
-        contract_address_try_from_felt252(ENTRY3_ADDR).unwrap()
+        ENTRY3_ADDR.try_into().unwrap()
     }
 
     fn zero_addr() -> ContractAddress {
-        ContractAddressZeroable::zero()
+        Zero::zero()
     }
 
     //

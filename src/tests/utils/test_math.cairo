@@ -1,10 +1,9 @@
 mod test_math {
-    use debug::PrintTrait;
-    use integer::BoundedU128;
+    use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{pow, sqrt};
     use wadray::{Ray, RAY_ONE};
-
 
     #[test]
     fn test_sqrt() {
@@ -63,7 +62,8 @@ mod test_math {
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
-        sqrt(BoundedU128::max().into());
+        let max_val: u128 = BoundedInt::max();
+        sqrt(max_val.into());
     }
 
     #[test]

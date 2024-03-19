@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod abbot {
+pub mod abbot {
     use core::num::traits::Zero;
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -51,7 +51,7 @@ mod abbot {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
         // Component events

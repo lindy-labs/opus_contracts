@@ -70,7 +70,7 @@ mod pragma {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         InvalidPriceUpdate: InvalidPriceUpdate,
         PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,

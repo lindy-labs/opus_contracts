@@ -1,4 +1,4 @@
-mod purger_utils {
+pub mod purger_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use cmp::min;
     use core::option::OptionTrait;
@@ -62,19 +62,19 @@ mod purger_utils {
     // Address constants
     //
 
-    fn admin() -> ContractAddress {
+    pub fn admin() -> ContractAddress {
         contract_address_try_from_felt252('purger owner').unwrap()
     }
 
-    fn random_user() -> ContractAddress {
+    pub fn random_user() -> ContractAddress {
         contract_address_try_from_felt252('random user').unwrap()
     }
 
-    fn searcher() -> ContractAddress {
+    pub fn searcher() -> ContractAddress {
         contract_address_try_from_felt252('searcher').unwrap()
     }
 
-    fn target_trove_owner() -> ContractAddress {
+    pub fn target_trove_owner() -> ContractAddress {
         contract_address_try_from_felt252('target trove owner').unwrap()
     }
 
@@ -82,24 +82,24 @@ mod purger_utils {
     // Constant helpers
     //
 
-    fn target_trove_yang_asset_amts() -> Span<u128> {
+    pub fn target_trove_yang_asset_amts() -> Span<u128> {
         array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT].span()
     }
 
     #[inline(always)]
-    fn recipient_trove_yang_asset_amts() -> Span<u128> {
+    pub fn recipient_trove_yang_asset_amts() -> Span<u128> {
         array![30 * WAD_ONE, // 30 (Wad) - ETH
          500000000 // 5 (10 ** 8) - BTC
         ].span()
     }
 
-    fn whale_trove_yang_asset_amts() -> Span<u128> {
+    pub fn whale_trove_yang_asset_amts() -> Span<u128> {
         array![700 * WAD_ONE, // 700 (Wad) - ETH
          70000000000 // 700 (10 ** 8) - BTC
         ].span()
     }
 
-    fn interesting_thresholds_for_liquidation() -> Span<Ray> {
+    pub fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         array![
             RayZero::zero(),
             RAY_PERCENT.into(),
@@ -119,7 +119,7 @@ mod purger_utils {
     }
 
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
-    fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
+    pub fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         array![
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
@@ -130,7 +130,7 @@ mod purger_utils {
     }
 
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
-    fn interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Ray> {
+    pub fn interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Ray> {
         array![
             787500000000000000000000000_u128.into(), // 78.75%
             (80 * RAY_PERCENT).into(),
@@ -149,7 +149,7 @@ mod purger_utils {
 
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/qoizltusle.
-    fn ltvs_for_interesting_thresholds_for_absorption_below_trove_debt() -> Span<Span<Ray>> {
+    pub fn ltvs_for_interesting_thresholds_for_absorption_below_trove_debt() -> Span<Span<Ray>> {
         // The max possible penalty LTV is last reached around this value for these thresholds
         let max_possible_penalty_ltv: Ray = 862200000000000000000000000_u128.into(); // 86.22%
 
@@ -180,7 +180,7 @@ mod purger_utils {
 
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/b8drqdb32a.
-    fn ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Span<Ray>> {
+    pub fn ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Span<Ray>> {
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
 
@@ -226,7 +226,7 @@ mod purger_utils {
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/b8drqdb32a.
     // Note that thresholds >= 90% will be absorbable once LTV >= threshold
-    fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
+    pub fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
         let mut thresholds: Array<Ray> = array![
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
@@ -249,7 +249,7 @@ mod purger_utils {
         (thresholds.span(), trove_ltvs.span())
     }
 
-    fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
+    pub fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         array![
             // base case for ordinary redistributions
             recipient_trove_yang_asset_amts(),
@@ -267,13 +267,13 @@ mod purger_utils {
             .span()
     }
 
-    fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
+    pub fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
         array![target_trove_yang_asset_amts(), // Dust yang case
          // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
         array![20 * WAD_ONE, 100_u128].span()].span()
     }
 
-    fn inoperational_absorber_yin_cases() -> Span<Wad> {
+    pub fn inoperational_absorber_yin_cases() -> Span<Wad> {
         array![ // minimum amount that must be provided based on initial shares
             absorber_contract::INITIAL_SHARES
                 .into(), // largest possible amount of yin in Absorber based on initial shares
@@ -284,7 +284,7 @@ mod purger_utils {
 
     // Generate interesting cases for absorber's yin balance based on the
     // redistributed trove's debt to test absorption with partial redistribution
-    fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
+    pub fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         array![
             // smallest possible amount of yin in Absorber based on initial shares
             (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES).into(),
@@ -296,7 +296,7 @@ mod purger_utils {
             .span()
     }
 
-    fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+    pub fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
         array![
             // First threshold of 78.75% (Ray)
             124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
@@ -318,7 +318,7 @@ mod purger_utils {
     // Test setup helpers
     //
 
-    fn purger_deploy(
+    pub fn purger_deploy(
         classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
@@ -394,7 +394,7 @@ mod purger_utils {
         (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
-    fn purger_deploy_with_searcher(
+    pub fn purger_deploy_with_searcher(
         searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
     ) -> (
         IShrineDispatcher,
@@ -411,7 +411,7 @@ mod purger_utils {
         (shrine, abbot, seer, absorber, purger, yangs, gates)
     }
 
-    fn flash_liquidator_deploy(
+    pub fn flash_liquidator_deploy(
         shrine: ContractAddress,
         abbot: ContractAddress,
         flashmint: ContractAddress,
@@ -427,7 +427,7 @@ mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare('flash_liquidator'),
+            Option::None => declare("flash_liquidator"),
         };
 
         let flash_liquidator_addr = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
@@ -435,7 +435,7 @@ mod purger_utils {
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
 
-    fn funded_searcher(
+    pub fn funded_searcher(
         abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
@@ -443,7 +443,7 @@ mod purger_utils {
         common::open_trove_helper(abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt);
     }
 
-    fn funded_absorber(
+    pub fn funded_absorber(
         shrine: IShrineDispatcher,
         abbot: IAbbotDispatcher,
         absorber: IAbsorberDispatcher,
@@ -457,7 +457,7 @@ mod purger_utils {
     }
 
     // Creates a healthy trove and returns the trove ID
-    fn funded_healthy_trove(
+    pub fn funded_healthy_trove(
         abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
@@ -468,7 +468,9 @@ mod purger_utils {
 
     // Creates a trove with a lot of collateral
     // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
-    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) -> u64 {
+    pub fn create_whale_trove(
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+    ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
         let yin_amt: Wad = WAD_ONE.into();
@@ -477,7 +479,7 @@ mod purger_utils {
     }
 
     // Update thresholds for all yangs to the given value
-    fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
+    pub fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
             match yangs.pop_front() {
@@ -489,7 +491,7 @@ mod purger_utils {
     }
 
     // Helper function to decrease yang prices by the given percentage
-    fn decrease_yang_prices_by_pct(
+    pub fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -509,7 +511,7 @@ mod purger_utils {
 
     // Helper function to adjust a trove's LTV to the target by manipulating the
     // yang prices
-    fn lower_prices_to_raise_trove_ltv(
+    pub fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
         seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
@@ -523,7 +525,7 @@ mod purger_utils {
         decrease_yang_prices_by_pct(shrine, seer, yangs, decrease_pct);
     }
 
-    fn trigger_recovery_mode(
+    pub fn trigger_recovery_mode(
         shrine: IShrineDispatcher,
         seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
@@ -544,7 +546,7 @@ mod purger_utils {
     // Test assertion helpers
     //
 
-    fn get_expected_compensation_assets(
+    pub fn get_expected_compensation_assets(
         trove_asset_amts: Span<u128>, trove_value: Wad, compensation_value: Wad
     ) -> Span<u128> {
         let expected_compensation_pct: Ray = wadray::rdiv_ww(compensation_value, trove_value);
@@ -553,7 +555,7 @@ mod purger_utils {
 
     // Returns a tuple of the expected freed percentage of trove value and the
     // freed asset amounts
-    fn get_expected_liquidation_assets(
+    pub fn get_expected_liquidation_assets(
         trove_asset_amts: Span<u128>,
         trove_health: Health,
         close_amt: Wad,
@@ -595,14 +597,14 @@ mod purger_utils {
         )
     }
 
-    fn assert_trove_is_healthy(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64) {
+    pub fn assert_trove_is_healthy(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
         assert(purger.preview_liquidate(trove_id).is_none(), 'should not be liquidatable');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
-    fn assert_trove_is_liquidatable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
+    pub fn assert_trove_is_liquidatable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         let (penalty, _) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
         if ltv < RAY_ONE.into() {
@@ -612,7 +614,7 @@ mod purger_utils {
         }
     }
 
-    fn assert_trove_is_absorbable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
+    pub fn assert_trove_is_absorbable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
@@ -624,11 +626,11 @@ mod purger_utils {
         }
     }
 
-    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64) {
+    pub fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64) {
         assert(purger.preview_absorb(trove_id).is_none(), 'should not be absorbable');
     }
 
-    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray, error_margin: Option<Ray>) {
+    pub fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray, error_margin: Option<Ray>) {
         let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
         let error_margin: Ray = match error_margin {
             Option::Some(e) => { e },
@@ -640,7 +642,7 @@ mod purger_utils {
     // Helper function to assert that an address received the expected amount of assets based
     // on the before and after balances.
     // `before_asset_bals` and `after_asset_bals` should be retrieved using `get_token_balances`.
-    fn assert_received_assets(
+    pub fn assert_received_assets(
         mut before_asset_bals: Span<Span<u128>>,
         mut after_asset_bals: Span<Span<u128>>,
         mut expected_freed_assets: Span<AssetBalance>,
@@ -668,7 +670,9 @@ mod purger_utils {
     }
 
     // Helper function to calculate the sum of the value of the given yangs
-    fn get_sum_of_value(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>) -> Wad {
+    pub fn get_sum_of_value(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
+    ) -> Wad {
         let mut sum: Wad = WadZero::zero();
         loop {
             match yangs.pop_front() {
@@ -681,19 +685,19 @@ mod purger_utils {
         }
     }
 
-    fn declare_contracts() -> PurgerTestClasses {
+    pub fn declare_contracts() -> PurgerTestClasses {
         PurgerTestClasses {
-            abbot: Option::Some(declare('abbot')),
-            sentinel: Option::Some(declare('sentinel')),
-            token: Option::Some(declare('erc20_mintable')),
-            gate: Option::Some(declare('gate')),
-            shrine: Option::Some(declare('shrine')),
-            absorber: Option::Some(declare('absorber')),
-            blesser: declare('blesser'),
-            purger: declare('purger'),
-            pragma: Option::Some(declare('pragma')),
-            mock_pragma: Option::Some(declare('mock_pragma')),
-            seer: Option::Some(declare('seer')),
+            abbot: Option::Some(declare("abbot")),
+            sentinel: Option::Some(declare("sentinel")),
+            token: Option::Some(declare("erc20_mintable")),
+            gate: Option::Some(declare("gate")),
+            shrine: Option::Some(declare("shrine")),
+            absorber: Option::Some(declare("absorber")),
+            blesser: declare("blesser"),
+            purger: declare("purger"),
+            pragma: Option::Some(declare("pragma")),
+            mock_pragma: Option::Some(declare("mock_pragma")),
+            seer: Option::Some(declare("seer")),
         }
     }
 }

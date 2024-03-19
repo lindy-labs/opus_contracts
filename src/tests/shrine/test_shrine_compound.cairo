@@ -1,5 +1,5 @@
 mod test_shrine_compound {
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;

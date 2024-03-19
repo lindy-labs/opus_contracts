@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod caretaker {
+pub mod caretaker {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::num::traits::Zero;
@@ -64,7 +64,7 @@ mod caretaker {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         Shut: Shut,
         Release: Release,

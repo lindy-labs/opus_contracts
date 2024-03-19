@@ -17,7 +17,7 @@ mod flash_borrower {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         FlashLoancall_dataReceived: FlashLoancall_dataReceived,
     }
 

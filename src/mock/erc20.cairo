@@ -34,7 +34,7 @@ pub mod erc20 {
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         Transfer: Transfer,
         Approval: Approval,
     }

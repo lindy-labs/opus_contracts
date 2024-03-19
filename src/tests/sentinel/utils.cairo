@@ -1,4 +1,4 @@
-mod sentinel_utils {
+pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use integer::BoundedU256;
     use opus::core::roles::{sentinel_roles, shrine_roles};
@@ -20,22 +20,22 @@ mod sentinel_utils {
     const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
-    fn admin() -> ContractAddress {
+    pub fn admin() -> ContractAddress {
         contract_address_try_from_felt252('sentinel admin').unwrap()
     }
 
     #[inline(always)]
-    fn mock_abbot() -> ContractAddress {
+    pub fn mock_abbot() -> ContractAddress {
         contract_address_try_from_felt252('mock abbot').unwrap()
     }
 
     #[inline(always)]
-    fn dummy_yang_addr() -> ContractAddress {
+    pub fn dummy_yang_addr() -> ContractAddress {
         contract_address_try_from_felt252('dummy yang').unwrap()
     }
 
     #[inline(always)]
-    fn dummy_yang_gate_addr() -> ContractAddress {
+    pub fn dummy_yang_gate_addr() -> ContractAddress {
         contract_address_try_from_felt252('dummy yang token').unwrap()
     }
 
@@ -43,7 +43,7 @@ mod sentinel_utils {
     // Test setup
     //
 
-    fn deploy_sentinel(
+    pub fn deploy_sentinel(
         sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>,
     ) -> (ISentinelDispatcher, ContractAddress) {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(shrine_class);
@@ -54,7 +54,7 @@ mod sentinel_utils {
 
         let sentinel_class = match sentinel_class {
             Option::Some(class) => class,
-            Option::None => declare('sentinel')
+            Option::None => declare("sentinel")
         };
 
         let sentinel_addr = sentinel_class.deploy(@calldata).expect('failed deploy sentinel');
@@ -74,7 +74,7 @@ mod sentinel_utils {
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
 
-    fn deploy_sentinel_with_gates(
+    pub fn deploy_sentinel_with_gates(
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
@@ -85,14 +85,14 @@ mod sentinel_utils {
         let token_class = Option::Some(
             match token_class {
                 Option::Some(class) => class,
-                Option::None => declare('erc20_mintable')
+                Option::None => declare("erc20_mintable")
             }
         );
 
         let gate_class = Option::Some(
             match gate_class {
                 Option::Some(class) => class,
-                Option::None => declare('gate')
+                Option::None => declare("gate")
             }
         );
 
@@ -105,7 +105,7 @@ mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
     }
 
-    fn deploy_sentinel_with_eth_gate(
+    pub fn deploy_sentinel_with_eth_gate(
         token_class: Option<ContractClass>
     ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
         let (sentinel, shrine_addr) = deploy_sentinel(Option::None, Option::None);
@@ -114,7 +114,7 @@ mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
     }
 
-    fn add_eth_yang(
+    pub fn add_eth_yang(
         sentinel: ISentinelDispatcher,
         shrine_addr: ContractAddress,
         token_class: Option<ContractClass>,
@@ -153,7 +153,7 @@ mod sentinel_utils {
         (eth, IGateDispatcher { contract_address: eth_gate })
     }
 
-    fn add_wbtc_yang(
+    pub fn add_wbtc_yang(
         sentinel: ISentinelDispatcher,
         shrine_addr: ContractAddress,
         token_class: Option<ContractClass>,
@@ -189,14 +189,14 @@ mod sentinel_utils {
         (wbtc, IGateDispatcher { contract_address: wbtc_gate })
     }
 
-    fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
+    pub fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
         start_prank(CheatTarget::One(token), user);
         token_erc20.approve(gate.contract_address, BoundedU256::max());
         stop_prank(CheatTarget::One(token));
     }
 
-    fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
+    pub fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
         pow(10_u128, IERC20Dispatcher { contract_address: asset_addr }.decimals() / 2)
     }
 }

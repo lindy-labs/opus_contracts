@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod equalizer {
+pub mod equalizer {
     use access_control::access_control_component;
     use core::cmp::min;
     use opus::core::roles::equalizer_roles;
@@ -43,7 +43,7 @@ mod equalizer {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,

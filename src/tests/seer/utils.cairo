@@ -1,4 +1,4 @@
-mod seer_utils {
+pub mod seer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use debug::PrintTrait;
     use opus::core::roles::shrine_roles;
@@ -32,19 +32,19 @@ mod seer_utils {
     // Address constants
     //
 
-    fn admin() -> ContractAddress {
+    pub fn admin() -> ContractAddress {
         contract_address_try_from_felt252('seer owner').unwrap()
     }
 
-    fn dummy_eth() -> ContractAddress {
+    pub fn dummy_eth() -> ContractAddress {
         contract_address_try_from_felt252('eth token').unwrap()
     }
 
-    fn dummy_wbtc() -> ContractAddress {
+    pub fn dummy_wbtc() -> ContractAddress {
         contract_address_try_from_felt252('wbtc token').unwrap()
     }
 
-    fn deploy_seer(
+    pub fn deploy_seer(
         seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
     ) -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
         let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
@@ -57,7 +57,7 @@ mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare('seer')
+            Option::None => declare("seer")
         };
 
         let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -75,7 +75,7 @@ mod seer_utils {
         )
     }
 
-    fn deploy_seer_using(
+    pub fn deploy_seer_using(
         seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress
     ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
@@ -87,7 +87,7 @@ mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare('seer')
+            Option::None => declare("seer")
         };
 
         let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -101,7 +101,7 @@ mod seer_utils {
         ISeerDispatcher { contract_address: seer_addr }
     }
 
-    fn add_oracles(
+    pub fn add_oracles(
         pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>, seer: ISeerDispatcher
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
@@ -116,14 +116,14 @@ mod seer_utils {
         oracles.span()
     }
 
-    fn add_yangs(seer: ISeerDispatcher, yangs: Span<ContractAddress>) {
+    pub fn add_yangs(seer: ISeerDispatcher, yangs: Span<ContractAddress>) {
         let oracles: Span<ContractAddress> = seer.get_oracles();
         // assuming first oracle is Pragma
         let pragma = IPragmaDispatcher { contract_address: *oracles.at(0) };
         pragma_utils::add_yangs_to_pragma(pragma, yangs);
     }
 
-    fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
+    pub fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
         let current_ts: u64 = get_block_timestamp();
         let oracles: Span<ContractAddress> = seer.get_oracles();
 

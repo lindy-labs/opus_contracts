@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod controller {
+pub mod controller {
     use access_control::access_control_component;
     use opus::core::roles::controller_roles;
     use opus::interfaces::IController::IController;
@@ -57,7 +57,7 @@ mod controller {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         ParameterUpdated: ParameterUpdated,
         GainUpdated: GainUpdated,

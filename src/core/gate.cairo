@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod gate {
+pub mod gate {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -30,7 +30,7 @@ mod gate {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         Enter: Enter,
         Exit: Exit,
     }

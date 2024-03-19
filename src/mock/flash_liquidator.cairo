@@ -9,7 +9,7 @@ pub trait IFlashLiquidator<TContractState> {
 }
 
 #[starknet::contract]
-mod flash_liquidator {
+pub mod flash_liquidator {
     use core::integer::BoundedInt;
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};

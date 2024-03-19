@@ -5,7 +5,7 @@
 // wadray-fixed-point arithmetic functions in their calculations. Consequently,
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
-mod absorber {
+pub mod absorber {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::traits::DivRem;
@@ -141,7 +141,7 @@ mod absorber {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,

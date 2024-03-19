@@ -1,8 +1,9 @@
 mod test_transmuter {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
-    use integer::BoundedInt;
+    use core::cmp::min;
+    use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,7 +17,6 @@ mod test_transmuter {
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };
     use starknet::ContractAddress;
-    use starknet::contract_address::{contract_address_try_from_felt252, ContractAddressZeroable};
     use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Signed, SignedWad, SignedWadZero, Wad, WadZero, WAD_ONE};
 
     //
@@ -66,9 +66,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::ReceiverUpdated(
-                    transmuter_contract::ReceiverUpdated {
-                        old_receiver: ContractAddressZeroable::zero(), new_receiver: receiver
-                    }
+                    transmuter_contract::ReceiverUpdated { old_receiver: Zero::zero(), new_receiver: receiver }
                 ),
             ),
             (
@@ -187,7 +185,7 @@ mod test_transmuter {
         let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
+        let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
 
         assert(transmuter.get_receiver() == new_receiver, 'wrong receiver');
@@ -211,7 +209,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        transmuter.set_receiver(ContractAddressZeroable::zero());
+        transmuter.set_receiver(Zero::zero());
     }
 
     #[test]
@@ -222,7 +220,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
+        let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
     }
 

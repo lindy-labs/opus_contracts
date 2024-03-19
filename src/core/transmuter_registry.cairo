@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod transmuter_registry {
+pub mod transmuter_registry {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::transmuter_registry_roles;
@@ -39,7 +39,7 @@ mod transmuter_registry {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         AddressRegistryEvent: address_registry_component::Event,
     }

@@ -1,5 +1,5 @@
 mod test_shrine_redistribution {
-    use debug::PrintTrait;
+    use core::debug::PrintTrait;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
@@ -50,7 +50,7 @@ mod test_shrine_redistribution {
         let yang1_addr = shrine_utils::yang1_addr();
         let yang2_addr = shrine_utils::yang2_addr();
 
-        let trove3_owner = shrine_utils::common::trove3_owner_addr();
+        let trove3_owner = common::trove3_owner_addr();
         shrine.deposit(yang1_addr, common::TROVE_3, TROVE3_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, common::TROVE_3, TROVE3_YANG2_DEPOSIT.into());
         shrine.forge(trove3_owner, common::TROVE_3, TROVE3_FORGE_AMT.into(), 0_u128.into());

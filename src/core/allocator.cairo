@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod allocator {
+pub mod allocator {
     use access_control::access_control_component;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
@@ -53,7 +53,7 @@ mod allocator {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         AllocationUpdated: AllocationUpdated,
     }

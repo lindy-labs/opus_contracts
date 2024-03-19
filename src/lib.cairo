@@ -68,59 +68,59 @@ mod tests {
     mod test_types;
     mod abbot {
         mod test_abbot;
-        mod utils;
+        pub mod utils;
     }
     mod absorber {
         mod test_absorber;
-        mod utils;
+        pub mod utils;
     }
     mod caretaker {
         mod test_caretaker;
-        mod utils;
+        pub mod utils;
     }
     mod controller {
         mod test_controller;
-        mod utils;
+        pub mod utils;
     }
     mod equalizer {
         mod test_allocator;
         mod test_equalizer;
-        mod utils;
+        pub mod utils;
     }
     mod external {
         mod test_pragma;
-        mod utils;
+        pub mod utils;
     }
     mod flash_mint {
         mod test_flash_mint;
-        mod utils;
+        pub mod utils;
     }
     mod gate {
         mod test_gate;
-        mod utils;
+        pub mod utils;
     }
     mod purger {
         mod test_purger;
-        mod utils;
+        pub mod utils;
     }
     mod sentinel {
         mod test_sentinel;
-        mod utils;
+        pub mod utils;
     }
     mod seer {
         mod test_seer;
-        mod utils;
+        pub mod utils;
     }
     mod shrine {
         mod test_shrine;
         mod test_shrine_compound;
         mod test_shrine_redistribution;
-        mod utils;
+        pub mod utils;
     }
     mod transmuter {
         mod test_transmuter;
-        mod test_transmuter_registry;
-        mod utils;
+        pub mod test_transmuter_registry;
+        pub mod utils;
     }
     mod utils {
         mod mock_address_registry;

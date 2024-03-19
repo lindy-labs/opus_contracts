@@ -269,7 +269,7 @@ mod test_equalizer {
 
     #[test]
     fn test_set_allocator_pass() {
-        let allocator_class = Option::Some(declare('allocator'));
+        let allocator_class = Option::Some(declare("allocator"));
         let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
@@ -299,7 +299,7 @@ mod test_equalizer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocator_fail() {
-        let allocator_class = Option::Some(declare('allocator'));
+        let allocator_class = Option::Some(declare("allocator"));
         let (_, equalizer, _) = equalizer_utils::equalizer_deploy(allocator_class);
         let new_allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class

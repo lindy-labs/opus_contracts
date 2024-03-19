@@ -46,7 +46,7 @@ pub mod flash_mint {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         FlashMint: FlashMint,
         // Component events
         ReentrancyGuardEvent: reentrancy_guard_component::Event

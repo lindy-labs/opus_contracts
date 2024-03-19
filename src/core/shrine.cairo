@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod shrine {
+pub mod shrine {
     use access_control::access_control_component;
     use core::cmp::{max, min};
     use core::integer::BoundedInt;
@@ -29,53 +29,53 @@ mod shrine {
     //
 
     // Initial multiplier value to ensure `get_recent_multiplier_from` terminates - (ray): RAY_ONE
-    const INITIAL_MULTIPLIER: u128 = 1000000000000000000000000000;
-    const MAX_MULTIPLIER: u128 = 10000000000000000000000000000; // Max of 10x (ray): 10 * RAY_ONE
+    pub const INITIAL_MULTIPLIER: u128 = 1000000000000000000000000000;
+    pub const MAX_MULTIPLIER: u128 = 10000000000000000000000000000; // Max of 10x (ray): 10 * RAY_ONE
 
-    const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
+    pub const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
 
     // If a yang is deemed risky, it can be marked as suspended. During the
     // SUSPENSION_GRACE_PERIOD, this decision can be reverted and the yang's status
     // can be changed back to normal. If this does not happen, the yang is
     // suspended permanently, i.e. can't be used in the system ever again.
     // The start of a Yang's suspension period is tracked in `yang_suspension`
-    const SUSPENSION_GRACE_PERIOD: u64 =
+    pub const SUSPENSION_GRACE_PERIOD: u64 =
         consteval_int!((182 * 24 + 12) * 60 * 60); // 182.5 days, half a year, in seconds
 
     // Length of a time interval in seconds
-    const TIME_INTERVAL: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds per minute
-    const TIME_INTERVAL_DIV_YEAR: u128 =
+    pub const TIME_INTERVAL: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds per minute
+    pub const TIME_INTERVAL_DIV_YEAR: u128 =
         57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
 
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
-    const ROUNDING_THRESHOLD: u128 = 1000000000;
+    pub const ROUNDING_THRESHOLD: u128 = 1000000000;
 
     // Minimum amount of yang that must be in recipient troves for ordinary
     // redistribution of yang to occur without overflow (wad): WAD_ONE
-    const MIN_RECIPIENT_YANG_AMT: u128 = 1000000000000000000;
+    pub const MIN_RECIPIENT_YANG_AMT: u128 = 1000000000000000000;
 
     // Maximum interest rate a yang can have (ray): RAY_ONE
-    const MAX_YANG_RATE: u128 = 1000000000000000000000000000;
+    pub const MAX_YANG_RATE: u128 = 1000000000000000000000000000;
 
     // Flag for setting the yang's new base rate to its previous era's base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_ERA_BASE_RATE: u128 = 1000000000000000000000000001;
+    pub const USE_PREV_ERA_BASE_RATE: u128 = 1000000000000000000000000001;
 
     // First era for base rates, to be set in the constructor
-    const INITIAL_RATE_ERA: u64 = 1;
+    pub const INITIAL_RATE_ERA: u64 = 1;
 
     // Forge fee function parameters
-    const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
-    const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
+    pub const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
+    pub const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
     // The lowest yin spot price where the forge fee will still be zero
-    const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
+    pub const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
     // The maximum forge fee as a percentage of forge amount
-    const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
+    pub const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
     // The maximum deviation before `FORGE_FEE_CAP_PCT` is reached
-    const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
+    pub const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
 
     // Convenience constant for upward iteration of yangs
-    const START_YANG_IDX: u32 = 1;
+    pub const START_YANG_IDX: u32 = 1;
 
     // This factor is applied to the Shrine's threshold to determine the LTV at which 
     // recovery mode will be triggered.
@@ -84,7 +84,7 @@ mod shrine {
     // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
     // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
     // based on how far the trove's LTV exceeds this target LTV.
-    const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
+    pub const RECOVERY_MODE_TARGET_LTV_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
     // An additional factor to be added to `RECOVERY_MODE_TARGET_LTV_FACTOR`
     // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
@@ -93,15 +93,15 @@ mod shrine {
     // are adjusted to mitigate against a trove intentionally triggering recovery mode to
     // liquidate other troves. Once recovery mode is triggered, this buffer can be overcome only
     // by the accrual of fees or changes to yangs' prices.
-    const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
+    pub const RECOVERY_MODE_TARGET_LTV_BUFFER_FACTOR: u128 = 50000000000000000000000000; // 0.05 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
-    const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
+    pub const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
     // SRC5 interface constants
-    const ISRC5_ID: felt252 = 0x3f918d17e5ee77373b56385708f855659a07f75997f365cf87748628532a055;
-    const IERC20_ID: felt252 = 0x10a8f9ff27838cf36e9599878726d548a5c5c1acb0d7e04e99372cbb79f730b;
-    const IERC20_CAMEL_ID: felt252 = 0x2be91edd4cf1388a08c3612416baf85deb00e47d840e6d645f248c8ab64a4ab;
+    pub const ISRC5_ID: felt252 = 0x3f918d17e5ee77373b56385708f855659a07f75997f365cf87748628532a055;
+    pub const IERC20_ID: felt252 = 0x10a8f9ff27838cf36e9599878726d548a5c5c1acb0d7e04e99372cbb79f730b;
+    pub const IERC20_CAMEL_ID: felt252 = 0x2be91edd4cf1388a08c3612416baf85deb00e47d840e6d645f248c8ab64a4ab;
 
     //
     // Storage
@@ -227,7 +227,7 @@ mod shrine {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
@@ -253,155 +253,155 @@ mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAdded {
+    pub struct YangAdded {
         #[key]
-        yang: ContractAddress,
-        yang_id: u32,
-        start_price: Wad,
-        initial_rate: Ray
+        pub yang: ContractAddress,
+        pub yang_id: u32,
+        pub start_price: Wad,
+        pub initial_rate: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangTotalUpdated {
+    pub struct YangTotalUpdated {
         #[key]
-        yang: ContractAddress,
-        total: Wad
+        pub yang: ContractAddress,
+        pub total: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TotalTrovesDebtUpdated {
-        total: Wad
+    pub struct TotalTrovesDebtUpdated {
+        pub total: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ProtocolOwnedTrovesDebtUpdated {
-        total: Wad
+    pub struct ProtocolOwnedTrovesDebtUpdated {
+        pub total: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct BudgetAdjusted {
-        amount: SignedWad
+    pub struct BudgetAdjusted {
+        pub amount: SignedWad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct MultiplierUpdated {
-        multiplier: Ray,
-        cumulative_multiplier: Ray,
+    pub struct MultiplierUpdated {
+        pub multiplier: Ray,
+        pub cumulative_multiplier: Ray,
         #[key]
-        interval: u64
+        pub interval: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangRatesUpdated {
+    pub struct YangRatesUpdated {
         #[key]
-        rate_era: u64,
-        current_interval: u64,
-        yangs: Span<ContractAddress>,
-        new_rates: Span<Ray>
+        pub rate_era: u64,
+        pub current_interval: u64,
+        pub yangs: Span<ContractAddress>,
+        pub new_rates: Span<Ray>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ThresholdUpdated {
+    pub struct ThresholdUpdated {
         #[key]
-        yang: ContractAddress,
-        threshold: Ray
+        pub yang: ContractAddress,
+        pub threshold: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ForgeFeePaid {
+    pub struct ForgeFeePaid {
         #[key]
-        trove_id: u64,
-        fee: Wad,
-        fee_pct: Wad
+        pub trove_id: u64,
+        pub fee: Wad,
+        pub fee_pct: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveUpdated {
+    pub struct TroveUpdated {
         #[key]
-        trove_id: u64,
-        trove: Trove
+        pub trove_id: u64,
+        pub trove: Trove
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveRedistributed {
+    pub struct TroveRedistributed {
         #[key]
-        redistribution_id: u32,
+        pub redistribution_id: u32,
         #[key]
-        trove_id: u64,
-        debt: Wad
+        pub trove_id: u64,
+        pub debt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct DepositUpdated {
+    pub struct DepositUpdated {
         #[key]
-        yang: ContractAddress,
+        pub yang: ContractAddress,
         #[key]
-        trove_id: u64,
-        amount: Wad
+        pub trove_id: u64,
+        pub amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangPriceUpdated {
+    pub struct YangPriceUpdated {
         #[key]
-        yang: ContractAddress,
-        price: Wad,
-        cumulative_price: Wad,
+        pub yang: ContractAddress,
+        pub price: Wad,
+        pub cumulative_price: Wad,
         #[key]
-        interval: u64
+        pub interval: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YinPriceUpdated {
-        old_price: Wad,
-        new_price: Wad
+    pub struct YinPriceUpdated {
+        pub old_price: Wad,
+        pub new_price: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct MinimumTroveValueUpdated {
-        value: Wad
+    pub struct MinimumTroveValueUpdated {
+        pub value: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct DebtCeilingUpdated {
-        ceiling: Wad
+    pub struct DebtCeilingUpdated {
+        pub ceiling: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangSuspended {
+    pub struct YangSuspended {
         #[key]
-        yang: ContractAddress,
-        timestamp: u64
+        pub yang: ContractAddress,
+        pub timestamp: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangUnsuspended {
+    pub struct YangUnsuspended {
         #[key]
-        yang: ContractAddress,
-        timestamp: u64
+        pub yang: ContractAddress,
+        pub timestamp: u64
     }
 
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Killed {}
+    pub struct Killed {}
 
     // ERC20 events
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Transfer {
+    pub struct Transfer {
         #[key]
-        from: ContractAddress,
+        pub from: ContractAddress,
         #[key]
-        to: ContractAddress,
-        value: u256
+        pub to: ContractAddress,
+        pub value: u256
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Approval {
+    pub struct Approval {
         #[key]
-        owner: ContractAddress,
+        pub owner: ContractAddress,
         #[key]
-        spender: ContractAddress,
-        value: u256
+        pub spender: ContractAddress,
+        pub value: u256
     }
 
     //

@@ -347,7 +347,7 @@ mod test_seer {
     #[test]
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
-        let token_class = Option::Some(declare('erc20_mintable'));
+        let token_class = Option::Some(declare("erc20_mintable"));
         let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, token_class, Option::None, Option::None,
         );

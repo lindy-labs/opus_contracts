@@ -17,7 +17,7 @@ mod erc20_mintable {
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         Transfer: Transfer,
         Approval: Approval,
     }

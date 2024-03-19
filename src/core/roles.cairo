@@ -4,7 +4,7 @@ pub mod absorber_roles {
     pub const UPDATE: u128 = 4;
 
     #[inline(always)]
-    fn purger() -> u128 {
+    pub fn purger() -> u128 {
         UPDATE
     }
 
@@ -89,7 +89,7 @@ pub mod seer_roles {
     }
 
     #[inline(always)]
-    fn purger() -> u128 {
+    pub fn purger() -> u128 {
         UPDATE_PRICES
     }
 }
@@ -103,17 +103,17 @@ pub mod sentinel_roles {
     pub const UPDATE_YANG_SUSPENSION: u128 = 32;
 
     #[inline(always)]
-    fn abbot() -> u128 {
+    pub fn abbot() -> u128 {
         ENTER + EXIT
     }
 
     #[inline(always)]
-    fn purger() -> u128 {
+    pub fn purger() -> u128 {
         EXIT
     }
 
     #[inline(always)]
-    fn caretaker() -> u128 {
+    pub fn caretaker() -> u128 {
         EXIT
     }
 
@@ -145,17 +145,17 @@ pub mod shrine_roles {
     pub const WITHDRAW: u128 = 262144;
 
     #[inline(always)]
-    fn abbot() -> u128 {
+    pub fn abbot() -> u128 {
         DEPOSIT + FORGE + MELT + WITHDRAW
     }
 
     #[inline(always)]
-    fn caretaker() -> u128 {
+    pub fn caretaker() -> u128 {
         EJECT + KILL + SEIZE
     }
 
     #[inline(always)]
-    fn controller() -> u128 {
+    pub fn controller() -> u128 {
         SET_MULTIPLIER
     }
 
@@ -171,38 +171,38 @@ pub mod shrine_roles {
     }
 
     #[inline(always)]
-    fn equalizer() -> u128 {
+    pub fn equalizer() -> u128 {
         ADJUST_BUDGET + EJECT + INJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
-    fn flash_mint() -> u128 {
+    pub fn flash_mint() -> u128 {
         INJECT + EJECT + SET_DEBT_CEILING
     }
 
     #[inline(always)]
-    fn purger() -> u128 {
+    pub fn purger() -> u128 {
         MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]
-    fn seer() -> u128 {
+    pub fn seer() -> u128 {
         ADVANCE
     }
 
     #[inline(always)]
-    fn sentinel() -> u128 {
+    pub fn sentinel() -> u128 {
         ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
     #[inline(always)]
-    fn transmuter() -> u128 {
+    pub fn transmuter() -> u128 {
         ADJUST_BUDGET + EJECT + INJECT
     }
 
     #[cfg(test)]
     #[inline(always)]
-    fn all_roles() -> u128 {
+    pub fn all_roles() -> u128 {
         ADD_YANG
             + ADJUST_BUDGET
             + ADVANCE

@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod seer {
+pub mod seer {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
@@ -60,7 +60,7 @@ mod seer {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         PriceUpdate: PriceUpdate,
         PriceUpdateMissed: PriceUpdateMissed,

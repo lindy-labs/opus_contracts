@@ -21,7 +21,7 @@ mod test_absorber {
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZero, WAD_ONE, WAD_SCALE};
     //
     // Tests - Setup
@@ -53,8 +53,8 @@ mod test_absorber {
 
     #[test]
     fn test_set_reward_pass() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let blesser_class = Option::Some(declare('blesser'));
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );
@@ -119,7 +119,7 @@ mod test_absorber {
             );
 
         // Update existing reward
-        let new_opus_blesser: ContractAddress = contract_address_try_from_felt252('new opus blesser').unwrap();
+        let new_opus_blesser: ContractAddress = 'new opus blesser'.try_into().unwrap();
         opus_reward.is_active = false;
         opus_reward.blesser = IBlesserDispatcher { contract_address: new_opus_blesser };
         absorber.set_reward(opus_token, new_opus_blesser, false);
@@ -2180,8 +2180,8 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_depleted_active_reward() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let blesser_class = Option::Some(declare('blesser'));
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );

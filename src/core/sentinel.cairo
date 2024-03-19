@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod sentinel {
+pub mod sentinel {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::sentinel_roles;
@@ -61,7 +61,7 @@ mod sentinel {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
