@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod erc20_mintable {
+pub mod erc20_mintable {
     use core::num::traits::Zero;
     use opus::interfaces::IERC20::{IERC20, IMintable};
     use starknet::contract_address::ContractAddress;
