@@ -1,9 +1,9 @@
 mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::{max, min};
+    use core::cmp::{max, min};
     use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
     use core::option::OptionTrait;
-    use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
@@ -3447,7 +3447,7 @@ mod test_purger {
 
         // Approve absorber for maximum yin
         start_prank(CheatTarget::One(shrine.contract_address), searcher);
-        yin_erc20.approve(absorber.contract_address, BoundedU256::max());
+        yin_erc20.approve(absorber.contract_address, BoundedInt::max());
 
         stop_prank(CheatTarget::One(shrine.contract_address));
 

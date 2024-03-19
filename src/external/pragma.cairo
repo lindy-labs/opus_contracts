@@ -6,7 +6,7 @@
 //       order to get ASSET/SYN
 
 #[starknet::contract]
-mod pragma {
+pub mod pragma {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::pragma_roles;
@@ -35,10 +35,10 @@ mod pragma {
     // there are sanity bounds for settable values, i.e. they can never
     // be set outside of this hardcoded range
     // the range is [lower, upper]
-    const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
-    const UPPER_FRESHNESS_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
-    const LOWER_SOURCES_BOUND: u32 = 3;
-    const UPPER_SOURCES_BOUND: u32 = 13;
+    pub const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
+    pub const UPPER_FRESHNESS_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    pub const LOWER_SOURCES_BOUND: u32 = 3;
+    pub const UPPER_SOURCES_BOUND: u32 = 13;
 
     //
     // Storage
@@ -78,24 +78,24 @@ mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct InvalidPriceUpdate {
+    pub struct InvalidPriceUpdate {
         #[key]
-        yang: ContractAddress,
-        price: Wad,
-        pragma_last_updated_ts: u64,
-        pragma_num_sources: u32,
+        pub yang: ContractAddress,
+        pub price: Wad,
+        pub pragma_last_updated_ts: u64,
+        pub pragma_num_sources: u32,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PriceValidityThresholdsUpdated {
-        old_thresholds: PriceValidityThresholds,
-        new_thresholds: PriceValidityThresholds
+    pub struct PriceValidityThresholdsUpdated {
+        pub old_thresholds: PriceValidityThresholds,
+        pub new_thresholds: PriceValidityThresholds
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangPairIdSet {
-        address: ContractAddress,
-        pair_id: felt252
+    pub struct YangPairIdSet {
+        pub address: ContractAddress,
+        pub pair_id: felt252
     }
 
     //

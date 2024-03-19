@@ -27,8 +27,8 @@ pub mod seer {
     //
 
     const LOOP_START: u32 = 1;
-    const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    const UPPER_UPDATE_FREQUENCY_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    pub const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
+    pub const UPPER_UPDATE_FREQUENCY_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
 
     //
     // Storage
@@ -69,26 +69,26 @@ pub mod seer {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PriceUpdate {
-        oracle: ContractAddress,
-        yang: ContractAddress,
-        price: Wad
+    pub struct PriceUpdate {
+        pub oracle: ContractAddress,
+        pub yang: ContractAddress,
+        pub price: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PriceUpdateMissed {
-        yang: ContractAddress
+    pub struct PriceUpdateMissed {
+        pub yang: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct UpdateFrequencyUpdated {
-        old_frequency: u64,
-        new_frequency: u64
+    pub struct UpdateFrequencyUpdated {
+        pub old_frequency: u64,
+        pub new_frequency: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct UpdatePricesDone {
-        forced: bool
+    pub struct UpdatePricesDone {
+        pub forced: bool
     }
 
     //

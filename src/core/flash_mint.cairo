@@ -28,8 +28,8 @@ pub mod flash_mint {
     pub const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
-    const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
-    const FLASH_FEE: u256 = 0;
+    pub const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
+    pub const FLASH_FEE: u256 = 0;
 
     component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
@@ -53,13 +53,13 @@ pub mod flash_mint {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct FlashMint {
+    pub struct FlashMint {
         #[key]
-        initiator: ContractAddress,
+        pub initiator: ContractAddress,
         #[key]
-        receiver: ContractAddress,
-        token: ContractAddress,
-        amount: u256
+        pub receiver: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256
     }
 
     #[constructor]

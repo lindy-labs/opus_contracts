@@ -2,7 +2,7 @@ mod test_equalizer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
     use core::debug::PrintTrait;
-    use integer::BoundedU128;
+    use core::integer::BoundedInt;
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
     use opus::core::shrine::shrine;
@@ -222,6 +222,7 @@ mod test_equalizer {
         let admin: ContractAddress = shrine_utils::admin();
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, equalizer.contract_address]), admin);
 
+        let max_val: u128 = BoundedInt::max();
         loop {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
@@ -253,12 +254,12 @@ mod test_equalizer {
                     }
 
                     // Reset by normalizing all remaining deficit
-                    equalizer.normalize(BoundedU128::max().into());
+                    equalizer.normalize(max_val.into());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
                     // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(BoundedU128::max().into());
+                    equalizer.normalize(max_val.into());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },

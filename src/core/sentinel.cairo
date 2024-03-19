@@ -69,25 +69,25 @@ pub mod sentinel {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAdded {
+    pub struct YangAdded {
         #[key]
-        yang: ContractAddress,
-        gate: ContractAddress
+        pub yang: ContractAddress,
+        pub gate: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAssetMaxUpdated {
+    pub struct YangAssetMaxUpdated {
         #[key]
-        yang: ContractAddress,
-        old_max: u128,
-        new_max: u128
+        pub yang: ContractAddress,
+        pub old_max: u128,
+        pub new_max: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct GateKilled {
+    pub struct GateKilled {
         #[key]
-        yang: ContractAddress,
-        gate: ContractAddress
+        pub yang: ContractAddress,
+        pub gate: ContractAddress
     }
 
     //

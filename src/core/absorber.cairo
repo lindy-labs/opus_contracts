@@ -36,38 +36,38 @@ pub mod absorber {
     // to reset the yin per share ratio to 1 : 1 parity for accounting. Otherwise, there will
     // eventually be an overflow when converting yin to shares (and vice versa)
     // as yin per share approaches 0.
-    const YIN_PER_SHARE_THRESHOLD: u128 = 1000000000000000; // 10**15 = 0.001 (Wad)
+    pub const YIN_PER_SHARE_THRESHOLD: u128 = 1000000000000000; // 10**15 = 0.001 (Wad)
 
     // Shares to be minted without a provider to avoid first provider front-running
-    const INITIAL_SHARES: u128 = 1000000000; // 10 ** 9 (Wad);
+    pub const INITIAL_SHARES: u128 = 1000000000; // 10 ** 9 (Wad);
 
     // Minimum amount of shares, excluding the initial shares, that is needed to prevent overflows
     // when calculating the amount of assets per share
-    const MINIMUM_RECIPIENT_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
+    pub const MINIMUM_RECIPIENT_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
     // First epoch of the Absorber
-    const FIRST_EPOCH: u32 = 1;
+    pub const FIRST_EPOCH: u32 = 1;
 
     // Amount of time, in seconds, that needs to elapse after request is submitted before removal
-    const REQUEST_BASE_TIMELOCK: u64 = 60;
+    pub const REQUEST_BASE_TIMELOCK: u64 = 60;
 
     // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_MAX_TIMELOCK: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_MAX_TIMELOCK: u64 = consteval_int!(7 * 24 * 60 * 60);
 
     // Multiplier for each request's timelock from the last value if a new request is submitted
     // before the cooldown of the previous request has elapsed
-    const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
+    pub const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
 
     // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
     // has elapsed
     // 60 minutes * 60 seconds per minute
-    const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
+    pub const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_COOLDOWN: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_COOLDOWN: u64 = consteval_int!(7 * 24 * 60 * 60);
 
     // Helper constant to set the starting index for iterating over the Rewards
     // in the order they were added
@@ -155,69 +155,69 @@ pub mod absorber {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct RewardSet {
+    pub struct RewardSet {
         #[key]
-        asset: ContractAddress,
+        pub asset: ContractAddress,
         #[key]
-        blesser: ContractAddress,
-        is_active: bool
+        pub blesser: ContractAddress,
+        pub is_active: bool
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct EpochChanged {
-        old_epoch: u32,
-        new_epoch: u32
+    pub struct EpochChanged {
+        pub old_epoch: u32,
+        pub new_epoch: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Provide {
+    pub struct Provide {
         #[key]
-        provider: ContractAddress,
-        epoch: u32,
-        yin: Wad
+        pub provider: ContractAddress,
+        pub epoch: u32,
+        pub yin: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct RequestSubmitted {
+    pub struct RequestSubmitted {
         #[key]
-        provider: ContractAddress,
-        timestamp: u64,
-        timelock: u64
+        pub provider: ContractAddress,
+        pub timestamp: u64,
+        pub timelock: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Remove {
+    pub struct Remove {
         #[key]
-        provider: ContractAddress,
-        epoch: u32,
-        yin: Wad
+        pub provider: ContractAddress,
+        pub epoch: u32,
+        pub yin: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reap {
+    pub struct Reap {
         #[key]
-        provider: ContractAddress,
-        absorbed_assets: Span<AssetBalance>,
-        reward_assets: Span<AssetBalance>
+        pub provider: ContractAddress,
+        pub absorbed_assets: Span<AssetBalance>,
+        pub reward_assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Gain {
-        assets: Span<AssetBalance>,
-        total_recipient_shares: Wad,
-        epoch: u32,
-        absorption_id: u32
+    pub struct Gain {
+        pub assets: Span<AssetBalance>,
+        pub total_recipient_shares: Wad,
+        pub epoch: u32,
+        pub absorption_id: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Bestow {
-        assets: Span<AssetBalance>,
-        total_recipient_shares: Wad,
-        epoch: u32
+    pub struct Bestow {
+        pub assets: Span<AssetBalance>,
+        pub total_recipient_shares: Wad,
+        pub epoch: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Killed {}
+    pub struct Killed {}
 
     //
     // Constructor

@@ -52,28 +52,28 @@ pub mod equalizer {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct AllocatorUpdated {
-        old_address: ContractAddress,
-        new_address: ContractAddress
+    pub struct AllocatorUpdated {
+        pub old_address: ContractAddress,
+        pub new_address: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Equalize {
-        yin_amt: Wad
+    pub struct Equalize {
+        pub yin_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Normalize {
+    pub struct Normalize {
         #[key]
-        caller: ContractAddress,
-        yin_amt: Wad
+        pub caller: ContractAddress,
+        pub yin_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Allocate {
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>,
-        amount: Wad
+    pub struct Allocate {
+        pub recipients: Span<ContractAddress>,
+        pub percentages: Span<Ray>,
+        pub amount: Wad
     }
 
     //

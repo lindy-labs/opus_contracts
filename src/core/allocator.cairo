@@ -59,9 +59,9 @@ pub mod allocator {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct AllocationUpdated {
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>
+    pub struct AllocationUpdated {
+        pub recipients: Span<ContractAddress>,
+        pub percentages: Span<Ray>
     }
 
     //

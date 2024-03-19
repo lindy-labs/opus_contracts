@@ -2,8 +2,8 @@ mod test_absorber {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
     use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -775,7 +775,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         yin.transfer(provider, provider_amt.into());
 
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -801,7 +801,7 @@ mod test_absorber {
 
         // Provider provides a small amount
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let provider_provide_amt: Wad = 1_u128.into();
@@ -2063,7 +2063,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let insufficient_amt: Wad = (provided_amt.val + 1).into();

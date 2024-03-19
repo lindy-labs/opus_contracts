@@ -75,7 +75,7 @@ pub mod shrine {
     pub const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
 
     // Convenience constant for upward iteration of yangs
-    pub const START_YANG_IDX: u32 = 1;
+    const START_YANG_IDX: u32 = 1;
 
     // This factor is applied to the Shrine's threshold to determine the LTV at which 
     // recovery mode will be triggered.

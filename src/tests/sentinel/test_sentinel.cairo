@@ -14,7 +14,6 @@ mod test_sentinel {
     use opus::utils::math::{fixed_point_to_wad, pow};
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
-        PrintTrait
     };
     use starknet::ContractAddress;
     use wadray::{Ray, Wad, WadZero, WAD_ONE};

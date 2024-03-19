@@ -33,7 +33,7 @@ pub mod caretaker {
     //
 
     // A dummy trove ID for Caretaker, required in Gate to emit events
-    const DUMMY_TROVE_ID: u64 = 0;
+    pub const DUMMY_TROVE_ID: u64 = 0;
 
     //
     // Storage
@@ -74,23 +74,23 @@ pub mod caretaker {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Shut {}
+    pub struct Shut {}
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Release {
+    pub struct Release {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        assets: Span<AssetBalance>
+        pub trove_id: u64,
+        pub assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reclaim {
+    pub struct Reclaim {
         #[key]
-        user: ContractAddress,
-        yin_amt: Wad,
-        assets: Span<AssetBalance>
+        pub user: ContractAddress,
+        pub yin_amt: Wad,
+        pub assets: Span<AssetBalance>
     }
 
     //

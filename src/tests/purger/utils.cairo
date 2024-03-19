@@ -32,11 +32,11 @@ pub mod purger_utils {
     // Constants
     //
 
-    const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
-    const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
+    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
+    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
 
-    const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
-    const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
+    pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
 
     // Struct to group together all contract classes
@@ -353,8 +353,7 @@ pub mod purger_utils {
 
         let calldata = array![
             admin.into(),
-            shrine.contract_address,
-            into(),
+            shrine.contract_address.into(),
             sentinel.contract_address.into(),
             absorber.contract_address.into(),
             seer.contract_address.into()

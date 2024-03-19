@@ -2,8 +2,8 @@ pub mod absorber_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
     use core::debug::PrintTrait;
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use integer::BoundedU256;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -29,10 +29,10 @@ pub mod absorber_utils {
     // Constants
     //
 
-    const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
+    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
 
-    const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-    const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
+    pub const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
+    pub const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
 
     #[inline(always)]
     pub fn provider_asset_amts() -> Span<u128> {
@@ -323,7 +323,7 @@ pub mod absorber_utils {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);
         stop_prank(CheatTarget::One(absorber.contract_address));

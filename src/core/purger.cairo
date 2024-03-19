@@ -35,32 +35,32 @@ pub mod purger {
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
     // maximum amount of the trove's debt that can be liquidated.
-    const THRESHOLD_SAFETY_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
+    pub const THRESHOLD_SAFETY_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum liquidation penalty (ray): 0.125 * RAY_ONE
-    const MAX_PENALTY: u128 = 125000000000000000000000000;
+    pub const MAX_PENALTY: u128 = 125000000000000000000000000;
 
     // Minimum liquidation penalty (ray): 0.03 * RAY_ONE
-    const MIN_PENALTY: u128 = 30000000000000000000000000;
+    pub const MIN_PENALTY: u128 = 30000000000000000000000000;
 
     // Bounds on the penalty scalar for absorber liquidations
-    const MIN_PENALTY_SCALAR: u128 = 970000000000000000000000000; // 0.97 (ray) (1 - MIN_PENALTY)
-    const MAX_PENALTY_SCALAR: u128 = 1060000000000000000000000000; // 1.06 (ray)
+    pub const MIN_PENALTY_SCALAR: u128 = 970000000000000000000000000; // 0.97 (ray) (1 - MIN_PENALTY)
+    pub const MAX_PENALTY_SCALAR: u128 = 1060000000000000000000000000; // 1.06 (ray)
 
     // LTV past which the second precondition for `absorb` is satisfied even if
     // the trove's penalty is not at the absolute maximum given the LTV.
-    const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
+    pub const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum percentage of trove collateral that
     // is transferred to caller of `absorb` as compensation 3% = 0.03 (ray)
-    const COMPENSATION_PCT: u128 = 30000000000000000000000000;
+    pub const COMPENSATION_PCT: u128 = 30000000000000000000000000;
 
     // Cap on compensation value: 50 (Wad)
-    const COMPENSATION_CAP: u128 = 50000000000000000000;
+    pub const COMPENSATION_CAP: u128 = 50000000000000000000;
 
     // Minimum threshold for the penalty calculation, under which the
     // maximum penalty is automatically returned to avoid division by zero/overflow
-    const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
+    pub const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
 
     //
     // Storage
@@ -101,28 +101,28 @@ pub mod purger {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PenaltyScalarUpdated {
-        new_scalar: Ray
+    pub struct PenaltyScalarUpdated {
+        pub new_scalar: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Purged {
+    pub struct Purged {
         #[key]
-        trove_id: u64,
-        purge_amt: Wad,
-        percentage_freed: Ray,
+        pub trove_id: u64,
+        pub purge_amt: Wad,
+        pub percentage_freed: Ray,
         #[key]
-        funder: ContractAddress,
+        pub funder: ContractAddress,
         #[key]
-        recipient: ContractAddress,
-        freed_assets: Span<AssetBalance>
+        pub recipient: ContractAddress,
+        pub freed_assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Compensate {
+    pub struct Compensate {
         #[key]
-        recipient: ContractAddress,
-        compensation: Span<AssetBalance>
+        pub recipient: ContractAddress,
+        pub compensation: Span<AssetBalance>
     }
 
     //

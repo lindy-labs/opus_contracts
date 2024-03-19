@@ -1,14 +1,14 @@
 #[starknet::contract]
-mod flash_borrower {
+pub mod flash_borrower {
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
-    const VALID_USAGE: felt252 = 0;
-    const ATTEMPT_TO_STEAL: felt252 = 1;
-    const ATTEMPT_TO_REENTER: felt252 = 2;
+    pub const VALID_USAGE: felt252 = 0;
+    pub const ATTEMPT_TO_STEAL: felt252 = 1;
+    pub const ATTEMPT_TO_REENTER: felt252 = 2;
 
     #[storage]
     struct Storage {
@@ -22,12 +22,12 @@ mod flash_borrower {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct FlashLoancall_dataReceived {
-        initiator: ContractAddress,
-        token: ContractAddress,
-        amount: u256,
-        fee: u256,
-        call_data: Span<felt252>
+    pub struct FlashLoancall_dataReceived {
+        pub initiator: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256,
+        pub fee: u256,
+        pub call_data: Span<felt252>
     }
 
     #[constructor]

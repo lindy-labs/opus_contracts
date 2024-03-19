@@ -1,7 +1,7 @@
 pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use integer::BoundedU256;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -12,12 +12,12 @@ pub mod sentinel_utils {
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_caller_address};
     use wadray::{Wad, Ray};
 
-    const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
-    const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
+    pub const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
     pub fn admin() -> ContractAddress {
@@ -190,7 +190,7 @@ pub mod sentinel_utils {
     pub fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
         start_prank(CheatTarget::One(token), user);
-        token_erc20.approve(gate.contract_address, BoundedU256::max());
+        token_erc20.approve(gate.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(token));
     }
 

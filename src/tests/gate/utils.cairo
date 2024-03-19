@@ -1,6 +1,6 @@
 pub mod gate_utils {
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use integer::BoundedInt;
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait

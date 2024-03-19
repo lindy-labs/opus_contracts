@@ -11,19 +11,19 @@ pub mod abbot_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, contract_address_to_felt252,};
+    use starknet::ContractAddress;
     use wadray::Wad;
 
     //
     // Constants
     //
 
-    const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
-    const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
-    const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
+    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
+    pub const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    pub const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
 
-    const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
-    const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
+    pub const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
+    pub const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
 
     //
     // Constant helpers
@@ -60,10 +60,7 @@ pub mod abbot_utils {
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
-        let calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
-        ];
+        let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into(),];
 
         let abbot_class = match abbot_class {
             Option::Some(class) => class,

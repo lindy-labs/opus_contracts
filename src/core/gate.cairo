@@ -36,23 +36,23 @@ pub mod gate {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Enter {
+    pub struct Enter {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        asset_amt: u128,
-        yang_amt: Wad
+        pub trove_id: u64,
+        pub asset_amt: u128,
+        pub yang_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Exit {
+    pub struct Exit {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        asset_amt: u128,
-        yang_amt: Wad
+        pub trove_id: u64,
+        pub asset_amt: u128,
+        pub yang_amt: Wad
     }
 
     //

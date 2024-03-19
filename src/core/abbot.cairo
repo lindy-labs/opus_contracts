@@ -59,17 +59,17 @@ pub mod abbot {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveOpened {
+    pub struct TroveOpened {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64
+        pub trove_id: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveClosed {
+    pub struct TroveClosed {
         #[key]
-        trove_id: u64
+        pub trove_id: u64
     }
 
     //

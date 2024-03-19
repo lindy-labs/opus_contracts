@@ -24,11 +24,11 @@ pub mod controller {
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
+    pub const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
-    const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
-    const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
+    pub const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
+    pub const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
     //
     // Storage
@@ -64,17 +64,17 @@ pub mod controller {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ParameterUpdated {
+    pub struct ParameterUpdated {
         #[key]
-        name: felt252,
-        value: u8
+        pub name: felt252,
+        pub value: u8
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct GainUpdated {
+    pub struct GainUpdated {
         #[key]
-        name: felt252,
-        value: Ray
+        pub name: felt252,
+        pub value: Ray
     }
 
     #[constructor]
