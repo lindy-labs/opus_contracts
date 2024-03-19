@@ -27,7 +27,7 @@ mod switchboard {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
-        // interfaces to the Switchboard oracle contract
+        // interface to the Switchboard oracle contract
         oracle: ISwitchboardOracleDispatcher,
         // A mapping between a token's address and the Switchboard ID
         // used to identify the price feed
@@ -111,10 +111,10 @@ mod switchboard {
             let pair_id: felt252 = self.yang_pair_ids.read(yang);
             let (price, timestamp) = self.oracle.read().get_latest_result(pair_id);
 
-            // default Switchboard functions updates "expedited tickers" (ETH & BTC)
-            // when the price difference is greater than 0.5% and the others
-            // when the price difference is greater than 1.5%; if the price diff
-            // is below these thresholds, the price won't be posted on chain
+            // default Switchboard functions updates:
+            // - for "expedited tickers" (ETH & BTC), when the price difference is greater than 0.5%;
+            // - for other tokens, when the price difference is greater than 1.5%;
+            // if the price diff is below these thresholds, the price won't be posted on chain
 
             if force_update || self.is_valid_price_update(price, timestamp) {
                 return Result::Ok(price.into());

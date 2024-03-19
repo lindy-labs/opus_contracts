@@ -140,8 +140,6 @@ mod test_switchboard {
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
     }
 
-    // fetch price invalid timestamp err + forced ok
-
     #[test]
     fn test_switchboard_fetch_price_pass() {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
