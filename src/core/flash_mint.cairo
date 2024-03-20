@@ -16,12 +16,13 @@
 
 #[starknet::contract]
 pub mod flash_mint {
+    use core::num::traits::Zero;
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Wad, WadZero};
+    use wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
@@ -121,7 +122,7 @@ pub mod flash_mint {
             let total_yin: Wad = shrine.get_total_yin();
             let budget_adjustment: Wad = match shrine.get_budget().try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { WadZero::zero() }
+                Option::None => { Zero::zero() }
             };
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {

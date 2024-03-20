@@ -10,7 +10,7 @@ pub mod sentinel {
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use wadray::{Ray, Wad, WadZero};
+    use wadray::{Ray, Wad};
 
     //
     // Components

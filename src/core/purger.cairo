@@ -12,7 +12,7 @@ pub mod purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Ray, RayZero, RAY_ONE, Wad, WadZero};
+    use wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Components
@@ -287,7 +287,7 @@ pub mod purger {
             let purge_amt = if absorber.is_operational() {
                 min(max_purge_amt, shrine.get_yin(absorber.contract_address))
             } else {
-                WadZero::zero()
+                Zero::zero()
             };
 
             // Melt the trove's debt using the absorber's yin directly
@@ -308,7 +308,7 @@ pub mod purger {
                     ltv_after_compensation, value_after_compensation, trove_health.debt, trove_penalty, purge_amt
                 )
             } else {
-                RayZero::zero()
+                Zero::zero()
             };
 
             // Only update the absorber and emit the `Purged` event if Absorber has some yin
@@ -439,7 +439,7 @@ pub mod purger {
             // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case
             // to avoid underflow. Note that this also guarantees `ltv` is lesser than one.
             if ltv_after_compensation > RAY_ONE.into() {
-                return Option::Some(RayZero::zero());
+                return Option::Some(Zero::zero());
             }
 
             // If the threshold is below the given minimum, we automatically
@@ -552,7 +552,7 @@ pub mod purger {
 
         // Handling the case where `ltv > 1` to avoid underflow
         if ltv >= RAY_ONE.into() {
-            return Option::Some(RayZero::zero());
+            return Option::Some(Zero::zero());
         }
 
         // If the threshold is below the given minimum, we automatically

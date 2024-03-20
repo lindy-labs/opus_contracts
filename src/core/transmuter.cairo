@@ -2,13 +2,14 @@
 pub mod transmuter {
     use access_control::access_control_component;
     use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, SignedWad, Wad, WadZero, WAD_ONE};
+    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
 
     //
     // Components
@@ -429,7 +430,7 @@ pub mod transmuter {
             let settle_amt: Wad = min(total_transmuted, yin_amt);
             total_transmuted -= settle_amt;
 
-            self.total_transmuted.write(WadZero::zero());
+            self.total_transmuted.write(Zero::zero());
             self.is_live.write(false);
 
             shrine.eject(transmuter, settle_amt);
@@ -581,7 +582,7 @@ pub mod transmuter {
             let asset_balance: Wad = self.asset.read().balance_of(get_contract_address()).try_into().unwrap();
 
             if asset_balance.is_zero() {
-                (WadZero::zero(), 0)
+                (Zero::zero(), 0)
             } else {
                 (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
             }

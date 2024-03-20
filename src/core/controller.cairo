@@ -1,12 +1,13 @@
 #[starknet::contract]
 pub mod controller {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::controller_roles;
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, SignedRay, SignedRayZero, Wad, wad_to_signed_ray};
+    use wadray::{Ray, RAY_ONE, SignedRay, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -140,7 +141,7 @@ pub mod controller {
         fn get_i_term(self: @ContractState) -> SignedRay {
             let i_gain = self.i_gain.read();
             if i_gain.is_zero() {
-                SignedRayZero::zero()
+                Zero::zero()
             } else {
                 i_gain * self.get_i_term_internal()
             }
@@ -197,7 +198,7 @@ pub mod controller {
 
             // Reset the integral term if the i_gain is set to zero
             if i_gain.is_zero() {
-                self.i_term.write(SignedRayZero::zero());
+                self.i_term.write(Zero::zero());
             }
 
             self.i_gain.write(i_gain.into());

@@ -2,6 +2,7 @@
 pub mod equalizer {
     use access_control::access_control_component;
     use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::equalizer_roles;
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -9,7 +10,7 @@ pub mod equalizer {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Health;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, Signed, SignedWad, Wad, WadZero};
+    use wadray::{Ray, Signed, SignedWad, Wad};
 
     //
     // Components
@@ -132,7 +133,7 @@ pub mod equalizer {
             // `is_negative` is an inadequate check for performing an early return
             // here because it does not catch the case where budget is exactly zero.
             if !budget.is_positive() {
-                return WadZero::zero();
+                return Zero::zero();
             }
 
             let minted_surplus: Wad = budget.try_into().unwrap();
@@ -181,7 +182,7 @@ pub mod equalizer {
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
 
-            let mut amount_allocated: Wad = WadZero::zero();
+            let mut amount_allocated: Wad = Zero::zero();
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
             loop {
@@ -215,7 +216,7 @@ pub mod equalizer {
 
                 wipe_amt
             } else {
-                WadZero::zero()
+                Zero::zero()
             }
         }
     }

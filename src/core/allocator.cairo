@@ -1,10 +1,11 @@
 #[starknet::contract]
 pub mod allocator {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
     use starknet::ContractAddress;
-    use wadray::{Ray, RayZero, RAY_ONE};
+    use wadray::{Ray, RAY_ONE};
 
     //
     // Components
@@ -142,7 +143,7 @@ pub mod allocator {
             // check for duplicates
             let mut recipients_dict: Felt252Dict<u32> = Default::default();
 
-            let mut total_percentage: Ray = RayZero::zero();
+            let mut total_percentage: Ray = Zero::zero();
             let mut idx: u32 = LOOP_START;
 
             let mut recipients_copy = recipients;

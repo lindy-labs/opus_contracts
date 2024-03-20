@@ -1,5 +1,6 @@
 #[starknet::contract]
 pub mod abbot {
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -7,7 +8,7 @@ pub mod abbot {
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{BoundedWad, Wad, WadZero};
+    use wadray::Wad;
 
     // 
     // Components 
@@ -170,7 +171,7 @@ pub mod abbot {
 
             let shrine = self.shrine.read();
             // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-            shrine.melt(user, trove_id, BoundedWad::max());
+            shrine.melt(user, trove_id, BoundedInt::max());
 
             let mut yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
             // withdraw each and every Yang belonging to the trove from the system
