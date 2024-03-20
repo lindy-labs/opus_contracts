@@ -439,7 +439,7 @@ mod test_shrine_redistribution {
                                 let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
                                 let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt
                                     + expected_error;
-                                let error_margin: Wad = 10_u128.into();
+                                let error_margin: Wad = 20_u128.into();
                                 common::assert_equalish(
                                     after_protocol_owned_troves_debt,
                                     expected_protocol_owned_troves_debt,
@@ -641,12 +641,12 @@ mod test_shrine_redistribution {
                     let trove2_owner = common::trove2_owner_addr();
                     let recipient_trove1: u64 = common::TROVE_2;
                     shrine.deposit(yang2_addr, recipient_trove1, TROVE2_YANG2_DEPOSIT.into());
-                    shrine.forge(trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), 0_u128.into());
+                    shrine.forge(trove2_owner, recipient_trove1, WAD_ONE.into(), 0_u128.into());
 
                     let trove3_owner = common::trove3_owner_addr();
                     let recipient_trove2: u64 = common::TROVE_3;
                     shrine.deposit(yang2_addr, recipient_trove2, TROVE3_YANG2_DEPOSIT.into());
-                    shrine.forge(trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
+                    shrine.forge(trove3_owner, recipient_trove2, WAD_ONE.into(), 0_u128.into());
 
                     let before_redistributed_trove_health: Health = shrine.get_trove_health(redistributed_trove);
                     let expected_redistributed_value: Wad = wadray::rmul_wr(

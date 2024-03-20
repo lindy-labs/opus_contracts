@@ -2399,7 +2399,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Will trigger recovery mode',))]
     fn test_withdraw_trigger_recovery_mode_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2427,7 +2427,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Will trigger recovery mode',))]
     fn test_forge_trigger_recovery_mode_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2456,18 +2456,18 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_withdraw_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
-        // Trove 1 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine_utils::trove1_forge(shrine, (6000 * WAD_ONE).into());
+        shrine_utils::trove1_forge(shrine, (5000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
@@ -2485,7 +2485,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_forge_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2494,9 +2494,9 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
@@ -2514,7 +2514,7 @@ mod test_shrine {
     // user can deposit and melt, and threshold has not been scaled.
     #[test]
     fn test_deposit_and_melt_within_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2523,9 +2523,9 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
@@ -2550,7 +2550,7 @@ mod test_shrine {
     // target recovery mode LTV.
     #[test]
     fn test_actions_within_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2592,7 +2592,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_forge_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2631,7 +2631,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_withdraw_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2669,7 +2669,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_withdraw_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2678,9 +2678,9 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2702,7 +2702,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
     fn test_forge_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2711,9 +2711,9 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2722,7 +2722,6 @@ mod test_shrine {
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
 
         assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
-
         shrine_utils::trove1_forge(shrine, WAD_ONE.into());
     }
 
@@ -2730,7 +2729,7 @@ mod test_shrine {
     // and the trove is already at or above its target recovery mode LTV, user can deposit and melt.
     #[test]
     fn test_deposit_and_melt_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2739,9 +2738,9 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2765,7 +2764,7 @@ mod test_shrine {
     // target recovery mode LTV.
     #[test]
     fn test_actions_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2807,7 +2806,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_forge_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2847,7 +2846,7 @@ mod test_shrine {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
     fn test_withdraw_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
-        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
         // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2917,7 +2916,7 @@ mod test_shrine {
         loop {
             match trove_ltv_cases.pop_front() {
                 Option::Some(trove_ltv) => {
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::Some(shrine_class));
 
                     shrine_utils::trove1_deposit(shrine, trove_eth_deposit);
                     shrine_utils::trove1_forge(shrine, trove_debt);

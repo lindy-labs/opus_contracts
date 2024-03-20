@@ -280,11 +280,16 @@ pub mod shrine_utils {
     }
 
     #[inline(always)]
-    pub fn shrine_setup_with_feed(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+    pub fn shrine_deploy_and_setup(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
         let shrine_addr: ContractAddress = shrine_deploy(shrine_class);
         shrine_setup(shrine_addr);
 
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        IShrineDispatcher { contract_address: shrine_addr }
+    }
+
+    #[inline(always)]
+    pub fn shrine_setup_with_feed(shrine_class: Option<ContractClass>) -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = shrine_deploy_and_setup(shrine_class);
         advance_prices_and_set_multiplier(shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices());
         shrine
     }
