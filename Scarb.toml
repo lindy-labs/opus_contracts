@@ -27,3 +27,6 @@ test = "snforge test"
 [tool.fmt]
 sort-module-level-items = true
 max-line-length = 120
+
+[tool.snforge]
+max_n_steps = 12000000

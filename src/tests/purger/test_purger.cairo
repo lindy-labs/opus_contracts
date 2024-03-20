@@ -732,7 +732,7 @@ mod test_purger {
     }
 
     #[test]
-    fn liquidate_parametrized_4() {
+    fn test_liquidate_parametrized_4() {
         let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
         test_liquidate(array![*thresholds[6], *thresholds[7]].span(), 1);
     }
