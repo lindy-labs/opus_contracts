@@ -8,7 +8,7 @@ mod test_shrine_compound {
     use opus::utils::exp::exp;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZero, RAY_SCALE, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, RAY_SCALE, SignedWad, Wad, WAD_ONE};
 
     //
     // Tests - Trove estimate and charge
@@ -137,7 +137,7 @@ mod test_shrine_compound {
         let (skipped_interval_price, _) = shrine.get_yang_price(yang1_addr, skipped_interval);
         let (skipped_interval_multiplier, _) = shrine.get_multiplier(skipped_interval);
         assert(skipped_interval_price == Zero::zero(), 'skipped price is not zero');
-        assert(skipped_interval_multiplier == RayZero::zero(), 'skipped multiplier is not zero');
+        assert(skipped_interval_multiplier == Zero::zero(), 'skipped multiplier is not zero');
 
         // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier`
         // updates `start_interval`.

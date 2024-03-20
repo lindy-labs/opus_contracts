@@ -10,7 +10,7 @@ mod test_shrine_redistribution {
         EventAssertions
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WAD_ONE};
 
     //
     // Setup
@@ -394,7 +394,7 @@ mod test_shrine_redistribution {
         let shrine_class = shrine_utils::declare_shrine();
 
         let mut percentages: Array<Ray> = array![
-            (15 * RAY_PERCENT).into(), (99 * RAY_PERCENT).into(), (100 * RAY_PERCENT).into(), RayZero::zero(),
+            (15 * RAY_PERCENT).into(), (99 * RAY_PERCENT).into(), (100 * RAY_PERCENT).into(), Zero::zero(),
         ];
 
         let mut pct_value_to_redistribute_arr = percentages.span();

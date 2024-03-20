@@ -7,7 +7,7 @@ mod test_controller {
     use opus::tests::controller::utils::controller_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use wadray::{Ray, SignedRay, SignedRayZero, Wad};
+    use wadray::{Ray, SignedRay, Wad};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad
@@ -195,8 +195,8 @@ mod test_controller {
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
 
-        assert(controller.get_p_term() == SignedRayZero::zero(), 'Wrong p term #1');
-        assert(controller.get_i_term() == SignedRayZero::zero(), 'Wrong i term #1');
+        assert(controller.get_p_term() == Zero::zero(), 'Wrong p term #1');
+        assert(controller.get_i_term() == Zero::zero(), 'Wrong i term #1');
 
         controller_utils::fast_forward_1_hour();
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
@@ -204,7 +204,7 @@ mod test_controller {
 
         assert_equalish(controller.get_p_term(), 18715000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #2');
 
-        assert_equalish(controller.get_i_term(), SignedRayZero::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
+        assert_equalish(controller.get_i_term(), Zero::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
 
         controller_utils::fast_forward_1_hour();
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE2.into());

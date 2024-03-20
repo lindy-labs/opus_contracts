@@ -16,7 +16,7 @@ mod test_transmuter {
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Signed, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, Signed, SignedWad, Wad, WAD_ONE};
 
     //
     // Tests - Deployment 
@@ -244,7 +244,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::TransmuteFeeUpdated(
-                    transmuter_contract::TransmuteFeeUpdated { old_fee: RayZero::zero(), new_fee }
+                    transmuter_contract::TransmuteFeeUpdated { old_fee: Zero::zero(), new_fee }
                 )
             )
         ];
@@ -259,7 +259,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::ReverseFeeUpdated(
-                    transmuter_contract::ReverseFeeUpdated { old_fee: RayZero::zero(), new_fee }
+                    transmuter_contract::ReverseFeeUpdated { old_fee: Zero::zero(), new_fee }
                 )
             )
         ];
@@ -376,7 +376,7 @@ mod test_transmuter {
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let transmute_fees: Span<Ray> = array![
-            RayZero::zero(), // 0%
+            Zero::zero(), // 0%
             1_u128.into(), // 1E-27 %
             1000000000000000000000000_u128.into(), // 0.1%
             2345000000000000000000000_u128.into(), // 0.2345
@@ -570,7 +570,7 @@ mod test_transmuter {
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let reverse_fees: Span<Ray> = array![
-            RayZero::zero(), // 0%
+            Zero::zero(), // 0%
             1_u128.into(), // 1E-27 %
             1000000000000000000000000_u128.into(), // 0.1%
             2345000000000000000000000_u128.into(), // 0.2345

@@ -25,7 +25,7 @@ pub mod purger_utils {
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -98,7 +98,7 @@ pub mod purger_utils {
 
     pub fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         array![
-            RayZero::zero(),
+            Zero::zero(),
             RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
             (80 * RAY_PERCENT).into(),
@@ -304,9 +304,9 @@ pub mod purger_utils {
             // Fourth threshold of 96% (Ray)
             10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
             // Fifth threshold of 97% (Ray)
-            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
+            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
+            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
         ]
             .span()
     }
@@ -561,8 +561,8 @@ pub mod purger_utils {
             value_after_compensation -= compensation_value.unwrap()
         };
 
-        let mut expected_freed_pct_of_value_after_compensation = RayZero::zero();
-        let mut expected_freed_pct_of_value_before_compensation = RayZero::zero();
+        let mut expected_freed_pct_of_value_after_compensation = Zero::zero();
+        let mut expected_freed_pct_of_value_before_compensation = Zero::zero();
 
         if trove_health.ltv <= RAY_ONE.into() {
             expected_freed_pct_of_value_before_compensation =

@@ -16,10 +16,7 @@ mod test_shrine {
         ContractClass, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{
-        BoundedRay, Ray, RayZero, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE,
-        WAD_SCALE
-    };
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE};
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -148,7 +145,7 @@ mod test_shrine {
         // recovery mode threshold will be zero if threshold is zero
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
-        assert(shrine_health.ltv == BoundedRay::max(), 'wrong shrine LTV');
+        assert(shrine_health.ltv == BoundedInt::max(), 'wrong shrine LTV');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -1839,7 +1836,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.set_multiplier(RayZero::zero());
+        shrine.set_multiplier(Zero::zero());
     }
 
     #[test]
@@ -2301,7 +2298,7 @@ mod test_shrine {
 
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
-        assert(threshold == RayZero::zero(), 'threshold 4');
+        assert(threshold == Zero::zero(), 'threshold 4');
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.value.is_zero(), 'trove has value');

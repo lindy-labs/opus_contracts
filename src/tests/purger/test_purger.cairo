@@ -28,7 +28,7 @@ mod test_purger {
         event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     //
     // Tests - Setup
@@ -2841,9 +2841,9 @@ mod test_purger {
             // Fourth threshold of 96% (Ray)
             10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
             // Fifth threshold of 97% (Ray)
-            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
+            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            RayZero::zero(), // Dummy value since all target LTVs do not have a penalty
+            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
         ]
             .span();
 
@@ -3452,7 +3452,7 @@ mod test_purger {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         // Parameters
-        let mut thresholds_param: Span<Ray> = array![RayZero::zero(), RAY_PERCENT.into(),].span();
+        let mut thresholds_param: Span<Ray> = array![Zero::zero(), RAY_PERCENT.into(),].span();
 
         let absorb_type_param: Span<AbsorbType> = array![AbsorbType::Full, AbsorbType::Partial, AbsorbType::None]
             .span();

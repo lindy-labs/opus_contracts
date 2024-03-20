@@ -12,7 +12,7 @@ pub mod shrine_utils {
     use opus::utils::exp::exp;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZero, RAY_ONE, Wad, WAD_ONE};
+    use wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
     //
     // Constants
@@ -431,7 +431,7 @@ pub mod shrine_utils {
         mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>
     ) -> (Ray, Wad) {
         let mut cumulative_value = Zero::zero();
-        let mut cumulative_threshold = RayZero::zero();
+        let mut cumulative_threshold = Zero::zero();
 
         loop {
             match yang_prices.pop_front() {
@@ -520,7 +520,7 @@ pub mod shrine_utils {
                 break debt;
             }
 
-            let mut weighted_rate_sum: Ray = RayZero::zero();
+            let mut weighted_rate_sum: Ray = Zero::zero();
             let mut total_avg_yang_value: Wad = Zero::zero();
 
             let mut j: usize = 0;
