@@ -683,8 +683,9 @@ pub mod absorber {
             let absorber: ContractAddress = get_contract_address();
             let yin_balance: u256 = self.yin_erc20().balance_of(absorber);
 
-            let numerator: u256 = yin_amt.into() * total_shares.into();
-            let (computed_shares, r) = DivRem::div_rem(numerator, yin_balance.try_into().expect('Division by zero'));
+            let (computed_shares, r) = DivRem::div_rem(
+                yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
+            );
             let computed_shares: u128 = computed_shares.try_into().unwrap();
             if round_up && r.is_non_zero() {
                 return ((computed_shares + 1).into(), (computed_shares + 1).into());

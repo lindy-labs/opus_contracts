@@ -94,7 +94,7 @@ pub mod abbot {
         //
 
         fn get_trove_owner(self: @ContractState, trove_id: u64) -> Option<ContractAddress> {
-            let owner: ContractAddress = self.trove_owner.read(trove_id);
+            let owner = self.trove_owner.read(trove_id);
             if owner.is_zero() {
                 Option::None
             } else {
