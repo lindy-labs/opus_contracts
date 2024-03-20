@@ -1,4 +1,3 @@
-use core::debug::PrintTrait;
 use core::num::traits::Zero;
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -379,37 +378,4 @@ pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     };
 
     combined_asset_amts.span()
-}
-
-//
-// Debug helpers
-//
-
-pub impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
-    fn print(self: Span<T>) {
-        let mut copy = self;
-
-        '['.print();
-        loop {
-            match copy.pop_front() {
-                Option::Some(item) => {
-                    (*item).print();
-                    if copy.len() > 0 {
-                        ', '.print();
-                    }
-                },
-                Option::None => { break; }
-            };
-        };
-        ']'.print();
-    }
-}
-
-pub impl ArrayPrintImpl<
-    T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
-> of PrintTrait<Array<T>> {
-    fn print(self: Array<T>) {
-        let copy: Span<T> = self.span();
-        copy.print();
-    }
 }

@@ -1,5 +1,4 @@
 mod test_math {
-    use core::debug::PrintTrait;
     use core::integer::BoundedInt;
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{pow, sqrt};

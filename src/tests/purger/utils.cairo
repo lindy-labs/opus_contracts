@@ -1,7 +1,6 @@
 pub mod purger_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use core::option::OptionTrait;
     use opus::core::absorber::absorber as absorber_contract;

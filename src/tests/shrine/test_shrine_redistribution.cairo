@@ -1,5 +1,4 @@
 mod test_shrine_redistribution {
-    use core::debug::PrintTrait;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;

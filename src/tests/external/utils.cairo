@@ -1,6 +1,5 @@
 pub mod pragma_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use opus::core::roles::{pragma_roles, shrine_roles};
     use opus::external::pragma::pragma as pragma_contract;

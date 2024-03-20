@@ -1,5 +1,4 @@
 mod test_controller {
-    use core::debug::PrintTrait;
     use opus::core::controller::controller as controller_contract;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};

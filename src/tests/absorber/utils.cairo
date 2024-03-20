@@ -1,7 +1,6 @@
 pub mod absorber_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::debug::PrintTrait;
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::core::absorber::absorber as absorber_contract;

@@ -1,6 +1,5 @@
 pub mod caretaker_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::IAbbotDispatcher;

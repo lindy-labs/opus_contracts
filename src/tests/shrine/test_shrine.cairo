@@ -1,6 +1,5 @@
 mod test_shrine {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;

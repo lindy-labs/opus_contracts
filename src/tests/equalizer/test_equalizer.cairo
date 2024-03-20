@@ -1,7 +1,6 @@
 mod test_equalizer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::debug::PrintTrait;
     use core::integer::BoundedInt;
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;

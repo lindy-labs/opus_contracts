@@ -1,7 +1,6 @@
 mod test_transmuter {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::debug::PrintTrait;
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;

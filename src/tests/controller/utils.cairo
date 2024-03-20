@@ -1,6 +1,5 @@
 pub mod controller_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};

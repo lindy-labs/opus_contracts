@@ -1,6 +1,5 @@
 mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use opus::core::roles::pragma_roles;
     use opus::core::shrine::shrine;

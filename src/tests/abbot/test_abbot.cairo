@@ -1,5 +1,4 @@
 mod test_abbot {
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::sentinel::sentinel as sentinel_contract;

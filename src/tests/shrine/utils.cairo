@@ -1,6 +1,5 @@
 pub mod shrine_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::debug::PrintTrait;
     use core::hash::LegacyHash;
     use core::traits::DivRem;
     use opus::core::roles::shrine_roles;
@@ -358,10 +357,10 @@ pub mod shrine_utils {
     // Test helpers
     //
 
-    pub fn consume_first_bit(ref hash: u128) -> bool {
-        let (reduced_hash, remainder) = DivRem::div_rem(hash, 2_u128.try_into().unwrap());
+    pub fn consume_first_bit(ref hash: u256) -> bool {
+        let (reduced_hash, remainder) = DivRem::div_rem(hash, 2_u256.try_into().unwrap());
         hash = reduced_hash;
-        remainder != 0_u128
+        remainder != 0_u256
     }
 
     // Helper function to generate a price feed for a yang given a starting price
@@ -371,9 +370,8 @@ pub mod shrine_utils {
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
 
-        let hash_val: felt252 = price.val.into();
-        let price_hash: felt252 = LegacyHash::hash(price.val.into(), hash_val);
-        let mut price_hash: u128 = price_hash.try_into().unwrap();
+        let price_hash: felt252 = LegacyHash::hash(price.val.into(), price.val);
+        let mut price_hash: u256 = price_hash.into();
 
         loop {
             if idx == FEED_LEN {

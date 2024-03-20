@@ -3,7 +3,6 @@
 mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::array::SpanTrait;
-    use core::debug::PrintTrait;
     use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
