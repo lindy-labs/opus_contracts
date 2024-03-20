@@ -25,7 +25,7 @@ pub mod purger_utils {
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WadZero, WAD_DECIMALS, WAD_ONE};
+    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -665,7 +665,7 @@ pub mod purger_utils {
     pub fn get_sum_of_value(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
     ) -> Wad {
-        let mut sum: Wad = WadZero::zero();
+        let mut sum: Wad = Zero::zero();
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {

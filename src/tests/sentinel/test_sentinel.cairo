@@ -16,7 +16,7 @@ mod test_sentinel {
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, Wad, WadZero, WAD_ONE};
+    use wadray::{Ray, Wad, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -171,7 +171,7 @@ mod test_sentinel {
                 sentinel_utils::dummy_yang_addr(),
                 sentinel_utils::ETH_ASSET_MAX,
                 shrine_utils::YANG1_THRESHOLD.into(),
-                WadZero::zero(),
+                Zero::zero(),
                 shrine_utils::YANG1_BASE_RATE.into(),
                 sentinel_utils::dummy_yang_gate_addr()
             );

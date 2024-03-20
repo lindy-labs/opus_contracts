@@ -10,7 +10,7 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
-use wadray::{Ray, Wad, WadZero};
+use wadray::{Ray, Wad};
 
 //
 // Types

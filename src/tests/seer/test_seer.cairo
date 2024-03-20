@@ -26,7 +26,7 @@ mod test_seer {
         ContractClassTrait
     };
     use starknet::{get_block_timestamp, ContractAddress};
-    use wadray::{Wad, WadZero, WAD_SCALE};
+    use wadray::{Wad, WAD_SCALE};
 
     #[test]
     fn test_seer_setup() {

@@ -16,7 +16,7 @@ mod test_transmuter {
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Signed, SignedWad, SignedWadZero, Wad, WadZero, WAD_ONE};
+    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Signed, SignedWad, Wad, WAD_ONE};
 
     //
     // Tests - Deployment 
@@ -59,7 +59,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::CeilingUpdated(
-                    transmuter_contract::CeilingUpdated { old_ceiling: WadZero::zero(), new_ceiling: ceiling, }
+                    transmuter_contract::CeilingUpdated { old_ceiling: Zero::zero(), new_ceiling: ceiling, }
                 ),
             ),
             (
@@ -617,7 +617,7 @@ mod test_transmuter {
                         .span();
 
                     let mut cumulative_asset_fees: u128 = 0;
-                    let mut cumulative_yin_fees = WadZero::zero();
+                    let mut cumulative_yin_fees = Zero::zero();
                     let mut reverse_fees_copy = reverse_fees;
                     loop {
                         match reverse_fees_copy.pop_front() {
@@ -883,7 +883,7 @@ mod test_transmuter {
                             Option::Some(transmute_asset_amt) => {
                                 // parametrize amount of yin in Transmuter at time of settlement
                                 let mut transmuter_yin_amts: Array<Wad> = array![
-                                    WadZero::zero(),
+                                    Zero::zero(),
                                     1_u128.into(),
                                     fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
                                     fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
@@ -941,8 +941,8 @@ mod test_transmuter {
                                             );
                                             transmuter.settle();
 
-                                            let mut expected_budget_adjustment = SignedWadZero::zero();
-                                            let mut leftover_yin_amt = WadZero::zero();
+                                            let mut expected_budget_adjustment = Zero::zero();
+                                            let mut leftover_yin_amt = Zero::zero();
 
                                             if *transmuter_yin_amt < transmuted_yin_amt {
                                                 expected_budget_adjustment =
@@ -979,7 +979,7 @@ mod test_transmuter {
                                             let deficit: Wad = if expected_budget_adjustment.is_negative() {
                                                 expected_budget_adjustment.val.into()
                                             } else {
-                                                WadZero::zero()
+                                                Zero::zero()
                                             };
                                             let expected_events = array![
                                                 (

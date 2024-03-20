@@ -1,4 +1,5 @@
 mod test_flash_mint {
+    use core::num::traits::Zero;
     use opus::core::flash_mint::flash_mint as flash_mint_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
@@ -12,7 +13,7 @@ mod test_flash_mint {
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
-    use wadray::{SignedWad, Wad, WadZero, WAD_ONE};
+    use wadray::{SignedWad, Wad, WAD_ONE};
 
     //
     // Tests
@@ -51,7 +52,7 @@ mod test_flash_mint {
         shrine.advance(eth, eth_price);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        shrine_utils::trove1_deposit(shrine, WadZero::zero());
+        shrine_utils::trove1_deposit(shrine, Zero::zero());
 
         let surplus: Wad = equalizer.equalize();
         assert(surplus.is_non_zero(), 'no surplus');

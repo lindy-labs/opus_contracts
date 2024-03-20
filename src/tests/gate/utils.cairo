@@ -10,7 +10,7 @@ pub mod gate_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::ContractAddress;
-    use wadray::{Ray, Wad, WadZero};
+    use wadray::{Ray, Wad};
 
     //
     // Address constants
@@ -61,7 +61,7 @@ pub mod gate_utils {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                WadZero::zero() // initial amount
+                Zero::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -76,7 +76,7 @@ pub mod gate_utils {
                 shrine_utils::YANG2_THRESHOLD.into(),
                 shrine_utils::YANG2_START_PRICE.into(),
                 shrine_utils::YANG2_BASE_RATE.into(),
-                WadZero::zero() // initial amount
+                Zero::zero() // initial amount
             );
         shrine.set_debt_ceiling(shrine_utils::DEBT_CEILING.into());
         stop_prank(CheatTarget::One(shrine.contract_address));

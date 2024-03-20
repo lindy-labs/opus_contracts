@@ -22,7 +22,7 @@ pub mod absorber_utils {
     use opus::types::{AssetBalance, DistributionInfo, Reward};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
-    use wadray::{Ray, Wad, WadZero, WAD_ONE, WAD_SCALE};
+    use wadray::{Ray, Wad, WAD_ONE, WAD_SCALE};
 
     //
     // Constants

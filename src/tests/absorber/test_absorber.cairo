@@ -21,7 +21,7 @@ mod test_absorber {
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZero, WAD_ONE, WAD_SCALE};
+    use wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE, WAD_SCALE};
     //
     // Tests - Setup
     //
@@ -190,7 +190,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         // Loss of precision
         let error_margin: Wad = 10_u128.into();
@@ -457,7 +457,7 @@ mod test_absorber {
                         absorber_contract::FIRST_EPOCH
                     };
                     let expected_total_shares: Wad = if is_fully_absorbed {
-                        WadZero::zero()
+                        Zero::zero()
                     } else {
                         first_provided_amt // total shares is equal to amount provided
                     };
@@ -529,7 +529,7 @@ mod test_absorber {
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-                        absorber.remove(BoundedWad::max());
+                        absorber.remove(BoundedInt::max());
                         remove_as_second_action = true;
                     } else {
                         absorber.reap();
@@ -1192,7 +1192,7 @@ mod test_absorber {
         let request_timestamp = get_block_timestamp();
         absorber.request();
         start_warp(CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1437,7 +1437,7 @@ mod test_absorber {
 
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1885,7 +1885,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         // Loss of precision
         let error_margin: Wad = 1000_u128.into();
@@ -1919,7 +1919,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
     }
 
     #[test]
@@ -1932,7 +1932,7 @@ mod test_absorber {
         );
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
     }
 
     #[test]

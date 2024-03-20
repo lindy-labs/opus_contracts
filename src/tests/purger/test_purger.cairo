@@ -2,6 +2,7 @@ mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::{max, min};
     use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use core::option::OptionTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
@@ -27,7 +28,7 @@ mod test_purger {
         event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WadZero, WAD_ONE};
+    use wadray::{Ray, RayZero, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     //
     // Tests - Setup
@@ -369,7 +370,7 @@ mod test_purger {
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![searcher].span());
 
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, BoundedWad::max(), searcher);
+        let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, BoundedInt::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let shrine_health: Health = shrine.get_shrine_health();
@@ -631,7 +632,7 @@ mod test_purger {
                                             let searcher: ContractAddress = purger_utils::searcher();
                                             start_prank(CheatTarget::One(purger.contract_address), searcher);
                                             let freed_assets: Span<AssetBalance> = purger
-                                                .liquidate(target_trove, BoundedWad::max(), searcher);
+                                                .liquidate(target_trove, BoundedInt::max(), searcher);
 
                                             // Check that LTV is close to safety margin
                                             let target_trove_after_health: Health = shrine
@@ -751,7 +752,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
+        purger.liquidate(healthy_trove, BoundedInt::max(), searcher);
     }
 
     #[test]
@@ -780,7 +781,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
+        purger.liquidate(healthy_trove, BoundedInt::max(), searcher);
     }
 
     #[test]
@@ -807,7 +808,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(target_trove, BoundedWad::max(), searcher);
+        purger.liquidate(target_trove, BoundedInt::max(), searcher);
     }
 
     //
@@ -1690,7 +1691,7 @@ mod test_purger {
                                                     start_prank(
                                                         CheatTarget::One(abbot.contract_address), recipient_trove_owner
                                                     );
-                                                    abbot.forge(recipient_trove, max_close_amt, WadZero::zero());
+                                                    abbot.forge(recipient_trove, max_close_amt, Zero::zero());
 
                                                     let mut target_trove_updated_start_health: Health = shrine
                                                         .get_trove_health(target_trove);

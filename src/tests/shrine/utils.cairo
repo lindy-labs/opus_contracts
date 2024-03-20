@@ -1,6 +1,7 @@
 pub mod shrine_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::hash::LegacyHash;
+    use core::num::traits::Zero;
     use core::traits::DivRem;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -11,7 +12,7 @@ pub mod shrine_utils {
     use opus::utils::exp::exp;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZero, RAY_ONE, Wad, WadZero, WAD_ONE};
+    use wadray::{Ray, RayZero, RAY_ONE, Wad, WAD_ONE};
 
     //
     // Constants
@@ -313,7 +314,7 @@ pub mod shrine_utils {
     #[inline(always)]
     pub fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         start_prank(CheatTarget::One(shrine.contract_address), admin());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, WadZero::zero());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, Zero::zero());
         // Reset contract address
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
@@ -429,7 +430,7 @@ pub mod shrine_utils {
     pub fn calculate_trove_threshold_and_value(
         mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>
     ) -> (Ray, Wad) {
-        let mut cumulative_value = WadZero::zero();
+        let mut cumulative_value = Zero::zero();
         let mut cumulative_threshold = RayZero::zero();
 
         loop {
@@ -520,7 +521,7 @@ pub mod shrine_utils {
             }
 
             let mut weighted_rate_sum: Ray = RayZero::zero();
-            let mut total_avg_yang_value: Wad = WadZero::zero();
+            let mut total_avg_yang_value: Wad = Zero::zero();
 
             let mut j: usize = 0;
             loop {
@@ -703,7 +704,7 @@ pub mod shrine_utils {
                     let initial_amt: Wad = shrine.get_protocol_owned_yang_amt(*yang);
 
                     let mut trove_id: u64 = 1;
-                    let mut troves_cumulative_amt: Wad = WadZero::zero();
+                    let mut troves_cumulative_amt: Wad = Zero::zero();
                     loop {
                         if trove_id == troves_loop_end {
                             break;
@@ -733,7 +734,7 @@ pub mod shrine_utils {
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
-        let mut cumulative_troves_debt: Wad = WadZero::zero();
+        let mut cumulative_troves_debt: Wad = Zero::zero();
         let mut trove_id: u64 = 1;
 
         start_prank(CheatTarget::One(shrine.contract_address), admin());
@@ -743,7 +744,7 @@ pub mod shrine_utils {
             }
 
             // Accrue interest on trove
-            shrine.melt(admin(), trove_id, WadZero::zero());
+            shrine.melt(admin(), trove_id, Zero::zero());
 
             let trove_health: Health = shrine.get_trove_health(trove_id);
             cumulative_troves_debt += trove_health.debt;
