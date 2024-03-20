@@ -30,8 +30,8 @@ mod test_seer {
 
     #[test]
     fn test_seer_setup() {
+        let mut spy = spy_events(SpyOn::All);
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
