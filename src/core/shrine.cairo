@@ -80,8 +80,9 @@ mod shrine {
     // Minimum (0.5) and maximum (1.0) factors to be applied to:
     // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
     // - a trove's threshold to determine its target recovery mode LTV.
-    // Note that if the factor is set to 1.0, it would be akin to disabling recovery mode because
-    // thresholds would only start to be scaled when the Shrine has more debt than value.
+    // Note that if the factor is set to 1.0, it would be substantively the same as disabling recovery 
+    // mode because thresholds would only start to be scaled when the Shrine has more debt than value 
+    // i.e. it would be too late to "recover".
     const MIN_RECOVERY_MODE_TARGET_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
     const MAX_RECOVERY_MODE_TARGET_FACTOR: u128 = 10000000000000000000000000000; // 1.0 (ray)
 
