@@ -16,7 +16,7 @@ sierra-replace-ids = true
 
 [dependencies]
 starknet = ">= 2.6.0"
-snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.20.0" }
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.19.0" }
 wadray = { git = "https://github.com/lindy-labs/wadray.git", tag = "v0.3.0" }
 access_control = { git = "https://github.com/lindy-labs/access_control.git", tag = "v0.3.0" }
 
