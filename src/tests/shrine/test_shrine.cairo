@@ -2528,7 +2528,7 @@ mod test_shrine {
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), 0_u128.into()
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
             );
 
         shrine_utils::recovery_mode_test_setup(
@@ -2556,7 +2556,7 @@ mod test_shrine {
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), 0_u128.into()
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
             );
 
         shrine_utils::recovery_mode_test_setup(
@@ -2584,7 +2584,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
@@ -2613,7 +2613,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
@@ -2642,7 +2642,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
@@ -2678,7 +2678,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
@@ -2720,7 +2720,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
@@ -2759,7 +2759,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
@@ -2797,7 +2797,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2830,7 +2830,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2857,7 +2857,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2892,7 +2892,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2934,7 +2934,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
@@ -2974,7 +2974,7 @@ mod test_shrine {
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer

@@ -601,7 +601,7 @@ pub mod shrine_utils {
         // Deposit 100 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
         // Mint 10,000 yin (5% LTV at yang1's start price)
-        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), Zero::zero());
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 

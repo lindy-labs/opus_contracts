@@ -345,7 +345,7 @@ mod test_shrine_compound {
         let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(expected_debt == estimated_trove_health.debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -432,7 +432,7 @@ mod test_shrine_compound {
         assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -558,7 +558,7 @@ mod test_shrine_compound {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -814,7 +814,7 @@ mod test_shrine_compound {
         let yang2_deposit_amt: Wad = shrine_utils::TROVE1_YANG2_DEPOSIT.into();
         shrine.deposit(yang2_addr, trove_id, yang2_deposit_amt);
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, trove_id, start_debt, 0_u128.into());
+        shrine.forge(trove1_owner, trove_id, start_debt, Zero::zero());
 
         let before_budget: SignedWad = shrine.get_budget();
 

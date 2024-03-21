@@ -771,7 +771,7 @@ mod test_purger {
 
         let healthy_trove_owner: ContractAddress = purger_utils::target_trove_owner();
         start_prank(CheatTarget::One(abbot.contract_address), healthy_trove_owner);
-        abbot.forge(healthy_trove, max_forge_amt, 0_u128.into());
+        abbot.forge(healthy_trove, max_forge_amt, Zero::zero());
         stop_prank(CheatTarget::One(abbot.contract_address));
 
         // Sanity check that LTV is above absorption threshold and safe

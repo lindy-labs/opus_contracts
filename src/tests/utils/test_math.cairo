@@ -1,5 +1,6 @@
 mod test_math {
     use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{pow, sqrt};
     use wadray::{Ray, RAY_ONE};
@@ -8,7 +9,7 @@ mod test_math {
     fn test_sqrt() {
         let ERROR_MARGIN = Ray { val: 1 };
 
-        assert(sqrt(0_u128.into()).val == 0_u128.into(), 'wrong sqrt #1');
+        assert(sqrt(0_u128.into()).val == Zero::zero(), 'wrong sqrt #1');
 
         // Ground truth tests
 
