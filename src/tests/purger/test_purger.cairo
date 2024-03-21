@@ -2648,9 +2648,7 @@ mod test_purger {
                                                     let absorber_start_yin: Wad = (target_trove_start_health.debt.val
                                                         * 2)
                                                         .into();
-                                                    let _other_trove_owner: ContractAddress =
-                                                        absorber_utils::provider_1();
-                                                    let _other_trove: u64 = purger_utils::funded_absorber(
+                                                    purger_utils::funded_absorber(
                                                         shrine, abbot, absorber, yangs, gates, absorber_start_yin
                                                     );
 
@@ -3452,7 +3450,7 @@ mod test_purger {
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         // Parameters
-        let mut thresholds_param: Span<Ray> = array![Zero::zero(), RAY_PERCENT.into(),].span();
+        let mut thresholds_param: Span<Ray> = array![Zero::zero(), RAY_PERCENT.into()].span();
 
         let absorb_type_param: Span<AbsorbType> = array![AbsorbType::Full, AbsorbType::Partial, AbsorbType::None]
             .span();

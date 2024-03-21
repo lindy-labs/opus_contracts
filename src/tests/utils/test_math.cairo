@@ -61,8 +61,7 @@ mod test_math {
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
-        let max_val: u128 = BoundedInt::max();
-        sqrt(max_val.into());
+        sqrt(BoundedInt::max());
     }
 
     #[test]

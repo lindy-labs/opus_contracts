@@ -776,7 +776,7 @@ mod test_transmuter {
                         shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                     );
 
-                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {
@@ -876,7 +876,7 @@ mod test_transmuter {
                     };
                     let asset_decimals: u8 = asset.decimals();
 
-                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {

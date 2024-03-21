@@ -69,7 +69,7 @@ pub mod equalizer_utils {
     pub fn allocator_deploy(
         mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>
     ) -> IAllocatorDispatcher {
-        let mut calldata: Array<felt252> = array![shrine_utils::admin().into(), recipients.len().into(),];
+        let mut calldata: Array<felt252> = array![shrine_utils::admin().into(), recipients.len().into()];
 
         loop {
             match recipients.pop_front() {
@@ -113,7 +113,7 @@ pub mod equalizer_utils {
         );
         let admin = shrine_utils::admin();
 
-        let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into(),];
+        let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into()];
 
         let equalizer_class = declare("equalizer");
         let equalizer_addr = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');

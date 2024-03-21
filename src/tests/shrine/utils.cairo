@@ -147,12 +147,12 @@ pub mod shrine_utils {
     }
 
     pub fn three_yang_addrs_reversed() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![yang3_addr(), yang2_addr(), yang1_addr(),];
+        let mut yang_addrs: Array<ContractAddress> = array![yang3_addr(), yang2_addr(), yang1_addr()];
         yang_addrs.span()
     }
 
     pub fn three_yang_start_prices() -> Span<Wad> {
-        array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
+        array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into()].span()
     }
 
     pub fn declare_shrine() -> ContractClass {

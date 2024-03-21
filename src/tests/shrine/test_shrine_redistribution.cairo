@@ -1100,7 +1100,7 @@ mod test_shrine_redistribution {
                 break;
             }
 
-            let mut target_trove_forge_amts: Span<Wad> = array![Zero::zero(), WAD_ONE.into(),].span();
+            let mut target_trove_forge_amts: Span<Wad> = array![Zero::zero(), WAD_ONE.into()].span();
 
             match target_trove_forge_amts.pop_front() {
                 Option::Some(target_trove_forge_amt) => {

@@ -552,7 +552,7 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
-                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
                     .span()
             );
     }
@@ -565,7 +565,7 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::two_yang_addrs_reversed(),
-                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
                     .span()
             );
     }
@@ -577,7 +577,7 @@ mod test_shrine {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr(),]
+                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr()]
                     .span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
@@ -595,7 +595,7 @@ mod test_shrine {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr(),].span(),
+                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr()].span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),

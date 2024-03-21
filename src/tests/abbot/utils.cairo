@@ -60,7 +60,7 @@ pub mod abbot_utils {
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
-        let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into(),];
+        let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into()];
 
         let abbot_class = match abbot_class {
             Option::Some(class) => class,

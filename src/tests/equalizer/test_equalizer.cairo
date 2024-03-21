@@ -78,7 +78,7 @@ mod test_equalizer {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
-        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(),].span();
+        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr()].span();
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
 
         // deposit 1000 ETH and forge the debt ceiling
@@ -222,7 +222,6 @@ mod test_equalizer {
         let admin: ContractAddress = shrine_utils::admin();
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, equalizer.contract_address]), admin);
 
-        let max_val: u128 = BoundedInt::max();
         loop {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
@@ -254,12 +253,12 @@ mod test_equalizer {
                     }
 
                     // Reset by normalizing all remaining deficit
-                    equalizer.normalize(max_val.into());
+                    equalizer.normalize(BoundedInt::max());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
                     // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(max_val.into());
+                    equalizer.normalize(BoundedInt::max());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },

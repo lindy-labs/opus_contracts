@@ -29,7 +29,7 @@ pub mod gate_utils {
     ) -> ContractAddress {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into(),];
+        let calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into()];
 
         let gate_class = match gate_class {
             Option::Some(class) => class,
