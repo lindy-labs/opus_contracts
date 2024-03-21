@@ -123,7 +123,7 @@ pub mod sentinel_roles {
     }
 }
 
-pub mod shrine_roles {
+mod shrine_roles {
     pub const ADD_YANG: u128 = 1;
     pub const ADJUST_BUDGET: u128 = 2;
     pub const ADVANCE: u128 = 4;
@@ -138,11 +138,12 @@ pub mod shrine_roles {
     pub const SET_DEBT_CEILING: u128 = 2048;
     pub const SET_MINIMUM_TROVE_VALUE: u128 = 4096;
     pub const SET_MULTIPLIER: u128 = 8192;
-    pub const SET_THRESHOLD: u128 = 16384;
-    pub const UPDATE_RATES: u128 = 32768;
-    pub const UPDATE_YANG_SUSPENSION: u128 = 65536;
-    pub const UPDATE_YIN_SPOT_PRICE: u128 = 131072;
-    pub const WITHDRAW: u128 = 262144;
+    pub const SET_RECOVERY_MODE_FACTORS: u128 = 16384;
+    pub const SET_THRESHOLD: u128 = 32768;
+    pub const UPDATE_RATES: u128 = 65536;
+    pub const UPDATE_YANG_SUSPENSION: u128 = 131072;
+    pub const UPDATE_YIN_SPOT_PRICE: u128 = 262144;
+    pub const WITHDRAW: u128 = 524288;
 
     #[inline(always)]
     pub fn abbot() -> u128 {
@@ -164,6 +165,7 @@ pub mod shrine_roles {
         ADD_YANG
             + SET_DEBT_CEILING
             + SET_MINIMUM_TROVE_VALUE
+            + SET_RECOVERY_MODE_FACTORS
             + SET_THRESHOLD
             + KILL
             + UPDATE_RATES
@@ -217,6 +219,7 @@ pub mod shrine_roles {
             + SET_DEBT_CEILING
             + SET_MINIMUM_TROVE_VALUE
             + SET_MULTIPLIER
+            + SET_RECOVERY_MODE_FACTORS
             + SET_THRESHOLD
             + UPDATE_RATES
             + UPDATE_YANG_SUSPENSION

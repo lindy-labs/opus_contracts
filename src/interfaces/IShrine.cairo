@@ -22,6 +22,8 @@ pub trait IShrine<TContractState> {
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(self: @TContractState, yang: ContractAddress) -> YangSuspensionStatus;
     fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
+    fn get_recovery_mode_target_factor(self: @TContractState) -> Ray;
+    fn get_recovery_mode_buffer_factor(self: @TContractState) -> Ray;
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(self: @TContractState, yang: ContractAddress, redistribution_id: u32) -> Wad;
@@ -47,6 +49,8 @@ pub trait IShrine<TContractState> {
     fn adjust_budget(ref self: TContractState, amount: SignedWad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
     fn kill(ref self: TContractState);
+    fn set_recovery_mode_target_factor(ref self: TContractState, factor: Ray);
+    fn set_recovery_mode_buffer_factor(ref self: TContractState, factor: Ray);
     // external core functions
     fn deposit(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
