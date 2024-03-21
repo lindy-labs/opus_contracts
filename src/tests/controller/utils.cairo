@@ -10,7 +10,7 @@ pub mod controller_utils {
     use wadray::{Ray, SignedRay, Wad};
 
     // Controller update interval
-    pub const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
+    pub const ONE_HOUR: u64 = 60 * 60; // 1 hour
 
     // Default controller parameters
     pub const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE

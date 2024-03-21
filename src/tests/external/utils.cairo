@@ -25,9 +25,9 @@ pub mod pragma_utils {
     // Constants
     //
 
-    pub const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
+    pub const FRESHNESS_THRESHOLD: u64 = 30 * 60; // 30 minutes * 60 seconds
     pub const SOURCES_THRESHOLD: u32 = 3;
-    pub const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
+    pub const UPDATE_FREQUENCY: u64 = 10 * 60; // 10 minutes * 60 seconds
     pub const DEFAULT_NUM_SOURCES: u32 = 5;
     pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
     pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';

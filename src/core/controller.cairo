@@ -25,7 +25,7 @@ pub mod controller {
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
-    pub const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
+    pub const TIME_SCALE: u128 = 60 * 60; // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
     pub const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2

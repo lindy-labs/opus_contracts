@@ -54,7 +54,7 @@ pub mod absorber {
 
     // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    pub const REQUEST_MAX_TIMELOCK: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_MAX_TIMELOCK: u64 = 7 * 24 * 60 * 60;
 
     // Multiplier for each request's timelock from the last value if a new request is submitted
     // before the cooldown of the previous request has elapsed
@@ -63,12 +63,12 @@ pub mod absorber {
     // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
     // has elapsed
     // 60 minutes * 60 seconds per minute
-    pub const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
+    pub const REQUEST_WITHDRAWAL_PERIOD: u64 = 60 * 60;
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    pub const REQUEST_COOLDOWN: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_COOLDOWN: u64 = 7 * 24 * 60 * 60;
 
     // Helper constant to set the starting index for iterating over the Rewards
     // in the order they were added

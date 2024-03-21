@@ -28,7 +28,7 @@ pub mod seer {
 
     const LOOP_START: u32 = 1;
     pub const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    pub const UPPER_UPDATE_FREQUENCY_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    pub const UPPER_UPDATE_FREQUENCY_BOUND: u64 = 4 * 60 * 60; // 4 hours * 60 minutes * 60 seconds
 
     //
     // Storage

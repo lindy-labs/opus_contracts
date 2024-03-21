@@ -36,7 +36,7 @@ pub mod pragma {
     // be set outside of this hardcoded range
     // the range is [lower, upper]
     pub const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
-    pub const UPPER_FRESHNESS_BOUND: u64 = consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    pub const UPPER_FRESHNESS_BOUND: u64 = 4 * 60 * 60; // 4 hours * 60 minutes * 60 seconds
     pub const LOWER_SOURCES_BOUND: u32 = 3;
     pub const UPPER_SOURCES_BOUND: u32 = 13;
 

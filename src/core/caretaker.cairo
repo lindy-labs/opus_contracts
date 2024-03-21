@@ -33,7 +33,7 @@ pub mod caretaker {
     //
 
     // A dummy trove ID for Caretaker, required in Gate to emit events
-    pub const DUMMY_TROVE_ID: u64 = 0;
+    const DUMMY_TROVE_ID: u64 = 0;
 
     //
     // Storage

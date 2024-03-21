@@ -39,11 +39,10 @@ pub mod shrine {
     // can be changed back to normal. If this does not happen, the yang is
     // suspended permanently, i.e. can't be used in the system ever again.
     // The start of a Yang's suspension period is tracked in `yang_suspension`
-    pub const SUSPENSION_GRACE_PERIOD: u64 =
-        consteval_int!((182 * 24 + 12) * 60 * 60); // 182.5 days, half a year, in seconds
+    pub const SUSPENSION_GRACE_PERIOD: u64 = (182 * 24 + 12) * 60 * 60; // 182.5 days, half a year, in seconds
 
     // Length of a time interval in seconds
-    pub const TIME_INTERVAL: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds per minute
+    pub const TIME_INTERVAL: u64 = 30 * 60; // 30 minutes * 60 seconds per minute
     pub const TIME_INTERVAL_DIV_YEAR: u128 =
         57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
 

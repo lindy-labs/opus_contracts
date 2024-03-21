@@ -77,7 +77,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
-        let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
+        let new_freshness: u64 = 5 * 60; // 5 minutes * 60 seconds
         let new_sources: u32 = 8;
 
         start_prank(CheatTarget::All, pragma_utils::admin());
