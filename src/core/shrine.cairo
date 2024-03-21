@@ -203,13 +203,12 @@ mod shrine {
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
         thresholds: LegacyMap::<u32, Ray>,
-        // This factor is applied to the Shrine's threshold to determine the LTV at which 
-        // recovery mode will be triggered.
-        // During recovery mode, this factor is also applied to a trove's threshold to determine 
-        // the trove's target LTV during recovery mode, so `forge` and `withdraw` during recovery 
-        // mode will revert if it would cause the trove's LTV to be equal to or greater than its 
-        // target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
-        // based on how far the trove's LTV exceeds this target LTV.
+        // This factor is applied to:
+        // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
+        // - a trove's threshold to determine its target recovery mode LTV, so `forge` and `withdraw` 
+        //   in recovery mode will revert if it would cause the trove's LTV to be greater than its 
+        //   target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
+        //   based on how far the trove's LTV exceeds this target LTV.
         recovery_mode_target_factor: Ray,
         // An additional factor to be added to `recovery_mode_target_factor`
         // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
