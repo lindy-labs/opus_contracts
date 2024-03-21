@@ -1647,7 +1647,7 @@ mod test_purger {
                                                         shrine, purger, target_trove, target_trove_start_health.ltv
                                                     );
 
-                                                    let (penalty, max_close_amt, expected_compensation_value) = purger
+                                                    let (_, max_close_amt, _) = purger
                                                         .preview_absorb(target_trove)
                                                         .expect('Should be absorbable');
 
@@ -2878,8 +2878,7 @@ mod test_purger {
 
                                         // Fund the absorber with twice the target trove's debt
                                         let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
-                                        let other_trove_owner: ContractAddress = absorber_utils::provider_1();
-                                        let other_trove: u64 = purger_utils::funded_absorber(
+                                        purger_utils::funded_absorber(
                                             shrine, abbot, absorber, yangs, gates, absorber_start_yin
                                         );
 
