@@ -123,7 +123,7 @@ pub mod sentinel_roles {
     }
 }
 
-mod shrine_roles {
+pub mod shrine_roles {
     pub const ADD_YANG: u128 = 1;
     pub const ADJUST_BUDGET: u128 = 2;
     pub const ADVANCE: u128 = 4;
