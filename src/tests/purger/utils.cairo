@@ -23,7 +23,7 @@ pub mod purger_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, Event, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
@@ -690,6 +690,31 @@ pub mod purger_utils {
             pragma: Option::Some(declare("pragma")),
             mock_pragma: Option::Some(declare("mock_pragma")),
             seer: Option::Some(declare("seer")),
+        }
+    }
+
+    // Helper function to deserialize the `Purged` event specifically for the purger 
+    // tests
+    pub fn deserialize_purged_event(evt: Event) -> purger_contract::Purged {
+        assert(evt.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+        let purge_amt: u128 = (*evt.data.at(0)).try_into().unwrap();
+        let pct_freed: u128 = (*evt.data.at(1)).try_into().unwrap();
+        purger_contract::Purged {
+            trove_id: (*evt.keys.at(1)).try_into().unwrap(),
+            purge_amt: purge_amt.into(),
+            percentage_freed: pct_freed.into(),
+            funder: (*evt.keys.at(2)).try_into().unwrap(),
+            recipient: (*evt.keys.at(3)).try_into().unwrap(),
+            // key no. 4 is the length of the array
+            freed_assets: array![
+                AssetBalance {
+                    address: (*evt.data.at(3)).try_into().unwrap(), amount: (*evt.data.at(4)).try_into().unwrap()
+                },
+                AssetBalance {
+                    address: (*evt.data.at(5)).try_into().unwrap(), amount: (*evt.data.at(6)).try_into().unwrap()
+                },
+            ]
+                .span(),
         }
     }
 }

@@ -1074,25 +1074,17 @@ mod test_purger {
 
         purger_spy.fetch_events();
 
-        let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+        let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
-        assert(purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
-
-        // let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
-        //     purger.contract_address
-        // )
-        //     .unwrap();
-        // common::assert_asset_balances_equalish(
-        //     purged_event.freed_assets,
-        //     expected_freed_assets,
-        //     10_u128,
-        //     'wrong freed assets for event'
-        // );
-        // assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
-        // assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
-        // assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
-        // assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
-        // assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+        common::assert_asset_balances_equalish(
+            purged_event.freed_assets, expected_freed_assets, 10_u128, 'wrong freed assets for event'
+        );
+        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+        assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
+        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+        assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
 
         let expected_events = array![
             (
@@ -1411,47 +1403,39 @@ mod test_purger {
                                                             // Check Purger events
                                                             purger_spy.fetch_events();
 
-                                                            let (_, purged_event) = purger_spy
+                                                            let (_, raw_purged_event) = purger_spy
                                                                 .events
                                                                 .pop_front()
                                                                 .unwrap();
-
-                                                            assert(
-                                                                purged_event.keys.at(0) == @event_name_hash('Purged'),
-                                                                'wrong event'
+                                                            let purged_event = purger_utils::deserialize_purged_event(
+                                                                raw_purged_event
                                                             );
 
-                                                            // common::assert_asset_balances_equalish(
-                                                            //     purged_event.freed_assets,
-                                                            //     expected_freed_assets,
-                                                            //     1_u128,
-                                                            //     'wrong freed assets for event'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event.trove_id == target_trove,
-                                                            //     'wrong Purged trove ID'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event.purge_amt == close_amt,
-                                                            //     'wrong Purged amt'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .percentage_freed == expected_freed_pct,
-                                                            //     'wrong Purged freed pct'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .funder == absorber
-                                                            //         .contract_address,
-                                                            //     'wrong Purged funder'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .recipient == absorber
-                                                            //         .contract_address,
-                                                            //     'wrong Purged recipient'
-                                                            // );
+                                                            common::assert_asset_balances_equalish(
+                                                                purged_event.freed_assets,
+                                                                expected_freed_assets,
+                                                                1_u128,
+                                                                'wrong freed assets for event'
+                                                            );
+                                                            assert(
+                                                                purged_event.trove_id == target_trove,
+                                                                'wrong Purged trove ID'
+                                                            );
+                                                            assert(
+                                                                purged_event.purge_amt == close_amt, 'wrong Purged amt'
+                                                            );
+                                                            assert(
+                                                                purged_event.percentage_freed == expected_freed_pct,
+                                                                'wrong Purged freed pct'
+                                                            );
+                                                            assert(
+                                                                purged_event.funder == absorber.contract_address,
+                                                                'wrong Purged funder'
+                                                            );
+                                                            assert(
+                                                                purged_event.recipient == absorber.contract_address,
+                                                                'wrong Purged recipient'
+                                                            );
 
                                                             let expected_events = array![
                                                                 (
@@ -1993,52 +1977,35 @@ mod test_purger {
                                                     // Check Purger events
 
                                                     purger_spy.fetch_events();
-
-                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
-
-                                                    assert(
-                                                        purged_event.keys.at(0) == @event_name_hash('Purged'),
-                                                        'wrong event'
+                                                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                                    let purged_event = purger_utils::deserialize_purged_event(
+                                                        raw_purged_event
                                                     );
 
-                                                    // let purged_event: purger_contract::Purged =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // common::assert_asset_balances_equalish(
-                                                    //     purged_event.freed_assets,
-                                                    //     expected_freed_assets,
-                                                    //     1000_u128,
-                                                    //     'wrong freed assets for event'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .trove_id == target_trove,
-                                                    //     'wrong Purged trove ID'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.purge_amt == close_amt,
-                                                    //     'wrong Purged amt'
-                                                    // );
-                                                    // common::assert_equalish(
-                                                    //     purged_event.percentage_freed,
-                                                    //     expected_freed_pct,
-                                                    //     1000000_u128.into(),
-                                                    //     'wrong Purged freed pct'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .funder == absorber
-                                                    //         .contract_address,
-                                                    //     'wrong Purged funder'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .recipient == absorber
-                                                    //         .contract_address,
-                                                    //     'wrong Purged recipient'
-                                                    // );
+                                                    common::assert_asset_balances_equalish(
+                                                        purged_event.freed_assets,
+                                                        expected_freed_assets,
+                                                        1000_u128,
+                                                        'wrong freed assets for event'
+                                                    );
+                                                    assert(
+                                                        purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                                    );
+                                                    assert(purged_event.purge_amt == close_amt, 'wrong Purged amt');
+                                                    common::assert_equalish(
+                                                        purged_event.percentage_freed,
+                                                        expected_freed_pct,
+                                                        1000000_u128.into(),
+                                                        'wrong Purged freed pct'
+                                                    );
+                                                    assert(
+                                                        purged_event.funder == absorber.contract_address,
+                                                        'wrong Purged funder'
+                                                    );
+                                                    assert(
+                                                        purged_event.recipient == absorber.contract_address,
+                                                        'wrong Purged recipient'
+                                                    );
 
                                                     let expected_events = array![
                                                         (
@@ -2747,46 +2714,40 @@ mod test_purger {
 
                                                     purger_spy.fetch_events();
 
-                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
-
-                                                    assert(
-                                                        purged_event.keys.at(0) == @event_name_hash('Purged'),
-                                                        'wrong event'
+                                                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                                    let purged_event = purger_utils::deserialize_purged_event(
+                                                        raw_purged_event
                                                     );
 
-                                                    // let purged_event: purger_contract::Purged =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // common::assert_asset_balances_equalish(
-                                                    //     purged_event.freed_assets,
-                                                    //     expected_freed_assets,
-                                                    //     1000_u128,
-                                                    //     'wrong freed assets for event'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.trove_id == target_trove,
-                                                    //     'wrong Purged trove ID'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.purge_amt == max_close_amt,
-                                                    //     'wrong Purged amt'
-                                                    // );
-                                                    // common::assert_equalish(
-                                                    //     purged_event.percentage_freed,
-                                                    //     expected_freed_pct,
-                                                    //     1000000_u128.into(),
-                                                    //     'wrong Purged freed pct'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.funder == absorber.contract_address,
-                                                    //     'wrong Purged funder'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.recipient == absorber.contract_address,
-                                                    //     'wrong Purged recipient'
-                                                    // );
+                                                    let purged_event: purger_contract::Purged =
+                                                        common::pop_event_with_indexed_keys(
+                                                        purger.contract_address
+                                                    )
+                                                        .unwrap();
+                                                    common::assert_asset_balances_equalish(
+                                                        purged_event.freed_assets,
+                                                        expected_freed_assets,
+                                                        1000_u128,
+                                                        'wrong freed assets for event'
+                                                    );
+                                                    assert(
+                                                        purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                                    );
+                                                    assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                                    common::assert_equalish(
+                                                        purged_event.percentage_freed,
+                                                        expected_freed_pct,
+                                                        1000000_u128.into(),
+                                                        'wrong Purged freed pct'
+                                                    );
+                                                    assert(
+                                                        purged_event.funder == absorber.contract_address,
+                                                        'wrong Purged funder'
+                                                    );
+                                                    assert(
+                                                        purged_event.recipient == absorber.contract_address,
+                                                        'wrong Purged recipient'
+                                                    );
 
                                                     let expected_events = array![
                                                         (
@@ -2982,41 +2943,29 @@ mod test_purger {
 
                                         purger_spy.fetch_events();
 
-                                        let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+                                        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                        let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
-                                        assert(purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
-
-                                        // let purged_event: purger_contract::Purged =
-                                        //     common::pop_event_with_indexed_keys(
-                                        //     purger.contract_address
-                                        // )
-                                        //     .unwrap();
-                                        // assert(
-                                        //     purged_event.trove_id == target_trove,
-                                        //     'wrong Purged trove ID'
-                                        // );
-                                        // assert(
-                                        //     purged_event.purge_amt == max_close_amt,
-                                        //     'wrong Purged amt'
-                                        // );
-                                        // assert(
-                                        //     purged_event.percentage_freed == RAY_ONE.into(),
-                                        //     'wrong Purged freed pct'
-                                        // );
-                                        // assert(
-                                        //     purged_event.funder == absorber.contract_address,
-                                        //     'wrong Purged funder'
-                                        // );
-                                        // assert(
-                                        //     purged_event.recipient == absorber.contract_address,
-                                        //     'wrong Purged recipient'
-                                        // );
-                                        // common::assert_asset_balances_equalish(
-                                        //     purged_event.freed_assets,
-                                        //     expected_freed_assets,
-                                        //     100000_u128,
-                                        //     'wrong freed assets for event'
-                                        // );
+                                        let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
+                                            purger.contract_address
+                                        )
+                                            .unwrap();
+                                        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+                                        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                        assert(
+                                            purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct'
+                                        );
+                                        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+                                        assert(
+                                            purged_event.recipient == absorber.contract_address,
+                                            'wrong Purged recipient'
+                                        );
+                                        common::assert_asset_balances_equalish(
+                                            purged_event.freed_assets,
+                                            expected_freed_assets,
+                                            100000_u128,
+                                            'wrong freed assets for event'
+                                        );
 
                                         let expected_events = array![
                                             (
