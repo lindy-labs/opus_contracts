@@ -21,7 +21,7 @@ pub mod purger_utils {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp,};
@@ -589,29 +589,35 @@ pub mod purger_utils {
         )
     }
 
-    pub fn assert_trove_is_healthy(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64) {
-        assert(shrine.is_healthy(trove_id), 'should be healthy');
+    pub fn assert_trove_is_healthy(
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+    ) {
+        assert(trove_health.is_healthy(), 'should be healthy');
 
         assert(purger.preview_liquidate(trove_id).is_none(), 'should not be liquidatable');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
-    pub fn assert_trove_is_liquidatable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
-        assert(!shrine.is_healthy(trove_id), 'should not be healthy');
+    pub fn assert_trove_is_liquidatable(
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+    ) {
+        assert(!trove_health.is_healthy(), 'should not be healthy');
         let (penalty, _) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
-        if ltv < RAY_ONE.into() {
+        if trove_health.ltv < RAY_ONE.into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
             assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
-    pub fn assert_trove_is_absorbable(shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray) {
-        assert(!shrine.is_healthy(trove_id), 'should not be healthy');
+    pub fn assert_trove_is_absorbable(
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+    ) {
+        assert(!trove_health.is_healthy(), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
         let (penalty, _, _) = purger.preview_absorb(trove_id).expect('preview should be Option::Some');
-        if ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
+        if trove_health.ltv < (RAY_ONE - purger_contract::COMPENSATION_PCT).into() {
             assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
             assert(penalty.is_zero(), 'penalty should be 0');

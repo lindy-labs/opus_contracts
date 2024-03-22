@@ -21,7 +21,7 @@ mod test_purger {
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
@@ -312,7 +312,7 @@ mod test_purger {
 
                     let target_trove_updated_health: Health = shrine.get_trove_health(target_trove);
                     purger_utils::assert_trove_is_liquidatable(
-                        shrine, purger, target_trove, target_trove_updated_health.ltv
+                        shrine, purger, target_trove, target_trove_updated_health
                     );
 
                     let (penalty, max_close_amt) = purger
@@ -362,7 +362,7 @@ mod test_purger {
 
         // Sanity check that LTV is at the target liquidation LTV
         let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health.ltv);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health);
 
         let (penalty, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
         let searcher: ContractAddress = purger_utils::searcher();
@@ -471,7 +471,7 @@ mod test_purger {
 
         // Sanity check that LTV is at the target liquidation LTV
         let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health.ltv);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health);
         let (_, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
 
         let searcher: ContractAddress = purger_utils::searcher();
@@ -748,7 +748,7 @@ mod test_purger {
             abbot, yangs, gates, purger_utils::TARGET_TROVE_YIN.into()
         );
 
-        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove);
+        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, shrine.get_trove_health(healthy_trove));
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
@@ -777,7 +777,7 @@ mod test_purger {
         // Sanity check that LTV is above absorption threshold and safe
         let health: Health = shrine.get_trove_health(healthy_trove);
         assert(health.ltv > purger_contract::ABSORPTION_THRESHOLD.into(), 'too low');
-        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove);
+        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, health);
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
@@ -804,7 +804,7 @@ mod test_purger {
 
         // Sanity check that LTV is at the target liquidation LTV
         let updated_target_trove_health: Health = shrine.get_trove_health(target_trove);
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health.ltv);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health);
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
@@ -916,7 +916,7 @@ mod test_purger {
 
                                 let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
                                 purger_utils::assert_trove_is_absorbable(
-                                    shrine, purger, target_trove, target_trove_updated_start_health.ltv
+                                    shrine, purger, target_trove, target_trove_updated_start_health
                                 );
 
                                 let (penalty, max_close_amt, _) = purger
@@ -991,7 +991,7 @@ mod test_purger {
             shrine, seer, yangs, target_trove_start_health.value, target_trove_start_health.debt, target_ltv
         );
         let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-        purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, target_trove_updated_start_health.ltv);
+        purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, target_trove_updated_start_health);
 
         let (penalty, max_close_amt, expected_compensation_value) = purger
             .preview_absorb(target_trove)
@@ -1224,7 +1224,7 @@ mod test_purger {
                                                                 shrine,
                                                                 purger,
                                                                 target_trove,
-                                                                target_trove_updated_start_health.ltv
+                                                                target_trove_updated_start_health
                                                             );
 
                                                             let (penalty, max_close_amt, expected_compensation_value) =
@@ -1644,7 +1644,7 @@ mod test_purger {
                                                         .get_trove_health(target_trove);
 
                                                     purger_utils::assert_trove_is_absorbable(
-                                                        shrine, purger, target_trove, target_trove_start_health.ltv
+                                                        shrine, purger, target_trove, target_trove_start_health
                                                     );
 
                                                     let (_, max_close_amt, _) = purger
@@ -2382,10 +2382,7 @@ mod test_purger {
                                                         .get_protocol_owned_troves_debt();
 
                                                     purger_utils::assert_trove_is_absorbable(
-                                                        shrine,
-                                                        purger,
-                                                        target_trove,
-                                                        target_trove_updated_start_health.ltv
+                                                        shrine, purger, target_trove, target_trove_updated_start_health
                                                     );
 
                                                     let caller: ContractAddress = purger_utils::random_user();
@@ -2441,7 +2438,7 @@ mod test_purger {
 
                                                     let target_trove_after_health: Health = shrine
                                                         .get_trove_health(target_trove);
-                                                    assert(shrine.is_healthy(target_trove), 'should be healthy');
+                                                    assert(target_trove_after_health.is_healthy(), 'should be healthy');
                                                     assert(target_trove_after_health.ltv.is_zero(), 'LTV should be 0');
                                                     assert(
                                                         target_trove_after_health.value.is_zero(), 'value should be 0'
@@ -2687,10 +2684,7 @@ mod test_purger {
                                                         .get_trove_health(target_trove);
 
                                                     purger_utils::assert_trove_is_absorbable(
-                                                        shrine,
-                                                        purger,
-                                                        target_trove,
-                                                        target_trove_updated_start_health.ltv
+                                                        shrine, purger, target_trove, target_trove_updated_start_health
                                                     );
 
                                                     if *kill_absorber {
@@ -2911,7 +2905,7 @@ mod test_purger {
                                         }
 
                                         purger_utils::assert_trove_is_absorbable(
-                                            shrine, purger, target_trove, target_trove_updated_start_health.ltv
+                                            shrine, purger, target_trove, target_trove_updated_start_health
                                         );
 
                                         if *kill_absorber {
@@ -3053,7 +3047,7 @@ mod test_purger {
 
         purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
 
-        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove);
+        purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, shrine.get_trove_health(healthy_trove));
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::random_user());
         purger.absorb(healthy_trove);
@@ -3078,7 +3072,7 @@ mod test_purger {
             shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
         );
 
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_health.ltv);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_health);
         purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::random_user());
@@ -3131,7 +3125,7 @@ mod test_purger {
 
                     let updated_target_trove_start_health: Health = shrine.get_trove_health(target_trove);
                     purger_utils::assert_trove_is_liquidatable(
-                        shrine, purger, target_trove, updated_target_trove_start_health.ltv
+                        shrine, purger, target_trove, updated_target_trove_start_health
                     );
                     purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
@@ -3161,10 +3155,9 @@ mod test_purger {
         shrine.suspend_yang(btc);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        assert(shrine.is_healthy(target_trove), 'should still be healthy');
-
         // The trove has $6000 in debt and $9000 in collateral. BTC's value must decrease
         let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+        assert(target_trove_start_health.is_healthy(), 'should still be healthy');
 
         let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
         let btc_threshold: Ray = shrine_utils::YANG2_THRESHOLD.into();
