@@ -25,12 +25,12 @@ mod test_pragma {
     // Address constants
     //
 
-    // TODO: this is not inlined as it would result in `Unknown ap change` error
-    //       for `test_update_prices_invalid_gate`
+    #[inline(always)]
     fn pepe_token_addr() -> ContractAddress {
         'PEPE'.try_into().unwrap()
     }
 
+    #[inline(always)]
     fn mock_eth_token_addr() -> ContractAddress {
         'ETH'.try_into().unwrap()
     }

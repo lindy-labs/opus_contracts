@@ -93,22 +93,42 @@ mod test_shrine {
     // - initial threshold and value of Shrine
     #[test]
     fn test_shrine_setup() {
+        let mut spy = spy_events(SpyOn::All);
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let expected_events = array![
+            (
+                shrine_addr,
+                shrine_contract::Event::MultiplierUpdated(
+                    shrine_contract::MultiplierUpdated {
+                        multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
+                        interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
+                    }
+                )
+            ),
+            (
+                shrine_addr,
+                shrine_contract::Event::RecoveryModeTargetFactorUpdated(
+                    shrine_contract::RecoveryModeTargetFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
+                    }
+                )
+            ),
+            (
+                shrine_addr,
+                shrine_contract::Event::RecoveryModeBufferFactorUpdated(
+                    shrine_contract::RecoveryModeBufferFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
+
         let mut spy = spy_events(SpyOn::One(shrine_addr));
         shrine_utils::shrine_setup(shrine_addr);
 
         let expected_events = array![
-            // NOTE: Can't currently check events emitted in the constructor
-            // (
-            //     shrine_addr,
-            //     shrine_contract::Event::MultiplierUpdated(
-            //         shrine_contract::MultiplierUpdated {
-            //             multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-            //             cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
-            //             interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-            //         }
-            //     )
-            // ),
             (
                 shrine_addr,
                 shrine_contract::Event::DebtCeilingUpdated(
@@ -116,7 +136,6 @@ mod test_shrine {
                 )
             )
         ];
-
         spy.assert_emitted(@expected_events);
 
         // Check debt ceiling and minimum trove value
@@ -1239,9 +1258,7 @@ mod test_shrine {
             .forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero(),);
     }
 
-    // TODO: assert event is not emitted once Starknet Foundry adds support
     #[test]
-    #[should_panic]
     fn test_shrine_forge_no_forgefee_emitted_when_zero() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events(SpyOn::One(shrine.contract_address));
@@ -1260,7 +1277,7 @@ mod test_shrine {
                 )
             )
         ];
-        spy.assert_emitted(@expected_events);
+        spy.assert_not_emitted(@expected_events);
     }
 
     #[test]
@@ -1721,47 +1738,34 @@ mod test_shrine {
     // Tests - Access control
     //
 
-    // TODO: Uncomment this test once foundry is more stable
-    // #[test]
-    // fn test_auth() {
-    //     let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
-    //     let shrine = shrine_utils::shrine(shrine_addr);
-    //     let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
-    //         contract_address: shrine_addr
-    //     };
+    #[test]
+    fn test_auth() {
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
+        let shrine = shrine_utils::shrine(shrine_addr);
+        let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
 
-    //     let admin: ContractAddress = shrine_utils::admin();
-    //     let new_admin: ContractAddress = contract_address_try_from_felt252('new shrine admin')
-    //         .unwrap();
+        let admin: ContractAddress = shrine_utils::admin();
+        let new_admin: ContractAddress = 'new shrine admin'.try_into().unwrap();
 
-    //     assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
+        assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
 
-    //     // Authorizing an address and testing that it can use authorized functions
-    //     start_prank(CheatTarget::One(shrine_addr), admin);
-    //     shrine_accesscontrol.grant_role(shrine_roles::SET_DEBT_CEILING, new_admin);
-    //     assert(
-    //         shrine_accesscontrol.has_role(shrine_roles::SET_DEBT_CEILING, new_admin),
-    //         'role not granted'
-    //     );
-    //     assert(
-    //         shrine_accesscontrol.get_roles(new_admin) == shrine_roles::SET_DEBT_CEILING,
-    //         'role not granted'
-    //     );
+        // Authorizing an address and testing that it can use authorized functions
+        start_prank(CheatTarget::One(shrine_addr), admin);
+        shrine_accesscontrol.grant_role(shrine_roles::SET_DEBT_CEILING, new_admin);
+        assert(shrine_accesscontrol.has_role(shrine_roles::SET_DEBT_CEILING, new_admin), 'role not granted');
+        assert(shrine_accesscontrol.get_roles(new_admin) == shrine_roles::SET_DEBT_CEILING, 'role not granted');
 
-    //     start_prank(CheatTarget::One(shrine_addr), new_admin);
-    //     let new_ceiling: Wad = (WAD_SCALE + 1).into();
-    //     shrine.set_debt_ceiling(new_ceiling);
-    //     assert(shrine.get_debt_ceiling() == new_ceiling, 'wrong debt ceiling');
+        start_prank(CheatTarget::One(shrine_addr), new_admin);
+        let new_ceiling: Wad = (WAD_SCALE + 1).into();
+        shrine.set_debt_ceiling(new_ceiling);
+        assert(shrine.get_debt_ceiling() == new_ceiling, 'wrong debt ceiling');
 
-    //     // Revoking an address
-    //     start_prank(CheatTarget::One(shrine_addr), admin);
-    //     shrine_accesscontrol.revoke_role(shrine_roles::SET_DEBT_CEILING, new_admin);
-    //     assert(
-    //         !shrine_accesscontrol.has_role(shrine_roles::SET_DEBT_CEILING, new_admin),
-    //         'role not revoked'
-    //     );
-    //     assert(shrine_accesscontrol.get_roles(new_admin) == 0, 'role not revoked');
-    // }
+        // Revoking an address
+        start_prank(CheatTarget::One(shrine_addr), admin);
+        shrine_accesscontrol.revoke_role(shrine_roles::SET_DEBT_CEILING, new_admin);
+        assert(!shrine_accesscontrol.has_role(shrine_roles::SET_DEBT_CEILING, new_admin), 'role not revoked');
+        assert(shrine_accesscontrol.get_roles(new_admin) == 0, 'role not revoked');
+    }
 
     #[test]
     #[should_panic(expected: ('Caller missing role',))]

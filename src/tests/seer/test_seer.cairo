@@ -187,13 +187,17 @@ mod test_seer {
 
         spy.assert_emitted(@expected_events_seer);
 
-        // TODO: Once foundry supports it, check that these events were not emitted
-        // let expected_missing_seer = array![
-        //     (seer.contract_address,
-        //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })),
-        //     (seer.contract_address,
-        //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })),
-        // ];
+        let expected_missing_seer = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })
+            ),
+        ];
+        spy.assert_not_emitted(@expected_missing_seer);
 
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
@@ -318,13 +322,18 @@ mod test_seer {
         ];
 
         spy.assert_emitted(@expected_events_seer);
-    // TODO: Once foundry supports it, check that these events were not emitted
-    // let expected_missing_seer = array![
-    //     (seer.contract_address,
-    //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })),
-    //     (seer.contract_address,
-    //     seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })),
-    // ];
+
+        let expected_missing_seer = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })
+            ),
+        ];
+        spy.assert_not_emitted(@expected_missing_seer);
     }
 
     #[test]
@@ -421,15 +430,17 @@ mod test_seer {
         ];
 
         spy.assert_emitted(@expected_events);
-    // TODO: Once foundry supports it, check that these events were not emitted
-    // and not expecting PriceUpdate
-    // let expected_missing = array![
-    //     (seer.contract_address,
-    //     seer_contract::Event::PriceUpdate(
-    //         seer_contract::PriceUpdate { oracle: pragma.contract_address, yang: eth_addr, price: eth_price }
-    //     ))
-    // ];
 
+        // not expecting PriceUpdate
+        let expected_missing = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma.contract_address, yang: eth_addr, price: eth_price }
+                )
+            )
+        ];
+        spy.assert_not_emitted(@expected_missing);
     }
 
     #[test]

@@ -126,15 +126,15 @@ mod test_absorber {
         let mut expected_rewards: Array<Reward> = array![opus_reward, veopus_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
-        // TODO: add this event once `Unknown ap change` error is resolved
-        // expected_events
-        //     .append(
-        //         absorber_contract::Event::RewardSet(
-        //             absorber_contract::RewardSet {
-        //                 asset: opus_token, blesser: new_opus_blesser, is_active: false
-        //             }
-        //         )
-        //     );
+        expected_events
+            .append(
+                (
+                    absorber.contract_address,
+                    absorber_contract::Event::RewardSet(
+                        absorber_contract::RewardSet { asset: opus_token, blesser: new_opus_blesser, is_active: false }
+                    )
+                )
+            );
 
         spy.assert_emitted(@expected_events);
     }
@@ -968,9 +968,21 @@ mod test_absorber {
 
         spy.assert_emitted(@expected_events);
 
-        // TODO: Revisit when foundry has support for checking events that weren't emitted
-        //       No rewards should be bestowed because Absorber is inoperational
-        //       after second absorption.
+        // No rewards should be bestowed because Absorber is inoperational
+        // after second absorption.
+        let should_not_emit = array![
+            (
+                absorber.contract_address,
+                absorber_contract::Event::Bestow(
+                    absorber_contract::Bestow {
+                        assets: expected_rewarded_assets,
+                        total_recipient_shares: second_epoch_recipient_shares,
+                        epoch: second_epoch,
+                    }
+                )
+            ),
+        ];
+        spy.assert_not_emitted(@should_not_emit);
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(reward_tokens, second_provider.into());
@@ -1029,9 +1041,10 @@ mod test_absorber {
         ];
 
         spy.assert_emitted(@expected_events);
-    // TODO: Revisit when foundry has support for checking events that weren't emitted
-    //       No rewards should be bestowed because Absorber is inoperational
-    //       after second absorption.
+
+        // No rewards should be bestowed because Absorber is inoperational
+        // after second absorption.
+        spy.assert_not_emitted(@should_not_emit);
     }
 
 

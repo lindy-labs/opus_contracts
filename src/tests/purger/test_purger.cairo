@@ -964,6 +964,8 @@ mod test_purger {
         let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
+        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, initial_trove_debt);
 
@@ -1070,6 +1072,12 @@ mod test_purger {
             'wrong absorber asset balance',
         );
 
+        purger_spy.fetch_events();
+
+        let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+
+        assert(purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+
         // let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
         //     purger.contract_address
         // )
@@ -1086,14 +1094,13 @@ mod test_purger {
         // assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
         // assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
 
-        // let compensate_event: purger_contract::Compensate = common::pop_event_with_indexed_keys(
-        //     purger.contract_address
-        // )
-        //     .unwrap();
-        // assert(
-        //     compensate_event == purger_contract::Compensate { recipient: caller, compensation },
-        //     'wrong Compensate event'
-        // );
+        let expected_events = array![
+            (
+                purger.contract_address,
+                purger_contract::Event::Compensate(purger_contract::Compensate { recipient: caller, compensation }),
+            ),
+        ];
+        purger_spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -1446,17 +1453,17 @@ mod test_purger {
                                                             //     'wrong Purged recipient'
                                                             // );
 
-                                                            // let compensate_event: purger_contract::Compensate =
-                                                            //     common::pop_event_with_indexed_keys(
-                                                            //     purger.contract_address
-                                                            // )
-                                                            //     .unwrap();
-                                                            // assert(
-                                                            //     compensate_event == purger_contract::Compensate {
-                                                            //         recipient: caller, compensation
-                                                            //     },
-                                                            //     'wrong Compensate event'
-                                                            //);
+                                                            let expected_events = array![
+                                                                (
+                                                                    purger.contract_address,
+                                                                    purger_contract::Event::Compensate(
+                                                                        purger_contract::Compensate {
+                                                                            recipient: caller, compensation
+                                                                        }
+                                                                    ),
+                                                                ),
+                                                            ];
+                                                            purger_spy.assert_emitted(@expected_events);
 
                                                             // Check Shrine event
 
@@ -2037,33 +2044,33 @@ mod test_purger {
                                                     //     'wrong Purged recipient'
                                                     // );
 
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
+                                                    purger_spy.assert_emitted(@expected_events);
 
-                                                    // TODO: uncomment once gas limit can be increased
                                                     // Check Shrine event
-                                                    // let expected_events =
-                                                    //     array![
-                                                    //     (shrine.contract_address,
-                                                    //     shrine_contract::Event::TroveRedistributed(
-                                                    //         shrine_contract::TroveRedistributed {
-                                                    //             redistribution_id: expected_redistribution_id,
-                                                    //             trove_id: target_trove,
-                                                    //             debt: expected_redistributed_amt,
-                                                    //         }
-                                                    //     )),
-                                                    // ];
+                                                    let expected_events = array![
+                                                        (
+                                                            shrine.contract_address,
+                                                            shrine_contract::Event::TroveRedistributed(
+                                                                shrine_contract::TroveRedistributed {
+                                                                    redistribution_id: expected_redistribution_id,
+                                                                    trove_id: target_trove,
+                                                                    debt: expected_redistributed_amt,
+                                                                }
+                                                            )
+                                                        ),
+                                                    ];
 
-                                                    // shrine_spy.assert_emitted(@expected_events);
+                                                    shrine_spy.assert_emitted(@expected_events);
 
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count(),
@@ -2509,30 +2516,21 @@ mod test_purger {
                                                     }
 
                                                     // Check Purger events
-
-                                                    purger_spy.fetch_events();
-
-                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
-
-                                                    assert(
-                                                        purged_event.keys.at(0) == @event_name_hash('Compensate'),
-                                                        'wrong event'
-                                                    );
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
 
                                                     // Note that this indirectly asserts that `Purged`
                                                     // is not emitted if it does not revert because
                                                     // `Purged` would have been emitted before `Compensate`
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    purger_spy.assert_emitted(@expected_events);
 
                                                     // Check Shrine event
                                                     let expected_events = array![
@@ -2626,6 +2624,9 @@ mod test_purger {
                                                     let (shrine, abbot, seer, absorber, purger, yangs, gates) =
                                                         purger_utils::purger_deploy(
                                                         classes
+                                                    );
+                                                    let mut purger_spy = spy_events(
+                                                        SpyOn::One(purger.contract_address)
                                                     );
 
                                                     // Set thresholds to provided value
@@ -2748,6 +2749,15 @@ mod test_purger {
                                                         yangs, expected_freed_amts
                                                     );
 
+                                                    purger_spy.fetch_events();
+
+                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+
+                                                    assert(
+                                                        purged_event.keys.at(0) == @event_name_hash('Purged'),
+                                                        'wrong event'
+                                                    );
+
                                                     // let purged_event: purger_contract::Purged =
                                                     //     common::pop_event_with_indexed_keys(
                                                     //     purger.contract_address
@@ -2782,17 +2792,17 @@ mod test_purger {
                                                     //     'wrong Purged recipient'
                                                     // );
 
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
+                                                    purger_spy.assert_emitted(@expected_events);
 
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count()
@@ -2862,6 +2872,7 @@ mod test_purger {
                                             purger_utils::purger_deploy(
                                             classes
                                         );
+                                        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
                                         // Set thresholds to provided value
                                         purger_utils::set_thresholds(shrine, yangs, *threshold);
@@ -2973,6 +2984,12 @@ mod test_purger {
                                             yangs, expected_freed_asset_amts,
                                         );
 
+                                        purger_spy.fetch_events();
+
+                                        let (_, purged_event) = purger_spy.events.pop_front().unwrap();
+
+                                        assert(purged_event.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+
                                         // let purged_event: purger_contract::Purged =
                                         //     common::pop_event_with_indexed_keys(
                                         //     purger.contract_address
@@ -3005,17 +3022,15 @@ mod test_purger {
                                         //     'wrong freed assets for event'
                                         // );
 
-                                        // let compensate_event: purger_contract::Compensate =
-                                        //     common::pop_event_with_indexed_keys(
-                                        //     purger.contract_address
-                                        // )
-                                        //     .unwrap();
-                                        // assert(
-                                        //     compensate_event == purger_contract::Compensate {
-                                        //         recipient: caller, compensation
-                                        //     },
-                                        //     'wrong Compensate event'
-                                        // );
+                                        let expected_events = array![
+                                            (
+                                                purger.contract_address,
+                                                purger_contract::Event::Compensate(
+                                                    purger_contract::Compensate { recipient: caller, compensation }
+                                                ),
+                                            ),
+                                        ];
+                                        purger_spy.assert_emitted(@expected_events);
 
                                         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                                     },
