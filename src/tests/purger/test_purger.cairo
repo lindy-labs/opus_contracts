@@ -1321,7 +1321,7 @@ mod test_purger {
                                                             );
 
                                                             // Check that absorber has received proportionate share of collateral
-                                                            let (_, expected_freed_asset_amts) =
+                                                            let (expected_freed_pct, expected_freed_asset_amts) =
                                                                 purger_utils::get_expected_liquidation_assets(
                                                                 *target_trove_yang_asset_amts,
                                                                 target_trove_updated_start_health,
@@ -2719,11 +2719,6 @@ mod test_purger {
                                                         raw_purged_event
                                                     );
 
-                                                    let purged_event: purger_contract::Purged =
-                                                        common::pop_event_with_indexed_keys(
-                                                        purger.contract_address
-                                                    )
-                                                        .unwrap();
                                                     common::assert_asset_balances_equalish(
                                                         purged_event.freed_assets,
                                                         expected_freed_assets,
@@ -2946,10 +2941,6 @@ mod test_purger {
                                         let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
                                         let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
-                                        let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
-                                            purger.contract_address
-                                        )
-                                            .unwrap();
                                         assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
                                         assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
                                         assert(

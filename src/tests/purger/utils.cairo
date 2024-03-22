@@ -23,8 +23,10 @@ pub mod purger_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, Event, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_block_timestamp,};
+    use snforge_std::{
+        declare, ContractClass, ContractClassTrait, Event, event_name_hash, start_prank, stop_prank, CheatTarget
+    };
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
