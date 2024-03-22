@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::Wad;
 
 #[starknet::interface]
-trait IGate<TContractState> {
+pub trait IGate<TContractState> {
     // getter
     fn get_shrine(self: @TContractState) -> ContractAddress;
     fn get_sentinel(self: @TContractState) -> ContractAddress;

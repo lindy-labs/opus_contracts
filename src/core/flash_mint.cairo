@@ -15,21 +15,22 @@
 //
 
 #[starknet::contract]
-mod flash_mint {
+pub mod flash_mint {
+    use core::num::traits::Zero;
     use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Wad, WadZeroable};
+    use wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
     // it is supposed to be returned from the onFlashLoan function by the receiver
-    const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
+    pub const ON_FLASH_MINT_SUCCESS: u256 = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9_u256;
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
-    const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
-    const FLASH_FEE: u256 = 0;
+    pub const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
+    pub const FLASH_FEE: u256 = 0;
 
     component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
@@ -46,20 +47,20 @@ mod flash_mint {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         FlashMint: FlashMint,
         // Component events
         ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct FlashMint {
+    pub struct FlashMint {
         #[key]
-        initiator: ContractAddress,
+        pub initiator: ContractAddress,
         #[key]
-        receiver: ContractAddress,
-        token: ContractAddress,
-        amount: u256
+        pub receiver: ContractAddress,
+        pub token: ContractAddress,
+        pub amount: u256
     }
 
     #[constructor]
@@ -121,7 +122,7 @@ mod flash_mint {
             let total_yin: Wad = shrine.get_total_yin();
             let budget_adjustment: Wad = match shrine.get_budget().try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { WadZeroable::zero() }
+                Option::None => { Zero::zero() }
             };
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {

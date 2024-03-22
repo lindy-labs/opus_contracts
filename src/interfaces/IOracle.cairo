@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::Wad;
 
 #[starknet::interface]
-trait IOracle<TContractState> {
+pub trait IOracle<TContractState> {
     // human readable identifier
     fn get_name(self: @TContractState) -> felt252;
 

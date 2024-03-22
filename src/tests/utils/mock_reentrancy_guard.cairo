@@ -1,10 +1,10 @@
 #[starknet::interface]
-trait IMockReentrancyGuard<TContractState> {
+pub trait IMockReentrancyGuard<TContractState> {
     fn guarded_func(ref self: TContractState, recurse_once: bool);
 }
 
 #[starknet::contract]
-mod mock_reentrancy_guard {
+pub mod mock_reentrancy_guard {
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
 
     component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
@@ -19,7 +19,7 @@ mod mock_reentrancy_guard {
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         ReentrancyGuardEvent: reentrancy_guard_component::Event
     }
 

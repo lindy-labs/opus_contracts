@@ -3,7 +3,7 @@
 mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::array::SpanTrait;
-    use debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
@@ -25,15 +25,13 @@ mod test_seer {
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
-    use wadray::{Wad, WadZeroable, WAD_SCALE};
+    use starknet::{get_block_timestamp, ContractAddress};
+    use wadray::{Wad, WAD_SCALE};
 
     #[test]
     fn test_seer_setup() {
         let mut spy = spy_events(SpyOn::All);
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
@@ -56,12 +54,10 @@ mod test_seer {
     #[test]
     fn test_set_oracles() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 
@@ -78,8 +74,7 @@ mod test_seer {
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 
@@ -335,13 +330,13 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None,
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
     }
@@ -349,14 +344,14 @@ mod test_seer {
     #[test]
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, token_class, Option::None, Option::None,
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
         seer_utils::add_yangs(seer, array![eth_yang].span());
 
@@ -445,7 +440,7 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };

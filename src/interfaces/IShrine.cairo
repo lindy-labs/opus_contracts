@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
 #[starknet::interface]
-trait IShrine<TContractState> {
+pub trait IShrine<TContractState> {
     // getters
     fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
     fn get_total_yin(self: @TContractState) -> Wad;

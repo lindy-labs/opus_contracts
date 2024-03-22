@@ -1,14 +1,15 @@
 #[starknet::contract]
-mod transmuter {
+pub mod transmuter {
     use access_control::access_control_component;
-    use cmp::min;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
 
     //
     // Components
@@ -26,15 +27,15 @@ mod transmuter {
 
     // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a 
     // percentage of total yin supply: 100% (Ray)
-    const PERCENTAGE_CAP_UPPER_BOUND: u128 = 1000000000000000000000000000;
+    pub const PERCENTAGE_CAP_UPPER_BOUND: u128 = 1000000000000000000000000000;
     // Percentage cap at deployment: 10% (Ray)
-    const INITIAL_PERCENTAGE_CAP: u128 = 100000000000000000000000000;
+    pub const INITIAL_PERCENTAGE_CAP: u128 = 100000000000000000000000000;
 
     // Upper bound of the fee as a percentage that can be charged for both: 1% (Ray)
     // 1. swapping yin for the asset when `reverse` is enabled; and
     // 2. swapping asset for yin,
     // This is not set at deployment so it defaults to 0%.
-    const FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
+    pub const FEE_UPPER_BOUND: u128 = 10000000000000000000000000;
 
     //
     // Storage
@@ -77,7 +78,7 @@ mod transmuter {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         CeilingUpdated: CeilingUpdated,
         Killed: Killed,
@@ -94,78 +95,78 @@ mod transmuter {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct CeilingUpdated {
-        old_ceiling: Wad,
-        new_ceiling: Wad
+    pub struct CeilingUpdated {
+        pub old_ceiling: Wad,
+        pub new_ceiling: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Killed {}
+    pub struct Killed {}
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PercentageCapUpdated {
-        cap: Ray
+    pub struct PercentageCapUpdated {
+        pub cap: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ReceiverUpdated {
-        old_receiver: ContractAddress,
-        new_receiver: ContractAddress
+    pub struct ReceiverUpdated {
+        pub old_receiver: ContractAddress,
+        pub new_receiver: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reclaim {
+    pub struct Reclaim {
         #[key]
-        user: ContractAddress,
-        asset_amt: u128,
-        yin_amt: Wad,
+        pub user: ContractAddress,
+        pub asset_amt: u128,
+        pub yin_amt: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reverse {
+    pub struct Reverse {
         #[key]
-        user: ContractAddress,
-        asset_amt: u128,
-        yin_amt: Wad,
-        fee: Wad
+        pub user: ContractAddress,
+        pub asset_amt: u128,
+        pub yin_amt: Wad,
+        pub fee: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ReverseFeeUpdated {
-        old_fee: Ray,
-        new_fee: Ray
+    pub struct ReverseFeeUpdated {
+        pub old_fee: Ray,
+        pub new_fee: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ReversibilityToggled {
-        reversibility: bool
+    pub struct ReversibilityToggled {
+        pub reversibility: bool
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Settle {
-        deficit: Wad
+    pub struct Settle {
+        pub deficit: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Sweep {
+    pub struct Sweep {
         #[key]
-        recipient: ContractAddress,
-        asset_amt: u128
+        pub recipient: ContractAddress,
+        pub asset_amt: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Transmute {
+    pub struct Transmute {
         #[key]
-        user: ContractAddress,
-        asset_amt: u128,
-        yin_amt: Wad,
-        fee: Wad
+        pub user: ContractAddress,
+        pub asset_amt: u128,
+        pub yin_amt: Wad,
+        pub fee: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TransmuteFeeUpdated {
-        old_fee: Ray,
-        new_fee: Ray
+    pub struct TransmuteFeeUpdated {
+        pub old_fee: Ray,
+        pub new_fee: Ray
     }
 
     // Constructor
@@ -429,7 +430,7 @@ mod transmuter {
             let settle_amt: Wad = min(total_transmuted, yin_amt);
             total_transmuted -= settle_amt;
 
-            self.total_transmuted.write(WadZeroable::zero());
+            self.total_transmuted.write(Zero::zero());
             self.is_live.write(false);
 
             shrine.eject(transmuter, settle_amt);
@@ -581,7 +582,7 @@ mod transmuter {
             let asset_balance: Wad = self.asset.read().balance_of(get_contract_address()).try_into().unwrap();
 
             if asset_balance.is_zero() {
-                (WadZeroable::zero(), 0)
+                (Zero::zero(), 0)
             } else {
                 (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
             }

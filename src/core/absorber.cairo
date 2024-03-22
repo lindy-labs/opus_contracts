@@ -5,10 +5,11 @@
 // wadray-fixed-point arithmetic functions in their calculations. Consequently,
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
-mod absorber {
+pub mod absorber {
     use access_control::access_control_component;
-    use cmp::min;
-    use integer::u256_safe_divmod;
+    use core::cmp::min;
+    use core::num::traits::Zero;
+    use core::traits::DivRem;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbsorber::{IAbsorber, IBlesserDispatcher, IBlesserDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,7 +17,7 @@ mod absorber {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use wadray::{Ray, RayZeroable, u128_wdiv, u128_wmul, Wad, WadZeroable};
+    use wadray::{Ray, u128_wdiv, u128_wmul, Wad};
 
     //
     // Components
@@ -36,38 +37,38 @@ mod absorber {
     // to reset the yin per share ratio to 1 : 1 parity for accounting. Otherwise, there will
     // eventually be an overflow when converting yin to shares (and vice versa)
     // as yin per share approaches 0.
-    const YIN_PER_SHARE_THRESHOLD: u128 = 1000000000000000; // 10**15 = 0.001 (Wad)
+    pub const YIN_PER_SHARE_THRESHOLD: u128 = 1000000000000000; // 10**15 = 0.001 (Wad)
 
     // Shares to be minted without a provider to avoid first provider front-running
-    const INITIAL_SHARES: u128 = 1000000000; // 10 ** 9 (Wad);
+    pub const INITIAL_SHARES: u128 = 1000000000; // 10 ** 9 (Wad);
 
     // Minimum amount of shares, excluding the initial shares, that is needed to prevent overflows
     // when calculating the amount of assets per share
-    const MINIMUM_RECIPIENT_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
+    pub const MINIMUM_RECIPIENT_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
     // First epoch of the Absorber
-    const FIRST_EPOCH: u32 = 1;
+    pub const FIRST_EPOCH: u32 = 1;
 
     // Amount of time, in seconds, that needs to elapse after request is submitted before removal
-    const REQUEST_BASE_TIMELOCK: u64 = 60;
+    pub const REQUEST_BASE_TIMELOCK: u64 = 60;
 
     // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_MAX_TIMELOCK: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_MAX_TIMELOCK: u64 = 7 * 24 * 60 * 60;
 
     // Multiplier for each request's timelock from the last value if a new request is submitted
     // before the cooldown of the previous request has elapsed
-    const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
+    pub const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
 
     // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
     // has elapsed
     // 60 minutes * 60 seconds per minute
-    const REQUEST_WITHDRAWAL_PERIOD: u64 = consteval_int!(60 * 60);
+    pub const REQUEST_WITHDRAWAL_PERIOD: u64 = 60 * 60;
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_COOLDOWN: u64 = consteval_int!(7 * 24 * 60 * 60);
+    pub const REQUEST_COOLDOWN: u64 = 7 * 24 * 60 * 60;
 
     // Helper constant to set the starting index for iterating over the Rewards
     // in the order they were added
@@ -141,7 +142,7 @@ mod absorber {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,
@@ -155,69 +156,69 @@ mod absorber {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct RewardSet {
+    pub struct RewardSet {
         #[key]
-        asset: ContractAddress,
+        pub asset: ContractAddress,
         #[key]
-        blesser: ContractAddress,
-        is_active: bool
+        pub blesser: ContractAddress,
+        pub is_active: bool
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct EpochChanged {
-        old_epoch: u32,
-        new_epoch: u32
+    pub struct EpochChanged {
+        pub old_epoch: u32,
+        pub new_epoch: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Provide {
+    pub struct Provide {
         #[key]
-        provider: ContractAddress,
-        epoch: u32,
-        yin: Wad
+        pub provider: ContractAddress,
+        pub epoch: u32,
+        pub yin: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct RequestSubmitted {
+    pub struct RequestSubmitted {
         #[key]
-        provider: ContractAddress,
-        timestamp: u64,
-        timelock: u64
+        pub provider: ContractAddress,
+        pub timestamp: u64,
+        pub timelock: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Remove {
+    pub struct Remove {
         #[key]
-        provider: ContractAddress,
-        epoch: u32,
-        yin: Wad
+        pub provider: ContractAddress,
+        pub epoch: u32,
+        pub yin: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reap {
+    pub struct Reap {
         #[key]
-        provider: ContractAddress,
-        absorbed_assets: Span<AssetBalance>,
-        reward_assets: Span<AssetBalance>
+        pub provider: ContractAddress,
+        pub absorbed_assets: Span<AssetBalance>,
+        pub reward_assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Gain {
-        assets: Span<AssetBalance>,
-        total_recipient_shares: Wad,
-        epoch: u32,
-        absorption_id: u32
+    pub struct Gain {
+        pub assets: Span<AssetBalance>,
+        pub total_recipient_shares: Wad,
+        pub epoch: u32,
+        pub absorption_id: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Bestow {
-        assets: Span<AssetBalance>,
-        total_recipient_shares: Wad,
-        epoch: u32
+    pub struct Bestow {
+        pub assets: Span<AssetBalance>,
+        pub total_recipient_shares: Wad,
+        pub epoch: u32
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Killed {}
+    pub struct Killed {}
 
     //
     // Constructor
@@ -476,7 +477,7 @@ mod absorber {
             self.reap_helper(provider, provision);
 
             // Removed yin amount
-            let mut yin_amt: Wad = WadZeroable::zero();
+            let mut yin_amt: Wad = Zero::zero();
 
             // Fetch the shares for current epoch
             let current_epoch: u32 = self.current_epoch.read();
@@ -488,7 +489,7 @@ mod absorber {
                 // provider's deposit has been completely absorbed.
                 // Since absorbed collateral has been reaped,
                 // we can update the provision to current epoch and shares.
-                self.provisions.write(provider, Provision { epoch: current_epoch, shares: WadZeroable::zero() });
+                self.provisions.write(provider, Provision { epoch: current_epoch, shares: Zero::zero() });
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
@@ -607,8 +608,8 @@ mod absorber {
                     // This would cause a negligible loss to the previous epoch's providers, but
                     // partially compensates the first provider in the new epoch for the deducted
                     // minimum initial amount.
-                    self.epoch_share_conversion_rate.write(current_epoch, RayZeroable::zero());
-                    self.total_shares.write(WadZeroable::zero());
+                    self.epoch_share_conversion_rate.write(current_epoch, Zero::zero());
+                    self.total_shares.write(Zero::zero());
                 }
 
                 self.emit(EpochChanged { old_epoch: current_epoch, new_epoch });
@@ -682,7 +683,7 @@ mod absorber {
             let absorber: ContractAddress = get_contract_address();
             let yin_balance: u256 = self.yin_erc20().balance_of(absorber);
 
-            let (computed_shares, r, _) = u256_safe_divmod(
+            let (computed_shares, r) = DivRem::div_rem(
                 yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
             );
             let computed_shares: u128 = computed_shares.try_into().unwrap();
@@ -699,7 +700,7 @@ mod absorber {
 
             // If no shares are issued yet, then it is a new epoch and absorber is emptied.
             if total_shares.is_zero() {
-                return WadZeroable::zero();
+                return Zero::zero();
             }
 
             let absorber: ContractAddress = get_contract_address();

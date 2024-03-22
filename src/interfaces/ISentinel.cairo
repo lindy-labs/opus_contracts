@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, Wad};
 
 #[starknet::interface]
-trait ISentinel<TContractState> {
+pub trait ISentinel<TContractState> {
     // getters
     fn get_gate_address(self: @TContractState, yang: ContractAddress) -> ContractAddress;
     fn get_gate_live(self: @TContractState, yang: ContractAddress) -> bool;

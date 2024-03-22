@@ -5,12 +5,12 @@ use starknet::ContractAddress;
 use wadray::Wad;
 
 #[starknet::interface]
-trait MockOracle<TContractState> {
+pub trait MockOracle<TContractState> {
     fn set_token_price(ref self: TContractState, token: ContractAddress, price: Wad);
 }
 
 #[starknet::contract]
-mod mock_oracle {
+pub mod mock_oracle {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use starknet::ContractAddress;
     use wadray::Wad;

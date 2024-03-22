@@ -1,6 +1,7 @@
 #[starknet::contract]
-mod sentinel {
+pub mod sentinel {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::sentinel_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -8,9 +9,8 @@ mod sentinel {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::{fixed_point_to_wad, pow};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use starknet::{get_block_timestamp, get_caller_address};
-    use wadray::{Ray, Wad, WadZeroable};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use wadray::{Ray, Wad};
 
     //
     // Components
@@ -61,7 +61,7 @@ mod sentinel {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
@@ -69,25 +69,25 @@ mod sentinel {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAdded {
+    pub struct YangAdded {
         #[key]
-        yang: ContractAddress,
-        gate: ContractAddress
+        pub yang: ContractAddress,
+        pub gate: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangAssetMaxUpdated {
+    pub struct YangAssetMaxUpdated {
         #[key]
-        yang: ContractAddress,
-        old_max: u128,
-        new_max: u128
+        pub yang: ContractAddress,
+        pub old_max: u128,
+        pub new_max: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct GateKilled {
+    pub struct GateKilled {
         #[key]
-        yang: ContractAddress,
-        gate: ContractAddress
+        pub yang: ContractAddress,
+        pub gate: ContractAddress
     }
 
     //

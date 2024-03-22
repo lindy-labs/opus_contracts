@@ -7,7 +7,7 @@ mod test_allocator {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::{ContractAddress, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
     use wadray::Ray;
 
     #[test]
@@ -39,9 +39,7 @@ mod test_allocator {
         let mut recipients = equalizer_utils::initial_recipients();
         let _ = recipients.pop_front();
 
-        let test_allocator_deploy_input_arrays_mismatch_fail = equalizer_utils::allocator_deploy(
-            recipients, equalizer_utils::initial_percentages(), Option::None
-        );
+        equalizer_utils::allocator_deploy(recipients, equalizer_utils::initial_percentages(), Option::None);
     }
 
     #[test]
@@ -99,14 +97,12 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
-
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
         let new_recipients: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('new recipient 1').unwrap(),
-            contract_address_try_from_felt252('new recipient 2').unwrap(),
-            contract_address_try_from_felt252('new recipient 3').unwrap(),
-            contract_address_try_from_felt252('new recipient 1').unwrap(),
+            'new recipient 1'.try_into().unwrap(),
+            'new recipient 2'.try_into().unwrap(),
+            'new recipient 3'.try_into().unwrap(),
+            'new recipient 1'.try_into().unwrap(),
         ]
             .span();
         let new_percentages = equalizer_utils::new_percentages();

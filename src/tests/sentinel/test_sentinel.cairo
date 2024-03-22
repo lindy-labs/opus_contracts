@@ -1,5 +1,6 @@
 mod test_sentinel {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::roles::sentinel_roles;
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -13,11 +14,9 @@ mod test_sentinel {
     use opus::utils::math::{fixed_point_to_wad, pow};
     use snforge_std::{
         declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
-        PrintTrait
     };
     use starknet::ContractAddress;
-    use starknet::contract_address::ContractAddressZeroable;
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, Wad, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -35,7 +34,6 @@ mod test_sentinel {
         let eth = *assets.at(0);
         let wbtc = *assets.at(1);
 
-        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
@@ -50,7 +48,7 @@ mod test_sentinel {
             'Wrong yang addresses'
         );
 
-        assert(sentinel.get_yang(0) == ContractAddressZeroable::zero(), 'Should be zero address');
+        assert(sentinel.get_yang(0) == Zero::zero(), 'Should be zero address');
         assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
         assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
 
@@ -138,7 +136,7 @@ mod test_sentinel {
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel
             .add_yang(
-                ContractAddressZeroable::zero(),
+                Zero::zero(),
                 sentinel_utils::ETH_ASSET_MAX,
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
@@ -159,7 +157,7 @@ mod test_sentinel {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                ContractAddressZeroable::zero()
+                Zero::zero()
             );
     }
 
@@ -173,7 +171,7 @@ mod test_sentinel {
                 sentinel_utils::dummy_yang_addr(),
                 sentinel_utils::ETH_ASSET_MAX,
                 shrine_utils::YANG1_THRESHOLD.into(),
-                WadZeroable::zero(),
+                Zero::zero(),
                 shrine_utils::YANG1_BASE_RATE.into(),
                 sentinel_utils::dummy_yang_gate_addr()
             );
@@ -199,7 +197,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Asset of gate is not yang',))]
     fn test_add_yang_gate_yang_mismatch() {
-        let token_class = declare('erc20_mintable');
+        let token_class = declare("erc20_mintable");
         let (sentinel, _, _, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::Some(token_class));
         let wbtc: ContractAddress = common::wbtc_token_deploy(Option::Some(token_class));
 

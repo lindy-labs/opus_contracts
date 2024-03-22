@@ -1,10 +1,11 @@
 #[starknet::contract]
-mod transmuter_registry {
+pub mod transmuter_registry {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::transmuter_registry_roles;
     use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistry};
     use opus::utils::address_registry::address_registry_component;
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use starknet::contract_address::ContractAddress;
 
     //
     // Components
@@ -38,7 +39,7 @@ mod transmuter_registry {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         AddressRegistryEvent: address_registry_component::Event,
     }

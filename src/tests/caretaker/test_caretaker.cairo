@@ -1,6 +1,6 @@
 mod test_caretaker {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{caretaker_roles, shrine_roles};
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -15,7 +15,7 @@ mod test_caretaker {
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress};
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, ray_to_wad, Wad, WAD_ONE};
 
     #[test]
     fn test_caretaker_setup() {
@@ -81,8 +81,8 @@ mod test_caretaker {
 
         let g0_before_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
         let g1_before_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
-        let y0_backing = wadray::wmul_wr(g0_before_balance, backing).into();
-        let y1_backing = wadray::wmul_wr(g1_before_balance, backing).into();
+        let y0_backing: Wad = ray_to_wad(wadray::wmul_wr(g0_before_balance, backing));
+        let y1_backing: Wad = ray_to_wad(wadray::wmul_wr(g1_before_balance, backing));
 
         let mut yangs_copy = yangs;
         let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
@@ -446,8 +446,8 @@ mod test_caretaker {
         let ct_yang0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
         let ct_yang1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
 
-        common::assert_equalish(gate0_after_balance, WadZeroable::zero(), tolerance, 'gate0 after balance');
-        common::assert_equalish(gate1_after_balance, WadZeroable::zero(), tolerance, 'gate1 after balance');
+        common::assert_equalish(gate0_after_balance, Zero::zero(), tolerance, 'gate0 after balance');
+        common::assert_equalish(gate1_after_balance, Zero::zero(), tolerance, 'gate1 after balance');
         common::assert_equalish(ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance');
         common::assert_equalish(ct_yang1_balance, gate1_before_balance, tolerance, 'caretaker yang1 after balance');
 
