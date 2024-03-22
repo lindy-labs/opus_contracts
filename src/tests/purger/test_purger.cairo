@@ -1616,10 +1616,8 @@ mod test_purger {
 
                                                     // Create a whale trove if we are not testing recovery mode
                                                     // Otherwise, Shrine will enter recovery mode when lowering prices below.
-                                                    let mut whale_trove: u64 = 0;
                                                     if !is_recovery_mode {
-                                                        whale_trove =
-                                                            purger_utils::create_whale_trove(abbot, yangs, gates);
+                                                        purger_utils::create_whale_trove(abbot, yangs, gates);
                                                     }
 
                                                     let target_trove_start_health: Health = shrine
@@ -1716,8 +1714,6 @@ mod test_purger {
 
                                                     let before_recipient_trove_health: Health = shrine
                                                         .get_trove_health(recipient_trove);
-                                                    let before_recipient_whale_trove_health: Health = shrine
-                                                        .get_trove_health(whale_trove);
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
