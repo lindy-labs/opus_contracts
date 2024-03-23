@@ -3357,35 +3357,20 @@ mod test_purger {
 
     #[derive(Copy, Drop, PartialEq)]
     enum AbsorbType {
-        Full: (),
-        Partial: (),
-        None: (),
+        Full,
+        Partial,
+        None,
     }
 
-    #[test]
-    #[ignore]
-    fn test_absorb_low_thresholds() {
-        let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
-
-        let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
-        // Execution time is significantly reduced
-        // by only deploying the contracts once for all parametrizations
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin, Option::None
-        );
-
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
-
-        let yin_erc20: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine.contract_address };
+    fn test_absorb_low_thresholds(is_recovery_mode: bool) {
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let searcher = purger_utils::searcher();
+        let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
 
-        // Approve absorber for maximum yin
-        start_prank(CheatTarget::One(shrine.contract_address), searcher);
-        yin_erc20.approve(absorber.contract_address, BoundedInt::max());
-
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        let minimum_operational_shares: Wad = (absorber_contract::INITIAL_SHARES
+            + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+            .into();
 
         // Parameters
         let mut thresholds_param: Span<Ray> = array![Zero::zero(), RAY_PERCENT.into()].span();
@@ -3408,337 +3393,245 @@ mod test_purger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
-                                            let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-                                            loop {
-                                                match is_recovery_mode_fuzz.pop_front() {
-                                                    Option::Some(is_recovery_mode) => {
-                                                        // Calculating the `trove_debt` necessary to achieve
-                                                        // the `target_ltv`
-                                                        let target_trove_yang_amts: Span<Wad> = array![
-                                                            (*gates[0])
-                                                                .convert_to_yang(
-                                                                    purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT
-                                                                ),
-                                                            (*gates[1])
-                                                                .convert_to_yang(
-                                                                    purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT
-                                                                ),
-                                                        ]
-                                                            .span();
+                                            let (shrine, abbot, _seer, absorber, purger, yangs, gates) =
+                                                purger_utils::purger_deploy_with_searcher(
+                                                searcher_start_yin, classes
+                                            );
 
-                                                        let trove_value: Wad = purger_utils::get_sum_of_value(
-                                                            shrine, yangs, target_trove_yang_amts
-                                                        );
+                                            start_prank(
+                                                CheatTarget::One(shrine.contract_address), shrine_utils::admin()
+                                            );
+                                            shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
+                                            stop_prank(CheatTarget::One(shrine.contract_address));
 
-                                                        // Add 100 Wad to guarantee recovery mode for non-zero debt.
-                                                        // In case of rounding down to zero, set to 1 wei.
-                                                        let trove_debt: Wad = max(
-                                                            wadray::rmul_wr(trove_value, *target_ltv)
-                                                                + (100 * WAD_ONE).into(),
-                                                            1_u128.into()
-                                                        );
+                                            // Create whale trove to either:
+                                            // - mint enough debt to trigger recovery mode before thresholds are set to a very low value; or
+                                            // - to prevent recovery mode from being triggered
+                                            let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+                                            let whale_trove: u64 = purger_utils::create_whale_trove(
+                                                abbot, yangs, gates
+                                            );
 
-                                                        // We skip test cases of partial liquidations where
-                                                        // the trove debt is less than the minimum shares in absorber.
-                                                        // While it can be done, it is complicated to set up the absorber in such a
-                                                        // way that the remaining yin is less than the minimum shares.
-                                                        if *absorb_type == AbsorbType::Partial
-                                                            && trove_debt <= absorber_contract::MINIMUM_RECIPIENT_SHARES
-                                                                .into() {
-                                                            continue;
-                                                        }
-                                                        // Resetting the thresholds to reasonable values
-                                                        // to allow for creating troves at higher LTVs
-                                                        purger_utils::set_thresholds(
-                                                            shrine, yangs, (80 * RAY_PERCENT).into()
-                                                        );
-
-                                                        // Clearing/"resetting" the absorber
-                                                        // if it needs to be reset
-                                                        if yin_erc20
-                                                            .balance_of(absorber.contract_address)
-                                                            .is_non_zero() {
-                                                            let (eth_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[0]);
-                                                            let (wbtc_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[1]);
-
-                                                            start_warp(
-                                                                CheatTarget::All,
-                                                                get_block_timestamp()
-                                                                    + absorber_contract::REQUEST_COOLDOWN
-                                                            );
-
-                                                            // Update yang prices to save gas on fetching them in Shrine functions
-                                                            start_prank(
-                                                                CheatTarget::One(shrine.contract_address),
-                                                                shrine_utils::admin()
-                                                            );
-                                                            shrine.advance(*yangs[0], eth_price);
-                                                            shrine.advance(*yangs[1], wbtc_price);
-                                                            stop_prank(CheatTarget::One(shrine.contract_address));
-
-                                                            // Make a removal request and then remove the searcher's position
-                                                            start_prank(
-                                                                CheatTarget::One(absorber.contract_address), searcher
-                                                            );
-                                                            absorber.request();
-                                                            stop_prank(CheatTarget::One(absorber.contract_address));
-
-                                                            start_warp(
-                                                                CheatTarget::All,
-                                                                get_block_timestamp()
-                                                                    + absorber_contract::REQUEST_COOLDOWN
-                                                            );
-
-                                                            let searcher_provided_yin: Wad = absorber
-                                                                .preview_remove(searcher);
-                                                            // Removing any remaining yin, and/or
-                                                            // remaining absorbed assets due to the
-                                                            // provider.
-
-                                                            if searcher_provided_yin.is_non_zero() {
-                                                                absorber.remove(searcher_provided_yin);
-                                                            } else {
-                                                                absorber.reap();
-                                                            }
-                                                        }
-
-                                                        // Creating the trove to be liquidated
-                                                        let target_trove: u64 = purger_utils::funded_healthy_trove(
-                                                            abbot, yangs, gates, trove_debt
-                                                        );
-
-                                                        // Now, the searcher deposits some yin into the absorber
-                                                        // The amount depends on whether we want a full or partial absorption, or
-                                                        // a full redistribution
-
-                                                        start_prank(
-                                                            CheatTarget::One(absorber.contract_address), searcher
-                                                        );
-
-                                                        match *absorb_type {
-                                                            AbsorbType::Full => {
-                                                                // We provide *at least* the minimum shares
-                                                                absorber
-                                                                    .provide(
-                                                                        max(
-                                                                            trove_debt,
-                                                                            (absorber_contract::INITIAL_SHARES
-                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
-                                                                                .into()
-                                                                        )
-                                                                    );
-                                                            },
-                                                            AbsorbType::Partial => {
-                                                                // We add 1 wei in the event that `trove_debt` is extremely small,
-                                                                // to avoid the provision amount from being zero.
-
-                                                                absorber
-                                                                    .provide(
-                                                                        max(
-                                                                            (trove_debt.val / 2).into() + 1_u128.into(),
-                                                                            (absorber_contract::INITIAL_SHARES
-                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
-                                                                                .into()
-                                                                        )
-                                                                    );
-                                                            },
-                                                            AbsorbType::None => {},
-                                                        };
-
-                                                        stop_prank(CheatTarget::One(absorber.contract_address));
-
-                                                        let whale_trove: u64 = if *is_recovery_mode {
-                                                            // Mint enough debt to trigger recovery mode before
-                                                            // thresholds are set to a very low value
-                                                            let trove_id: u64 = purger_utils::create_whale_trove(
-                                                                abbot, yangs, gates
-                                                            );
-                                                            purger_utils::trigger_recovery_mode(
-                                                                shrine,
-                                                                seer,
-                                                                yangs,
-                                                                common::RecoveryModeSetupType::ExceedsBuffer
-                                                            );
-
-                                                            trove_id
-                                                        } else {
-                                                            // Otherwise, create a whale trove to prevent recovery
-                                                            // mode from being triggered
-                                                            let deposit_amts: Span<u128> =
-                                                                purger_utils::whale_trove_yang_asset_amts();
-                                                            common::fund_user(whale_trove_owner, yangs, deposit_amts);
-                                                            common::open_trove_helper(
-                                                                abbot,
-                                                                whale_trove_owner,
-                                                                yangs,
-                                                                deposit_amts,
-                                                                gates,
-                                                                WAD_ONE.into()
-                                                            )
-                                                        };
-
-                                                        // Setting the threshold to the desired value
-                                                        // the target trove is now absorbable
-                                                        purger_utils::set_thresholds(shrine, yangs, *threshold);
-
-                                                        let target_trove_start_health: Health = shrine
-                                                            .get_trove_health(target_trove);
-                                                        if *is_recovery_mode && (*threshold).is_non_zero() {
-                                                            assert(shrine.is_recovery_mode(), 'not recovery mode');
-                                                        } else if (*threshold).is_non_zero() {
-                                                            // skip zero threshold because recovery mode
-                                                            // is unavoidable
-                                                            assert(!shrine.is_recovery_mode(), 'recovery mode');
-                                                        }
-
-                                                        let (penalty, max_close_amt, expected_compensation_value) =
-                                                            purger
-                                                            .preview_absorb(target_trove)
-                                                            .expect('Should be absorbable');
-
-                                                        start_prank(
-                                                            CheatTarget::One(purger.contract_address), searcher
-                                                        );
-
-                                                        let absorber_eth_bal_before_absorb: u128 = IERC20Dispatcher {
-                                                            contract_address: *yangs[0]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-                                                        let absorber_wbtc_bal_before_absorb: u128 = IERC20Dispatcher {
-                                                            contract_address: *yangs[1]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-
-                                                        let absorber_yin_bal_before_absorb: Wad = yin_erc20
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-
-                                                        let compensation: Span<AssetBalance> = purger
-                                                            .absorb(target_trove);
-
-                                                        // Checking that the compensation is correct
-                                                        let actual_eth_comp: AssetBalance = *compensation[0];
-                                                        let actual_wbtc_comp: AssetBalance = *compensation[1];
-
-                                                        let expected_compensation_pct: Ray = wadray::rdiv_ww(
-                                                            purger_contract::COMPENSATION_CAP.into(),
-                                                            target_trove_start_health.value
-                                                        );
-
-                                                        let expected_eth_comp: u128 = scale_u128_by_ray(
-                                                            purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT,
-                                                            expected_compensation_pct
-                                                        );
-
-                                                        let expected_wbtc_comp: u128 = scale_u128_by_ray(
-                                                            purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT,
-                                                            expected_compensation_pct
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_eth_comp,
-                                                            actual_eth_comp.amount,
-                                                            1_u128,
-                                                            'wrong eth compensation'
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_wbtc_comp,
-                                                            actual_wbtc_comp.amount,
-                                                            1_u128,
-                                                            'wrong wbtc compensation'
-                                                        );
-
-                                                        let actual_compensation_value: Wad =
-                                                            purger_utils::get_sum_of_value(
-                                                            shrine,
-                                                            yangs,
-                                                            array![
-                                                                (*gates[0]).convert_to_yang(actual_eth_comp.amount),
-                                                                (*gates[1]).convert_to_yang(actual_wbtc_comp.amount)
-                                                            ]
-                                                                .span()
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_compensation_value,
-                                                            actual_compensation_value,
-                                                            10000000000000000_u128.into(),
-                                                            'wrong compensation value'
-                                                        );
-
-                                                        // If the trove wasn't fully liquidated, check
-                                                        // that it is healthy
-                                                        if max_close_amt < trove_debt {
-                                                            assert(
-                                                                shrine.is_healthy(target_trove),
-                                                                'trove should be healthy'
-                                                            );
-                                                        }
-
-                                                        // Checking that the absorbed assets are equal in value to the
-                                                        // debt liquidated, plus the penalty
-                                                        if *absorb_type != AbsorbType::None {
-                                                            // We subtract the absorber balance before the liquidation
-                                                            //  in order to avoid including any leftover
-                                                            // absorbed assets from previous liquidations
-                                                            // in the calculation for the value of the
-                                                            // absorption that *just* occured
-
-                                                            let absorbed_eth: Wad = common::get_erc20_bal_as_yang(
-                                                                *gates[0], *yangs[0], absorber.contract_address
-                                                            )
-                                                                - (*gates[0])
-                                                                    .convert_to_yang(absorber_eth_bal_before_absorb);
-                                                            let absorbed_wbtc: Wad = common::get_erc20_bal_as_yang(
-                                                                *gates[1], *yangs[1], absorber.contract_address
-                                                            )
-                                                                - (*gates[1])
-                                                                    .convert_to_yang(absorber_wbtc_bal_before_absorb);
-
-                                                            let (current_eth_yang_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[0]);
-                                                            let (current_wbtc_yang_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[1]);
-
-                                                            let absorber_eth_value: Wad = absorbed_eth
-                                                                * current_eth_yang_price;
-                                                            let absorber_wbtc_value: Wad = absorbed_wbtc
-                                                                * current_wbtc_yang_price;
-
-                                                            let absorbed_assets_value = absorber_eth_value
-                                                                + absorber_wbtc_value;
-
-                                                            let max_absorb_amt = min(
-                                                                max_close_amt, absorber_yin_bal_before_absorb
-                                                            );
-
-                                                            common::assert_equalish(
-                                                                absorbed_assets_value,
-                                                                wadray::rmul_wr(
-                                                                    max_absorb_amt, (RAY_ONE.into() + penalty)
-                                                                ),
-                                                                10000000000000000_u128.into(),
-                                                                'wrong absorbed assets value'
-                                                            );
-                                                        }
-
-                                                        start_prank(
-                                                            CheatTarget::One(abbot.contract_address), whale_trove_owner
-                                                        );
-                                                        abbot.close_trove(whale_trove);
-                                                        stop_prank(CheatTarget::One(abbot.contract_address));
-                                                    },
-                                                    Option::None => { break; }
-                                                };
+                                            // Approve absorber for maximum yin
+                                            start_prank(CheatTarget::One(shrine.contract_address), searcher);
+                                            let yin_erc20: IERC20Dispatcher = IERC20Dispatcher {
+                                                contract_address: shrine.contract_address
                                             };
+                                            yin_erc20.approve(absorber.contract_address, BoundedInt::max());
+
+                                            stop_prank(CheatTarget::One(shrine.contract_address));
+
+                                            // Calculating the `trove_debt` necessary to achieve
+                                            // the `target_ltv`
+                                            let target_trove_yang_amts: Span<Wad> = array![
+                                                (*gates[0]).convert_to_yang(purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT),
+                                                (*gates[1])
+                                                    .convert_to_yang(purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT),
+                                            ]
+                                                .span();
+
+                                            let trove_value: Wad = purger_utils::get_sum_of_value(
+                                                shrine, yangs, target_trove_yang_amts
+                                            );
+
+                                            // In case of rounding down to zero, set to 1 wei.
+                                            let trove_debt: Wad = max(
+                                                wadray::rmul_wr(trove_value, *target_ltv) + (100 * WAD_ONE).into(),
+                                                1_u128.into()
+                                            );
+
+                                            // We skip test cases of partial liquidations where
+                                            // the trove debt is less than the minimum shares required for the 
+                                            // absorber to be operational.
+                                            if *absorb_type == AbsorbType::Partial
+                                                && trove_debt <= (absorber_contract::INITIAL_SHARES
+                                                    + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+                                                    .into() {
+                                                continue;
+                                            }
+
+                                            // Resetting the thresholds to reasonable values
+                                            // to allow for creating troves at higher LTVs
+                                            purger_utils::set_thresholds(shrine, yangs, (80 * RAY_PERCENT).into());
+
+                                            // Creating the trove to be liquidated
+                                            let target_trove: u64 = purger_utils::funded_healthy_trove(
+                                                abbot, yangs, gates, trove_debt
+                                            );
+
+                                            // Now, the searcher deposits some yin into the absorber
+                                            // The amount depends on whether we want a full or partial absorption, or
+                                            // a full redistribution
+
+                                            start_prank(CheatTarget::One(absorber.contract_address), searcher);
+
+                                            match *absorb_type {
+                                                AbsorbType::Full => {
+                                                    absorber.provide(max(trove_debt, minimum_operational_shares));
+                                                },
+                                                AbsorbType::Partial => {
+                                                    // We provide *at least* the minimum shares
+                                                    absorber
+                                                        .provide(
+                                                            max((trove_debt.val / 2).into(), minimum_operational_shares)
+                                                        );
+                                                },
+                                                AbsorbType::None => {},
+                                            };
+
+                                            stop_prank(CheatTarget::One(absorber.contract_address));
+
+                                            if is_recovery_mode {
+                                                // Mint the desired threshold + 1% worth of the max forge amount of the whale trove
+                                                // to guarantee that the whale trove will exceed its threshold when thresholds are
+                                                // lowered in the next step
+                                                let max_forge_amt: Wad = shrine.get_max_forge(whale_trove);
+                                                let forge_amt: Wad = wadray::rmul_wr(
+                                                    max_forge_amt, *threshold + RAY_PERCENT.into()
+                                                );
+
+                                                start_prank(
+                                                    CheatTarget::One(abbot.contract_address), whale_trove_owner
+                                                );
+                                                abbot.forge(whale_trove, forge_amt, Zero::zero());
+                                                stop_prank(CheatTarget::One(abbot.contract_address));
+                                            }
+
+                                            // Setting the threshold to the desired value
+                                            // the target trove is now absorbable
+                                            purger_utils::set_thresholds(shrine, yangs, *threshold);
+
+                                            let target_trove_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
+                                            if is_recovery_mode && (*threshold).is_non_zero() {
+                                                assert(shrine.is_recovery_mode(), 'not recovery mode');
+                                            } else if (*threshold).is_non_zero() {
+                                                // skip zero threshold because recovery mode
+                                                // is unavoidable
+                                                assert(!shrine.is_recovery_mode(), 'recovery mode');
+                                            }
+
+                                            let (penalty, max_close_amt, expected_compensation_value) = purger
+                                                .preview_absorb(target_trove)
+                                                .expect('Should be absorbable');
+
+                                            start_prank(CheatTarget::One(purger.contract_address), searcher);
+
+                                            let absorber_eth_bal_before_absorb: u128 = IERC20Dispatcher {
+                                                contract_address: *yangs[0]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+                                            let absorber_wbtc_bal_before_absorb: u128 = IERC20Dispatcher {
+                                                contract_address: *yangs[1]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+
+                                            let absorber_yin_bal_before_absorb: Wad = yin_erc20
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+
+                                            let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+
+                                            // Checking that the compensation is correct
+                                            let actual_eth_comp: AssetBalance = *compensation[0];
+                                            let actual_wbtc_comp: AssetBalance = *compensation[1];
+
+                                            let expected_compensation_pct: Ray = wadray::rdiv_ww(
+                                                purger_contract::COMPENSATION_CAP.into(),
+                                                target_trove_start_health.value
+                                            );
+
+                                            let expected_eth_comp: u128 = scale_u128_by_ray(
+                                                purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT, expected_compensation_pct
+                                            );
+
+                                            let expected_wbtc_comp: u128 = scale_u128_by_ray(
+                                                purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT, expected_compensation_pct
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_eth_comp,
+                                                actual_eth_comp.amount,
+                                                1_u128,
+                                                'wrong eth compensation'
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_wbtc_comp,
+                                                actual_wbtc_comp.amount,
+                                                1_u128,
+                                                'wrong wbtc compensation'
+                                            );
+
+                                            let actual_compensation_value: Wad = purger_utils::get_sum_of_value(
+                                                shrine,
+                                                yangs,
+                                                array![
+                                                    (*gates[0]).convert_to_yang(actual_eth_comp.amount),
+                                                    (*gates[1]).convert_to_yang(actual_wbtc_comp.amount)
+                                                ]
+                                                    .span()
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_compensation_value,
+                                                actual_compensation_value,
+                                                10000000000000000_u128.into(),
+                                                'wrong compensation value'
+                                            );
+
+                                            // If the trove wasn't fully liquidated, check
+                                            // that it is healthy
+                                            if max_close_amt < trove_debt {
+                                                assert(shrine.is_healthy(target_trove), 'trove should be healthy');
+                                            }
+
+                                            // Checking that the absorbed assets are equal in value to the
+                                            // debt liquidated, plus the penalty
+                                            if *absorb_type != AbsorbType::None {
+                                                // We subtract the absorber balance before the liquidation
+                                                //  in order to avoid including any leftover
+                                                // absorbed assets from previous liquidations
+                                                // in the calculation for the value of the
+                                                // absorption that *just* occured
+
+                                                let absorbed_eth: Wad = common::get_erc20_bal_as_yang(
+                                                    *gates[0], *yangs[0], absorber.contract_address
+                                                )
+                                                    - (*gates[0]).convert_to_yang(absorber_eth_bal_before_absorb);
+                                                let absorbed_wbtc: Wad = common::get_erc20_bal_as_yang(
+                                                    *gates[1], *yangs[1], absorber.contract_address
+                                                )
+                                                    - (*gates[1]).convert_to_yang(absorber_wbtc_bal_before_absorb);
+
+                                                let (current_eth_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[0]);
+                                                let (current_wbtc_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[1]);
+
+                                                let absorber_eth_value: Wad = absorbed_eth * current_eth_yang_price;
+                                                let absorber_wbtc_value: Wad = absorbed_wbtc * current_wbtc_yang_price;
+
+                                                let absorbed_assets_value = absorber_eth_value + absorber_wbtc_value;
+
+                                                let max_absorb_amt = min(max_close_amt, absorber_yin_bal_before_absorb);
+
+                                                let expected_absorbed_value: Wad = wadray::rmul_wr(
+                                                    max_absorb_amt, (RAY_ONE.into() + penalty)
+                                                );
+
+                                                common::assert_equalish(
+                                                    absorbed_assets_value,
+                                                    expected_absorbed_value,
+                                                    (2 * WAD_ONE).into(),
+                                                    'wrong absorbed assets value'
+                                                );
+                                            }
                                         },
                                         Option::None => { break; },
                                     };
@@ -3751,5 +3644,15 @@ mod test_purger {
                 Option::None => { break; }
             };
         };
+    }
+
+    #[test]
+    fn test_absorb_low_thresholds_parametrized1() {
+        test_absorb_low_thresholds(true);
+    }
+
+    #[test]
+    fn test_absorb_low_thresholds_parametrized2() {
+        test_absorb_low_thresholds(false);
     }
 }
