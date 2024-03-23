@@ -3072,7 +3072,8 @@ mod test_purger {
             shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, target_ltv
         );
 
-        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_health);
+        let updated_target_trove_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health);
         purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::random_user());
