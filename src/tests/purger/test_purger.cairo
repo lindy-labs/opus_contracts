@@ -3338,24 +3338,27 @@ mod test_purger {
         test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, false);
     }
 
+    // The minimum LTV for absorption at 1% threshold is approximately 1.097%, so it is rounded
+    // up to 1.1% for convenience to ensure the target trove is absorbable after adjusting the 
+    // threshold to the desired value.
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized5() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), true, true);
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, true);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized6() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), false, true);
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, true);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized7() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), true, false);
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, false);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized8() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), false, false);
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, false);
     }
 
     #[derive(Copy, Drop, PartialEq)]
