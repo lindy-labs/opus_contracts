@@ -3178,20 +3178,15 @@ mod test_purger {
         );
     }
 
-    fn test_liquidate_suspended_yang_threshold_near_zero(starting_ltv: Ray, is_recovery_mode: bool) {
+    fn test_liquidate_suspended_yang_threshold_near_zero(
+        starting_ltv: Ray, liquidate_via_absorption: bool, is_recovery_mode: bool
+    ) {
         let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
-        // We run the same tests using both searcher liquidations and absorptions as the liquidation methods.
-        let mut liquidate_via_absorption_param: Span<bool> = array![
-            // TODO: try parametrizing this
-            false, //true - we comment this parametrization out for now, due to failing in CI
-        ]
-            .span();
-
         // We also parametrize the test with the desired threshold for liquidation
-        let desired_threshold_param: Span<Ray> = array![
+        let mut desired_threshold_params: Span<Ray> = array![
             RAY_PERCENT.into(),
             (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
@@ -3227,108 +3222,96 @@ mod test_purger {
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
         loop {
-            match liquidate_via_absorption_param.pop_front() {
-                Option::Some(liquidate_via_absorption) => {
-                    let mut desired_threshold_param_copy = desired_threshold_param;
-                    loop {
-                        match desired_threshold_param_copy.pop_front() {
-                            Option::Some(desired_threshold) => {
-                                let (eth_price, _, _) = shrine.get_current_yang_price(eth);
-                                let forge_amt: Wad = wadray::rmul_wr(eth_amt.into() * eth_price, starting_ltv);
-                                let target_trove: u64 = common::open_trove_helper(
-                                    abbot,
-                                    target_user,
-                                    array![eth].span(),
-                                    array![eth_amt].span(),
-                                    array![eth_gate].span(),
-                                    forge_amt
-                                );
+            match desired_threshold_params.pop_front() {
+                Option::Some(desired_threshold) => {
+                    let (eth_price, _, _) = shrine.get_current_yang_price(eth);
+                    let forge_amt: Wad = wadray::rmul_wr(eth_amt.into() * eth_price, starting_ltv);
+                    let target_trove: u64 = common::open_trove_helper(
+                        abbot,
+                        target_user,
+                        array![eth].span(),
+                        array![eth_amt].span(),
+                        array![eth_gate].span(),
+                        forge_amt
+                    );
 
-                                // Suspend ETH
-                                start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-                                shrine.suspend_yang(eth);
-                                stop_prank(CheatTarget::One(shrine.contract_address));
+                    // Suspend ETH
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    shrine.suspend_yang(eth);
+                    stop_prank(CheatTarget::One(shrine.contract_address));
 
-                                // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
-                                let decrease_factor: Ray = *desired_threshold / eth_threshold;
-                                let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
-                                    - scale_u128_by_ray(
-                                        shrine_contract::SUSPENSION_GRACE_PERIOD.into(), decrease_factor
-                                    )
-                                        .try_into()
-                                        .unwrap();
+                    // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
+                    let decrease_factor: Ray = *desired_threshold / eth_threshold;
+                    let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
+                        - scale_u128_by_ray(shrine_contract::SUSPENSION_GRACE_PERIOD.into(), decrease_factor)
+                            .try_into()
+                            .unwrap();
 
-                                shrine_utils::advance_prices_periodically(shrine, yangs, ts_diff);
+                    shrine_utils::advance_prices_periodically(shrine, yangs, ts_diff);
 
-                                // Check that the threshold has decreased to the desired value
-                                // The trove's threshold is equivalent to ETH's threshold since it 
-                                // has deposited only ETH.
-                                let threshold_before_liquidation = shrine.get_trove_health(target_trove).threshold;
+                    // Check that the threshold has decreased to the desired value
+                    // The trove's threshold is equivalent to ETH's threshold since it 
+                    // has deposited only ETH.
+                    let threshold_before_liquidation = shrine.get_trove_health(target_trove).threshold;
 
-                                common::assert_equalish(
-                                    threshold_before_liquidation,
-                                    *desired_threshold,
-                                    // 0.0000001 = 10^-7 (ray). Precision
-                                    // is limited by the precision of timestamps,
-                                    // which is only in seconds
-                                    100000000000000000000_u128.into(),
-                                    'wrong eth threshold'
-                                );
+                    common::assert_equalish(
+                        threshold_before_liquidation,
+                        *desired_threshold,
+                        // 0.0000001 = 10^-7 (ray). Precision
+                        // is limited by the precision of timestamps,
+                        // which is only in seconds
+                        100000000000000000000_u128.into(),
+                        'wrong eth threshold'
+                    );
 
-                                // We want to compare the yin balance of the liquidator
-                                // before and after the liquidation. In the case of absorption
-                                // we check the absorber's balance, and in the case of
-                                // searcher liquidation we check the searcher's balance.
-                                let before_liquidation_yin_balance: u256 = if *liquidate_via_absorption {
-                                    yin_erc20.balance_of(absorber.contract_address)
-                                } else {
-                                    yin_erc20.balance_of(searcher)
-                                };
-
-                                if is_recovery_mode && !shrine.is_recovery_mode() {
-                                    purger_utils::trigger_recovery_mode(
-                                        shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
-                                    );
-                                }
-
-                                // Liquidate the trove
-                                start_prank(CheatTarget::One(purger.contract_address), searcher);
-
-                                if *liquidate_via_absorption {
-                                    purger.absorb(target_trove);
-                                } else {
-                                    // Get the updated debt with accrued interest
-                                    let before_liquidation_health: Health = shrine.get_trove_health(target_trove);
-                                    purger.liquidate(target_trove, before_liquidation_health.debt, searcher);
-                                }
-
-                                // Sanity checks
-                                let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
-
-                                assert(target_trove_after_health.debt < forge_amt, 'trove not correctly liquidated');
-
-                                // Checking that the liquidator's yin balance has decreased
-                                // after liquidation
-                                if *liquidate_via_absorption {
-                                    assert(
-                                        yin_erc20
-                                            .balance_of(absorber.contract_address) < before_liquidation_yin_balance,
-                                        'absorber yin not used'
-                                    );
-                                } else {
-                                    assert(
-                                        yin_erc20.balance_of(searcher) < before_liquidation_yin_balance,
-                                        'searcher yin not used'
-                                    );
-                                }
-
-                                start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-                                shrine.unsuspend_yang(eth);
-                                stop_prank(CheatTarget::One(shrine.contract_address));
-                            },
-                            Option::None => { break; }
-                        }
+                    // We want to compare the yin balance of the liquidator
+                    // before and after the liquidation. In the case of absorption
+                    // we check the absorber's balance, and in the case of
+                    // searcher liquidation we check the searcher's balance.
+                    let before_liquidation_yin_balance: u256 = if liquidate_via_absorption {
+                        yin_erc20.balance_of(absorber.contract_address)
+                    } else {
+                        yin_erc20.balance_of(searcher)
                     };
+
+                    if is_recovery_mode && !shrine.is_recovery_mode() {
+                        purger_utils::trigger_recovery_mode(
+                            shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                        );
+                    }
+
+                    // Liquidate the trove
+                    start_prank(CheatTarget::One(purger.contract_address), searcher);
+
+                    if liquidate_via_absorption {
+                        purger.absorb(target_trove);
+                    } else {
+                        // Get the updated debt with accrued interest
+                        let before_liquidation_health: Health = shrine.get_trove_health(target_trove);
+                        purger.liquidate(target_trove, before_liquidation_health.debt, searcher);
+                    }
+
+                    // Sanity checks
+                    let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+
+                    assert(target_trove_after_health.debt < forge_amt, 'trove not correctly liquidated');
+
+                    // Checking that the liquidator's yin balance has decreased
+                    // after liquidation
+                    if liquidate_via_absorption {
+                        assert(
+                            yin_erc20.balance_of(absorber.contract_address) < before_liquidation_yin_balance,
+                            'absorber yin not used'
+                        );
+                    } else {
+                        assert(
+                            yin_erc20.balance_of(searcher) < before_liquidation_yin_balance, 'searcher yin not used'
+                        );
+                    }
+
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    shrine.unsuspend_yang(eth);
+                    stop_prank(CheatTarget::One(shrine.contract_address));
                 },
                 Option::None => { break; }
             }
@@ -3337,22 +3320,42 @@ mod test_purger {
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized1() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true);
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, true);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized2() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false);
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, true);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized3() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), true);
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, false);
     }
 
     #[test]
     fn test_liquidate_suspended_yang_threshold_near_zero_parametrized4() {
-        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), false);
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, false);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized5() {
+        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), true, true);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized6() {
+        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), false, true);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized7() {
+        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), true, false);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized8() {
+        test_liquidate_suspended_yang_threshold_near_zero(RAY_PERCENT.into(), false, false);
     }
 
     #[derive(Copy, Drop, PartialEq)]
