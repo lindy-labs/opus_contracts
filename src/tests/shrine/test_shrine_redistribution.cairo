@@ -1194,20 +1194,14 @@ mod test_shrine_redistribution {
                             shrine_contract::Event::TotalTrovesDebtUpdated(
                                 shrine_contract::TotalTrovesDebtUpdated { total: expected_total_troves_debt }
                             )
-                        )
-                    ];
-
-                    if expected_forge_fee_and_accrued_interest > protocol_owned_debt_amt {
-                        expected_events
-                            .append(
-                                (
-                                    shrine.contract_address,
-                                    shrine_contract::Event::BudgetAdjusted(
-                                        shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
-                                    )
-                                )
+                        ),
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::BudgetAdjusted(
+                                shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
                             )
-                    }
+                        ),
+                    ];
 
                     if (*target_trove_forge_amt).is_non_zero() {
                         expected_events

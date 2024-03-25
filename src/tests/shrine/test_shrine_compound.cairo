@@ -6,7 +6,7 @@ mod test_shrine_compound {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::exp::exp;
-    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{CheatTarget, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_SCALE, SignedWad, Wad, WAD_ONE};
 
@@ -69,6 +69,13 @@ mod test_shrine_compound {
 
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
 
         let expected_events = array![
             (
@@ -168,6 +175,13 @@ mod test_shrine_compound {
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+
         let expected_events = array![
             (
                 shrine.contract_address,
@@ -263,6 +277,13 @@ mod test_shrine_compound {
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+
         let expected_events = array![
             (
                 shrine.contract_address,
@@ -352,6 +373,13 @@ mod test_shrine_compound {
         let interest: Wad = estimated_trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+
         let expected_events = array![
             (
                 shrine.contract_address,
@@ -438,6 +466,13 @@ mod test_shrine_compound {
 
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
 
         let expected_events = array![
             (
@@ -565,6 +600,13 @@ mod test_shrine_compound {
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+
         let expected_events = array![
             (
                 shrine.contract_address,
@@ -672,6 +714,13 @@ mod test_shrine_compound {
 
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
 
         let expected_events = array![
             (
@@ -934,6 +983,13 @@ mod test_shrine_compound {
         let interest: Wad = trove_health.debt - start_debt;
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+
         expected_events
             .append(
                 (
@@ -1039,6 +1095,13 @@ mod test_shrine_compound {
         shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget() == deficit, 'wrong budget #3');
+
+        // Check events
+        spy.fetch_events();
+
+        // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
+        // should not be emitted
+        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
 
         let expected_events = array![
             (
