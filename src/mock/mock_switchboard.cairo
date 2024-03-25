@@ -5,7 +5,7 @@ pub trait IMockSwitchboard<TContractState> {
 
 #[starknet::contract]
 pub mod mock_switchboard {
-    use opus::interfaces::external::ISwitchboardOracle;
+    use opus::external::interfaces::ISwitchboardOracle;
     use super::IMockSwitchboard;
 
     #[storage]

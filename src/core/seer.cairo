@@ -3,11 +3,11 @@ pub mod seer {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
+    use opus::external::interfaces::ITask;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISeer::ISeer;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::ITask;
     use opus::types::YangSuspensionStatus;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;

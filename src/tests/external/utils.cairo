@@ -1,14 +1,15 @@
 pub mod pragma_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
-    use opus::core::roles::{pragma_roles, shrine_roles};
+    use opus::core::roles::shrine_roles;
+    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::external::pragma::pragma as pragma_contract;
+    use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::mock::mock_pragma::{
         mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
     };

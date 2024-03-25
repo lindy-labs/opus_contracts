@@ -2,10 +2,10 @@
 pub mod switchboard {
     use access_control::access_control_component;
     use core::num::traits::Zero;
-    use opus::core::roles::switchboard_roles;
+    use opus::external::interfaces::{ISwitchboardOracleDispatcher, ISwitchboardOracleDispatcherTrait};
+    use opus::external::roles::switchboard_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::ISwitchboard::ISwitchboard;
-    use opus::interfaces::external::{ISwitchboardOracleDispatcher, ISwitchboardOracleDispatcherTrait};
     use starknet::{ContractAddress};
     use wadray::Wad;
 

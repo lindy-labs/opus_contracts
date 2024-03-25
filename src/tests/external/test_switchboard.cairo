@@ -1,7 +1,7 @@
 mod test_switchboard {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
-    use opus::core::roles::switchboard_roles;
+    use opus::external::roles::switchboard_roles;
     use opus::external::switchboard::switchboard as switchboard_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};

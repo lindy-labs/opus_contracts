@@ -19,7 +19,9 @@ mod core {
 }
 
 mod external {
+    pub mod interfaces;
     pub mod pragma;
+    pub mod roles;
     pub mod switchboard;
 }
 
@@ -43,7 +45,6 @@ mod interfaces {
     pub mod IShrine;
     pub mod ISwitchboard;
     pub mod ITransmuter;
-    pub mod external;
 }
 
 mod utils {
