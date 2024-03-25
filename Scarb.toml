@@ -31,4 +31,4 @@ sort-module-level-items = true
 max-line-length = 120
 
 [tool.snforge]
-max_n_steps = 15000000
+max_n_steps = 12000000
