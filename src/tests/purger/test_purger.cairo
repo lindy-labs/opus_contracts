@@ -3199,11 +3199,10 @@ mod test_purger {
         let eth: ContractAddress = *yangs[0];
         let eth_gate: IGateDispatcher = *gates[0];
         let eth_amt: u128 = WAD_ONE;
-        let eth_threshold: Ray = shrine.get_yang_threshold(eth);
+        let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
         let target_user: ContractAddress = purger_utils::target_trove_owner();
-
-        common::fund_user(target_user, array![eth].span(), array![(10 * WAD_ONE).into()].span());
+        common::fund_user(target_user, array![eth].span(), array![(10 * eth_amt).into()].span());
 
         // Have the searcher provide half of his yin to the absorber
         let searcher = purger_utils::searcher();
@@ -3274,10 +3273,15 @@ mod test_purger {
                         yin_erc20.balance_of(searcher)
                     };
 
-                    if is_recovery_mode && !shrine.is_recovery_mode() {
-                        purger_utils::trigger_recovery_mode(
-                            shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
-                        );
+                    let in_recovery_mode: bool = shrine.is_recovery_mode();
+                    if is_recovery_mode {
+                        if !in_recovery_mode {
+                            purger_utils::trigger_recovery_mode(
+                                shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                            );
+                        }
+                    } else {
+                        assert(!in_recovery_mode, 'in recovery mode');
                     }
 
                     // Liquidate the trove
