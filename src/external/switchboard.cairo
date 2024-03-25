@@ -1,6 +1,7 @@
 #[starknet::contract]
-mod switchboard {
+pub mod switchboard {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::switchboard_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::ISwitchboard::ISwitchboard;
@@ -41,23 +42,23 @@ mod switchboard {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         InvalidPriceUpdate: InvalidPriceUpdate,
         YangPairIdSet: YangPairIdSet,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct InvalidPriceUpdate {
-        yang: ContractAddress,
-        price: Wad,
-        timestamp: u64
+    pub struct InvalidPriceUpdate {
+        pub yang: ContractAddress,
+        pub price: Wad,
+        pub timestamp: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct YangPairIdSet {
-        address: ContractAddress,
-        pair_id: felt252
+    pub struct YangPairIdSet {
+        pub address: ContractAddress,
+        pub pair_id: felt252
     }
 
     //

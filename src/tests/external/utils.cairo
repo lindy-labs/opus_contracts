@@ -139,39 +139,37 @@ pub mod pragma_utils {
     }
 }
 
-mod switchboard_utils {
+pub mod switchboard_utils {
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
 
-    const ETH_PRICE: u128 = 3000000000000000000;
-    const TIMESTAMP: u64 = 1710000000;
+    pub const ETH_PRICE: u128 = 3000000000000000000;
+    pub const TIMESTAMP: u64 = 1710000000;
 
-    fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('switchboard owner').unwrap()
+    pub fn admin() -> ContractAddress {
+        'switchboard owner'.try_into().unwrap()
     }
 
-    fn mock_eth_token_addr() -> ContractAddress {
-        contract_address_try_from_felt252('ETH').unwrap()
+    pub fn mock_eth_token_addr() -> ContractAddress {
+        'ETH'.try_into().unwrap()
     }
 
     fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
-        let mock_switchboard_addr = declare('mock_switchboard')
+        let mock_switchboard_addr = declare("mock_switchboard")
             .deploy(@calldata)
             .expect('failed deploy mock switchboard');
         IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
     }
 
-    fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+    pub fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
         let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy();
 
-        let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()), contract_address_to_felt252(mock_switchboard.contract_address)
-        ];
+        let mut calldata: Array<felt252> = array![admin().into(), mock_switchboard.contract_address.into()];
 
-        let switchboard_addr = declare('switchboard').deploy(@calldata).expect('failed deploy switchboard');
+        let switchboard_addr = declare("switchboard").deploy(@calldata).expect('failed deploy switchboard');
 
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 

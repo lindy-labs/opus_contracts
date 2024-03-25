@@ -1,10 +1,10 @@
 #[starknet::interface]
-trait IMockSwitchboard<TContractState> {
+pub trait IMockSwitchboard<TContractState> {
     fn next_get_latest_result(ref self: TContractState, pair_id: felt252, price: u128, timestamp: u64);
 }
 
 #[starknet::contract]
-mod mock_switchboard {
+pub mod mock_switchboard {
     use opus::interfaces::external::ISwitchboardOracle;
     use super::IMockSwitchboard;
 

@@ -12,6 +12,7 @@ pub trait ITask<TContractState> {
     fn execute_task(ref self: TContractState);
 }
 
+#[starknet::interface]
 pub trait ISwitchboardOracle<TContractState> {
     // returns latest price and timestamp values for the given pair
     fn get_latest_result(self: @TContractState, pair_id: felt252) -> (u128, u64);

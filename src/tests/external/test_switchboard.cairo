@@ -1,5 +1,6 @@
 mod test_switchboard {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::roles::switchboard_roles;
     use opus::external::switchboard::switchboard as switchboard_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -10,7 +11,7 @@ mod test_switchboard {
     use snforge_std::{
         start_prank, stop_prank, spy_events, CheatTarget, ContractClassTrait, EventAssertions, EventSpy, SpyOn
     };
-    use starknet::{ContractAddress, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
     use wadray::Wad;
 
     #[test]
@@ -94,7 +95,7 @@ mod test_switchboard {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_switchboard_set_yang_pair_id_unauthorized_fail() {
-        let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
+        let (switchboard, _) = switchboard_utils::switchboard_deploy();
         let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
     }
@@ -102,7 +103,7 @@ mod test_switchboard {
     #[test]
     #[should_panic(expected: ('SWI: Invalid pair ID',))]
     fn test_switchboard_set_yang_pair_id_zero() {
-        let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
+        let (switchboard, _) = switchboard_utils::switchboard_deploy();
         start_prank(CheatTarget::All, switchboard_utils::admin());
         let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, 0);
@@ -111,7 +112,7 @@ mod test_switchboard {
     #[test]
     #[should_panic(expected: ('SWI: Invalid yang address',))]
     fn test_switchboard_set_yang_pair_id_yang_zero() {
-        let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
+        let (switchboard, _) = switchboard_utils::switchboard_deploy();
         start_prank(CheatTarget::All, switchboard_utils::admin());
         switchboard.set_yang_pair_id(0.try_into().unwrap(), 'ETH/USD');
     }
@@ -167,6 +168,8 @@ mod test_switchboard {
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
+        let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
+
         mock_switchboard.next_get_latest_result('ETH/USD', 0, TIMESTAMP);
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
@@ -176,6 +179,20 @@ mod test_switchboard {
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, true); // forced fetch
         assert(result.is_ok(), 'forced fetch should pass');
         assert(result.unwrap().is_zero(), 'wrong price');
+
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        switchboard.contract_address,
+                        switchboard_contract::Event::InvalidPriceUpdate(
+                            switchboard_contract::InvalidPriceUpdate {
+                                yang: eth, price: Zero::zero(), timestamp: TIMESTAMP
+                            }
+                        )
+                    )
+                ]
+            );
     }
 
     #[test]
@@ -189,6 +206,8 @@ mod test_switchboard {
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
+        let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
+
         mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, 0);
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
@@ -198,5 +217,19 @@ mod test_switchboard {
         let result: Result<Wad, felt252> = oracle.fetch_price(eth, true); // forced fetch
         assert(result.is_ok(), 'forced fetch should pass');
         assert(result.unwrap() == ETH_PRICE.into(), 'wrong price');
+
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        switchboard.contract_address,
+                        switchboard_contract::Event::InvalidPriceUpdate(
+                            switchboard_contract::InvalidPriceUpdate {
+                                yang: eth, price: ETH_PRICE.into(), timestamp: 0
+                            }
+                        )
+                    )
+                ]
+            );
     }
 }

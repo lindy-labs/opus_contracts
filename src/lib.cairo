@@ -20,6 +20,7 @@ mod core {
 
 mod external {
     pub mod pragma;
+    pub mod switchboard;
 }
 
 mod interfaces {
