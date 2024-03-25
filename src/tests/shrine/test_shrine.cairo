@@ -13,8 +13,8 @@ mod test_shrine {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use snforge_std::{
-        CheatTarget, ContractClass, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, stop_prank,
-        start_warp,
+        CheatTarget, ContractClass, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp,
+        stop_prank,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE};

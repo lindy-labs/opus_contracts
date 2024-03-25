@@ -23,7 +23,7 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
+        CheatTarget, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp, stop_prank
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};

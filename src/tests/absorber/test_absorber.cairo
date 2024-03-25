@@ -18,8 +18,8 @@ mod test_absorber {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
-        CheatTarget, declare, EventAssertions, EventFetcher, EventSpy, spy_events, SpyOn, start_prank, stop_prank,
-        start_warp,
+        CheatTarget, declare, EventAssertions, EventFetcher, EventSpy, spy_events, SpyOn, start_prank, start_warp,
+        stop_prank
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE, WAD_SCALE};
