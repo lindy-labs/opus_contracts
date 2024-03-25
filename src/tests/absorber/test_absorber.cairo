@@ -18,7 +18,8 @@ mod test_absorber {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
-        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
+        CheatTarget, declare, EventAssertions, EventFetcher, EventSpy, spy_events, SpyOn, start_prank, stop_prank,
+        start_warp,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE, WAD_SCALE};
@@ -909,6 +910,9 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
 
         // Step 5
+        // Reset the event spy so all previous unchecked events are dropped
+        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+
         let first_provider_before_reward_bals = common::get_token_balances(reward_tokens, first_provider.into());
         let first_provider_before_absorbed_bals = common::get_token_balances(yangs, first_provider.into());
 
@@ -966,25 +970,18 @@ mod test_absorber {
             ),
         ];
 
-        spy.assert_emitted(@expected_events);
+        spy.fetch_events();
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        let should_not_emit = array![
-            (
-                absorber.contract_address,
-                absorber_contract::Event::Bestow(
-                    absorber_contract::Bestow {
-                        assets: expected_rewarded_assets,
-                        total_recipient_shares: second_epoch_recipient_shares,
-                        epoch: second_epoch,
-                    }
-                )
-            ),
-        ];
-        spy.assert_not_emitted(@should_not_emit);
+        common::assert_event_name_not_emitted((spy.events).span(), 'Bestow');
+
+        spy.assert_emitted(@expected_events);
 
         // Step 6
+        // Reset the event spy so all previous unchecked events are dropped
+        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+
         let second_provider_before_reward_bals = common::get_token_balances(reward_tokens, second_provider.into());
         let second_provider_before_absorbed_bals = common::get_token_balances(yangs, second_provider.into());
 
@@ -1040,11 +1037,13 @@ mod test_absorber {
             ),
         ];
 
-        spy.assert_emitted(@expected_events);
+        spy.fetch_events();
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        spy.assert_not_emitted(@should_not_emit);
+        common::assert_event_name_not_emitted((spy.events).span(), 'Bestow');
+
+        spy.assert_emitted(@expected_events);
     }
 
 

@@ -7,7 +7,9 @@ use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
-use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
+use snforge_std::{
+    CheatTarget, ContractClass, ContractClassTrait, declare, event_name_hash, Event, start_prank, start_warp, stop_prank
+};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
 use wadray::{Ray, Wad};
@@ -322,6 +324,22 @@ pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangB
             },
             Option::None => { break; }
         };
+    };
+}
+
+pub fn assert_event_name_not_emitted(emitted_events: Span<(ContractAddress, Event)>, event_name: felt252) {
+    let end_idx = emitted_events.len();
+    let mut current_idx = 0;
+    loop {
+        if current_idx == end_idx {
+            break;
+        }
+
+        let (_, raw_event) = emitted_events.at(current_idx);
+
+        assert(raw_event.keys.at(0) != @event_name_hash(event_name), 'event name emitted');
+
+        current_idx += 1;
     };
 }
 

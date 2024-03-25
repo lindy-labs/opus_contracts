@@ -13,7 +13,8 @@ mod test_shrine {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use snforge_std::{
-        ContractClass, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
+        CheatTarget, ContractClass, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, stop_prank,
+        start_warp,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE};
@@ -1266,18 +1267,10 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        let trove_id: u64 = common::TROVE_1;
         shrine_utils::trove1_forge(shrine, forge_amt);
 
-        let expected_events = array![
-            (
-                shrine.contract_address,
-                shrine_contract::Event::ForgeFeePaid(
-                    shrine_contract::ForgeFeePaid { trove_id, fee: Zero::zero(), fee_pct: Zero::zero(), }
-                )
-            )
-        ];
-        spy.assert_not_emitted(@expected_events);
+        spy.fetch_events();
+        common::assert_event_name_not_emitted(spy.events.span(), 'ForgeFeePaid');
     }
 
     #[test]
