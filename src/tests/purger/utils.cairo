@@ -2,7 +2,6 @@ pub mod purger_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
     use core::num::traits::Zero;
-    use core::option::OptionTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};

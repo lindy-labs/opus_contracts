@@ -3,7 +3,6 @@ mod test_purger {
     use core::cmp::{max, min};
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use core::option::OptionTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
@@ -25,7 +24,6 @@ mod test_purger {
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
         start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
-        event_name_hash
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
