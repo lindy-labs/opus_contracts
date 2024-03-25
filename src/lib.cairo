@@ -19,7 +19,10 @@ mod core {
 }
 
 mod external {
+    pub mod interfaces;
     pub mod pragma;
+    pub mod roles;
+    pub mod switchboard;
 }
 
 mod interfaces {
@@ -40,8 +43,8 @@ mod interfaces {
     pub mod ISeer;
     pub mod ISentinel;
     pub mod IShrine;
+    pub mod ISwitchboard;
     pub mod ITransmuter;
-    pub mod external;
 }
 
 mod utils {
@@ -59,7 +62,7 @@ mod mock {
     pub mod flash_borrower;
     pub mod flash_liquidator;
     pub mod mock_pragma;
-//mod oracle;
+    pub mod mock_switchboard;
 }
 
 #[cfg(test)]
@@ -89,6 +92,7 @@ mod tests {
     }
     mod external {
         mod test_pragma;
+        mod test_switchboard;
         pub mod utils;
     }
     mod flash_mint {
