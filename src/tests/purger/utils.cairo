@@ -706,7 +706,7 @@ pub mod purger_utils {
             percentage_freed: pct_freed.into(),
             funder: (*evt.keys.at(2)).try_into().unwrap(),
             recipient: (*evt.keys.at(3)).try_into().unwrap(),
-            // key no. 4 is the length of the array
+            // key no. 4 is skipped because it is the length of the array
             freed_assets: array![
                 AssetBalance {
                     address: (*evt.data.at(3)).try_into().unwrap(), amount: (*evt.data.at(4)).try_into().unwrap()

@@ -328,7 +328,8 @@ pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangB
 }
 
 // Helper to assert that an event was not emitted at all by checking the event name only
-pub fn assert_event_name_not_emitted(emitted_events: Span<(ContractAddress, Event)>, event_name: felt252) {
+// without checking specific values of the event's members
+pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, Event)>, event_name: felt252) {
     let end_idx = emitted_events.len();
     let mut current_idx = 0;
     loop {

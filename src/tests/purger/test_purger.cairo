@@ -2477,6 +2477,12 @@ mod test_purger {
                                                     }
 
                                                     // Check Purger events
+                                                    purger_spy.fetch_events();
+
+                                                    common::assert_event_not_emitted_by_name(
+                                                        purger_spy.events.span(), 'Purged'
+                                                    );
+
                                                     let expected_events = array![
                                                         (
                                                             purger.contract_address,
@@ -2487,10 +2493,6 @@ mod test_purger {
                                                             ),
                                                         ),
                                                     ];
-
-                                                    // Note that this indirectly asserts that `Purged`
-                                                    // is not emitted if it does not revert because
-                                                    // `Purged` would have been emitted before `Compensate`
                                                     purger_spy.assert_emitted(@expected_events);
 
                                                     // Check Shrine event
