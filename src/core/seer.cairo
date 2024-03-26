@@ -10,7 +10,7 @@ pub mod seer {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::Wad;
+    use wadray::{Wad, WAD_ONE};
 
     //
     // Components
@@ -70,7 +70,6 @@ pub mod seer {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PriceUpdate {
-        pub oracle: ContractAddress,
         pub yang: ContractAddress,
         pub price: Wad
     }
@@ -189,15 +188,16 @@ pub mod seer {
 
     #[generate_trait]
     impl SeerInternalFunctions of SeerInternalFunctionsTrait {
+        // TODO: force_update w/ multiple oracles is misleading
+
         fn update_prices_internal(ref self: ContractState, force_update: bool) {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
             // loop through all yangs
-            // for each yang, loop through all oracles until a
-            // valid price update is fetched, in which case, call shrine.advance()
-            // the expectation is that the primary oracle will provide a
-            // valid price in most cases, but if not, we can fallback to other oracles
+            // for each yang, loop through all oracles
+            // fetch the a price from the oracle, normalize it
+            // calculate and report the price average to Shrine
             let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             loop {
                 match yangs.pop_front() {
@@ -206,32 +206,44 @@ pub mod seer {
                             continue;
                         }
 
+                        let mut yang_price: Wad = Zero::zero();
                         let mut oracle_index: u32 = LOOP_START;
+                        let mut oracle_count: u128 = 0;
+
                         loop {
                             let oracle: IOracleDispatcher = self.oracles.read(oracle_index);
                             if oracle.contract_address.is_zero() {
-                                // if branch happens, it means no oracle was able to
-                                // fetch a price for yang, i.e. we're missing a price update
-                                self.emit(PriceUpdateMissed { yang: *yang });
                                 break;
                             }
 
                             // TODO: when possible in Cairo, fetch_price should be wrapped
                             //       in a try-catch block so that an exception does not
                             //       prevent all other price updates
-
                             match oracle.fetch_price(*yang, force_update) {
                                 Result::Ok(oracle_price) => {
                                     let asset_amt_per_yang: Wad = sentinel.get_asset_amt_per_yang(*yang);
                                     let price: Wad = oracle_price * asset_amt_per_yang;
-                                    shrine.advance(*yang, price);
-                                    self.emit(PriceUpdate { oracle: oracle.contract_address, yang: *yang, price });
-                                    break;
+                                    yang_price += price;
+                                    oracle_index += 1;
+                                    oracle_count += 1;
                                 },
                                 // try next oracle for this yang
                                 Result::Err(_) => { oracle_index += 1; }
-                            }
+                            };
                         };
+
+                        if yang_price.is_zero() {
+                            // if branch happens, it means no oracle was able to
+                            // fetch a price for yang, i.e. we're missing a price update
+                            self.emit(PriceUpdateMissed { yang: *yang });
+                        } else {
+                            // update Shrine with price average
+                            // denominator is oracle_count converted into
+                            // a wad (10^18) representation
+                            let avg_price: Wad = yang_price / (WAD_ONE * oracle_count).into();
+                            shrine.advance(*yang, avg_price);
+                            self.emit(PriceUpdate { yang: *yang, price: avg_price });
+                        }
                     },
                     Option::None => { break; }
                 };

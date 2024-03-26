@@ -55,7 +55,6 @@ pub mod pragma_utils {
             Option::Some(class) => class,
             Option::None => declare("mock_pragma"),
         };
-
         let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy mock pragma');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
@@ -73,7 +72,6 @@ pub mod pragma_utils {
             Option::Some(class) => class,
             Option::None => declare("pragma"),
         };
-
         let pragma_addr = pragma_class.deploy(@calldata).expect('failed deploy pragma');
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };

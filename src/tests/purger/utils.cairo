@@ -342,7 +342,7 @@ pub mod purger_utils {
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
-        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
+        seer_utils::append_pragma_oracle(seer, classes.pragma, classes.mock_pragma);
         seer_utils::add_yangs(seer, yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -694,7 +694,7 @@ pub mod purger_utils {
         }
     }
 
-    // Helper function to deserialize the `Purged` event specifically for the purger 
+    // Helper function to deserialize the `Purged` event specifically for the purger
     // tests
     pub fn deserialize_purged_event(evt: Event) -> purger_contract::Purged {
         assert(evt.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
