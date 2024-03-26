@@ -26,7 +26,7 @@ Both functions should revert (via the call to `shrine.melt`) if the Shrine is no
 
 Once a trove becomes unhealthy i.e. its loan-to-value (LTV) ratio exceeds its threshold, then anyone can immediately `liquidate` the trove. The liquidation penalty will increase from 3% up to a maximum of 12.5%, as a function of how much higher the trove's LTV is than its threshold. The penalty is also bound by the maximum possible penalty that can be charged while ensuring the trove's debt is fully backed.&#x20;
 
-Absorption can happen only after an unhealthy trove's LTV has exceeded the LTV at which the maximum possible penalty is reached, or if it has exceeded 90% LTV. The liquidation penalty in this case will similarly be capped to the maximum of 12.5% or the maximum possible penalty.
+Absorption can happen only after an unhealthy trove's LTV has exceeded the LTV at which the maximum possible penalty is reached, or if its threshold exceeds 90% and its LTV has exceeded the threshold. The liquidation penalty in this case will similarly be capped to the maximum of 12.5% or the maximum possible penalty.
 
 The maximum possible penalty at any given LTV is calculated as $$\frac{1-ltv}{ltv}$$, which ensures that the liquidation is not [toxic](https://arxiv.org/pdf/2212.07306.pdf) i.e. the trove's LTV is not worse off after the liquidation.&#x20;
 
@@ -58,7 +58,7 @@ $$\textrm{penalty_at_ltv} = \textrm{MIN_PENALTY} + s \left( \frac{ltv}{threshold
 
 where $$0.97 \le s \le 1.06$$
 
-$$s$$ is a scalar that is introduced to control how quickly the absorption penalty reaches the maximum possible penalty for thresholds at or greater than 90%. This lets the protocol control how much to incentivize users to call `absorb` depending on how quick and/or desirable absorptions are for the protocol.
+$$s$$ is a scalar that is introduced to control how quickly the absorption penalty reaches the maximum possible penalty for thresholds greater than 90%. This lets the protocol control how much to incentivize users to call `absorb` depending on how quick and/or desirable absorptions are for the protocol.
 
 * If the penalty scalar is set to 1, then the absorption penalty is identical to the liquidation penalty.
 * If the penalty scalar is set to greater than 1, then the absorption penalty will reach the maximum possible penalty sooner, which will make absorptions possible at a lower LTV.

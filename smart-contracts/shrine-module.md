@@ -138,7 +138,7 @@ In recovery mode, the threshold for all yangs is gradually adjusted downwards de
 
 ## Emergency mechanism
 
-The Shrine can be killed permanently using `Shrine.kill` . After the Shrine is killed, all user-facing actions (i.e. `deposit`, `withdraw`, `forge` and `melt`) are disabled.
+The Shrine can be killed permanently using `Shrine.kill` . After the Shrine is killed, all user-facing actions (i.e. `deposit`, `withdraw`, `forge` , `melt`, and `inject`) are disabled.
 
 ## Other notes
 

@@ -22,7 +22,7 @@ This is desirable because small deviations in the synthetic's price can happen f
 The Controller acts according to this formula:
 
 $$
-y[k] = 1 + k_p \frac{ u[k]^{\alpha_{kp}}}{\sqrt{1 + u[k]^{\beta_{kp}}}} + y_i[k-1] + k_i \frac{u[k-1]|^{\alpha_{ki}}}{\sqrt{1 + u[k-1]^{\beta_{ki}}}} \cdot \Delta t
+y[k] = 1 + k_p \frac{ u[k]^{\alpha_{kp}}}{\sqrt{1 + u[k]^{\beta_{kp}}}} + y_i[k-1] + k_i \frac{u[k-1]^{\alpha_{ki}}}{\sqrt{1 + u[k-1]^{\beta_{ki}}}} \cdot \Delta t
 $$
 
 Where:
