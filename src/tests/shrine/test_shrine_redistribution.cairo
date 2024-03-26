@@ -989,7 +989,7 @@ mod test_shrine_redistribution {
         shrine.forge(trove1_owner, redistributed_trove, (100 * WAD_ONE).into(), Zero::zero());
         shrine.suspend_yang(yang_to_delist);
 
-        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+        shrine_utils::advance_prices_periodically(shrine, yangs, shrine_contract::SUSPENSION_GRACE_PERIOD);
 
         assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
 
@@ -1036,7 +1036,7 @@ mod test_shrine_redistribution {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.suspend_yang(yang_to_delist);
 
-        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+        shrine_utils::advance_prices_periodically(shrine, yangs, shrine_contract::SUSPENSION_GRACE_PERIOD);
 
         assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
 
@@ -1194,20 +1194,14 @@ mod test_shrine_redistribution {
                             shrine_contract::Event::TotalTrovesDebtUpdated(
                                 shrine_contract::TotalTrovesDebtUpdated { total: expected_total_troves_debt }
                             )
-                        )
-                    ];
-
-                    if expected_forge_fee_and_accrued_interest > protocol_owned_debt_amt {
-                        expected_events
-                            .append(
-                                (
-                                    shrine.contract_address,
-                                    shrine_contract::Event::BudgetAdjusted(
-                                        shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
-                                    )
-                                )
+                        ),
+                        (
+                            shrine.contract_address,
+                            shrine_contract::Event::BudgetAdjusted(
+                                shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
                             )
-                    }
+                        ),
+                    ];
 
                     if (*target_trove_forge_amt).is_non_zero() {
                         expected_events
