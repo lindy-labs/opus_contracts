@@ -490,8 +490,61 @@ mod test_seer {
                 ]
             );
     }
-// #[test]
-// fn test_update_prices_first_oracle_fails_second_works() {
-//     assert(true, 'true');
-// }
+
+    #[test]
+    fn test_update_prices_first_oracle_fails_second_works() {
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::None, Option::None,
+        );
+        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+            Option::None, shrine.contract_address, sentinel.contract_address
+        );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
+        seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        let oracles: Span<ContractAddress> = seer_utils::append_switchboard_oracle(seer);
+        seer_utils::add_yangs(seer, yangs);
+
+        // make Pragma report fail, Switchboard report 2000
+        let eth_addr: ContractAddress = *yangs[0];
+        let pragma = IOracleDispatcher { contract_address: *oracles[0] };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        mock_pragma
+            .next_get_data_median(
+                pragma_utils::get_pair_id_for_yang(eth_addr),
+                PragmaPricesResponse {
+                    price: 1,
+                    decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+                    last_updated_timestamp: 0,
+                    num_sources_aggregated: 0,
+                    expiration_timestamp: Option::None,
+                }
+            );
+
+        let switchboard = IOracleDispatcher { contract_address: *oracles[1] };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: switchboard.get_oracle() };
+        let switchboard_eth_price: Wad = (2000 * WAD_SCALE).into();
+        mock_switchboard.next_get_latest_result('ETH/USD', switchboard_eth_price.val, get_block_timestamp());
+        start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
+        ISwitchboardDispatcher { contract_address: switchboard.contract_address }.set_yang_pair_id(eth_addr, 'ETH/USD');
+
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.update_prices();
+
+        let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
+        assert(shrine_eth_price == switchboard_eth_price, 'wrong eth price in shrine');
+
+        spy
+            .assert_emitted(
+                @array![
+                    (
+                        seer.contract_address,
+                        seer_contract::Event::PriceUpdate(
+                            seer_contract::PriceUpdate { yang: eth_addr, price: switchboard_eth_price }
+                        )
+                    )
+                ]
+            );
+    }
 }
