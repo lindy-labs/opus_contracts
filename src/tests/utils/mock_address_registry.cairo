@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod mock_address_registry {
+pub mod mock_address_registry {
     use opus::utils::address_registry::address_registry_component;
     use starknet::ContractAddress;
 
@@ -15,7 +15,7 @@ mod mock_address_registry {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AddressRegistryEvent: address_registry_component::Event
     }
 }

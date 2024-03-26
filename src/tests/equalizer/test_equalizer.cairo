@@ -1,8 +1,8 @@
 mod test_equalizer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
-    use integer::BoundedU128;
+    use core::cmp::min;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
     use opus::core::shrine::shrine;
@@ -16,7 +16,7 @@ mod test_equalizer {
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
 
     #[test]
     fn test_equalizer_deploy() {
@@ -78,7 +78,7 @@ mod test_equalizer {
         let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
-        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(),].span();
+        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr()].span();
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
 
         // deposit 1000 ETH and forge the debt ceiling
@@ -102,7 +102,7 @@ mod test_equalizer {
             shrine.advance(eth, eth_price);
             stop_prank(CheatTarget::One(shrine.contract_address));
 
-            shrine_utils::trove1_deposit(shrine, WadZeroable::zero());
+            shrine_utils::trove1_deposit(shrine, Zero::zero());
             let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
             let expected_surplus: Wad = trove_health.debt - start_debt;
 
@@ -165,7 +165,7 @@ mod test_equalizer {
         let mut after_balances = common::get_token_balances(tokens.span(), recipients);
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
-        let mut allocated = WadZeroable::zero();
+        let mut allocated = Zero::zero();
         let mut percentages_copy = percentages;
         loop {
             match percentages_copy.pop_front() {
@@ -212,7 +212,7 @@ mod test_equalizer {
 
         let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
-            WadZeroable::zero(),
+            Zero::zero(),
             (inject_amt.val - 1).into(),
             inject_amt,
             (inject_amt.val + 1).into(), // exceeds deficit, but should be capped in `normalize`
@@ -253,12 +253,12 @@ mod test_equalizer {
                     }
 
                     // Reset by normalizing all remaining deficit
-                    equalizer.normalize(BoundedU128::max().into());
+                    equalizer.normalize(BoundedInt::max());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
                     // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(BoundedU128::max().into());
+                    equalizer.normalize(BoundedInt::max());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },
@@ -269,7 +269,7 @@ mod test_equalizer {
 
     #[test]
     fn test_set_allocator_pass() {
-        let allocator_class = Option::Some(declare('allocator'));
+        let allocator_class = Option::Some(declare("allocator"));
         let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
@@ -299,7 +299,7 @@ mod test_equalizer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocator_fail() {
-        let allocator_class = Option::Some(declare('allocator'));
+        let allocator_class = Option::Some(declare("allocator"));
         let (_, equalizer, _) = equalizer_utils::equalizer_deploy(allocator_class);
         let new_allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class

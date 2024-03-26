@@ -2,6 +2,7 @@
 //       declared in constructor args when deploying, can call the gate
 
 mod test_gate {
+    use core::num::traits::Zero;
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
@@ -9,8 +10,8 @@ mod test_gate {
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, PrintTrait, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::{ContractAddress, contract_address_try_from_felt252};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use starknet::ContractAddress;
     use wadray::{WAD_SCALE, Wad};
 
     #[test]
@@ -344,9 +345,6 @@ mod test_gate {
     fn test_gate_enter_insufficient_bags() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-
-        // Unneeded but helps prevent 'Failed setting up runner' error
-        let shrine = IShrineDispatcher { contract_address: shrine };
 
         let eth = IERC20Dispatcher { contract_address: eth };
         let gate = IGateDispatcher { contract_address: gate };

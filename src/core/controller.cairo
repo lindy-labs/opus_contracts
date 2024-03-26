@@ -1,12 +1,13 @@
 #[starknet::contract]
-mod controller {
+pub mod controller {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::controller_roles;
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, SignedRay, SignedRayZeroable, Wad};
+    use wadray::{Ray, RAY_ONE, SignedRay, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -24,11 +25,11 @@ mod controller {
 
     // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
+    pub const TIME_SCALE: u128 = 60 * 60; // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
-    const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
-    const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
+    pub const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
+    pub const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
     //
     // Storage
@@ -58,24 +59,24 @@ mod controller {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         ParameterUpdated: ParameterUpdated,
         GainUpdated: GainUpdated,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct ParameterUpdated {
+    pub struct ParameterUpdated {
         #[key]
-        name: felt252,
-        value: u8
+        pub name: felt252,
+        pub value: u8
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct GainUpdated {
+    pub struct GainUpdated {
         #[key]
-        name: felt252,
-        value: Ray
+        pub name: felt252,
+        pub value: Ray
     }
 
     #[constructor]
@@ -148,7 +149,7 @@ mod controller {
         fn get_i_term(self: @ContractState) -> SignedRay {
             let i_gain = self.i_gain.read();
             if i_gain.is_zero() {
-                SignedRayZeroable::zero()
+                Zero::zero()
             } else {
                 i_gain * self.get_i_term_without_gain()
             }
@@ -213,7 +214,7 @@ mod controller {
 
             // Reset the integral term if the i_gain is set to zero
             if i_gain.is_zero() {
-                self.i_term.write(SignedRayZeroable::zero());
+                self.i_term.write(Zero::zero());
             }
 
             self.i_gain.write(i_gain.into());
@@ -269,13 +270,13 @@ mod controller {
 
         #[inline(always)]
         fn get_current_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.shrine.read().get_yin_spot_price().into()
+            RAY_ONE.into() - wad_to_signed_ray(self.shrine.read().get_yin_spot_price())
         }
 
         // Returns the error at the time of the last update to the multiplier
         #[inline(always)]
         fn get_prev_error(self: @ContractState) -> SignedRay {
-            RAY_ONE.into() - self.yin_previous_price.read().into()
+            RAY_ONE.into() - wad_to_signed_ray(self.yin_previous_price.read())
         }
     }
 

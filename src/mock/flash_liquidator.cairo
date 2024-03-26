@@ -2,15 +2,16 @@ use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait IFlashLiquidator<TContractState> {
+pub trait IFlashLiquidator<TContractState> {
     fn flash_liquidate(
         ref self: TContractState, trove_id: u64, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
     );
 }
 
 #[starknet::contract]
-mod flash_liquidator {
-    use integer::BoundedInt;
+pub mod flash_liquidator {
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -20,9 +21,8 @@ mod flash_liquidator {
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
-
-    use starknet::{get_contract_address, ContractAddress};
-    use wadray::{Wad, WAD_ONE, WadZeroable};
+    use starknet::{ContractAddress, get_contract_address};
+    use wadray::{Wad, WAD_ONE};
 
     #[storage]
     struct Storage {
@@ -124,7 +124,7 @@ mod flash_liquidator {
             // Open a trove with funded and freed assets, and mint the loan amount.
             // This should revert if the contract did not receive the freed assets
             // from the liquidation.
-            self.abbot.read().open_trove(updated_assets.span(), amount.try_into().unwrap(), WadZeroable::zero());
+            self.abbot.read().open_trove(updated_assets.span(), amount.try_into().unwrap(), Zero::zero());
 
             ON_FLASH_MINT_SUCCESS
         }

@@ -3,35 +3,35 @@
 mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::array::SpanTrait;
-    use debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
+    use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::YangSuspensionStatus;
     use opus::types::pragma::PragmaPricesResponse;
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{contract_address_try_from_felt252, get_block_timestamp, ContractAddress};
+    use starknet::{get_block_timestamp, ContractAddress};
     use wadray::{Wad, WAD_SCALE};
 
     #[test]
     fn test_seer_setup() {
         let mut spy = spy_events(SpyOn::All);
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
@@ -54,12 +54,10 @@ mod test_seer {
     #[test]
     fn test_set_oracles() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 
@@ -76,8 +74,7 @@ mod test_seer {
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array![
-            contract_address_try_from_felt252('pragma addr').unwrap(),
-            contract_address_try_from_felt252('switchboard addr').unwrap()
+            'pragma addr'.try_into().unwrap(), 'switchboard addr'.try_into().unwrap()
         ]
             .span();
 
@@ -204,7 +201,7 @@ mod test_seer {
         IMintableDispatcher { contract_address: eth_addr }.mint(eth_gate.contract_address, gate_eth_bal.into());
         IMintableDispatcher { contract_address: wbtc_addr }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
 
-        let next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
+        let mut next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
         start_warp(CheatTarget::All, next_ts);
         eth_price += (100 * WAD_SCALE).into();
         wbtc_price += (1000 * WAD_SCALE).into();
@@ -221,6 +218,57 @@ mod test_seer {
         // shrine's price is rebased by 2
         assert(shrine_eth_price == eth_price + eth_price, 'wrong eth price in shrine 2');
         assert(shrine_wbtc_price == wbtc_price + wbtc_price, 'wrong wbtc price in shrine 2');
+
+        // Check that delisted yangs are skipped by suspending ETH
+        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        shrine.suspend_yang(eth_addr);
+        stop_prank(CheatTarget::One(shrine.contract_address));
+
+        // avoid hitting iteration limit by splitting the suspension period into parts
+        let mut period_div = 8;
+        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+
+        let mut last_delisted_yang_interval: u64 = 0;
+        loop {
+            if period_div.is_zero() {
+                break;
+            }
+
+            next_ts += suspension_grace_period_quarter;
+            start_warp(CheatTarget::All, next_ts);
+
+            pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
+            pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
+
+            seer.update_prices();
+
+            if period_div != 1 {
+                assert(
+                    shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Temporary, 'yang suspended'
+                );
+                last_delisted_yang_interval = shrine_utils::get_interval(get_block_timestamp());
+            }
+
+            period_div -= 1;
+        };
+
+        assert(shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Permanent, 'yang not suspended');
+
+        let (last_eth_price, last_cumulative_eth_price) = shrine.get_yang_price(eth_addr, last_delisted_yang_interval);
+        assert(last_eth_price.is_non_zero(), 'price should not be zero');
+        assert(last_cumulative_eth_price.is_non_zero(), 'wrong cumulative price #1');
+
+        let first_delisted_interval: u64 = last_delisted_yang_interval + 1;
+        let (first_delisted_price, first_delisted_cumulative_eth_price) = shrine
+            .get_yang_price(eth_addr, first_delisted_interval);
+        assert(first_delisted_price.is_zero(), 'price should be zero #1');
+        assert(first_delisted_cumulative_eth_price.is_zero(), 'wrong cumulative price #2');
+
+        let (eth_price, cumulative_eth_price, eth_price_interval) = shrine.get_current_yang_price(eth_addr);
+        assert(eth_price.is_zero(), 'price should be zero #2');
+        assert(cumulative_eth_price.is_zero(), 'wrong cumulative price #3');
+        let current_interval: u64 = shrine_utils::get_interval(get_block_timestamp());
+        assert_eq!(eth_price_interval, current_interval, "wrong delisted price interval");
     }
 
     #[test]
@@ -282,13 +330,13 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None,
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
     }
@@ -296,14 +344,14 @@ mod test_seer {
     #[test]
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, token_class, Option::None, Option::None,
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
         seer_utils::add_yangs(seer, array![eth_yang].span());
 
@@ -392,7 +440,7 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::add_oracles(Option::None, Option::None, seer);
         seer_utils::add_yangs(seer, yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };

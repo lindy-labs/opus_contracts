@@ -1,10 +1,11 @@
 #[starknet::contract]
-mod allocator {
+pub mod allocator {
     use access_control::access_control_component;
+    use core::num::traits::Zero;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
-    use starknet::{ContractAddress, contract_address_to_felt252};
-    use wadray::{Ray, RayZeroable, RAY_ONE};
+    use starknet::ContractAddress;
+    use wadray::{Ray, RAY_ONE};
 
     //
     // Components
@@ -53,15 +54,15 @@ mod allocator {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         AllocationUpdated: AllocationUpdated,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct AllocationUpdated {
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>
+    pub struct AllocationUpdated {
+        pub recipients: Span<ContractAddress>,
+        pub percentages: Span<Ray>
     }
 
     //
@@ -142,7 +143,7 @@ mod allocator {
             // check for duplicates
             let mut recipients_dict: Felt252Dict<u32> = Default::default();
 
-            let mut total_percentage: Ray = RayZeroable::zero();
+            let mut total_percentage: Ray = Zero::zero();
             let mut idx: u32 = LOOP_START;
 
             let mut recipients_copy = recipients;
@@ -150,7 +151,7 @@ mod allocator {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        let recipient_key: felt252 = contract_address_to_felt252(*recipient);
+                        let recipient_key: felt252 = (*recipient).into();
                         assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address',);
                         recipients_dict.insert(recipient_key, idx);
 

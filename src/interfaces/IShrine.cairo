@@ -1,15 +1,16 @@
-use opus::types::{ExceptionalYangRedistribution, Health, Trove, YangBalance, YangRedistribution, YangSuspensionStatus};
+use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
 #[starknet::interface]
-trait IShrine<TContractState> {
+pub trait IShrine<TContractState> {
     // getters
     fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
     fn get_total_yin(self: @TContractState) -> Wad;
     fn get_yin_spot_price(self: @TContractState) -> Wad;
     fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
-    fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_protocol_owned_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_protocol_owned_troves_debt(self: @TContractState) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_budget(self: @TContractState) -> SignedWad;
@@ -20,18 +21,12 @@ trait IShrine<TContractState> {
     fn get_debt_ceiling(self: @TContractState) -> Wad;
     fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(self: @TContractState, yang: ContractAddress) -> YangSuspensionStatus;
-    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
+    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
+    fn get_recovery_mode_target_factor(self: @TContractState) -> Ray;
+    fn get_recovery_mode_buffer_factor(self: @TContractState) -> Ray;
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
-    fn get_redistribution_for_yang(
-        self: @TContractState, yang: ContractAddress, redistribution_id: u32
-    ) -> YangRedistribution;
-    fn get_exceptional_redistribution_for_yang_to_yang(
-        self: @TContractState,
-        recipient_yang: ContractAddress,
-        redistribution_id: u32,
-        redistributed_yang: ContractAddress
-    ) -> ExceptionalYangRedistribution;
+    fn get_redistribution_for_yang(self: @TContractState, yang: ContractAddress, redistribution_id: u32) -> Wad;
     fn is_recovery_mode(self: @TContractState) -> bool;
     fn get_live(self: @TContractState) -> bool;
     // external setters
@@ -54,6 +49,8 @@ trait IShrine<TContractState> {
     fn adjust_budget(ref self: TContractState, amount: SignedWad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
     fn kill(ref self: TContractState);
+    fn set_recovery_mode_target_factor(ref self: TContractState, factor: Ray);
+    fn set_recovery_mode_buffer_factor(ref self: TContractState, factor: Ray);
     // external core functions
     fn deposit(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
@@ -71,5 +68,6 @@ trait IShrine<TContractState> {
     fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
     fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_health(self: @TContractState, trove_id: u64) -> Health;
-    fn get_redistributions_attributed_to_trove(self: @TContractState, trove_id: u64) -> (Span<YangBalance>, Wad);
+    fn get_trove_base_threshold(self: @TContractState, trove_id: u64) -> Ray;
+    fn get_redistributed_debt_for_trove(self: @TContractState, trove_id: u64) -> Wad;
 }

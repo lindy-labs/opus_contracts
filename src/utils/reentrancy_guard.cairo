@@ -1,5 +1,5 @@
 #[starknet::component]
-mod reentrancy_guard_component {
+pub mod reentrancy_guard_component {
     #[storage]
     struct Storage {
         entered: bool,
@@ -7,10 +7,10 @@ mod reentrancy_guard_component {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {}
+    pub enum Event {}
 
     #[generate_trait]
-    impl ReentrancyGuardHelpers<
+    pub impl ReentrancyGuardHelpers<
         TContractState, +HasComponent<TContractState>
     > of ReentrancyGuardHelpersTrait<TContractState> {
         fn start(ref self: ComponentState<TContractState>) {

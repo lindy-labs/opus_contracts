@@ -1,6 +1,5 @@
-mod caretaker_utils {
+pub mod caretaker_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::IAbbotDispatcher;
@@ -13,14 +12,14 @@ mod caretaker_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
-    use starknet::{ContractAddress, contract_address_try_from_felt252, contract_address_to_felt252};
+    use starknet::ContractAddress;
 
-    fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('caretaker admin').unwrap()
+    pub fn admin() -> ContractAddress {
+        'caretaker admin'.try_into().unwrap()
     }
 
     // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
-    fn caretaker_deploy() -> (
+    pub fn caretaker_deploy() -> (
         ICaretakerDispatcher,
         IShrineDispatcher,
         IAbbotDispatcher,
@@ -38,14 +37,14 @@ mod caretaker_utils {
         );
 
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(abbot.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
-            contract_address_to_felt252(equalizer.contract_address),
+            admin().into(),
+            shrine.contract_address.into(),
+            abbot.contract_address.into(),
+            sentinel.contract_address.into(),
+            equalizer.contract_address.into(),
         ];
 
-        let caretaker_class = declare('caretaker');
+        let caretaker_class = declare("caretaker");
         let caretaker = caretaker_class.deploy(@calldata).expect('failed deploy caretaker');
 
         // allow Caretaker to do its business with Shrine
@@ -65,7 +64,7 @@ mod caretaker_utils {
         (caretaker, shrine, abbot, sentinel, yangs, gates)
     }
 
-    fn only_eth(
+    pub fn only_eth(
         yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
     ) -> (Span<ContractAddress>, Span<IGateDispatcher>, Span<u128>) {
         let mut eth_yang = array![*yangs[0]];

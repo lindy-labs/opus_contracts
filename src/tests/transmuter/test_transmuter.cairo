@@ -1,8 +1,8 @@
 mod test_transmuter {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
-    use integer::BoundedInt;
+    use core::cmp::min;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -16,10 +16,7 @@ mod test_transmuter {
         CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
     };
     use starknet::ContractAddress;
-    use starknet::contract_address::{contract_address_try_from_felt252, ContractAddressZeroable};
-    use wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Signed, SignedWad, SignedWadZeroable, Wad, WadZeroable, WAD_ONE
-    };
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, Signed, SignedWad, Wad, WAD_ONE};
 
     //
     // Tests - Deployment 
@@ -62,15 +59,13 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::CeilingUpdated(
-                    transmuter_contract::CeilingUpdated { old_ceiling: WadZeroable::zero(), new_ceiling: ceiling, }
+                    transmuter_contract::CeilingUpdated { old_ceiling: Zero::zero(), new_ceiling: ceiling, }
                 ),
             ),
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::ReceiverUpdated(
-                    transmuter_contract::ReceiverUpdated {
-                        old_receiver: ContractAddressZeroable::zero(), new_receiver: receiver
-                    }
+                    transmuter_contract::ReceiverUpdated { old_receiver: Zero::zero(), new_receiver: receiver }
                 ),
             ),
             (
@@ -189,7 +184,7 @@ mod test_transmuter {
         let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
+        let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
 
         assert(transmuter.get_receiver() == new_receiver, 'wrong receiver');
@@ -213,7 +208,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        transmuter.set_receiver(ContractAddressZeroable::zero());
+        transmuter.set_receiver(Zero::zero());
     }
 
     #[test]
@@ -224,7 +219,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
-        let new_receiver: ContractAddress = contract_address_try_from_felt252('new receiver').unwrap();
+        let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
     }
 
@@ -249,7 +244,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::TransmuteFeeUpdated(
-                    transmuter_contract::TransmuteFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
+                    transmuter_contract::TransmuteFeeUpdated { old_fee: Zero::zero(), new_fee }
                 )
             )
         ];
@@ -264,7 +259,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::ReverseFeeUpdated(
-                    transmuter_contract::ReverseFeeUpdated { old_fee: RayZeroable::zero(), new_fee }
+                    transmuter_contract::ReverseFeeUpdated { old_fee: Zero::zero(), new_fee }
                 )
             )
         ];
@@ -381,7 +376,7 @@ mod test_transmuter {
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let transmute_fees: Span<Ray> = array![
-            RayZeroable::zero(), // 0%
+            Zero::zero(), // 0%
             1_u128.into(), // 1E-27 %
             1000000000000000000000000_u128.into(), // 0.1%
             2345000000000000000000000_u128.into(), // 0.2345
@@ -504,7 +499,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_exceeds_transmuter_ceiling_fail() {
-        let (_, transmuter, asset) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -575,7 +570,7 @@ mod test_transmuter {
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let reverse_fees: Span<Ray> = array![
-            RayZeroable::zero(), // 0%
+            Zero::zero(), // 0%
             1_u128.into(), // 1E-27 %
             1000000000000000000000000_u128.into(), // 0.1%
             2345000000000000000000000_u128.into(), // 0.2345
@@ -622,7 +617,7 @@ mod test_transmuter {
                         .span();
 
                     let mut cumulative_asset_fees: u128 = 0;
-                    let mut cumulative_yin_fees = WadZeroable::zero();
+                    let mut cumulative_yin_fees = Zero::zero();
                     let mut reverse_fees_copy = reverse_fees;
                     loop {
                         match reverse_fees_copy.pop_front() {
@@ -781,7 +776,7 @@ mod test_transmuter {
                         shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                     );
 
-                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {
@@ -881,14 +876,14 @@ mod test_transmuter {
                     };
                     let asset_decimals: u8 = asset.decimals();
 
-                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals),].span();
+                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
 
                     loop {
                         match transmute_asset_amts.pop_front() {
                             Option::Some(transmute_asset_amt) => {
                                 // parametrize amount of yin in Transmuter at time of settlement
                                 let mut transmuter_yin_amts: Array<Wad> = array![
-                                    WadZeroable::zero(),
+                                    Zero::zero(),
                                     1_u128.into(),
                                     fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
                                     fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
@@ -946,8 +941,8 @@ mod test_transmuter {
                                             );
                                             transmuter.settle();
 
-                                            let mut expected_budget_adjustment = SignedWadZeroable::zero();
-                                            let mut leftover_yin_amt = WadZeroable::zero();
+                                            let mut expected_budget_adjustment = Zero::zero();
+                                            let mut leftover_yin_amt = Zero::zero();
 
                                             if *transmuter_yin_amt < transmuted_yin_amt {
                                                 expected_budget_adjustment =
@@ -984,7 +979,7 @@ mod test_transmuter {
                                             let deficit: Wad = if expected_budget_adjustment.is_negative() {
                                                 expected_budget_adjustment.val.into()
                                             } else {
-                                                WadZeroable::zero()
+                                                Zero::zero()
                                             };
                                             let expected_events = array![
                                                 (

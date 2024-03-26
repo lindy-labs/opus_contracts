@@ -1,9 +1,8 @@
 #[starknet::contract]
-mod purger {
+pub mod purger {
     use access_control::access_control_component;
-    use cmp::min;
-    use core::math::Oneable;
-    use core::zeroable::Zeroable;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
@@ -13,7 +12,7 @@ mod purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Components
@@ -36,32 +35,32 @@ mod purger {
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the
     // maximum amount of the trove's debt that can be liquidated.
-    const THRESHOLD_SAFETY_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
+    pub const THRESHOLD_SAFETY_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum liquidation penalty (ray): 0.125 * RAY_ONE
-    const MAX_PENALTY: u128 = 125000000000000000000000000;
+    pub const MAX_PENALTY: u128 = 125000000000000000000000000;
 
     // Minimum liquidation penalty (ray): 0.03 * RAY_ONE
-    const MIN_PENALTY: u128 = 30000000000000000000000000;
+    pub const MIN_PENALTY: u128 = 30000000000000000000000000;
 
     // Bounds on the penalty scalar for absorber liquidations
-    const MIN_PENALTY_SCALAR: u128 = 970000000000000000000000000; // 0.97 (ray) (1 - MIN_PENALTY)
-    const MAX_PENALTY_SCALAR: u128 = 1060000000000000000000000000; // 1.06 (ray)
+    pub const MIN_PENALTY_SCALAR: u128 = 970000000000000000000000000; // 0.97 (ray) (1 - MIN_PENALTY)
+    pub const MAX_PENALTY_SCALAR: u128 = 1060000000000000000000000000; // 1.06 (ray)
 
     // LTV past which the second precondition for `absorb` is satisfied even if
     // the trove's penalty is not at the absolute maximum given the LTV.
-    const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
+    pub const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum percentage of trove collateral that
     // is transferred to caller of `absorb` as compensation 3% = 0.03 (ray)
-    const COMPENSATION_PCT: u128 = 30000000000000000000000000;
+    pub const COMPENSATION_PCT: u128 = 30000000000000000000000000;
 
     // Cap on compensation value: 50 (Wad)
-    const COMPENSATION_CAP: u128 = 50000000000000000000;
+    pub const COMPENSATION_CAP: u128 = 50000000000000000000;
 
     // Minimum threshold for the penalty calculation, under which the
-    // minimum penalty is automatically returned to avoid division by zero/overflow
-    const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
+    // maximum penalty is automatically returned to avoid division by zero/overflow
+    pub const MIN_THRESHOLD_FOR_PENALTY_CALCS: u128 = 10000000000000000000000000; // RAY_ONE = 1% (ray)
 
     //
     // Storage
@@ -92,7 +91,7 @@ mod purger {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         PenaltyScalarUpdated: PenaltyScalarUpdated,
         Purged: Purged,
@@ -102,28 +101,28 @@ mod purger {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct PenaltyScalarUpdated {
-        new_scalar: Ray
+    pub struct PenaltyScalarUpdated {
+        pub new_scalar: Ray
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Purged {
+    pub struct Purged {
         #[key]
-        trove_id: u64,
-        purge_amt: Wad,
-        percentage_freed: Ray,
+        pub trove_id: u64,
+        pub purge_amt: Wad,
+        pub percentage_freed: Ray,
         #[key]
-        funder: ContractAddress,
+        pub funder: ContractAddress,
         #[key]
-        recipient: ContractAddress,
-        freed_assets: Span<AssetBalance>
+        pub recipient: ContractAddress,
+        pub freed_assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Compensate {
+    pub struct Compensate {
         #[key]
-        recipient: ContractAddress,
-        compensation: Span<AssetBalance>
+        pub recipient: ContractAddress,
+        pub compensation: Span<AssetBalance>
     }
 
     //
@@ -288,14 +287,12 @@ mod purger {
             let purge_amt = if absorber.is_operational() {
                 min(max_purge_amt, shrine.get_yin(absorber.contract_address))
             } else {
-                WadZeroable::zero()
+                Zero::zero()
             };
 
             // Melt the trove's debt using the absorber's yin directly
-            // This needs to be called even if `purge_amt` is 0 so that:
-            // 1. accrued interest will be charged on the trove before `shrine.redistribute`; and
-            // 2. any exceptionally redistributed yangs received by the redistributed trove will
-            //    be pulled into the trove before the compensation is transferred to the caller.
+            // This needs to be called even if `purge_amt` is 0 so that accrued interest will be charged, 
+            // and redistributed debt will be pulled, for the trove before `shrine.redistribute`.
             // This step is also crucial because it would revert if the Shrine has been killed, thereby
             // preventing further liquidations.
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
@@ -311,7 +308,7 @@ mod purger {
                     ltv_after_compensation, value_after_compensation, trove_health.debt, trove_penalty, purge_amt
                 )
             } else {
-                RayZeroable::zero()
+                Zero::zero()
             };
 
             // Only update the absorber and emit the `Purged` event if Absorber has some yin
@@ -442,7 +439,7 @@ mod purger {
             // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case
             // to avoid underflow. Note that this also guarantees `ltv` is lesser than one.
             if ltv_after_compensation > RAY_ONE.into() {
-                return Option::Some(RayZeroable::zero());
+                return Option::Some(Zero::zero());
             }
 
             // If the threshold is below the given minimum, we automatically
@@ -555,11 +552,11 @@ mod purger {
 
         // Handling the case where `ltv > 1` to avoid underflow
         if ltv >= RAY_ONE.into() {
-            return Option::Some(RayZeroable::zero());
+            return Option::Some(Zero::zero());
         }
 
         // If the threshold is below the given minimum, we automatically
-        // return the minimum penalty to avoid division by zero/overflow, or the largest possible penalty,
+        // return the maximum penalty to avoid division by zero/overflow, or the largest possible penalty,
         // whichever is smaller.
         if threshold < MIN_THRESHOLD_FOR_PENALTY_CALCS.into() {
             // This check is to avoid overflow in the event that the

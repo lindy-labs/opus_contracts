@@ -1,8 +1,8 @@
 mod test_absorber {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
-    use integer::BoundedU256;
+    use core::cmp::min;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -20,9 +20,8 @@ mod test_absorber {
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
-    use wadray::{BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE, WAD_SCALE};
     //
     // Tests - Setup
     //
@@ -53,8 +52,8 @@ mod test_absorber {
 
     #[test]
     fn test_set_reward_pass() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let blesser_class = Option::Some(declare('blesser'));
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );
@@ -119,7 +118,7 @@ mod test_absorber {
             );
 
         // Update existing reward
-        let new_opus_blesser: ContractAddress = contract_address_try_from_felt252('new opus blesser').unwrap();
+        let new_opus_blesser: ContractAddress = 'new opus blesser'.try_into().unwrap();
         opus_reward.is_active = false;
         opus_reward.blesser = IBlesserDispatcher { contract_address: new_opus_blesser };
         absorber.set_reward(opus_token, new_opus_blesser, false);
@@ -148,7 +147,7 @@ mod test_absorber {
         );
 
         let valid_address = common::non_zero_address();
-        let invalid_address = ContractAddressZeroable::zero();
+        let invalid_address = Zero::zero();
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.set_reward(valid_address, invalid_address, true);
@@ -162,7 +161,7 @@ mod test_absorber {
         );
 
         let valid_address = common::non_zero_address();
-        let invalid_address = ContractAddressZeroable::zero();
+        let invalid_address = Zero::zero();
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.set_reward(invalid_address, valid_address, true);
@@ -191,7 +190,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         // Loss of precision
         let error_margin: Wad = 10_u128.into();
@@ -216,7 +215,7 @@ mod test_absorber {
     #[test]
     fn test_update_after_kill_pass() {
         // Setup
-        let (shrine, _, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, provider, _) =
+        let (shrine, _, _, absorber, yangs, _, reward_tokens, _, _, provider, _) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
         );
@@ -271,7 +270,6 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
 
         // Step 4
-        let provider_before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
         let provider_before_absorbed_bals = common::get_token_balances(yangs, provider.into());
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
@@ -459,7 +457,7 @@ mod test_absorber {
                         absorber_contract::FIRST_EPOCH
                     };
                     let expected_total_shares: Wad = if is_fully_absorbed {
-                        WadZeroable::zero()
+                        Zero::zero()
                     } else {
                         first_provided_amt // total shares is equal to amount provided
                     };
@@ -531,7 +529,7 @@ mod test_absorber {
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-                        absorber.remove(BoundedWad::max());
+                        absorber.remove(BoundedInt::max());
                         remove_as_second_action = true;
                     } else {
                         absorber.reap();
@@ -767,7 +765,6 @@ mod test_absorber {
         let donor: ContractAddress = absorber_utils::provider_1();
         let provider: ContractAddress = absorber_utils::provider_2();
 
-        let provider = absorber_utils::provider_1();
         let provided_amt: Wad = (10000 * WAD_ONE).into();
         let provider_amt: Wad = (5000 * WAD_ONE).into();
 
@@ -777,7 +774,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         yin.transfer(provider, provider_amt.into());
 
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -803,7 +800,7 @@ mod test_absorber {
 
         // Provider provides a small amount
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let provider_provide_amt: Wad = 1_u128.into();
@@ -1195,7 +1192,7 @@ mod test_absorber {
         let request_timestamp = get_block_timestamp();
         absorber.request();
         start_warp(CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1440,7 +1437,7 @@ mod test_absorber {
 
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1870,18 +1867,12 @@ mod test_absorber {
 
     #[test]
     fn test_shrine_killed_and_remove_pass() {
-        let (shrine, _, abbot, absorber, _, _, _, _, _, provider, provided_amt) =
+        let (shrine, _, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
             absorber_utils::absorber_with_rewards_and_first_provider(
             Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        // Increase debt ceiling for recovery mode to be triggered
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
-        shrine.set_debt_ceiling(debt_ceiling);
-        stop_prank(CheatTarget::One(shrine.contract_address));
-
-        purger_utils::trigger_recovery_mode(shrine, abbot, common::TROVE_1, provider);
+        shrine_utils::recovery_mode_test_setup(shrine, yangs, common::RecoveryModeSetupType::BufferLowerBound);
 
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.kill();
@@ -1894,7 +1885,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
 
         // Loss of precision
         let error_margin: Wad = 1000_u128.into();
@@ -1928,7 +1919,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
     }
 
     #[test]
@@ -1941,7 +1932,7 @@ mod test_absorber {
         );
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.remove(BoundedWad::max());
+        absorber.remove(BoundedInt::max());
     }
 
     #[test]
@@ -2071,7 +2062,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let insufficient_amt: Wad = (provided_amt.val + 1).into();
@@ -2188,8 +2179,8 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_depleted_active_reward() {
-        let token_class = Option::Some(declare('erc20_mintable'));
-        let blesser_class = Option::Some(declare('blesser'));
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );

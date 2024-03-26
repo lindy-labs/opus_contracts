@@ -1,5 +1,6 @@
-mod abbot_utils {
+pub mod abbot_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::Zero;
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -10,36 +11,35 @@ mod abbot_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252,};
+    use starknet::ContractAddress;
     use wadray::Wad;
 
     //
     // Constants
     //
 
-    const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
-    const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
-    const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
+    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
+    pub const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    pub const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
 
-    const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
-    const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
+    pub const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
+    pub const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
 
     //
     // Constant helpers
     //
 
-    fn initial_asset_amts() -> Span<u128> {
+    pub fn initial_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10,];
         asset_amts.span()
     }
 
-    fn open_trove_yang_asset_amts() -> Span<u128> {
+    pub fn open_trove_yang_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
-    fn subsequent_deposit_amts() -> Span<u128> {
+    pub fn subsequent_deposit_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
@@ -48,7 +48,7 @@ mod abbot_utils {
     // Test setup helpers
     //
 
-    fn abbot_deploy(
+    pub fn abbot_deploy(
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
@@ -60,14 +60,11 @@ mod abbot_utils {
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
-        let calldata: Array<felt252> = array![
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
-        ];
+        let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into()];
 
         let abbot_class = match abbot_class {
             Option::Some(class) => class,
-            Option::None => declare('abbot'),
+            Option::None => declare("abbot"),
         };
 
         let abbot_addr = abbot_class.deploy(@calldata).expect('abbot deploy failed');
@@ -89,7 +86,7 @@ mod abbot_utils {
         (shrine, sentinel, abbot, yangs, gates)
     }
 
-    fn deploy_abbot_and_open_trove(
+    pub fn deploy_abbot_and_open_trove(
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,

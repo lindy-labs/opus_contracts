@@ -1,7 +1,7 @@
 use opus::types::pragma::PragmaPricesResponse;
 
-// A modified version of `PragmaPricesResponse` struct that drops `expiration_timestamp`, 
-// which is an `Option`. Otherwise, trying to write `expiration_timestamp` to storage 
+// A modified version of `PragmaPricesResponse` struct that drops `expiration_timestamp`,
+// which is an `Option`. Otherwise, trying to write `expiration_timestamp` to storage
 // when its value is `Option::None` causes the value of `price` to be zero.
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct PragmaPricesResponseWrapper {
@@ -12,14 +12,15 @@ struct PragmaPricesResponseWrapper {
 }
 
 #[starknet::interface]
-trait IMockPragma<TContractState> {
+pub trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
     fn next_get_data_median(ref self: TContractState, pair_id: felt252, price_response: PragmaPricesResponse);
 }
 
 #[starknet::contract]
-mod mock_pragma {
-    use opus::interfaces::external::IPragmaOracle;
+pub mod mock_pragma {
+    use core::panic_with_felt252;
+    use opus::external::interfaces::IPragmaOracle;
     use opus::types::pragma::{DataType, PragmaPricesResponse};
     use super::{IMockPragma, PragmaPricesResponseWrapper};
 

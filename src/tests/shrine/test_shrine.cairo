@@ -1,7 +1,7 @@
 mod test_shrine {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use debug::PrintTrait;
-    use integer::BoundedU256;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IERC20::{
@@ -12,13 +12,11 @@ mod test_shrine {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
-    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252};
-    use starknet::get_block_timestamp;
-    use wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WadZeroable, WAD_DECIMALS,
-        WAD_PERCENT, WAD_ONE, WAD_SCALE
+    use snforge_std::{
+        ContractClass, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE};
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -43,6 +41,16 @@ mod test_shrine {
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
         assert(shrine.get_minimum_trove_value().is_zero(), 'wrong min trove value');
+        assert_eq!(
+            shrine.get_recovery_mode_target_factor(),
+            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
+            "wrong target factor"
+        );
+        assert_eq!(
+            shrine.get_recovery_mode_buffer_factor(),
+            shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
+            "wrong buffer factor"
+        );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
         assert(shrine_accesscontrol.get_admin() == shrine_utils::admin(), 'wrong admin');
@@ -57,7 +65,23 @@ mod test_shrine {
                         interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
                     }
                 )
-            )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeTargetFactorUpdated(
+                    shrine_contract::RecoveryModeTargetFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
+                    }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeBufferFactorUpdated(
+                    shrine_contract::RecoveryModeBufferFactorUpdated {
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
+                    }
+                )
+            ),
         ];
 
         spy.assert_emitted(@expected_events);
@@ -129,9 +153,9 @@ mod test_shrine {
                     let expected_yang_price = *start_prices.pop_front().unwrap();
                     assert(yang_price == expected_yang_price, 'wrong yang start price');
 
-                    let (raw_threshold, _) = shrine.get_yang_threshold(*yang_addr);
+                    let threshold = shrine.get_yang_threshold(*yang_addr);
                     let expected_threshold = *thresholds.pop_front().unwrap();
-                    assert(raw_threshold == expected_threshold, 'wrong yang threshold');
+                    assert(threshold == expected_threshold, 'wrong yang threshold');
 
                     let expected_rate = *base_rates.pop_front().unwrap();
                     assert(shrine.get_yang_rate(*yang_addr, expected_era) == expected_rate, 'wrong yang base rate');
@@ -147,7 +171,7 @@ mod test_shrine {
         // recovery mode threshold will be zero if threshold is zero
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
-        assert(shrine_health.ltv == BoundedRay::max(), 'wrong shrine LTV');
+        assert(shrine_health.ltv == BoundedInt::max(), 'wrong shrine LTV');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -319,12 +343,12 @@ mod test_shrine {
         let yangs_count: u32 = shrine.get_yangs_count();
         assert(yangs_count == 3, 'incorrect yangs count');
 
-        let new_yang_address: ContractAddress = contract_address_try_from_felt252('new yang').unwrap();
+        let new_yang_address: ContractAddress = 'new yang'.try_into().unwrap();
         let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)
         let new_yang_start_price: Wad = 5000000000000000000_u128.into(); // 5 (Wad)
         let new_yang_rate: Ray = 60000000000000000000000000_u128.into(); // 6% (Ray)
 
-        shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, new_yang_rate, WadZeroable::zero());
+        shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, new_yang_rate, Zero::zero());
 
         let expected_yangs_count: u32 = yangs_count + 1;
         assert(shrine.get_yangs_count() == expected_yangs_count, 'incorrect yangs count');
@@ -332,8 +356,8 @@ mod test_shrine {
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
         assert(current_yang_price == new_yang_start_price, 'incorrect yang price');
-        let (raw_threshold, _) = shrine.get_yang_threshold(new_yang_address);
-        assert(raw_threshold == new_yang_threshold, 'incorrect yang threshold');
+        let threshold = shrine.get_yang_threshold(new_yang_address);
+        assert(threshold == new_yang_threshold, 'incorrect yang threshold');
 
         assert(shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate, 'incorrect yang rate');
 
@@ -358,7 +382,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YangTotalUpdated(
-                    shrine_contract::YangTotalUpdated { yang: new_yang_address, total: WadZeroable::zero() }
+                    shrine_contract::YangTotalUpdated { yang: new_yang_address, total: Zero::zero() }
                 )
             ),
         ];
@@ -377,7 +401,7 @@ mod test_shrine {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                WadZeroable::zero()
+                Zero::zero()
             );
     }
 
@@ -392,7 +416,7 @@ mod test_shrine {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                WadZeroable::zero()
+                Zero::zero()
             );
     }
 
@@ -406,8 +430,8 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.set_threshold(yang1_addr, new_threshold);
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
-        assert(raw_threshold == new_threshold, 'threshold not updated');
+        let threshold = shrine.get_yang_threshold(yang1_addr);
+        assert(threshold == new_threshold, 'threshold not updated');
 
         let expected_events = array![
             (
@@ -528,7 +552,7 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
-                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
                     .span()
             );
     }
@@ -541,7 +565,7 @@ mod test_shrine {
         shrine
             .update_rates(
                 shrine_utils::two_yang_addrs_reversed(),
-                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into(),]
+                array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
                     .span()
             );
     }
@@ -553,7 +577,7 @@ mod test_shrine {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr(),]
+                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr()]
                     .span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
@@ -571,7 +595,7 @@ mod test_shrine {
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr(),].span(),
+                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr()].span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
@@ -579,6 +603,102 @@ mod test_shrine {
                 ]
                     .span()
             );
+    }
+
+    //
+    // Tests - Recovery mode parameters
+    //
+
+    #[test]
+    fn test_set_recovery_mode_factors() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        let target_factor: Ray = (75 * RAY_PERCENT).into();
+        shrine.set_recovery_mode_target_factor(target_factor);
+        assert_eq!(shrine.get_recovery_mode_target_factor(), target_factor, "wrong target factor");
+
+        let buffer_factor: Ray = (2 * RAY_PERCENT).into();
+        shrine.set_recovery_mode_buffer_factor(buffer_factor);
+        assert_eq!(shrine.get_recovery_mode_buffer_factor(), buffer_factor, "wrong buffer factor");
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeTargetFactorUpdated(
+                    shrine_contract::RecoveryModeTargetFactorUpdated { factor: target_factor }
+                )
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::RecoveryModeBufferFactorUpdated(
+                    shrine_contract::RecoveryModeBufferFactorUpdated { factor: buffer_factor }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    fn test_set_recovery_mode_target_factor_exceeds_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_target_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_TARGET_FACTOR + 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_target_factor(invalid_target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    fn test_set_recovery_mode_target_factor_below_min_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_target_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_TARGET_FACTOR - 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_target_factor(invalid_target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_recovery_mode_target_factor_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let target_factor: Ray = (50 * RAY_PERCENT).into();
+
+        start_prank(CheatTarget::All, common::badguy());
+        shrine.set_recovery_mode_target_factor(target_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    fn test_set_recovery_mode_buffer_factor_below_min_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_buffer_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_BUFFER_FACTOR - 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    fn test_set_recovery_mode_buffer_factor_exceeds_max_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let invalid_buffer_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_BUFFER_FACTOR + 1).into();
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_recovery_mode_buffer_factor_unauthorized() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let buffer_factor: Ray = (2 * RAY_PERCENT).into();
+
+        start_prank(CheatTarget::All, common::badguy());
+        shrine.set_recovery_mode_buffer_factor(buffer_factor);
     }
 
     //
@@ -596,6 +716,19 @@ mod test_shrine {
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    expected_after_yang_total_amts
+                        .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
+                },
+                Option::None => { break; }
+            };
+        };
+
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.kill();
 
@@ -604,10 +737,20 @@ mod test_shrine {
 
         assert(!shrine.get_live(), 'should not be live');
 
-        let expected_events: Span<shrine_contract::Event> = array![
-            shrine_contract::Event::Killed(shrine_contract::Killed {}),
-        ]
-            .span();
+        let mut yangs_copy = yangs;
+        let mut expected_after_yang_total_amts: Span<Wad> = expected_after_yang_total_amts.span();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
+
+                    let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
+                    let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
+                    assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
+                },
+                Option::None => { break; }
+            };
+        };
 
         let expected_events = array![
             (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {}))
@@ -737,7 +880,7 @@ mod test_shrine {
                     shrine_contract::TroveUpdated {
                         trove_id: trove_id,
                         trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
+                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
                         },
                     }
                 )
@@ -825,7 +968,7 @@ mod test_shrine {
                     shrine_contract::TroveUpdated {
                         trove_id: trove_id,
                         trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: WadZeroable::zero(), last_rate_era: 1
+                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
                         },
                     }
                 )
@@ -929,9 +1072,13 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
     fn test_shrine_withdraw_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Set up another trove to prevent recovery mode
+        shrine_utils::create_whale_trove(shrine);
+
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
@@ -1010,9 +1157,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: ContractAddressZeroable::zero(), to: trove1_owner_addr, value: forge_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner_addr, value: forge_amt.into(), }
                 )
             ),
         ];
@@ -1037,16 +1182,19 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Below minimum trove value',))]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
+        // Set up another trove to prevent recovery mode
+        shrine_utils::create_whale_trove(shrine);
+
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        shrine.forge(shrine_utils::common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), WadZeroable::zero());
+        shrine.forge(common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), Zero::zero());
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
     fn test_shrine_forge_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1060,7 +1208,7 @@ mod test_shrine {
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
         let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
 
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, WadZeroable::zero());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, Zero::zero());
     }
 
     #[test]
@@ -1076,7 +1224,7 @@ mod test_shrine {
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_1, additional_yang1_amt);
 
         let unsafe_amt: Wad = (shrine_utils::TROVE1_FORGE_AMT * 10).into();
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, WadZeroable::zero());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, Zero::zero());
     }
 
     #[test]
@@ -1088,12 +1236,7 @@ mod test_shrine {
         start_prank(CheatTarget::All, common::badguy());
 
         shrine
-            .forge(
-                common::trove1_owner_addr(),
-                common::TROVE_1,
-                shrine_utils::TROVE1_FORGE_AMT.into(),
-                WadZeroable::zero(),
-            );
+            .forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero(),);
     }
 
     // TODO: assert event is not emitted once Starknet Foundry adds support
@@ -1113,7 +1256,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::ForgeFeePaid(
-                    shrine_contract::ForgeFeePaid { trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(), }
+                    shrine_contract::ForgeFeePaid { trove_id, fee: Zero::zero(), fee_pct: Zero::zero(), }
                 )
             )
         ];
@@ -1280,9 +1423,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: trove1_owner_addr, to: ContractAddressZeroable::zero(), value: melt_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: trove1_owner_addr, to: Zero::zero(), value: melt_amt.into(), }
                 )
             ),
         ];
@@ -1492,7 +1633,7 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), WadZeroable::zero());
+        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
         let yin_user: ContractAddress = shrine_utils::yin_user_addr();
@@ -1514,14 +1655,14 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), WadZeroable::zero());
+        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
         let yin_user: ContractAddress = shrine_utils::yin_user_addr();
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedU256::max());
+        yin.approve(yin_user, BoundedInt::max());
 
         start_prank(CheatTarget::All, yin_user);
         yin.transfer_from(trove1_owner, yin_user, (shrine_utils::TROVE1_FORGE_AMT + 1).into());
@@ -1535,17 +1676,17 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), WadZeroable::zero());
+        shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
         let yin_user: ContractAddress = shrine_utils::yin_user_addr();
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedU256::max());
+        yin.approve(yin_user, BoundedInt::max());
 
         start_prank(CheatTarget::All, yin_user);
-        yin.transfer_from(trove1_owner, ContractAddressZeroable::zero(), 1_u256);
+        yin.transfer_from(trove1_owner, Zero::zero(), 1_u256);
     }
 
     #[test]
@@ -1560,7 +1701,6 @@ mod test_shrine {
         let yin = shrine_utils::yin(shrine.contract_address);
         let yin_user: ContractAddress = shrine_utils::yin_user_addr();
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
 
         let transfer_amt: Wad = (forge_amt.val / 2).into();
@@ -1634,7 +1774,7 @@ mod test_shrine {
         let admin: ContractAddress = shrine_utils::admin();
         start_prank(CheatTarget::One(shrine_addr), admin);
 
-        let new_admin: ContractAddress = contract_address_try_from_felt252('new shrine admin').unwrap();
+        let new_admin: ContractAddress = 'new shrine admin'.try_into().unwrap();
 
         shrine_accesscontrol.grant_role(shrine_roles::SET_DEBT_CEILING, new_admin);
         shrine_accesscontrol.revoke_role(shrine_roles::SET_DEBT_CEILING, new_admin);
@@ -1665,7 +1805,7 @@ mod test_shrine {
 
         common::advance_intervals(1);
 
-        let zero_price = WadZeroable::zero();
+        let zero_price = Zero::zero();
 
         start_prank(CheatTarget::All, shrine_utils::admin());
         shrine.advance(yang, zero_price);
@@ -1749,9 +1889,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: ContractAddressZeroable::zero(), to: trove1_owner, value: inject_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner, value: inject_amt.into(), }
                 )
             ),
         ];
@@ -1772,9 +1910,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer {
-                        from: trove1_owner, to: ContractAddressZeroable::zero(), value: inject_amt.into(),
-                    }
+                    shrine_contract::Transfer { from: trove1_owner, to: Zero::zero(), value: inject_amt.into(), }
                 )
             ),
         ];
@@ -1822,7 +1958,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.set_multiplier(RayZeroable::zero());
+        shrine.set_multiplier(Zero::zero());
     }
 
     #[test]
@@ -2007,7 +2143,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price, }
+                    shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price }
                 )
             ),
         ];
@@ -2020,7 +2156,7 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price, }
+                    shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price }
                 )
             ),
         ];
@@ -2034,7 +2170,22 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price, }
+                    shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
+
+        shrine.update_yin_spot_price(fourth_yin_price);
+        common::assert_equalish(
+            shrine.get_forge_fee_pct(), shrine_contract::FORGE_FEE_CAP_PCT.into(), error_margin, 'wrong forge fee #4'
+        );
+
+        let expected_events = array![
+            (
+                shrine.contract_address,
+                shrine_contract::Event::YinPriceUpdated(
+                    shrine_contract::YinPriceUpdated { old_price: third_yin_price, new_price: fourth_yin_price }
                 )
             ),
         ];
@@ -2172,17 +2323,20 @@ mod test_shrine {
 
     #[test]
     fn test_yang_suspension_progress_temp_to_permanent() {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine_addr));
-
-        shrine_utils::shrine_setup(shrine_addr);
-        let shrine = shrine_utils::shrine(shrine_addr);
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let yang = shrine_utils::yang1_addr();
-        let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
+        let (yang_price, _, _) = shrine.get_current_yang_price(yang);
+        let start_ts = get_block_timestamp();
 
-        start_warp(CheatTarget::All, start_ts);
         start_prank(CheatTarget::All, shrine_utils::admin());
+
+        let trove_id: u64 = common::TROVE_1;
+        shrine.deposit(yang, trove_id, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+
+        let start_shrine_health: Health = shrine.get_shrine_health();
+        let start_trove_health: Health = shrine.get_trove_health(trove_id);
 
         // initiate yang's suspension, starting now
         shrine.suspend_yang(yang);
@@ -2196,7 +2350,7 @@ mod test_shrine {
             .assert_emitted(
                 @array![
                     (
-                        shrine_addr,
+                        shrine.contract_address,
                         shrine_contract::Event::YangSuspended(
                             shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
                         )
@@ -2205,59 +2359,76 @@ mod test_shrine {
             );
 
         // check threshold (should be the same at the beginning)
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == shrine_utils::YANG1_THRESHOLD.into(), 'threshold 1');
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == shrine_utils::YANG1_THRESHOLD.into(), 'threshold 1');
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_non_zero(), 'trove has no value');
+        assert_eq!(trove_health.threshold, threshold, "wrong trove threshold #1");
 
         // the threshold should decrease by 1% in this amount of time
         let one_pct = shrine_contract::SUSPENSION_GRACE_PERIOD / 100;
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct);
+        let mut time_pcts: Span<u64> = array![1, 20, 35, 50, 75].span();
+        loop {
+            match time_pcts.pop_front() {
+                Option::Some(time_pct) => {
+                    // move time forward
+                    start_warp(CheatTarget::All, start_ts + (one_pct * *time_pct));
 
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 2');
+                    // check suspension status
+                    let status = shrine.get_yang_suspension_status(yang);
+                    assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+                    // check threshold
+                    let threshold = shrine.get_yang_threshold(yang);
+                    assert(
+                        threshold == (shrine_utils::YANG1_THRESHOLD / 100 * (100_u64 - *time_pct).into()).into(),
+                        'threshold 2'
+                    );
 
-        // move time forward
-        start_warp(CheatTarget::All, start_ts + one_pct * 20);
+                    // intermediate price update to avoid iteration timeout
+                    shrine.advance(yang, yang_price);
+                },
+                Option::None => { break; }
+            };
+        };
+
+        // move time forward to a second before permanent suspension
+        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
+        shrine.advance(yang, yang_price);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Temporary, 'status 3');
 
         // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == (shrine_utils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
-
-        // move time forward to a second before permanent suspension
-        start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
-
-        // check suspension status
-        let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Temporary, 'status 4');
-
-        // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_yang_threshold(yang);
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
-        // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
+        // that is about 0.0000050735 Ray, err buffer is 10^-12 Ray
         common::assert_equalish(
-            raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4'
+            threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 3'
         );
 
         // move time forward to end of temp suspension, start of permanent one
         start_warp(CheatTarget::All, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
+        shrine.advance(yang, yang_price);
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Permanent, 'status 5');
+        assert(status == YangSuspensionStatus::Permanent, 'status 4');
 
         // check threshold
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
-        assert(raw_threshold == RayZeroable::zero(), 'threshold 5');
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == Zero::zero(), 'threshold 4');
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        assert(trove_health.value.is_zero(), 'trove has value');
+        assert(trove_health.threshold.is_zero(), 'wrong trove threshold #2');
+
+        let after_shrine_health: Health = shrine.get_shrine_health();
+        let expected_shrine_value: Wad = start_shrine_health.value - start_trove_health.value;
+        assert_eq!(after_shrine_health.value, expected_shrine_value, "wrong shrine value");
     }
 
     #[test]
@@ -2336,131 +2507,572 @@ mod test_shrine {
         shrine.suspend_yang(yang);
     }
 
-    // In this test, we have two troves. Both are initially healthy. And then suddenly the
-    // LTV of the larger trove drops enough such that the global LTV is above the
-    // recovery mode threshold, and high enough above the threshold such that
-    // the second (smaller) trove is now underwater.
+    //
+    // Tests - Recovery mode
+    // Note: For tests within the buffer, we alternative between the lower bound and upper bound of the buffer.
+    //
+
+    // User cannot withdraw if it triggers recovery mode
     #[test]
-    fn test_recovery_mode_previously_healthy_trove_now_unhealthy() {
-        let shrine: IShrineDispatcher = shrine_utils::recovery_mode_test_setup(Option::None);
+    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    fn test_withdraw_trigger_recovery_mode_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
-        // Trove 1 should be healthy
-        assert(shrine.is_healthy(common::TROVE_1), 'should be healthy #1');
-
-        // Increasing the whale trove's LTV to just above the recovery mode threshold
-        // Since it makes up the vast majority of collateral (and debt), the global
-        // LTV will be almost equal to the whale trove's LTV
-        let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
-
-        //  whale_trove_forge_amt / (whale_trove_deposit_value - x) = rm_threshold * 1.01
-        //  whale_trove_forge_amt = rm_threshold * 1.01 * whale_trove_deposit_value - rm_threshold * 1.01 * x
-        //  x = - (whale_trove_forge_amt - rm_threshold * 1.01 * whale_trove_deposit_value) / (rm_threshold * 1.01)
-        //  x = whale_trove_deposit_value - whale_trove_forge_amt/(rm_threshold * 1.01)
-
-        let threshold_scalar: Ray = (RAY_ONE + RAY_PERCENT).into();
-        let whale_trove_deposit_value: Wad = shrine_utils::WHALE_TROVE_YANG1_DEPOSIT.into()
-            * shrine_utils::YANG1_START_PRICE.into();
-        let whale_trove_forge_amt: Wad = shrine_utils::WHALE_TROVE_FORGE_AMT.into();
-        let initial_collateral_value_to_withdraw: Wad = whale_trove_deposit_value
-            - wadray::rdiv_wr(whale_trove_forge_amt, rm_threshold * threshold_scalar);
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
-        let (_, prev_yang1_threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
-            .withdraw(
-                shrine_utils::yang1_addr(),
-                common::WHALE_TROVE,
-                initial_collateral_value_to_withdraw / shrine_utils::YANG1_START_PRICE.into()
+            .forge(
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
             );
 
-        // At this point, recovery mode should be activated but trove 1 should still be healthy,
-        // since the liquidation threshold decrease is gradual
-        let (_, current_threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
-        assert(current_threshold < prev_yang1_threshold, 'recovery mode not active');
-        assert(shrine.is_healthy(common::TROVE_1), 'should be healthy #2');
-
-        // Now we withdraw just enough collateral from the whale trove
-        // so that trove 1 is underwater
-        //
-        // z = x + y, where x is from the last equation and y is the additional collateral
-        // value that must be withdrawn to reach the desired threshold reduction.
-        //
-        // trove1_ltv - 10^(-24) = (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / (whale_trove_forge_amt / (whale_trove_deposit_value - z))
-        // trove1_ltv - 10^(-24) = (whale_trove_deposit_value - z) * (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / whale_trove_forge_amt
-        // (whale_trove_deposit_value - z) = (trove1_ltv - 10^(-24)) * whale_trove_forge_amt / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
-        // z = whale_trove_deposit_value - ((trove1_ltv - 10^(-24)) * whale_trove_forge_amt) / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
-
-        let trove1_ltv: Ray = wadray::rdiv_ww(
-            shrine_utils::RECOVERY_TESTS_TROVE1_FORGE_AMT.into(),
-            shrine_utils::TROVE1_YANG1_DEPOSIT.into() * shrine_utils::YANG1_START_PRICE.into()
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
         );
-        let trove1_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
-        let shrine_health: Health = shrine.get_shrine_health();
-        let rm_threshold: Ray = shrine_health.threshold * shrine_contract::RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+        assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
 
-        let total_collateral_value_to_withdraw = whale_trove_deposit_value
-            - wadray::rdiv_wr(
-                wadray::rmul_rw((trove1_ltv - 1000_u128.into()), whale_trove_forge_amt),
-                trove1_threshold * shrine_contract::THRESHOLD_DECREASE_FACTOR.into() * rm_threshold
-            );
-
-        // y = z - x
-        let remaining_collateral_value_to_withdraw = total_collateral_value_to_withdraw
-            - initial_collateral_value_to_withdraw;
-        shrine
-            .withdraw(
-                shrine_utils::yang1_addr(),
-                common::WHALE_TROVE,
-                remaining_collateral_value_to_withdraw / shrine_utils::YANG1_START_PRICE.into()
-            );
-
-        // Now trove1 should be underwater, while the whale trove should still be healthy.
-        assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
-        assert(shrine.is_healthy(common::WHALE_TROVE), 'should be healthy #3');
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
     }
 
-    // Invariant test: scaling the "raw" trove threshold for recovery mode is
-    // the same as scaling each yang threshold individually and only then
-    // calculating the trove threshold
+    // User cannot forge if it triggers recovery mode
     #[test]
-    fn test_recovery_mode_invariant() {
-        let shrine: IShrineDispatcher = shrine_utils::recovery_mode_test_setup(Option::None);
+    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    fn test_forge_trigger_recovery_mode_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
-        let yang2_deposit: Wad = (2 * WAD_ONE).into();
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
+
         start_prank(CheatTarget::All, shrine_utils::admin());
-        // We deposit some yang2 into trove1 in order to alter its collateral composition,
-        // and subsequently its threshold
-        shrine.deposit(shrine_utils::yang2_addr(), common::TROVE_1, yang2_deposit);
 
-        // We then withdraw collateral from the whale trove in order to bring up the global LTV
-        // and activate recovery mode
-        shrine.withdraw(shrine_utils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
+            );
 
-        // Sanity check that recovery mode is active
-        let (_, threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
-        assert(threshold < shrine_utils::YANG1_THRESHOLD.into(), 'recovery mode not active');
-
-        // Getting the trove threshold as calculated by Shrine
-        let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
-
-        // Getting the trove threshold as calculated by scaling each yang threshold individually
-
-        let (_, yang1_threshold) = shrine.get_yang_threshold(shrine_utils::yang1_addr());
-        let (_, yang2_threshold) = shrine.get_yang_threshold(shrine_utils::yang2_addr());
-
-        let yang1_deposit_value = shrine_utils::TROVE1_YANG1_DEPOSIT.into() * shrine_utils::YANG1_START_PRICE.into();
-        let yang2_deposit_value = yang2_deposit * shrine_utils::YANG2_START_PRICE.into();
-
-        let alternative_threshold: Ray = wadray::wdiv_rw(
-            wadray::wmul_wr(yang1_deposit_value, yang1_threshold)
-                + wadray::wmul_wr(yang2_deposit_value, yang2_threshold),
-            yang1_deposit_value + yang2_deposit_value
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
         );
 
-        assert(trove_health.threshold == alternative_threshold, 'invariant did not hold');
+        assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
+
+        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is already at or above its target recovery mode LTV, user cannot withdraw.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    fn test_withdraw_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is already at or above its target recovery mode LTV, user cannot forge.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    fn test_forge_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+
+        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is already at or above its target recovery mode LTV, 
+    // user can deposit and melt, and threshold has not been scaled.
+    #[test]
+    fn test_deposit_and_melt_within_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+
+        shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
+        shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is below its target recovery mode LTV, 
+    // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
+    // provided that the withdraw and forge does not result in the trove reaching its 
+    // target recovery mode LTV.
+    #[test]
+    fn test_actions_within_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, max_forge_amt);
+        shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
+
+        // Repay the max forge amount to return the trove's LTV to its starting value
+        // to avoid causing the Shrine to exceed the recovery mode buffer
+        shrine_utils::trove1_melt(shrine, max_forge_amt);
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer, 
+    // and the trove is below its target recovery mode LTV, 
+    // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    fn test_forge_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer, which is
+        // slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove having ~8,035.71... value). 
+        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin 
+        // needs to be minted to exceed the target trove's recovery mode threshold.
+        let expected_max_forge_amt: Wad = (1500 * WAD_ONE).into();
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
+
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
+    }
+
+    // If the Shrine's LTV is within the recovery mode buffer,
+    // and the trove is below its target recovery mode LTV, 
+    // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    fn test_withdraw_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be at the upper bound of the buffer, which is
+        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818. We decrease it by an
+        // additional yin to account for the offset when setting up the Shrine's LTV to be slightly below the buffer.
+        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
+        let value_to_withdraw: Wad = (((7500 - 6818) * WAD_ONE) + WAD_ONE).into();
+        let eth_to_withdraw: Wad = yang_price / value_to_withdraw;
+
+        shrine_utils::trove1_withdraw(shrine, eth_to_withdraw);
+    }
+
+    // If the Shrine's LTV has exceeded the recovery mode buffer,
+    // and the trove is already at or above its target recovery mode LTV, 
+    // threshold has been scaled and user cannot withdraw.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    fn test_withdraw_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert(trove_health.threshold < trove_base_threshold, 'rm threshold not scaled');
+
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+    }
+
+    // If the Shrine's LTV has exceeded the recovery mode buffer,
+    // and the trove is already at or above its target recovery mode LTV, user cannot forge.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    fn test_forge_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+        shrine_utils::trove1_forge(shrine, WAD_ONE.into());
+    }
+
+    // If the Shrine's LTV has exceeded the recovery mode buffer,
+    // and the trove is already at or above its target recovery mode LTV, user can deposit and melt.
+    #[test]
+    fn test_deposit_and_melt_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold below rm target');
+
+        shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
+        shrine_utils::trove1_melt(shrine, (WAD_ONE / 2).into());
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+    }
+
+    // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, 
+    // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
+    // provided that the withdraw and forge does not result in the trove reaching its 
+    // target recovery mode LTV.
+    #[test]
+    fn test_actions_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        shrine_utils::trove1_forge(shrine, max_forge_amt);
+        shrine_utils::trove1_deposit(shrine, (WAD_ONE / 2).into());
+
+        // Repay the max forge amount to return the trove's LTV to its starting value
+        // to avoid causing the Shrine to exceed the recovery mode buffer
+        shrine_utils::trove1_melt(shrine, max_forge_amt);
+
+        let trove_health: Health = shrine.get_trove_health(trove_id);
+        let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
+        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+    }
+
+    // If the Shrine's LTV has exceeded the recovery mode buffer, 
+    // and the trove is below its target recovery mode LTV, 
+    // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    fn test_forge_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
+        // slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
+        // needs to be minted to exceed the target trove's recovery mode threshold.
+        let expected_max_forge_amt: Wad = (1200 * WAD_ONE).into();
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
+
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
+    }
+
+    // If the Shrine's LTV has exceeded the recovery mode buffer,
+    // and the trove is below its target recovery mode LTV, 
+    // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
+    #[test]
+    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    fn test_withdraw_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 3,000 USD
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+
+        // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
+        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+
+        shrine_utils::recovery_mode_test_setup(
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+        );
+
+        assert(shrine.is_recovery_mode(), 'should be recovery mode');
+
+        assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
+
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
+        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818.
+        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
+        let value_to_withdraw: Wad = ((7500 - 6818) * WAD_ONE).into();
+        let eth_to_withdraw: Wad = yang_price / value_to_withdraw;
+
+        shrine_utils::trove1_withdraw(shrine, eth_to_withdraw);
+    }
+
+    #[test]
+    fn test_recovery_mode_thresholds() {
+        // These values should be at least 75% or greater in order for the buffer to be exceeded
+        // since there is only one trove.
+        let mut trove_ltv_cases: Span<Ray> = array![
+            (76 * RAY_PERCENT).into(),
+            (80 * RAY_PERCENT).into(),
+            (90 * RAY_PERCENT).into(),
+            (100 * RAY_PERCENT).into(),
+            (120 * RAY_PERCENT).into(),
+        ]
+            .span();
+
+        // Since the trove only uses ETH, the target recovery mode LTV is 70% * 80% = 56%.
+        let mut expected_rm_thresholds: Span<Ray> = array![
+            589473684210526397718397163_u128.into(), // 0.8 * (0.56/0.76) = 58.94...
+            560000000000000053290705182_u128.into(), // 0.8 * (0,56/0.8) = 56.00...
+            497777777777777840498525440_u128.into(), // 0.8 * (0.56/0.9) = 49.77...
+            448000000000000067501559897_u128.into(), // 0.8 * (0.56/1) = 44.80...
+            // 0.8 * (0.56/1.2) = 37.33..., which is less than half of its original threshold
+            // of 80%, so it is capped at 40%.
+            400000000000000000000000000_u128.into(),
+        ]
+            .span();
+
+        let shrine_class: ContractClass = shrine_utils::declare_shrine();
+
+        // Trove 1 deposits 10,000 USD worth, and borrows 5,000 USD
+        let trove_eth_deposit: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
+        let trove_debt: Wad = (5000 * WAD_ONE).into();
+        let trove_id: u64 = common::TROVE_1;
+
+        let threshold_error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+
+        loop {
+            match trove_ltv_cases.pop_front() {
+                Option::Some(trove_ltv) => {
+                    let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::Some(shrine_class));
+
+                    shrine_utils::trove1_deposit(shrine, trove_eth_deposit);
+                    shrine_utils::trove1_forge(shrine, trove_debt);
+
+                    let shrine_health: Health = shrine.get_shrine_health();
+                    let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / *trove_ltv));
+                    let decrease_pct: Ray = wadray::rdiv_ww(
+                        (shrine_health.value - unhealthy_value), shrine_health.value
+                    );
+
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    let mut yangs_copy = yangs;
+                    loop {
+                        match yangs_copy.pop_front() {
+                            Option::Some(yang) => {
+                                let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                                let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+                                shrine.advance(*yang, new_price);
+                            },
+                            Option::None => { break; }
+                        };
+                    };
+                    stop_prank(CheatTarget::One(shrine.contract_address));
+
+                    assert(shrine.is_recovery_mode(), 'should be recovery mode');
+                    assert(
+                        shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id),
+                        'trove threshold above rm target'
+                    );
+
+                    let trove_health: Health = shrine.get_trove_health(trove_id);
+                    let expected_rm_threshold: Ray = *expected_rm_thresholds.pop_front().unwrap();
+                    common::assert_equalish(
+                        trove_health.threshold, expected_rm_threshold, threshold_error_margin, 'wrong rm threshold'
+                    );
+                },
+                Option::None => { break; }
+            };
+        };
     }
 
     #[test]

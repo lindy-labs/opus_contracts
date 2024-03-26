@@ -1,12 +1,14 @@
 #[starknet::contract]
-mod abbot {
+pub mod abbot {
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
-    use wadray::{BoundedWad, Wad};
+    use wadray::Wad;
 
     // 
     // Components 
@@ -50,7 +52,7 @@ mod abbot {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
         // Component events
@@ -58,17 +60,17 @@ mod abbot {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveOpened {
+    pub struct TroveOpened {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64
+        pub trove_id: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct TroveClosed {
+    pub struct TroveClosed {
         #[key]
-        trove_id: u64
+        pub trove_id: u64
     }
 
     //
@@ -126,12 +128,14 @@ mod abbot {
         // Core functions
         //
 
-        // create a new trove in the system with Yang deposits,
-        // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
+        // Create a new trove in the system with Yang deposits
+        // Note that since the forge amount must be greater than zero, the Shrine would also enforce
+        // that the minimum trove value has been deposited.
         fn open_trove(
             ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
+            assert(forge_amount.is_non_zero(), 'ABB: No debt forged');
 
             let new_troves_count: u64 = self.troves_count.read() + 1;
             self.troves_count.write(new_troves_count);
@@ -167,7 +171,7 @@ mod abbot {
 
             let shrine = self.shrine.read();
             // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-            shrine.melt(user, trove_id, BoundedWad::max());
+            shrine.melt(user, trove_id, BoundedInt::max());
 
             let mut yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
             // withdraw each and every Yang belonging to the trove from the system

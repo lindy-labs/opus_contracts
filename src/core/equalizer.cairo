@@ -1,7 +1,8 @@
 #[starknet::contract]
-mod equalizer {
+pub mod equalizer {
     use access_control::access_control_component;
-    use cmp::min;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::equalizer_roles;
     use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -9,7 +10,7 @@ mod equalizer {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::Health;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, Signed, SignedWad, Wad, WadZeroable};
+    use wadray::{Ray, Signed, SignedWad, Wad};
 
     //
     // Components
@@ -43,7 +44,7 @@ mod equalizer {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
@@ -52,28 +53,28 @@ mod equalizer {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct AllocatorUpdated {
-        old_address: ContractAddress,
-        new_address: ContractAddress
+    pub struct AllocatorUpdated {
+        pub old_address: ContractAddress,
+        pub new_address: ContractAddress
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Equalize {
-        yin_amt: Wad
+    pub struct Equalize {
+        pub yin_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Normalize {
+    pub struct Normalize {
         #[key]
-        caller: ContractAddress,
-        yin_amt: Wad
+        pub caller: ContractAddress,
+        pub yin_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Allocate {
-        recipients: Span<ContractAddress>,
-        percentages: Span<Ray>,
-        amount: Wad
+    pub struct Allocate {
+        pub recipients: Span<ContractAddress>,
+        pub percentages: Span<Ray>,
+        pub amount: Wad
     }
 
     //
@@ -132,7 +133,7 @@ mod equalizer {
             // `is_negative` is an inadequate check for performing an early return
             // here because it does not catch the case where budget is exactly zero.
             if !budget.is_positive() {
-                return WadZeroable::zero();
+                return Zero::zero();
             }
 
             let minted_surplus: Wad = budget.try_into().unwrap();
@@ -181,7 +182,7 @@ mod equalizer {
             let allocator: IAllocatorDispatcher = self.allocator.read();
             let (recipients, percentages) = allocator.get_allocation();
 
-            let mut amount_allocated: Wad = WadZeroable::zero();
+            let mut amount_allocated: Wad = Zero::zero();
             let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
             loop {
@@ -215,7 +216,7 @@ mod equalizer {
 
                 wipe_amt
             } else {
-                WadZeroable::zero()
+                Zero::zero()
             }
         }
     }

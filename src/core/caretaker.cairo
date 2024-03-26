@@ -1,7 +1,8 @@
 #[starknet::contract]
-mod caretaker {
+pub mod caretaker {
     use access_control::access_control_component;
-    use cmp::min;
+    use core::cmp::min;
+    use core::num::traits::Zero;
     use opus::core::roles::caretaker_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::ICaretaker::ICaretaker;
@@ -63,7 +64,7 @@ mod caretaker {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         AccessControlEvent: access_control_component::Event,
         Shut: Shut,
         Release: Release,
@@ -73,23 +74,23 @@ mod caretaker {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Shut {}
+    pub struct Shut {}
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Release {
+    pub struct Release {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        assets: Span<AssetBalance>
+        pub trove_id: u64,
+        pub assets: Span<AssetBalance>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Reclaim {
+    pub struct Reclaim {
         #[key]
-        user: ContractAddress,
-        yin_amt: Wad,
-        assets: Span<AssetBalance>
+        pub user: ContractAddress,
+        pub yin_amt: Wad,
+        pub assets: Span<AssetBalance>
     }
 
     //

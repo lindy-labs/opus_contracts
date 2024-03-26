@@ -1,65 +1,68 @@
 mod types;
 
 mod core {
-    mod abbot;
-    mod absorber;
-    mod allocator;
-    mod caretaker;
-    mod controller;
-    mod equalizer;
-    mod flash_mint;
-    mod gate;
-    mod purger;
-    mod roles;
-    mod seer;
-    mod sentinel;
-    mod shrine;
-    mod transmuter;
-    mod transmuter_registry;
+    pub mod abbot;
+    pub mod absorber;
+    pub mod allocator;
+    pub mod caretaker;
+    pub mod controller;
+    pub mod equalizer;
+    pub mod flash_mint;
+    pub mod gate;
+    pub mod purger;
+    pub mod roles;
+    pub mod seer;
+    pub mod sentinel;
+    pub mod shrine;
+    pub mod transmuter;
+    pub mod transmuter_registry;
 }
 
 mod external {
-    mod pragma;
+    pub mod interfaces;
+    pub mod pragma;
+    pub mod roles;
+    pub mod switchboard;
 }
 
 mod interfaces {
-    mod IAbbot;
-    mod IAbsorber;
-    mod IAllocator;
-    mod ICaretaker;
-    mod IController;
-    mod IERC20;
-    mod IEqualizer;
-    mod IFlashBorrower;
-    mod IFlashMint;
-    mod IGate;
-    mod IOracle;
-    mod IPragma;
-    mod IPurger;
-    mod ISRC5;
-    mod ISeer;
-    mod ISentinel;
-    mod IShrine;
-    mod ITransmuter;
-    mod external;
+    pub mod IAbbot;
+    pub mod IAbsorber;
+    pub mod IAllocator;
+    pub mod ICaretaker;
+    pub mod IController;
+    pub mod IERC20;
+    pub mod IEqualizer;
+    pub mod IFlashBorrower;
+    pub mod IFlashMint;
+    pub mod IGate;
+    pub mod IOracle;
+    pub mod IPragma;
+    pub mod IPurger;
+    pub mod ISRC5;
+    pub mod ISeer;
+    pub mod ISentinel;
+    pub mod IShrine;
+    pub mod ISwitchboard;
+    pub mod ITransmuter;
 }
 
 mod utils {
-    mod address_registry;
-    mod exp;
-    mod math;
-    mod reentrancy_guard;
+    pub mod address_registry;
+    pub mod exp;
+    pub mod math;
+    pub mod reentrancy_guard;
 }
 
 // mock used for local devnet deployment
 mod mock {
-    mod blesser;
-    mod erc20;
-    mod erc20_mintable;
-    mod flash_borrower;
-    mod flash_liquidator;
-    mod mock_pragma;
-//mod oracle;
+    pub mod blesser;
+    pub mod erc20;
+    pub mod erc20_mintable;
+    pub mod flash_borrower;
+    pub mod flash_liquidator;
+    pub mod mock_pragma;
+    pub mod mock_switchboard;
 }
 
 #[cfg(test)]
@@ -68,59 +71,60 @@ mod tests {
     mod test_types;
     mod abbot {
         mod test_abbot;
-        mod utils;
+        pub mod utils;
     }
     mod absorber {
         mod test_absorber;
-        mod utils;
+        pub mod utils;
     }
     mod caretaker {
         mod test_caretaker;
-        mod utils;
+        pub mod utils;
     }
     mod controller {
         mod test_controller;
-        mod utils;
+        pub mod utils;
     }
     mod equalizer {
         mod test_allocator;
         mod test_equalizer;
-        mod utils;
+        pub mod utils;
     }
     mod external {
         mod test_pragma;
-        mod utils;
+        mod test_switchboard;
+        pub mod utils;
     }
     mod flash_mint {
         mod test_flash_mint;
-        mod utils;
+        pub mod utils;
     }
     mod gate {
         mod test_gate;
-        mod utils;
+        pub mod utils;
     }
     mod purger {
         mod test_purger;
-        mod utils;
+        pub mod utils;
     }
     mod sentinel {
         mod test_sentinel;
-        mod utils;
+        pub mod utils;
     }
     mod seer {
         mod test_seer;
-        mod utils;
+        pub mod utils;
     }
     mod shrine {
         mod test_shrine;
         mod test_shrine_compound;
         mod test_shrine_redistribution;
-        mod utils;
+        pub mod utils;
     }
     mod transmuter {
         mod test_transmuter;
-        mod test_transmuter_registry;
-        mod utils;
+        pub mod test_transmuter_registry;
+        pub mod utils;
     }
     mod utils {
         mod mock_address_registry;

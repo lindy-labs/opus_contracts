@@ -1,6 +1,6 @@
-mod transmuter_utils {
+pub mod transmuter_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use integer::BoundedInt;
+    use core::integer::BoundedInt;
     use opus::core::roles::shrine_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
@@ -13,33 +13,33 @@ mod transmuter_utils {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252};
+    use starknet::ContractAddress;
     use wadray::Wad;
 
     // Constants
 
     // 1_000_000 (Wad)
-    const INITIAL_CEILING: u128 = 1000000000000000000000000;
+    pub const INITIAL_CEILING: u128 = 1000000000000000000000000;
 
     // 20_000_000 (Wad)
-    const START_TOTAL_YIN: u128 = 20000000000000000000000000;
+    pub const START_TOTAL_YIN: u128 = 20000000000000000000000000;
 
     // 2_000_000 (Wad)
-    const MOCK_WAD_USD_TOTAL: u128 = 2000000000000000000000000;
+    pub const MOCK_WAD_USD_TOTAL: u128 = 2000000000000000000000000;
 
     // 2_000_000 (6 decimals)
-    const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;
+    pub const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;
 
-    fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('transmuter admin').unwrap()
+    pub fn admin() -> ContractAddress {
+        'transmuter admin'.try_into().unwrap()
     }
 
-    fn receiver() -> ContractAddress {
-        contract_address_try_from_felt252('receiver').unwrap()
+    pub fn receiver() -> ContractAddress {
+        'receiver'.try_into().unwrap()
     }
 
-    fn user() -> ContractAddress {
-        contract_address_try_from_felt252('transmuter user').unwrap()
+    pub fn user() -> ContractAddress {
+        'transmuter user'.try_into().unwrap()
     }
 
 
@@ -47,26 +47,22 @@ mod transmuter_utils {
     // Test setup helpers
     //
 
-    fn declare_transmuter() -> ContractClass {
-        declare('transmuter')
+    pub fn declare_transmuter() -> ContractClass {
+        declare("transmuter")
     }
 
-    fn declare_erc20() -> ContractClass {
-        declare('erc20_mintable')
+    pub fn declare_erc20() -> ContractClass {
+        declare("erc20_mintable")
     }
 
-    fn transmuter_deploy(
+    pub fn transmuter_deploy(
         transmuter_class: Option<ContractClass>,
         shrine: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress
     ) -> ITransmuterDispatcher {
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(shrine),
-            contract_address_to_felt252(asset),
-            contract_address_to_felt252(receiver),
-            INITIAL_CEILING.into()
+            admin().into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into()
         ];
 
         let transmuter_class = match transmuter_class {
@@ -84,7 +80,7 @@ mod transmuter_utils {
     }
 
     // mock stable with 18 decimals
-    fn mock_wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+    pub fn mock_wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
                 'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class
@@ -93,7 +89,7 @@ mod transmuter_utils {
     }
 
     // mock stable with 6 decimals
-    fn mock_nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+    pub fn mock_nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
                 'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class
@@ -101,7 +97,7 @@ mod transmuter_utils {
         }
     }
 
-    fn setup_shrine_with_transmuter(
+    pub fn setup_shrine_with_transmuter(
         shrine: IShrineDispatcher,
         transmuter: ITransmuterDispatcher,
         shrine_ceiling: Wad,
@@ -122,7 +118,7 @@ mod transmuter_utils {
         stop_prank(CheatTarget::One(asset));
     }
 
-    fn shrine_with_mock_wad_usd_stable_transmuter(
+    pub fn shrine_with_mock_wad_usd_stable_transmuter(
         transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>
     ) -> (IShrineDispatcher, ITransmuterDispatcher, IERC20Dispatcher) {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
@@ -139,10 +135,10 @@ mod transmuter_utils {
         (shrine, transmuter, mock_usd_stable)
     }
 
-    fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
-        let mut calldata: Array<felt252> = array![contract_address_to_felt252(admin())];
+    pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
+        let mut calldata: Array<felt252> = array![admin().into()];
 
-        let transmuter_registry_class = declare('transmuter_registry');
+        let transmuter_registry_class = declare("transmuter_registry");
         let transmuter_registry_addr = transmuter_registry_class.deploy(@calldata).expect('TR registry deploy failed');
 
         ITransmuterRegistryDispatcher { contract_address: transmuter_registry_addr }

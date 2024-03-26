@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait IERC20<TContractState> {
+pub trait IERC20<TContractState> {
     fn name(self: @TContractState) -> felt252;
     fn symbol(self: @TContractState) -> felt252;
     fn decimals(self: @TContractState) -> u8;
@@ -16,7 +16,7 @@ trait IERC20<TContractState> {
 }
 
 #[starknet::interface]
-trait IERC20CamelOnly<TContractState> {
+pub trait IERC20CamelOnly<TContractState> {
     fn totalSupply(self: @TContractState) -> u256;
     fn balanceOf(self: @TContractState, account: ContractAddress) -> u256;
     fn transferFrom(
@@ -25,6 +25,6 @@ trait IERC20CamelOnly<TContractState> {
 }
 
 #[starknet::interface]
-trait IMintable<TContractState> {
+pub trait IMintable<TContractState> {
     fn mint(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
 }

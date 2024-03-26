@@ -1,6 +1,7 @@
-mod sentinel_utils {
+pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use integer::BoundedU256;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -11,50 +12,47 @@ mod sentinel_utils {
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget, PrintTrait};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_caller_address};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use starknet::{ContractAddress, get_caller_address};
     use wadray::{Wad, Ray};
 
-    const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
-    const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
+    pub const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     #[inline(always)]
-    fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('sentinel admin').unwrap()
+    pub fn admin() -> ContractAddress {
+        'sentinel admin'.try_into().unwrap()
     }
 
     #[inline(always)]
-    fn mock_abbot() -> ContractAddress {
-        contract_address_try_from_felt252('mock abbot').unwrap()
+    pub fn mock_abbot() -> ContractAddress {
+        'mock abbot'.try_into().unwrap()
     }
 
     #[inline(always)]
-    fn dummy_yang_addr() -> ContractAddress {
-        contract_address_try_from_felt252('dummy yang').unwrap()
+    pub fn dummy_yang_addr() -> ContractAddress {
+        'dummy yang'.try_into().unwrap()
     }
 
     #[inline(always)]
-    fn dummy_yang_gate_addr() -> ContractAddress {
-        contract_address_try_from_felt252('dummy yang token').unwrap()
+    pub fn dummy_yang_gate_addr() -> ContractAddress {
+        'dummy yang token'.try_into().unwrap()
     }
 
     //
     // Test setup
     //
 
-    fn deploy_sentinel(
+    pub fn deploy_sentinel(
         sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>,
     ) -> (ISentinelDispatcher, ContractAddress) {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(shrine_class);
 
-        let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
-        ];
+        let calldata: Array<felt252> = array![admin().into(), shrine_addr.into()];
 
         let sentinel_class = match sentinel_class {
             Option::Some(class) => class,
-            Option::None => declare('sentinel')
+            Option::None => declare("sentinel")
         };
 
         let sentinel_addr = sentinel_class.deploy(@calldata).expect('failed deploy sentinel');
@@ -74,7 +72,7 @@ mod sentinel_utils {
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
 
-    fn deploy_sentinel_with_gates(
+    pub fn deploy_sentinel_with_gates(
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
@@ -85,14 +83,14 @@ mod sentinel_utils {
         let token_class = Option::Some(
             match token_class {
                 Option::Some(class) => class,
-                Option::None => declare('erc20_mintable')
+                Option::None => declare("erc20_mintable")
             }
         );
 
         let gate_class = Option::Some(
             match gate_class {
                 Option::Some(class) => class,
-                Option::None => declare('gate')
+                Option::None => declare("gate")
             }
         );
 
@@ -105,7 +103,7 @@ mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
     }
 
-    fn deploy_sentinel_with_eth_gate(
+    pub fn deploy_sentinel_with_eth_gate(
         token_class: Option<ContractClass>
     ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
         let (sentinel, shrine_addr) = deploy_sentinel(Option::None, Option::None);
@@ -114,7 +112,7 @@ mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
     }
 
-    fn add_eth_yang(
+    pub fn add_eth_yang(
         sentinel: ISentinelDispatcher,
         shrine_addr: ContractAddress,
         token_class: Option<ContractClass>,
@@ -153,7 +151,7 @@ mod sentinel_utils {
         (eth, IGateDispatcher { contract_address: eth_gate })
     }
 
-    fn add_wbtc_yang(
+    pub fn add_wbtc_yang(
         sentinel: ISentinelDispatcher,
         shrine_addr: ContractAddress,
         token_class: Option<ContractClass>,
@@ -189,15 +187,14 @@ mod sentinel_utils {
         (wbtc, IGateDispatcher { contract_address: wbtc_gate })
     }
 
-    fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
+    pub fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
-        let prev_address: ContractAddress = get_caller_address();
         start_prank(CheatTarget::One(token), user);
-        token_erc20.approve(gate.contract_address, BoundedU256::max());
+        token_erc20.approve(gate.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(token));
     }
 
-    fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
+    pub fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
         pow(10_u128, IERC20Dispatcher { contract_address: asset_addr }.decimals() / 2)
     }
 }

@@ -1,8 +1,8 @@
-mod absorber_utils {
+pub mod absorber_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use cmp::min;
-    use debug::PrintTrait;
-    use integer::BoundedU256;
+    use core::cmp::min;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -21,21 +21,20 @@ mod absorber_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Reward};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::{ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,};
-    use wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use starknet::ContractAddress;
+    use wadray::{Ray, Wad, WAD_ONE, WAD_SCALE};
 
     //
     // Constants
     //
 
-    const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
+    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
 
-    const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-    const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
+    pub const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
+    pub const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
 
     #[inline(always)]
-    fn provider_asset_amts() -> Span<u128> {
+    pub fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
          100000000, // 1 (10 ** 8) - BTC
         ];
@@ -43,7 +42,7 @@ mod absorber_utils {
     }
 
     #[inline(always)]
-    fn first_update_assets() -> Span<u128> {
+    pub fn first_update_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![
             1230000000000000000, // 1.23 (Wad) - ETH
              23700000, // 0.237 (10 ** 8) - BTC
@@ -52,7 +51,7 @@ mod absorber_utils {
     }
 
     #[inline(always)]
-    fn second_update_assets() -> Span<u128> {
+    pub fn second_update_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![
             572000000000000000, // 0.572 (Wad) - ETH
              65400000, // 0.654 (10 ** 8) - BTC
@@ -64,27 +63,27 @@ mod absorber_utils {
     // Address constants
     //
 
-    fn admin() -> ContractAddress {
-        contract_address_try_from_felt252('absorber owner').unwrap()
+    pub fn admin() -> ContractAddress {
+        'absorber owner'.try_into().unwrap()
     }
 
-    fn provider_1() -> ContractAddress {
-        contract_address_try_from_felt252('provider 1').unwrap()
+    pub fn provider_1() -> ContractAddress {
+        'provider 1'.try_into().unwrap()
     }
 
-    fn provider_2() -> ContractAddress {
-        contract_address_try_from_felt252('provider 2').unwrap()
+    pub fn provider_2() -> ContractAddress {
+        'provider 2'.try_into().unwrap()
     }
 
-    fn mock_purger() -> ContractAddress {
-        contract_address_try_from_felt252('mock purger').unwrap()
+    pub fn mock_purger() -> ContractAddress {
+        'mock purger'.try_into().unwrap()
     }
 
     //
     // Test setup helpers
     //
 
-    fn absorber_deploy(
+    pub fn absorber_deploy(
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
@@ -106,14 +105,12 @@ mod absorber_utils {
         let admin: ContractAddress = admin();
 
         let calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin),
-            contract_address_to_felt252(shrine.contract_address),
-            contract_address_to_felt252(sentinel.contract_address),
+            admin.into(), shrine.contract_address.into(), sentinel.contract_address.into(),
         ];
 
         let absorber_class = match absorber_class {
             Option::Some(class) => class,
-            Option::None => declare('absorber')
+            Option::None => declare("absorber")
         };
 
         let absorber_addr = absorber_class.deploy(@calldata).expect('absorber deploy failed');
@@ -127,16 +124,16 @@ mod absorber_utils {
         (shrine, sentinel, abbot, absorber, yangs, gates)
     }
 
-    fn opus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    pub fn opus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token('Opus', 'OPUS', 18, 0_u256, admin(), token_class)
     }
 
-    fn veopus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    pub fn veopus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token('veOpus', 'veOPUS', 18, 0_u256, admin(), token_class)
     }
 
     // Convenience fixture for reward token addresses constants
-    fn reward_tokens_deploy(token_class: Option<ContractClass>) -> Span<ContractAddress> {
+    pub fn reward_tokens_deploy(token_class: Option<ContractClass>) -> Span<ContractAddress> {
         let mut reward_tokens: Array<ContractAddress> = array![
             opus_token_deploy(token_class), veopus_token_deploy(token_class),
         ];
@@ -144,14 +141,14 @@ mod absorber_utils {
     }
 
     // Convenience fixture for reward amounts
-    fn reward_amts_per_blessing() -> Span<u128> {
+    pub fn reward_amts_per_blessing() -> Span<u128> {
         let mut bless_amts: Array<u128> = array![OPUS_BLESS_AMT, veOPUS_BLESS_AMT,];
         bless_amts.span()
     }
 
     // Helper function to deploy a blesser for a token.
     // Mints tokens to the deployed blesser if `mint_to_blesser` is `true`.
-    fn deploy_blesser_for_reward(
+    pub fn deploy_blesser_for_reward(
         absorber: IAbsorberDispatcher,
         asset: ContractAddress,
         bless_amt: u128,
@@ -159,15 +156,12 @@ mod absorber_utils {
         blesser_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = array![
-            contract_address_to_felt252(admin()),
-            contract_address_to_felt252(asset),
-            contract_address_to_felt252(absorber.contract_address),
-            bless_amt.into(),
+            admin().into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
         ];
 
         let blesser_class = match blesser_class {
             Option::Some(class) => class,
-            Option::None => declare('mock_blesser')
+            Option::None => declare("mock_blesser")
         };
 
         let mock_blesser_addr = blesser_class.deploy(@calldata).expect('blesser deploy failed');
@@ -182,7 +176,7 @@ mod absorber_utils {
 
     // Wrapper function to deploy blessers for an array of reward tokens and return an array
     // of the blesser contract addresses.
-    fn deploy_blesser_for_rewards(
+    pub fn deploy_blesser_for_rewards(
         absorber: IAbsorberDispatcher,
         mut assets: Span<ContractAddress>,
         mut bless_amts: Span<u128>,
@@ -205,7 +199,7 @@ mod absorber_utils {
         blessers.span()
     }
 
-    fn add_rewards_to_absorber(
+    pub fn add_rewards_to_absorber(
         absorber: IAbsorberDispatcher, mut tokens: Span<ContractAddress>, mut blessers: Span<ContractAddress>
     ) {
         start_prank(CheatTarget::One(absorber.contract_address), admin());
@@ -220,7 +214,7 @@ mod absorber_utils {
         stop_prank(CheatTarget::One(absorber.contract_address));
     }
 
-    fn absorber_with_first_provider(
+    pub fn absorber_with_first_provider(
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
@@ -249,7 +243,7 @@ mod absorber_utils {
     }
 
     // Helper function to deploy Absorber, add rewards and create a trove.
-    fn absorber_with_rewards_and_first_provider(
+    pub fn absorber_with_rewards_and_first_provider(
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
@@ -273,13 +267,13 @@ mod absorber_utils {
         let token_class = Option::Some(
             match token_class {
                 Option::Some(class) => class,
-                Option::None => declare('erc20_mintable')
+                Option::None => declare("erc20_mintable")
             }
         );
 
         let blesser_class = match blesser_class {
             Option::Some(class) => class,
-            Option::None => declare('blesser')
+            Option::None => declare("blesser")
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
@@ -310,7 +304,7 @@ mod absorber_utils {
 
     // Helper function to open a trove and provide to the Absorber
     // Returns the trove ID.
-    fn provide_to_absorber(
+    pub fn provide_to_absorber(
         shrine: IShrineDispatcher,
         abbot: IAbbotDispatcher,
         absorber: IAbsorberDispatcher,
@@ -328,7 +322,7 @@ mod absorber_utils {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        yin.approve(absorber.contract_address, BoundedU256::max());
+        yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);
         stop_prank(CheatTarget::One(absorber.contract_address));
@@ -352,7 +346,7 @@ mod absorber_utils {
     //
     // - `percentage_to_drain` - Percentage of the Absorber's yin balance to be burnt
     //
-    fn simulate_update_with_pct_to_drain(
+    pub fn simulate_update_with_pct_to_drain(
         shrine: IShrineDispatcher,
         absorber: IAbsorberDispatcher,
         mut yangs: Span<ContractAddress>,
@@ -380,7 +374,7 @@ mod absorber_utils {
     //
     // - `percentage_to_drain` - Percentage of the Absorber's yin balance to be burnt
     //
-    fn simulate_update_with_amt_to_drain(
+    pub fn simulate_update_with_amt_to_drain(
         shrine: IShrineDispatcher,
         absorber: IAbsorberDispatcher,
         mut yangs: Span<ContractAddress>,
@@ -413,13 +407,13 @@ mod absorber_utils {
         stop_prank(CheatTarget::One(absorber.contract_address));
     }
 
-    fn kill_absorber(absorber: IAbsorberDispatcher) {
+    pub fn kill_absorber(absorber: IAbsorberDispatcher) {
         start_prank(CheatTarget::One(absorber.contract_address), admin());
         absorber.kill();
         stop_prank(CheatTarget::One(absorber.contract_address));
     }
 
-    fn get_gate_balances(sentinel: ISentinelDispatcher, mut yangs: Span<ContractAddress>) -> Span<u128> {
+    pub fn get_gate_balances(sentinel: ISentinelDispatcher, mut yangs: Span<ContractAddress>) -> Span<u128> {
         let mut balances: Array<u128> = ArrayTrait::new();
 
         loop {
@@ -459,7 +453,7 @@ mod absorber_utils {
     //
     // - `error_margin` - Acceptable error margin
     //
-    fn assert_provider_received_absorbed_assets(
+    pub fn assert_provider_received_absorbed_assets(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
         mut absorbed_amts: Span<u128>,
@@ -514,7 +508,7 @@ mod absorber_utils {
     //
     // - `error_margin` - Acceptable error margin
     //
-    fn assert_provider_received_rewards(
+    pub fn assert_provider_received_rewards(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
         mut reward_amts_per_blessing: Span<u128>,
@@ -560,7 +554,7 @@ mod absorber_utils {
     //
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
-    fn assert_provider_reward_cumulatives_updated(
+    pub fn assert_provider_reward_cumulatives_updated(
         absorber: IAbsorberDispatcher, provider: ContractAddress, mut asset_addresses: Span<ContractAddress>,
     ) {
         loop {
@@ -597,7 +591,7 @@ mod absorber_utils {
     // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total
     //    amount the provider should receive.
     //
-    fn assert_reward_cumulative_updated(
+    pub fn assert_reward_cumulative_updated(
         absorber: IAbsorberDispatcher,
         recipient_shares: Wad,
         epoch: u32,
@@ -636,7 +630,7 @@ mod absorber_utils {
     //
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
-    fn assert_reward_errors_propagated_to_next_epoch(
+    pub fn assert_reward_errors_propagated_to_next_epoch(
         absorber: IAbsorberDispatcher, before_epoch: u32, mut asset_addresses: Span<ContractAddress>,
     ) {
         loop {
@@ -655,7 +649,7 @@ mod absorber_utils {
         };
     }
 
-    fn assert_update_is_correct(
+    pub fn assert_update_is_correct(
         sentinel: ISentinelDispatcher,
         absorber: IAbsorberDispatcher,
         absorption_id: u32,
@@ -693,7 +687,7 @@ mod absorber_utils {
         };
     }
 
-    fn declare_contracts() -> (
+    pub fn declare_contracts() -> (
         Option<ContractClass>,
         Option<ContractClass>,
         Option<ContractClass>,
@@ -703,13 +697,13 @@ mod absorber_utils {
         Option<ContractClass>
     ) {
         (
-            Option::Some(declare('abbot')),
-            Option::Some(declare('sentinel')),
-            Option::Some(declare('erc20_mintable')),
-            Option::Some(declare('gate')),
-            Option::Some(declare('shrine')),
-            Option::Some(declare('absorber')),
-            Option::Some(declare('blesser')),
+            Option::Some(declare("abbot")),
+            Option::Some(declare("sentinel")),
+            Option::Some(declare("erc20_mintable")),
+            Option::Some(declare("gate")),
+            Option::Some(declare("shrine")),
+            Option::Some(declare("absorber")),
+            Option::Some(declare("blesser")),
         )
     }
 }

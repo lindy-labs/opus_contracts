@@ -3,7 +3,7 @@ use starknet::ContractAddress;
 use wadray::{Ray, Wad};
 
 #[starknet::interface]
-trait IPurger<TContractState> {
+pub trait IPurger<TContractState> {
     // view
     fn preview_liquidate(self: @TContractState, trove_id: u64) -> Option<(Ray, Wad)>;
     fn preview_absorb(self: @TContractState, trove_id: u64) -> Option<(Ray, Wad, Wad)>;

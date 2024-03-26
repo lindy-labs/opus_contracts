@@ -1,5 +1,5 @@
 mod test_abbot {
-    use debug::PrintTrait;
+    use core::num::traits::Zero;
     use opus::core::abbot::abbot as abbot_contract;
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -14,8 +14,8 @@ mod test_abbot {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use wadray::{Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use starknet::ContractAddress;
+    use wadray::{Wad, WAD_ONE, WAD_SCALE};
 
     //
     // Tests
@@ -143,6 +143,20 @@ mod test_abbot {
     }
 
     #[test]
+    #[should_panic(expected: ('ABB: No debt forged',))]
+    fn test_open_trove_zero_forge_amt_fail() {
+        let (_, _, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let forge_amt = Zero::zero();
+        common::fund_user(trove_owner, yangs, abbot_utils::initial_asset_amts());
+        let deposited_amts: Span<u128> = abbot_utils::open_trove_yang_asset_amts();
+        common::open_trove_helper(abbot, trove_owner, yangs, deposited_amts, gates, forge_amt);
+    }
+
+    #[test]
     #[should_panic(expected: ('ABB: No yangs',))]
     fn test_open_trove_no_yangs_fail() {
         let (_, _, abbot, _, _) = abbot_utils::abbot_deploy(
@@ -153,7 +167,7 @@ mod test_abbot {
         let yangs: Array<ContractAddress> = ArrayTrait::new();
         let yang_amts: Array<u128> = ArrayTrait::new();
         let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
+        let max_forge_fee_pct: Wad = Zero::zero();
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span());
@@ -171,7 +185,7 @@ mod test_abbot {
         let mut yangs: Array<ContractAddress> = array![invalid_yang];
         let mut yang_amts: Array<u128> = array![WAD_SCALE];
         let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
+        let max_forge_fee_pct: Wad = Zero::zero();
 
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span());
         abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
@@ -220,7 +234,7 @@ mod test_abbot {
 
     #[test]
     fn test_deposit_pass() {
-        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, _) =
+        let (shrine, _, abbot, yangs, _, trove_owner, trove_id, deposited_amts, _) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
@@ -257,7 +271,7 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        let asset_addr = ContractAddressZeroable::zero();
+        let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -373,7 +387,7 @@ mod test_abbot {
         let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt].span();
 
         common::fund_user(trove_owner, yangs, deposit_amts);
-        let forge_amt = WadZeroable::zero();
+        let forge_amt = 1_u128.into();
         let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposit_amts, gates, forge_amt);
 
         // Sanity check that max assets have been deposited
@@ -390,6 +404,7 @@ mod test_abbot {
 
         // Withdraw all ETH and WBTC
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.melt(trove_id, forge_amt);
         abbot.withdraw(trove_id, AssetBalance { address: eth, amount: deposit_eth_amt });
         abbot.withdraw(trove_id, AssetBalance { address: wbtc, amount: deposit_wbtc_amt });
 
@@ -414,10 +429,14 @@ mod test_abbot {
         let deposit_amts: Span<u128> = array![eth_deposit_amt].span();
 
         common::fund_user(trove_owner, deposit_yangs, deposit_amts);
-        let forge_amt = WadZeroable::zero();
+        let forge_amt = 1_u128.into();
         let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, deposit_yangs, deposit_amts, array![*gates[0]].span(), forge_amt
         );
+
+        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        abbot.melt(trove_id, forge_amt);
+        stop_prank(CheatTarget::One(abbot.contract_address));
 
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel.suspend_yang(eth);
@@ -436,7 +455,7 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        let asset_addr = ContractAddressZeroable::zero();
+        let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -482,7 +501,7 @@ mod test_abbot {
 
         let additional_forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
+        abbot.forge(trove_id, additional_forge_amt, Zero::zero());
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(after_trove_health.debt == forge_amt + additional_forge_amt, 'wrong trove debt');
@@ -492,7 +511,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is too high',))]
+    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
     fn test_forge_ltv_unsafe_fail() {
         let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
             Option::None, Option::None, Option::None, Option::None, Option::None
@@ -500,19 +519,14 @@ mod test_abbot {
 
         // deploy another trove to prevent recovery mode        
         common::open_trove_helper(
-            abbot,
-            common::trove1_owner_addr(),
-            yangs,
-            abbot_utils::open_trove_yang_asset_amts(),
-            gates,
-            WadZeroable::zero()
+            abbot, common::trove1_owner_addr(), yangs, abbot_utils::open_trove_yang_asset_amts(), gates, 1_u128.into()
         );
 
         assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        abbot.forge(trove_id, unsafe_forge_amt, WadZeroable::zero());
+        abbot.forge(trove_id, unsafe_forge_amt, Zero::zero());
     }
 
     #[test]
@@ -523,7 +537,7 @@ mod test_abbot {
         );
 
         start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
-        abbot.forge(trove_id, WadZeroable::zero(), WadZeroable::zero());
+        abbot.forge(trove_id, Zero::zero(), Zero::zero());
     }
 
     #[test]

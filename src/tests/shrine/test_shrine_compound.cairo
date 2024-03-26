@@ -1,13 +1,14 @@
 mod test_shrine_compound {
+    use core::num::traits::Zero;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, Trove};
+    use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::exp::exp;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RayZeroable, RAY_SCALE, SignedWad, Wad, WadZeroable, WAD_ONE};
+    use wadray::{Ray, RAY_SCALE, SignedWad, Wad, WAD_ONE};
 
     //
     // Tests - Trove estimate and charge
@@ -62,7 +63,7 @@ mod test_shrine_compound {
 
         // Trigger charge and check interest is accrued
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
+        shrine.melt(common::trove1_owner_addr(), trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -135,8 +136,8 @@ mod test_shrine_compound {
         // sanity check that skipped interval has no price values
         let (skipped_interval_price, _) = shrine.get_yang_price(yang1_addr, skipped_interval);
         let (skipped_interval_multiplier, _) = shrine.get_multiplier(skipped_interval);
-        assert(skipped_interval_price == WadZeroable::zero(), 'skipped price is not zero');
-        assert(skipped_interval_multiplier == RayZeroable::zero(), 'skipped multiplier is not zero');
+        assert(skipped_interval_price == Zero::zero(), 'skipped price is not zero');
+        assert(skipped_interval_multiplier == Zero::zero(), 'skipped multiplier is not zero');
 
         // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier`
         // updates `start_interval`.
@@ -160,7 +161,7 @@ mod test_shrine_compound {
 
         // Trigger charge and check interest is accrued
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
+        shrine.melt(common::trove1_owner_addr(), trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -227,7 +228,7 @@ mod test_shrine_compound {
         let start_interval: u64 = shrine_utils::get_interval(start_timestamp);
         start_warp(CheatTarget::All, start_timestamp);
 
-        shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.deposit(yang1_addr, trove_id, Zero::zero());
 
         // sanity check that some interest has accrued
         let trove_health: Health = shrine.get_trove_health(trove_id);
@@ -244,7 +245,7 @@ mod test_shrine_compound {
         let end_interval: u64 = start_interval + intervals_after_last_charge;
         start_warp(CheatTarget::All, end_timestamp);
 
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
         // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the
         // average values to be that at `T+LAST_UPDATED`.
@@ -255,7 +256,7 @@ mod test_shrine_compound {
         let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(estimated_trove_health.debt == expected_debt, 'wrong compounded debt');
 
-        shrine.melt(common::trove1_owner_addr(), trove_id, WadZeroable::zero());
+        shrine.melt(common::trove1_owner_addr(), trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -315,7 +316,7 @@ mod test_shrine_compound {
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
-        shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.deposit(yang1_addr, trove_id, Zero::zero());
 
         // sanity check that some interest has accrued
         let trove_health: Health = shrine.get_trove_health(trove_id);
@@ -333,7 +334,7 @@ mod test_shrine_compound {
         start_warp(CheatTarget::All, end_timestamp);
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
         // As the price and multiplier have not been updated since `T+START/LAST_UPDATED`, we expect the
         // average values to be that at `T+START/LAST_UPDATED`.
@@ -344,7 +345,7 @@ mod test_shrine_compound {
         let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(expected_debt == estimated_trove_health.debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -416,7 +417,7 @@ mod test_shrine_compound {
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
         let expected_debt: Wad = shrine_utils::compound_for_single_yang(
@@ -431,7 +432,7 @@ mod test_shrine_compound {
         assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -522,7 +523,7 @@ mod test_shrine_compound {
             + intervals_from_last_update_to_end;
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
         // First, we get the cumulative price values available to us
         // `T+LAST_UPDATED_AFTER_START` - `T+LAST_UPDATED_BEFORE_START`
@@ -557,7 +558,7 @@ mod test_shrine_compound {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, WadZeroable::zero(), 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -639,7 +640,7 @@ mod test_shrine_compound {
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
         // Manually calculate the average since start interval does not have a cumulative value
         let (_, end_cumulative_price) = shrine.get_yang_price(yang1_addr, end_interval);
@@ -665,7 +666,7 @@ mod test_shrine_compound {
         assert(expected_debt == trove_health.debt, 'wrong compounded debt');
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.deposit(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.deposit(yang1_addr, trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -813,11 +814,11 @@ mod test_shrine_compound {
         let yang2_deposit_amt: Wad = shrine_utils::TROVE1_YANG2_DEPOSIT.into();
         shrine.deposit(yang2_addr, trove_id, yang2_deposit_amt);
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, trove_id, start_debt, 0_u128.into());
+        shrine.forge(trove1_owner, trove_id, start_debt, Zero::zero());
 
         let before_budget: SignedWad = shrine.get_budget();
 
-        let mut yangs_deposited: Array<Wad> = array![yang1_deposit_amt, yang2_deposit_amt, WadZeroable::zero()];
+        let mut yangs_deposited: Array<Wad> = array![yang1_deposit_amt, yang2_deposit_amt, Zero::zero()];
 
         let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> = yang_base_rates_history_to_update.span();
         let mut yang_base_rates_history_to_compound_copy: Span<Span<Ray>> = yang_base_rates_history_to_compound.span();
@@ -926,7 +927,7 @@ mod test_shrine_compound {
         assert(trove_health.debt == expected_debt, 'wrong compounded debt');
 
         start_prank(CheatTarget::All, shrine_utils::admin());
-        shrine.withdraw(yang1_addr, trove_id, WadZeroable::zero());
+        shrine.withdraw(yang1_addr, trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
@@ -956,6 +957,45 @@ mod test_shrine_compound {
             );
 
         spy.assert_emitted(@expected_events);
+    }
+
+    // Check that a delisted yang is not taken into account for interest
+    #[test]
+    fn test_compound_and_charge_delisted_yang() {
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
+
+        // Advance one interval to avoid overwriting the last price
+        shrine_utils::advance_interval();
+
+        let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
+        let yang_to_delist: ContractAddress = *yangs[0];
+
+        let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
+        shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine_utils::trove1_forge(shrine, start_debt);
+
+        let trove1_owner = common::trove1_owner_addr();
+        let trove_id: u64 = common::TROVE_1;
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.suspend_yang(yang_to_delist);
+
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+
+        assert(shrine.get_yang_suspension_status(yang_to_delist) == YangSuspensionStatus::Permanent, 'not delisted');
+
+        // Trigger charge and check no interest is accrued
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.melt(trove1_owner, trove_id, Zero::zero());
+
+        let after_trove_health: Health = shrine.get_trove_health(trove_id);
+        assert_eq!(after_trove_health.debt, start_debt, "interest accrued");
+
+        // Ensure iteration limit is not a problem
+        shrine_utils::advance_prices_for_suspension_period(shrine, yangs);
+
+        start_prank(CheatTarget::All, shrine_utils::admin());
+        shrine.melt(trove1_owner, trove_id, start_debt);
     }
 
     //

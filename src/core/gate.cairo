@@ -1,11 +1,12 @@
 #[starknet::contract]
-mod gate {
+pub mod gate {
+    use core::num::traits::Zero;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -30,29 +31,29 @@ mod gate {
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    enum Event {
+    pub enum Event {
         Enter: Enter,
         Exit: Exit,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Enter {
+    pub struct Enter {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        asset_amt: u128,
-        yang_amt: Wad
+        pub trove_id: u64,
+        pub asset_amt: u128,
+        pub yang_amt: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    struct Exit {
+    pub struct Exit {
         #[key]
-        user: ContractAddress,
+        pub user: ContractAddress,
         #[key]
-        trove_id: u64,
-        asset_amt: u128,
-        yang_amt: Wad
+        pub trove_id: u64,
+        pub asset_amt: u128,
+        pub yang_amt: Wad
     }
 
     //
@@ -139,7 +140,7 @@ mod gate {
 
             let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
             if yang_amt.is_zero() {
-                return WadZeroable::zero();
+                return Zero::zero();
             }
 
             let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());

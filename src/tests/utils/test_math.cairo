@@ -1,16 +1,15 @@
 mod test_math {
-    use debug::PrintTrait;
-    use integer::BoundedU128;
+    use core::integer::BoundedInt;
+    use core::num::traits::Zero;
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{pow, sqrt};
     use wadray::{Ray, RAY_ONE};
-
 
     #[test]
     fn test_sqrt() {
         let ERROR_MARGIN = Ray { val: 1 };
 
-        assert(sqrt(0_u128.into()).val == 0_u128.into(), 'wrong sqrt #1');
+        assert(sqrt(0_u128.into()).val == Zero::zero(), 'wrong sqrt #1');
 
         // Ground truth tests
 
@@ -63,7 +62,7 @@ mod test_math {
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
-        sqrt(BoundedU128::max().into());
+        sqrt(BoundedInt::max());
     }
 
     #[test]

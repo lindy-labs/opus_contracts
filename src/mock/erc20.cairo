@@ -4,7 +4,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-trait IERC20<TState> {
+pub trait IERC20<TState> {
     fn name(self: @TState) -> felt252;
     fn symbol(self: @TState) -> felt252;
     fn decimals(self: @TState) -> u8;
@@ -17,7 +17,8 @@ trait IERC20<TState> {
 }
 
 #[starknet::contract]
-mod erc20 {
+pub mod erc20 {
+    use core::num::traits::Zero;
     use starknet::ContractAddress;
     use starknet::get_caller_address;
 
@@ -33,7 +34,7 @@ mod erc20 {
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         Transfer: Transfer,
         Approval: Approval,
     }
@@ -57,12 +58,12 @@ mod erc20 {
     }
 
     mod Errors {
-        const APPROVE_FROM_ZERO: felt252 = 'ERC20: approve from 0';
-        const APPROVE_TO_ZERO: felt252 = 'ERC20: approve to 0';
-        const TRANSFER_FROM_ZERO: felt252 = 'ERC20: transfer from 0';
-        const TRANSFER_TO_ZERO: felt252 = 'ERC20: transfer to 0';
-        const BURN_FROM_ZERO: felt252 = 'ERC20: burn from 0';
-        const MINT_TO_ZERO: felt252 = 'ERC20: mint to 0';
+        pub const APPROVE_FROM_ZERO: felt252 = 'ERC20: approve from 0';
+        pub const APPROVE_TO_ZERO: felt252 = 'ERC20: approve to 0';
+        pub const TRANSFER_FROM_ZERO: felt252 = 'ERC20: transfer from 0';
+        pub const TRANSFER_TO_ZERO: felt252 = 'ERC20: transfer to 0';
+        pub const BURN_FROM_ZERO: felt252 = 'ERC20: burn from 0';
+        pub const MINT_TO_ZERO: felt252 = 'ERC20: mint to 0';
     }
 
     #[constructor]
@@ -154,19 +155,19 @@ mod erc20 {
             assert(!recipient.is_zero(), Errors::MINT_TO_ZERO);
             self.total_supply.write(self.total_supply.read() + amount);
             self.balances.write(recipient, self.balances.read(recipient) + amount);
-            self.emit(Transfer { from: Zeroable::zero(), to: recipient, value: amount });
+            self.emit(Transfer { from: Zero::zero(), to: recipient, value: amount });
         }
 
         fn _burn(ref self: ContractState, account: ContractAddress, amount: u256) {
             assert(!account.is_zero(), Errors::BURN_FROM_ZERO);
             self.total_supply.write(self.total_supply.read() - amount);
             self.balances.write(account, self.balances.read(account) - amount);
-            self.emit(Transfer { from: account, to: Zeroable::zero(), value: amount });
+            self.emit(Transfer { from: account, to: Zero::zero(), value: amount });
         }
 
         fn _spend_allowance(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             let current_allowance = self.allowances.read((owner, spender));
-            if current_allowance != integer::BoundedInt::max() {
+            if current_allowance != core::integer::BoundedInt::max() {
                 self._approve(owner, spender, current_allowance - amount);
             }
         }
