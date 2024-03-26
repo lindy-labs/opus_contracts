@@ -1,14 +1,15 @@
 pub mod pragma_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
-    use opus::core::roles::{pragma_roles, shrine_roles};
+    use opus::core::roles::shrine_roles;
+    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::external::pragma::pragma as pragma_contract;
+    use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::mock::mock_pragma::{
         mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
     };
@@ -55,7 +56,7 @@ pub mod pragma_utils {
             Option::None => declare("mock_pragma"),
         };
 
-        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy pragma');
+        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy mock pragma');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
@@ -136,5 +137,43 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
+    }
+}
+
+pub mod switchboard_utils {
+    use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
+    use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use starknet::ContractAddress;
+
+    pub const ETH_PRICE: u128 = 3000000000000000000;
+    pub const TIMESTAMP: u64 = 1710000000;
+
+    pub fn admin() -> ContractAddress {
+        'switchboard owner'.try_into().unwrap()
+    }
+
+    pub fn mock_eth_token_addr() -> ContractAddress {
+        'ETH'.try_into().unwrap()
+    }
+
+    fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
+        let mut calldata: Array<felt252> = ArrayTrait::new();
+        let mock_switchboard_addr = declare("mock_switchboard")
+            .deploy(@calldata)
+            .expect('failed deploy mock switchboard');
+        IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
+    }
+
+    pub fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy();
+
+        let mut calldata: Array<felt252> = array![admin().into(), mock_switchboard.contract_address.into()];
+
+        let switchboard_addr = declare("switchboard").deploy(@calldata).expect('failed deploy switchboard');
+
+        let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
+
+        (switchboard, mock_switchboard)
     }
 }

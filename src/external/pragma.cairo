@@ -9,10 +9,10 @@
 pub mod pragma {
     use access_control::access_control_component;
     use core::num::traits::Zero;
-    use opus::core::roles::pragma_roles;
+    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
-    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::types::pragma::{DataType, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::{ContractAddress, get_block_timestamp};
