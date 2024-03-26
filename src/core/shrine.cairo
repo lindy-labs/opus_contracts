@@ -1193,11 +1193,10 @@ pub mod shrine {
         //    a. that recovery mode is not triggered; and
         //    b. the trove is healthy i.e. its LTV is equal to or lower than its threshold
         // 3. if Shrine is in recovery mode:
-        //    a. if the trove's LTV is at or greater than its target recovery mode LTV, the action
+        //    a. if the trove's LTV is greater than its target recovery mode LTV, the action
         //       does not worsen the trove LTV; or
-        //    b. if the trove's LTV is below its target recovery mode LTV, the action would not 
-        //       cause the trove's LTV to be greater than or equal to its recovery mode 
-        //       target LTV.
+        //    b. if the trove's LTV is at or below its target recovery mode LTV, the action would not 
+        //       cause the trove's LTV to be greater than its recovery mode target LTV.
         fn assert_valid_trove_action(
             self: @ContractState,
             start_shrine_health: Health,
@@ -1216,7 +1215,7 @@ pub mod shrine {
             if self.exceeds_recovery_mode_ltv(start_shrine_health) {
                 let rm_target_ltv: Ray = self
                     .get_recovery_mode_target_ltv(start_trove_health_with_base_threshold.threshold);
-                if start_trove_health_with_base_threshold.ltv >= rm_target_ltv {
+                if start_trove_health_with_base_threshold.ltv > rm_target_ltv {
                     // (3a)
                     assert(
                         end_trove_health_with_base_threshold.ltv <= start_trove_health_with_base_threshold.ltv,
@@ -1265,7 +1264,7 @@ pub mod shrine {
         // Helper function to check if recovery mode is triggered for Shrine
         #[inline(always)]
         fn exceeds_recovery_mode_ltv(self: @ContractState, health: Health) -> bool {
-            health.ltv >= self.get_recovery_mode_target_ltv(health.threshold)
+            health.ltv > self.get_recovery_mode_target_ltv(health.threshold)
         }
 
         // Helper function to get the yang ID given a yang address, and throw an error if
@@ -1354,11 +1353,12 @@ pub mod shrine {
         ) -> Ray {
             // Early return if any of the following is true
             // 1. Trove has no debt
-            // 2. Shrine's LTV is below its target recovery mode LTV with buffer
+            // 2. Shrine's LTV is at or below its target recovery mode LTV with buffer
             let shrine_health: Health = self.get_shrine_health();
             let recovery_mode_buffered_threshold: Ray = shrine_health.threshold
                 * (self.recovery_mode_target_factor.read() + self.recovery_mode_buffer_factor.read());
-            if trove_health_with_base_threshold.debt.is_zero() || shrine_health.ltv < recovery_mode_buffered_threshold {
+            if trove_health_with_base_threshold.debt.is_zero()
+                || shrine_health.ltv <= recovery_mode_buffered_threshold {
                 return trove_health_with_base_threshold.threshold;
             }
 
