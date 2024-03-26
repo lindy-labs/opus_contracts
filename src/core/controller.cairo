@@ -204,10 +204,13 @@ pub mod controller {
         fn set_i_gain(ref self: ContractState, i_gain: Ray) {
             self.access_control.assert_has_role(controller_roles::TUNE_CONTROLLER);
 
-            // Since `i_term_last_updated` isn't updated in `update_multiplier`
+            // Since `i_term_last_updated` is not updated in `update_multiplier`
             // while `i_gain` is zero, we must update it here whenever the
             // `i_gain` is set from zero to a non-zero value in order to ensure
             // that the accumulation of the integral term starts at zero.
+            // Note that although `i_term_last_updated` is also updated in the case
+            // where `i_gain` gets set from zero to zero, this would not be an issue
+            // anyway because the i_term would not be calculated if `i_gain` is zero.
             if self.i_gain.read().is_zero() {
                 self.i_term_last_updated.write(get_block_timestamp());
             }
