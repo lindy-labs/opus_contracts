@@ -320,8 +320,8 @@ mod test_pragma {
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
-        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr, false);
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr);
+        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr);
 
         assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 1');
         assert(wbtc_price == fetched_wbtc.unwrap(), 'wrong WBTC price 1');
@@ -332,8 +332,8 @@ mod test_pragma {
         pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
         wbtc_price += (10 * WAD_SCALE).into();
         pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
-        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr, false);
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr);
+        let fetched_wbtc: Result<Wad, felt252> = pragma_oracle.fetch_price(wbtc_addr);
 
         assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 2');
         assert(wbtc_price == fetched_wbtc.unwrap(), 'wrong WBTC price 2');
@@ -358,13 +358,13 @@ mod test_pragma {
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr);
 
         // check if first fetch works, advance block time to be out of freshness range
         // and check if there's a error and if an event was emitted
         assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 1');
         start_warp(CheatTarget::All, now + pragma_utils::FRESHNESS_THRESHOLD + 1);
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr);
         assert(fetched_eth.unwrap_err() == 'PGM: Invalid price update', 'wrong result');
 
         let expected_events = array![
@@ -381,10 +381,6 @@ mod test_pragma {
             ),
         ];
         spy.assert_emitted(@expected_events);
-
-        // now try forcing the fetch
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, true);
-        assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 2');
     }
 
     #[test]
@@ -420,7 +416,7 @@ mod test_pragma {
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, false);
+        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr);
 
         assert(fetched_eth.unwrap_err() == 'PGM: Invalid price update', 'wrong result');
 
@@ -435,9 +431,5 @@ mod test_pragma {
             ),
         ];
         spy.assert_emitted(@expected_events);
-
-        // now try forcing the fetch
-        let fetched_eth: Result<Wad, felt252> = pragma_oracle.fetch_price(eth_addr, true);
-        assert(eth_price == fetched_eth.unwrap(), 'wrong ETH price 2');
     }
 }

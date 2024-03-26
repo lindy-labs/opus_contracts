@@ -177,7 +177,7 @@ pub mod pragma {
             self.oracle.read().contract_address
         }
 
-        fn fetch_price(ref self: ContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252> {
+        fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
             let pair_id: felt252 = self.yang_pair_ids.read(yang);
             assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
@@ -186,10 +186,7 @@ pub mod pragma {
             // convert price value to Wad
             let price: Wad = fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
 
-            // if we receive what we consider a valid price from the oracle,
-            // return it back, otherwise emit an event about the update being invalid
-            // the check can be overridden with the `force_update` flag
-            if force_update || self.is_valid_price_update(response) {
+            if self.is_valid_price_update(response) {
                 return Result::Ok(price);
             }
 

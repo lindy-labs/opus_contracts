@@ -152,13 +152,13 @@ mod test_switchboard {
         switchboard.set_yang_pair_id(eth, 'ETH/USD');
         stop_prank(CheatTarget::One(switchboard.contract_address));
 
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
+        let result: Result<Wad, felt252> = oracle.fetch_price(eth);
         assert(result.is_ok(), 'fetch price failed');
         assert(result.unwrap() == ETH_PRICE.into(), 'wrong price');
     }
 
     #[test]
-    fn test_switchboard_fetch_price_invalid_value_err_forced_ok() {
+    fn test_switchboard_fetch_price_invalid_value_err_result() {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
@@ -172,14 +172,9 @@ mod test_switchboard {
 
         mock_switchboard.next_get_latest_result('ETH/USD', 0, TIMESTAMP);
 
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
+        let result: Result<Wad, felt252> = oracle.fetch_price(eth);
         assert(result.is_err(), 'fetch price should fail');
         assert(result.unwrap_err() == 'SWI: Invalid price update', 'wrong err');
-
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth, true); // forced fetch
-        assert(result.is_ok(), 'forced fetch should pass');
-        assert(result.unwrap().is_zero(), 'wrong price');
-
         spy
             .assert_emitted(
                 @array![
@@ -196,7 +191,7 @@ mod test_switchboard {
     }
 
     #[test]
-    fn test_switchboard_fetch_price_invalid_timestamp_err_forced_ok() {
+    fn test_switchboard_fetch_price_invalid_timestamp_err_result() {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy();
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
@@ -210,14 +205,9 @@ mod test_switchboard {
 
         mock_switchboard.next_get_latest_result('ETH/USD', ETH_PRICE, 0);
 
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth, false);
+        let result: Result<Wad, felt252> = oracle.fetch_price(eth);
         assert(result.is_err(), 'fetch price should fail');
         assert(result.unwrap_err() == 'SWI: Invalid price update', 'wrong err');
-
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth, true); // forced fetch
-        assert(result.is_ok(), 'forced fetch should pass');
-        assert(result.unwrap() == ETH_PRICE.into(), 'wrong price');
-
         spy
             .assert_emitted(
                 @array![
