@@ -12,12 +12,25 @@ mod test_allocator {
 
     #[test]
     fn test_allocator_deploy() {
+        let mut spy = spy_events(SpyOn::All);
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
         let expected_recipients = equalizer_utils::initial_recipients();
         let expected_percentages = equalizer_utils::initial_percentages();
+
+        let expected_events = array![
+            (
+                allocator.contract_address,
+                allocator_contract::Event::AllocationUpdated(
+                    allocator_contract::AllocationUpdated {
+                        recipients: expected_recipients, percentages: expected_percentages,
+                    }
+                )
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
 
         let (recipients, percentages) = allocator.get_allocation();
 

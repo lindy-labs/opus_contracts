@@ -3,7 +3,6 @@ mod test_purger {
     use core::cmp::{max, min};
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
-    use core::option::OptionTrait;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
@@ -24,8 +23,7 @@ mod test_purger {
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher,
-        event_name_hash
+        CheatTarget, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp, stop_prank
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
@@ -964,6 +962,8 @@ mod test_purger {
         let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
+        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, initial_trove_debt);
 
@@ -1070,30 +1070,27 @@ mod test_purger {
             'wrong absorber asset balance',
         );
 
-        // let purged_event: purger_contract::Purged = common::pop_event_with_indexed_keys(
-        //     purger.contract_address
-        // )
-        //     .unwrap();
-        // common::assert_asset_balances_equalish(
-        //     purged_event.freed_assets,
-        //     expected_freed_assets,
-        //     10_u128,
-        //     'wrong freed assets for event'
-        // );
-        // assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
-        // assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
-        // assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
-        // assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
-        // assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+        purger_spy.fetch_events();
 
-        // let compensate_event: purger_contract::Compensate = common::pop_event_with_indexed_keys(
-        //     purger.contract_address
-        // )
-        //     .unwrap();
-        // assert(
-        //     compensate_event == purger_contract::Compensate { recipient: caller, compensation },
-        //     'wrong Compensate event'
-        // );
+        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+        let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
+
+        common::assert_asset_balances_equalish(
+            purged_event.freed_assets, expected_freed_assets, 10_u128, 'wrong freed assets for event'
+        );
+        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+        assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
+        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+        assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+
+        let expected_events = array![
+            (
+                purger.contract_address,
+                purger_contract::Event::Compensate(purger_contract::Compensate { recipient: caller, compensation }),
+            ),
+        ];
+        purger_spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -1322,7 +1319,7 @@ mod test_purger {
                                                             );
 
                                                             // Check that absorber has received proportionate share of collateral
-                                                            let (_, expected_freed_asset_amts) =
+                                                            let (expected_freed_pct, expected_freed_asset_amts) =
                                                                 purger_utils::get_expected_liquidation_assets(
                                                                 *target_trove_yang_asset_amts,
                                                                 target_trove_updated_start_health,
@@ -1404,59 +1401,51 @@ mod test_purger {
                                                             // Check Purger events
                                                             purger_spy.fetch_events();
 
-                                                            let (_, purged_event) = purger_spy
+                                                            let (_, raw_purged_event) = purger_spy
                                                                 .events
                                                                 .pop_front()
                                                                 .unwrap();
-
-                                                            assert(
-                                                                purged_event.keys.at(0) == @event_name_hash('Purged'),
-                                                                'wrong event'
+                                                            let purged_event = purger_utils::deserialize_purged_event(
+                                                                raw_purged_event
                                                             );
 
-                                                            // common::assert_asset_balances_equalish(
-                                                            //     purged_event.freed_assets,
-                                                            //     expected_freed_assets,
-                                                            //     1_u128,
-                                                            //     'wrong freed assets for event'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event.trove_id == target_trove,
-                                                            //     'wrong Purged trove ID'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event.purge_amt == close_amt,
-                                                            //     'wrong Purged amt'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .percentage_freed == expected_freed_pct,
-                                                            //     'wrong Purged freed pct'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .funder == absorber
-                                                            //         .contract_address,
-                                                            //     'wrong Purged funder'
-                                                            // );
-                                                            // assert(
-                                                            //     purged_event
-                                                            //         .recipient == absorber
-                                                            //         .contract_address,
-                                                            //     'wrong Purged recipient'
-                                                            // );
+                                                            common::assert_asset_balances_equalish(
+                                                                purged_event.freed_assets,
+                                                                expected_freed_assets,
+                                                                1_u128,
+                                                                'wrong freed assets for event'
+                                                            );
+                                                            assert(
+                                                                purged_event.trove_id == target_trove,
+                                                                'wrong Purged trove ID'
+                                                            );
+                                                            assert(
+                                                                purged_event.purge_amt == close_amt, 'wrong Purged amt'
+                                                            );
+                                                            assert(
+                                                                purged_event.percentage_freed == expected_freed_pct,
+                                                                'wrong Purged freed pct'
+                                                            );
+                                                            assert(
+                                                                purged_event.funder == absorber.contract_address,
+                                                                'wrong Purged funder'
+                                                            );
+                                                            assert(
+                                                                purged_event.recipient == absorber.contract_address,
+                                                                'wrong Purged recipient'
+                                                            );
 
-                                                            // let compensate_event: purger_contract::Compensate =
-                                                            //     common::pop_event_with_indexed_keys(
-                                                            //     purger.contract_address
-                                                            // )
-                                                            //     .unwrap();
-                                                            // assert(
-                                                            //     compensate_event == purger_contract::Compensate {
-                                                            //         recipient: caller, compensation
-                                                            //     },
-                                                            //     'wrong Compensate event'
-                                                            //);
+                                                            let expected_events = array![
+                                                                (
+                                                                    purger.contract_address,
+                                                                    purger_contract::Event::Compensate(
+                                                                        purger_contract::Compensate {
+                                                                            recipient: caller, compensation
+                                                                        }
+                                                                    ),
+                                                                ),
+                                                            ];
+                                                            purger_spy.assert_emitted(@expected_events);
 
                                                             // Check Shrine event
 
@@ -1609,10 +1598,8 @@ mod test_purger {
 
                                                     // Create a whale trove if we are not testing recovery mode
                                                     // Otherwise, Shrine will enter recovery mode when lowering prices below.
-                                                    let mut whale_trove: u64 = 0;
                                                     if !is_recovery_mode {
-                                                        whale_trove =
-                                                            purger_utils::create_whale_trove(abbot, yangs, gates);
+                                                        purger_utils::create_whale_trove(abbot, yangs, gates);
                                                     }
 
                                                     let target_trove_start_health: Health = shrine
@@ -1709,8 +1696,6 @@ mod test_purger {
 
                                                     let before_recipient_trove_health: Health = shrine
                                                         .get_trove_health(recipient_trove);
-                                                    let before_recipient_whale_trove_health: Health = shrine
-                                                        .get_trove_health(whale_trove);
 
                                                     let shrine_health: Health = shrine.get_shrine_health();
                                                     let before_total_debt: Wad = shrine_health.debt;
@@ -1990,80 +1975,63 @@ mod test_purger {
                                                     // Check Purger events
 
                                                     purger_spy.fetch_events();
-
-                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
-
-                                                    assert(
-                                                        purged_event.keys.at(0) == @event_name_hash('Purged'),
-                                                        'wrong event'
+                                                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                                    let purged_event = purger_utils::deserialize_purged_event(
+                                                        raw_purged_event
                                                     );
 
-                                                    // let purged_event: purger_contract::Purged =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // common::assert_asset_balances_equalish(
-                                                    //     purged_event.freed_assets,
-                                                    //     expected_freed_assets,
-                                                    //     1000_u128,
-                                                    //     'wrong freed assets for event'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .trove_id == target_trove,
-                                                    //     'wrong Purged trove ID'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.purge_amt == close_amt,
-                                                    //     'wrong Purged amt'
-                                                    // );
-                                                    // common::assert_equalish(
-                                                    //     purged_event.percentage_freed,
-                                                    //     expected_freed_pct,
-                                                    //     1000000_u128.into(),
-                                                    //     'wrong Purged freed pct'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .funder == absorber
-                                                    //         .contract_address,
-                                                    //     'wrong Purged funder'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event
-                                                    //         .recipient == absorber
-                                                    //         .contract_address,
-                                                    //     'wrong Purged recipient'
-                                                    // );
+                                                    common::assert_asset_balances_equalish(
+                                                        purged_event.freed_assets,
+                                                        expected_freed_assets,
+                                                        1000_u128,
+                                                        'wrong freed assets for event'
+                                                    );
+                                                    assert(
+                                                        purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                                    );
+                                                    assert(purged_event.purge_amt == close_amt, 'wrong Purged amt');
+                                                    common::assert_equalish(
+                                                        purged_event.percentage_freed,
+                                                        expected_freed_pct,
+                                                        1000000_u128.into(),
+                                                        'wrong Purged freed pct'
+                                                    );
+                                                    assert(
+                                                        purged_event.funder == absorber.contract_address,
+                                                        'wrong Purged funder'
+                                                    );
+                                                    assert(
+                                                        purged_event.recipient == absorber.contract_address,
+                                                        'wrong Purged recipient'
+                                                    );
 
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
+                                                    purger_spy.assert_emitted(@expected_events);
 
-                                                    // TODO: uncomment once gas limit can be increased
                                                     // Check Shrine event
-                                                    // let expected_events =
-                                                    //     array![
-                                                    //     (shrine.contract_address,
-                                                    //     shrine_contract::Event::TroveRedistributed(
-                                                    //         shrine_contract::TroveRedistributed {
-                                                    //             redistribution_id: expected_redistribution_id,
-                                                    //             trove_id: target_trove,
-                                                    //             debt: expected_redistributed_amt,
-                                                    //         }
-                                                    //     )),
-                                                    // ];
+                                                    let expected_events = array![
+                                                        (
+                                                            shrine.contract_address,
+                                                            shrine_contract::Event::TroveRedistributed(
+                                                                shrine_contract::TroveRedistributed {
+                                                                    redistribution_id: expected_redistribution_id,
+                                                                    trove_id: target_trove,
+                                                                    debt: expected_redistributed_amt,
+                                                                }
+                                                            )
+                                                        ),
+                                                    ];
 
-                                                    // shrine_spy.assert_emitted(@expected_events);
+                                                    shrine_spy.assert_emitted(@expected_events);
 
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count(),
@@ -2509,30 +2477,23 @@ mod test_purger {
                                                     }
 
                                                     // Check Purger events
-
                                                     purger_spy.fetch_events();
 
-                                                    let (_, purged_event) = purger_spy.events.pop_front().unwrap();
-
-                                                    assert(
-                                                        purged_event.keys.at(0) == @event_name_hash('Compensate'),
-                                                        'wrong event'
+                                                    common::assert_event_not_emitted_by_name(
+                                                        purger_spy.events.span(), 'Purged'
                                                     );
 
-                                                    // Note that this indirectly asserts that `Purged`
-                                                    // is not emitted if it does not revert because
-                                                    // `Purged` would have been emitted before `Compensate`
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
+                                                    purger_spy.assert_emitted(@expected_events);
 
                                                     // Check Shrine event
                                                     let expected_events = array![
@@ -2626,6 +2587,9 @@ mod test_purger {
                                                     let (shrine, abbot, seer, absorber, purger, yangs, gates) =
                                                         purger_utils::purger_deploy(
                                                         classes
+                                                    );
+                                                    let mut purger_spy = spy_events(
+                                                        SpyOn::One(purger.contract_address)
                                                     );
 
                                                     // Set thresholds to provided value
@@ -2748,51 +2712,49 @@ mod test_purger {
                                                         yangs, expected_freed_amts
                                                     );
 
-                                                    // let purged_event: purger_contract::Purged =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // common::assert_asset_balances_equalish(
-                                                    //     purged_event.freed_assets,
-                                                    //     expected_freed_assets,
-                                                    //     1000_u128,
-                                                    //     'wrong freed assets for event'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.trove_id == target_trove,
-                                                    //     'wrong Purged trove ID'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.purge_amt == max_close_amt,
-                                                    //     'wrong Purged amt'
-                                                    // );
-                                                    // common::assert_equalish(
-                                                    //     purged_event.percentage_freed,
-                                                    //     expected_freed_pct,
-                                                    //     1000000_u128.into(),
-                                                    //     'wrong Purged freed pct'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.funder == absorber.contract_address,
-                                                    //     'wrong Purged funder'
-                                                    // );
-                                                    // assert(
-                                                    //     purged_event.recipient == absorber.contract_address,
-                                                    //     'wrong Purged recipient'
-                                                    // );
+                                                    purger_spy.fetch_events();
 
-                                                    // let compensate_event: purger_contract::Compensate =
-                                                    //     common::pop_event_with_indexed_keys(
-                                                    //     purger.contract_address
-                                                    // )
-                                                    //     .unwrap();
-                                                    // assert(
-                                                    //     compensate_event == purger_contract::Compensate {
-                                                    //         recipient: caller, compensation
-                                                    //     },
-                                                    //     'wrong Compensate event'
-                                                    // );
+                                                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                                    let purged_event = purger_utils::deserialize_purged_event(
+                                                        raw_purged_event
+                                                    );
+
+                                                    common::assert_asset_balances_equalish(
+                                                        purged_event.freed_assets,
+                                                        expected_freed_assets,
+                                                        1000_u128,
+                                                        'wrong freed assets for event'
+                                                    );
+                                                    assert(
+                                                        purged_event.trove_id == target_trove, 'wrong Purged trove ID'
+                                                    );
+                                                    assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                                    common::assert_equalish(
+                                                        purged_event.percentage_freed,
+                                                        expected_freed_pct,
+                                                        1000000_u128.into(),
+                                                        'wrong Purged freed pct'
+                                                    );
+                                                    assert(
+                                                        purged_event.funder == absorber.contract_address,
+                                                        'wrong Purged funder'
+                                                    );
+                                                    assert(
+                                                        purged_event.recipient == absorber.contract_address,
+                                                        'wrong Purged recipient'
+                                                    );
+
+                                                    let expected_events = array![
+                                                        (
+                                                            purger.contract_address,
+                                                            purger_contract::Event::Compensate(
+                                                                purger_contract::Compensate {
+                                                                    recipient: caller, compensation
+                                                                }
+                                                            ),
+                                                        ),
+                                                    ];
+                                                    purger_spy.assert_emitted(@expected_events);
 
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count()
@@ -2862,6 +2824,7 @@ mod test_purger {
                                             purger_utils::purger_deploy(
                                             classes
                                         );
+                                        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
                                         // Set thresholds to provided value
                                         purger_utils::set_thresholds(shrine, yangs, *threshold);
@@ -2973,49 +2936,37 @@ mod test_purger {
                                             yangs, expected_freed_asset_amts,
                                         );
 
-                                        // let purged_event: purger_contract::Purged =
-                                        //     common::pop_event_with_indexed_keys(
-                                        //     purger.contract_address
-                                        // )
-                                        //     .unwrap();
-                                        // assert(
-                                        //     purged_event.trove_id == target_trove,
-                                        //     'wrong Purged trove ID'
-                                        // );
-                                        // assert(
-                                        //     purged_event.purge_amt == max_close_amt,
-                                        //     'wrong Purged amt'
-                                        // );
-                                        // assert(
-                                        //     purged_event.percentage_freed == RAY_ONE.into(),
-                                        //     'wrong Purged freed pct'
-                                        // );
-                                        // assert(
-                                        //     purged_event.funder == absorber.contract_address,
-                                        //     'wrong Purged funder'
-                                        // );
-                                        // assert(
-                                        //     purged_event.recipient == absorber.contract_address,
-                                        //     'wrong Purged recipient'
-                                        // );
-                                        // common::assert_asset_balances_equalish(
-                                        //     purged_event.freed_assets,
-                                        //     expected_freed_assets,
-                                        //     100000_u128,
-                                        //     'wrong freed assets for event'
-                                        // );
+                                        purger_spy.fetch_events();
 
-                                        // let compensate_event: purger_contract::Compensate =
-                                        //     common::pop_event_with_indexed_keys(
-                                        //     purger.contract_address
-                                        // )
-                                        //     .unwrap();
-                                        // assert(
-                                        //     compensate_event == purger_contract::Compensate {
-                                        //         recipient: caller, compensation
-                                        //     },
-                                        //     'wrong Compensate event'
-                                        // );
+                                        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                                        let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
+
+                                        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+                                        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                                        assert(
+                                            purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct'
+                                        );
+                                        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+                                        assert(
+                                            purged_event.recipient == absorber.contract_address,
+                                            'wrong Purged recipient'
+                                        );
+                                        common::assert_asset_balances_equalish(
+                                            purged_event.freed_assets,
+                                            expected_freed_assets,
+                                            100000_u128,
+                                            'wrong freed assets for event'
+                                        );
+
+                                        let expected_events = array![
+                                            (
+                                                purger.contract_address,
+                                                purger_contract::Event::Compensate(
+                                                    purger_contract::Compensate { recipient: caller, compensation }
+                                                ),
+                                            ),
+                                        ];
+                                        purger_spy.assert_emitted(@expected_events);
 
                                         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                                     },
@@ -3141,7 +3092,6 @@ mod test_purger {
     }
 
     #[test]
-    #[ignore]
     fn test_liquidate_suspended_yang() {
         let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
@@ -3197,6 +3147,8 @@ mod test_purger {
                 .try_into()
                 .unwrap();
 
+        shrine_utils::advance_prices_periodically(shrine, yangs, ts_diff);
+
         // Adding one to offset any precision loss
         let new_timestamp: u64 = current_timestamp + ts_diff + 1;
         start_warp(CheatTarget::All, new_timestamp);
@@ -3226,24 +3178,15 @@ mod test_purger {
         );
     }
 
-    #[test]
-    #[ignore]
-    fn test_liquidate_suspended_yang_threshold_near_zero() {
+    fn test_liquidate_suspended_yang_threshold_near_zero(
+        starting_ltv: Ray, liquidate_via_absorption: bool, is_recovery_mode: bool
+    ) {
         let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
-        // We run the same tests using both searcher liquidations and absorptions as the liquidation methods.
-        let mut liquidate_via_absorption_param: Span<bool> = array![
-            false, //true - we comment this parametrization out for now, due to failing in CI
-        ]
-            .span();
-
-        // We parametrize this test with both a reasonable starting LTV and a very low starting LTV
-        let trove_debt_param: Span<Wad> = array![(600 * WAD_ONE).into(), (20 * WAD_ONE).into()].span();
-
-        // We also parametrize the test with the desired threshold after liquidation
-        let desired_threshold_param: Span<Ray> = array![
+        // We also parametrize the test with the desired threshold for liquidation
+        let mut desired_threshold_params: Span<Ray> = array![
             RAY_PERCENT.into(),
             (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
@@ -3255,198 +3198,189 @@ mod test_purger {
 
         let eth: ContractAddress = *yangs[0];
         let eth_gate: IGateDispatcher = *gates[0];
+        let eth_amt: u128 = WAD_ONE;
+        let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
         let target_user: ContractAddress = purger_utils::target_trove_owner();
-
-        common::fund_user(target_user, array![eth].span(), array![(10 * WAD_ONE).into()].span());
+        common::fund_user(target_user, array![eth].span(), array![(10 * eth_amt).into()].span());
 
         // Have the searcher provide half of his yin to the absorber
         let searcher = purger_utils::searcher();
+        let searcher_yin: Wad = (purger_utils::SEARCHER_YIN / 2).into();
         let yin_erc20 = IERC20Dispatcher { contract_address: shrine.contract_address };
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), searcher);
-        yin_erc20.approve(absorber.contract_address, (purger_utils::SEARCHER_YIN / 2).into());
+        yin_erc20.approve(absorber.contract_address, searcher_yin.into());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        absorber.provide((purger_utils::SEARCHER_YIN / 2).into());
+        absorber.provide(searcher_yin);
         stop_prank(CheatTarget::One(absorber.contract_address));
 
+        // Create a whale trove to prevent recovery mode from being triggered due to
+        // the lowered threshold from suspension
+        purger_utils::create_whale_trove(abbot, yangs, gates);
+
         loop {
-            match liquidate_via_absorption_param.pop_front() {
-                Option::Some(liquidate_via_absorption) => {
-                    let mut trove_debt_param_copy = trove_debt_param;
-                    loop {
-                        match trove_debt_param_copy.pop_front() {
-                            Option::Some(trove_debt) => {
-                                let mut desired_threshold_param_copy = desired_threshold_param;
-                                loop {
-                                    match desired_threshold_param_copy.pop_front() {
-                                        Option::Some(desired_threshold) => {
-                                            let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-                                            loop {
-                                                match is_recovery_mode_fuzz.pop_front() {
-                                                    Option::Some(is_recovery_mode) => {
-                                                        let target_trove: u64 = common::open_trove_helper(
-                                                            abbot,
-                                                            target_user,
-                                                            array![eth].span(),
-                                                            array![(WAD_ONE / 2).into()].span(),
-                                                            array![eth_gate].span(),
-                                                            *trove_debt
-                                                        );
+            match desired_threshold_params.pop_front() {
+                Option::Some(desired_threshold) => {
+                    let (eth_price, _, _) = shrine.get_current_yang_price(eth);
+                    let forge_amt: Wad = wadray::rmul_wr(eth_amt.into() * eth_price, starting_ltv);
+                    let target_trove: u64 = common::open_trove_helper(
+                        abbot,
+                        target_user,
+                        array![eth].span(),
+                        array![eth_amt].span(),
+                        array![eth_gate].span(),
+                        forge_amt
+                    );
 
-                                                        // Suspend ETH
-                                                        let current_timestamp = get_block_timestamp();
+                    // Suspend ETH
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    shrine.suspend_yang(eth);
+                    stop_prank(CheatTarget::One(shrine.contract_address));
 
-                                                        start_prank(
-                                                            CheatTarget::One(shrine.contract_address),
-                                                            shrine_utils::admin()
-                                                        );
-                                                        shrine.suspend_yang(eth);
-                                                        stop_prank(CheatTarget::One(shrine.contract_address));
+                    // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
+                    let decrease_factor: Ray = *desired_threshold / eth_threshold;
+                    let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
+                        - scale_u128_by_ray(shrine_contract::SUSPENSION_GRACE_PERIOD.into(), decrease_factor)
+                            .try_into()
+                            .unwrap();
 
-                                                        // Advance the time stamp such that the ETH threshold falls to `desired_threshold`
-                                                        let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
+                    shrine_utils::advance_prices_periodically(shrine, yangs, ts_diff);
 
-                                                        let decrease_factor: Ray = *desired_threshold / eth_threshold;
-                                                        let ts_diff: u64 = shrine_contract::SUSPENSION_GRACE_PERIOD
-                                                            - scale_u128_by_ray(
-                                                                shrine_contract::SUSPENSION_GRACE_PERIOD.into(),
-                                                                decrease_factor
-                                                            )
-                                                                .try_into()
-                                                                .unwrap();
+                    // Check that the threshold has decreased to the desired value
+                    // The trove's threshold is equivalent to ETH's threshold since it 
+                    // has deposited only ETH.
+                    let threshold_before_liquidation = shrine.get_trove_health(target_trove).threshold;
 
-                                                        start_warp(CheatTarget::All, current_timestamp + ts_diff);
+                    common::assert_equalish(
+                        threshold_before_liquidation,
+                        *desired_threshold,
+                        // 0.0000001 = 10^-7 (ray). Precision
+                        // is limited by the precision of timestamps,
+                        // which is only in seconds
+                        100000000000000000000_u128.into(),
+                        'wrong eth threshold'
+                    );
 
-                                                        // Check that the threshold has decreased to the desired value
-                                                        let threshold_before_liquidation = shrine
-                                                            .get_yang_threshold(eth);
-
-                                                        common::assert_equalish(
-                                                            threshold_before_liquidation,
-                                                            *desired_threshold,
-                                                            // 0.0000001 = 10^-7 (ray). Precision
-                                                            // is limited by the precision of timestamps,
-                                                            // which is only in seconds
-                                                            100000000000000000000_u128.into(),
-                                                            'wrong eth threshold'
-                                                        );
-
-                                                        // We want to compare the yin balance of the liquidator
-                                                        // before and after the liquidation. In the case of absorption
-                                                        // we check the absorber's balance, and in the case of
-                                                        // searcher liquidation we check the searcher's balance.
-                                                        let before_liquidation_yin_balance: u256 =
-                                                            if *liquidate_via_absorption {
-                                                            yin_erc20.balance_of(absorber.contract_address)
-                                                        } else {
-                                                            yin_erc20.balance_of(searcher)
-                                                        };
-
-                                                        if *is_recovery_mode {
-                                                            purger_utils::trigger_recovery_mode(
-                                                                shrine,
-                                                                seer,
-                                                                yangs,
-                                                                common::RecoveryModeSetupType::ExceedsBuffer
-                                                            );
-                                                        }
-
-                                                        // Liquidate the trove
-                                                        start_prank(
-                                                            CheatTarget::One(purger.contract_address), searcher
-                                                        );
-
-                                                        if *liquidate_via_absorption {
-                                                            purger.absorb(target_trove);
-                                                        } else {
-                                                            purger.liquidate(target_trove, *trove_debt, searcher);
-                                                        }
-
-                                                        // Sanity checks
-                                                        let target_trove_after_health: Health = shrine
-                                                            .get_trove_health(target_trove);
-
-                                                        assert(
-                                                            target_trove_after_health.debt < *trove_debt,
-                                                            'trove not correctly liquidated'
-                                                        );
-
-                                                        // Checking that the liquidator's yin balance has decreased
-                                                        // after liquidation
-                                                        if *liquidate_via_absorption {
-                                                            assert(
-                                                                yin_erc20
-                                                                    .balance_of(
-                                                                        absorber.contract_address
-                                                                    ) < before_liquidation_yin_balance,
-                                                                'absorber yin not used'
-                                                            );
-                                                        } else {
-                                                            assert(
-                                                                yin_erc20
-                                                                    .balance_of(
-                                                                        searcher
-                                                                    ) < before_liquidation_yin_balance,
-                                                                'searcher yin not used'
-                                                            );
-                                                        }
-
-                                                        start_prank(
-                                                            CheatTarget::One(shrine.contract_address),
-                                                            shrine_utils::admin()
-                                                        );
-                                                        shrine.unsuspend_yang(eth);
-                                                        stop_prank(CheatTarget::One(shrine.contract_address));
-                                                    },
-                                                    Option::None => { break; },
-                                                };
-                                            };
-                                        },
-                                        Option::None => { break; }
-                                    }
-                                };
-                            },
-                            Option::None => { break; }
-                        };
+                    // We want to compare the yin balance of the liquidator
+                    // before and after the liquidation. In the case of absorption
+                    // we check the absorber's balance, and in the case of
+                    // searcher liquidation we check the searcher's balance.
+                    let before_liquidation_yin_balance: u256 = if liquidate_via_absorption {
+                        yin_erc20.balance_of(absorber.contract_address)
+                    } else {
+                        yin_erc20.balance_of(searcher)
                     };
+
+                    let in_recovery_mode: bool = shrine.is_recovery_mode();
+                    if is_recovery_mode {
+                        if !in_recovery_mode {
+                            purger_utils::trigger_recovery_mode(
+                                shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                            );
+                        }
+                    } else {
+                        assert(!in_recovery_mode, 'in recovery mode');
+                    }
+
+                    // Liquidate the trove
+                    start_prank(CheatTarget::One(purger.contract_address), searcher);
+
+                    if liquidate_via_absorption {
+                        purger.absorb(target_trove);
+                    } else {
+                        // Get the updated debt with accrued interest
+                        let before_liquidation_health: Health = shrine.get_trove_health(target_trove);
+                        purger.liquidate(target_trove, before_liquidation_health.debt, searcher);
+                    }
+
+                    // Sanity checks
+                    let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+
+                    assert(target_trove_after_health.debt < forge_amt, 'trove not correctly liquidated');
+
+                    // Checking that the liquidator's yin balance has decreased
+                    // after liquidation
+                    if liquidate_via_absorption {
+                        assert(
+                            yin_erc20.balance_of(absorber.contract_address) < before_liquidation_yin_balance,
+                            'absorber yin not used'
+                        );
+                    } else {
+                        assert(
+                            yin_erc20.balance_of(searcher) < before_liquidation_yin_balance, 'searcher yin not used'
+                        );
+                    }
+
+                    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+                    shrine.unsuspend_yang(eth);
+                    stop_prank(CheatTarget::One(shrine.contract_address));
                 },
                 Option::None => { break; }
             }
         };
     }
-    #[derive(Copy, Drop, PartialEq)]
-    enum AbsorbType {
-        Full: (),
-        Partial: (),
-        None: (),
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized1() {
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, true);
     }
 
     #[test]
-    #[ignore]
-    fn test_absorb_low_thresholds() {
-        let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized2() {
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, true);
+    }
 
-        let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
-        // Execution time is significantly reduced
-        // by only deploying the contracts once for all parametrizations
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
-            searcher_start_yin, Option::None
-        );
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized3() {
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, false);
+    }
 
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
-        shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized4() {
+        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, false);
+    }
 
-        let yin_erc20: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine.contract_address };
+    // The minimum LTV for absorption at 1% threshold is approximately 1.097%, so it is rounded
+    // up to 1.1% for convenience to ensure the target trove is absorbable after adjusting the 
+    // threshold to the desired value.
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized5() {
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, true);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized6() {
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, true);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized7() {
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, false);
+    }
+
+    #[test]
+    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized8() {
+        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, false);
+    }
+
+    #[derive(Copy, Drop, PartialEq)]
+    enum AbsorbType {
+        Full,
+        Partial,
+        None,
+    }
+
+    fn test_absorb_low_thresholds(is_recovery_mode: bool) {
+        let classes = Option::Some(purger_utils::declare_contracts());
 
         let searcher = purger_utils::searcher();
+        let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
 
-        // Approve absorber for maximum yin
-        start_prank(CheatTarget::One(shrine.contract_address), searcher);
-        yin_erc20.approve(absorber.contract_address, BoundedInt::max());
-
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        let minimum_operational_shares: Wad = (absorber_contract::INITIAL_SHARES
+            + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+            .into();
 
         // Parameters
         let mut thresholds_param: Span<Ray> = array![Zero::zero(), RAY_PERCENT.into()].span();
@@ -3469,337 +3403,245 @@ mod test_purger {
                                 loop {
                                     match absorb_type_param_copy.pop_front() {
                                         Option::Some(absorb_type) => {
-                                            let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-                                            loop {
-                                                match is_recovery_mode_fuzz.pop_front() {
-                                                    Option::Some(is_recovery_mode) => {
-                                                        // Calculating the `trove_debt` necessary to achieve
-                                                        // the `target_ltv`
-                                                        let target_trove_yang_amts: Span<Wad> = array![
-                                                            (*gates[0])
-                                                                .convert_to_yang(
-                                                                    purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT
-                                                                ),
-                                                            (*gates[1])
-                                                                .convert_to_yang(
-                                                                    purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT
-                                                                ),
-                                                        ]
-                                                            .span();
+                                            let (shrine, abbot, _seer, absorber, purger, yangs, gates) =
+                                                purger_utils::purger_deploy_with_searcher(
+                                                searcher_start_yin, classes
+                                            );
 
-                                                        let trove_value: Wad = purger_utils::get_sum_of_value(
-                                                            shrine, yangs, target_trove_yang_amts
-                                                        );
+                                            start_prank(
+                                                CheatTarget::One(shrine.contract_address), shrine_utils::admin()
+                                            );
+                                            shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
+                                            stop_prank(CheatTarget::One(shrine.contract_address));
 
-                                                        // Add 100 Wad to guarantee recovery mode for non-zero debt.
-                                                        // In case of rounding down to zero, set to 1 wei.
-                                                        let trove_debt: Wad = max(
-                                                            wadray::rmul_wr(trove_value, *target_ltv)
-                                                                + (100 * WAD_ONE).into(),
-                                                            1_u128.into()
-                                                        );
+                                            // Create whale trove to either:
+                                            // - mint enough debt to trigger recovery mode before thresholds are set to a very low value; or
+                                            // - to prevent recovery mode from being triggered
+                                            let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+                                            let whale_trove: u64 = purger_utils::create_whale_trove(
+                                                abbot, yangs, gates
+                                            );
 
-                                                        // We skip test cases of partial liquidations where
-                                                        // the trove debt is less than the minimum shares in absorber.
-                                                        // While it can be done, it is complicated to set up the absorber in such a
-                                                        // way that the remaining yin is less than the minimum shares.
-                                                        if *absorb_type == AbsorbType::Partial
-                                                            && trove_debt <= absorber_contract::MINIMUM_RECIPIENT_SHARES
-                                                                .into() {
-                                                            continue;
-                                                        }
-                                                        // Resetting the thresholds to reasonable values
-                                                        // to allow for creating troves at higher LTVs
-                                                        purger_utils::set_thresholds(
-                                                            shrine, yangs, (80 * RAY_PERCENT).into()
-                                                        );
-
-                                                        // Clearing/"resetting" the absorber
-                                                        // if it needs to be reset
-                                                        if yin_erc20
-                                                            .balance_of(absorber.contract_address)
-                                                            .is_non_zero() {
-                                                            let (eth_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[0]);
-                                                            let (wbtc_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[1]);
-
-                                                            start_warp(
-                                                                CheatTarget::All,
-                                                                get_block_timestamp()
-                                                                    + absorber_contract::REQUEST_COOLDOWN
-                                                            );
-
-                                                            // Update yang prices to save gas on fetching them in Shrine functions
-                                                            start_prank(
-                                                                CheatTarget::One(shrine.contract_address),
-                                                                shrine_utils::admin()
-                                                            );
-                                                            shrine.advance(*yangs[0], eth_price);
-                                                            shrine.advance(*yangs[1], wbtc_price);
-                                                            stop_prank(CheatTarget::One(shrine.contract_address));
-
-                                                            // Make a removal request and then remove the searcher's position
-                                                            start_prank(
-                                                                CheatTarget::One(absorber.contract_address), searcher
-                                                            );
-                                                            absorber.request();
-                                                            stop_prank(CheatTarget::One(absorber.contract_address));
-
-                                                            start_warp(
-                                                                CheatTarget::All,
-                                                                get_block_timestamp()
-                                                                    + absorber_contract::REQUEST_COOLDOWN
-                                                            );
-
-                                                            let searcher_provided_yin: Wad = absorber
-                                                                .preview_remove(searcher);
-                                                            // Removing any remaining yin, and/or
-                                                            // remaining absorbed assets due to the
-                                                            // provider.
-
-                                                            if searcher_provided_yin.is_non_zero() {
-                                                                absorber.remove(searcher_provided_yin);
-                                                            } else {
-                                                                absorber.reap();
-                                                            }
-                                                        }
-
-                                                        // Creating the trove to be liquidated
-                                                        let target_trove: u64 = purger_utils::funded_healthy_trove(
-                                                            abbot, yangs, gates, trove_debt
-                                                        );
-
-                                                        // Now, the searcher deposits some yin into the absorber
-                                                        // The amount depends on whether we want a full or partial absorption, or
-                                                        // a full redistribution
-
-                                                        start_prank(
-                                                            CheatTarget::One(absorber.contract_address), searcher
-                                                        );
-
-                                                        match *absorb_type {
-                                                            AbsorbType::Full => {
-                                                                // We provide *at least* the minimum shares
-                                                                absorber
-                                                                    .provide(
-                                                                        max(
-                                                                            trove_debt,
-                                                                            (absorber_contract::INITIAL_SHARES
-                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
-                                                                                .into()
-                                                                        )
-                                                                    );
-                                                            },
-                                                            AbsorbType::Partial => {
-                                                                // We add 1 wei in the event that `trove_debt` is extremely small,
-                                                                // to avoid the provision amount from being zero.
-
-                                                                absorber
-                                                                    .provide(
-                                                                        max(
-                                                                            (trove_debt.val / 2).into() + 1_u128.into(),
-                                                                            (absorber_contract::INITIAL_SHARES
-                                                                                + absorber_contract::MINIMUM_RECIPIENT_SHARES)
-                                                                                .into()
-                                                                        )
-                                                                    );
-                                                            },
-                                                            AbsorbType::None => {},
-                                                        };
-
-                                                        stop_prank(CheatTarget::One(absorber.contract_address));
-
-                                                        let whale_trove: u64 = if *is_recovery_mode {
-                                                            // Mint enough debt to trigger recovery mode before
-                                                            // thresholds are set to a very low value
-                                                            let trove_id: u64 = purger_utils::create_whale_trove(
-                                                                abbot, yangs, gates
-                                                            );
-                                                            purger_utils::trigger_recovery_mode(
-                                                                shrine,
-                                                                seer,
-                                                                yangs,
-                                                                common::RecoveryModeSetupType::ExceedsBuffer
-                                                            );
-
-                                                            trove_id
-                                                        } else {
-                                                            // Otherwise, create a whale trove to prevent recovery
-                                                            // mode from being triggered
-                                                            let deposit_amts: Span<u128> =
-                                                                purger_utils::whale_trove_yang_asset_amts();
-                                                            common::fund_user(whale_trove_owner, yangs, deposit_amts);
-                                                            common::open_trove_helper(
-                                                                abbot,
-                                                                whale_trove_owner,
-                                                                yangs,
-                                                                deposit_amts,
-                                                                gates,
-                                                                WAD_ONE.into()
-                                                            )
-                                                        };
-
-                                                        // Setting the threshold to the desired value
-                                                        // the target trove is now absorbable
-                                                        purger_utils::set_thresholds(shrine, yangs, *threshold);
-
-                                                        let target_trove_start_health: Health = shrine
-                                                            .get_trove_health(target_trove);
-                                                        if *is_recovery_mode && (*threshold).is_non_zero() {
-                                                            assert(shrine.is_recovery_mode(), 'not recovery mode');
-                                                        } else if (*threshold).is_non_zero() {
-                                                            // skip zero threshold because recovery mode
-                                                            // is unavoidable
-                                                            assert(!shrine.is_recovery_mode(), 'recovery mode');
-                                                        }
-
-                                                        let (penalty, max_close_amt, expected_compensation_value) =
-                                                            purger
-                                                            .preview_absorb(target_trove)
-                                                            .expect('Should be absorbable');
-
-                                                        start_prank(
-                                                            CheatTarget::One(purger.contract_address), searcher
-                                                        );
-
-                                                        let absorber_eth_bal_before_absorb: u128 = IERC20Dispatcher {
-                                                            contract_address: *yangs[0]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-                                                        let absorber_wbtc_bal_before_absorb: u128 = IERC20Dispatcher {
-                                                            contract_address: *yangs[1]
-                                                        }
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-
-                                                        let absorber_yin_bal_before_absorb: Wad = yin_erc20
-                                                            .balance_of(absorber.contract_address)
-                                                            .try_into()
-                                                            .unwrap();
-
-                                                        let compensation: Span<AssetBalance> = purger
-                                                            .absorb(target_trove);
-
-                                                        // Checking that the compensation is correct
-                                                        let actual_eth_comp: AssetBalance = *compensation[0];
-                                                        let actual_wbtc_comp: AssetBalance = *compensation[1];
-
-                                                        let expected_compensation_pct: Ray = wadray::rdiv_ww(
-                                                            purger_contract::COMPENSATION_CAP.into(),
-                                                            target_trove_start_health.value
-                                                        );
-
-                                                        let expected_eth_comp: u128 = scale_u128_by_ray(
-                                                            purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT,
-                                                            expected_compensation_pct
-                                                        );
-
-                                                        let expected_wbtc_comp: u128 = scale_u128_by_ray(
-                                                            purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT,
-                                                            expected_compensation_pct
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_eth_comp,
-                                                            actual_eth_comp.amount,
-                                                            1_u128,
-                                                            'wrong eth compensation'
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_wbtc_comp,
-                                                            actual_wbtc_comp.amount,
-                                                            1_u128,
-                                                            'wrong wbtc compensation'
-                                                        );
-
-                                                        let actual_compensation_value: Wad =
-                                                            purger_utils::get_sum_of_value(
-                                                            shrine,
-                                                            yangs,
-                                                            array![
-                                                                (*gates[0]).convert_to_yang(actual_eth_comp.amount),
-                                                                (*gates[1]).convert_to_yang(actual_wbtc_comp.amount)
-                                                            ]
-                                                                .span()
-                                                        );
-
-                                                        common::assert_equalish(
-                                                            expected_compensation_value,
-                                                            actual_compensation_value,
-                                                            10000000000000000_u128.into(),
-                                                            'wrong compensation value'
-                                                        );
-
-                                                        // If the trove wasn't fully liquidated, check
-                                                        // that it is healthy
-                                                        if max_close_amt < trove_debt {
-                                                            assert(
-                                                                shrine.is_healthy(target_trove),
-                                                                'trove should be healthy'
-                                                            );
-                                                        }
-
-                                                        // Checking that the absorbed assets are equal in value to the
-                                                        // debt liquidated, plus the penalty
-                                                        if *absorb_type != AbsorbType::None {
-                                                            // We subtract the absorber balance before the liquidation
-                                                            //  in order to avoid including any leftover
-                                                            // absorbed assets from previous liquidations
-                                                            // in the calculation for the value of the
-                                                            // absorption that *just* occured
-
-                                                            let absorbed_eth: Wad = common::get_erc20_bal_as_yang(
-                                                                *gates[0], *yangs[0], absorber.contract_address
-                                                            )
-                                                                - (*gates[0])
-                                                                    .convert_to_yang(absorber_eth_bal_before_absorb);
-                                                            let absorbed_wbtc: Wad = common::get_erc20_bal_as_yang(
-                                                                *gates[1], *yangs[1], absorber.contract_address
-                                                            )
-                                                                - (*gates[1])
-                                                                    .convert_to_yang(absorber_wbtc_bal_before_absorb);
-
-                                                            let (current_eth_yang_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[0]);
-                                                            let (current_wbtc_yang_price, _, _) = shrine
-                                                                .get_current_yang_price(*yangs[1]);
-
-                                                            let absorber_eth_value: Wad = absorbed_eth
-                                                                * current_eth_yang_price;
-                                                            let absorber_wbtc_value: Wad = absorbed_wbtc
-                                                                * current_wbtc_yang_price;
-
-                                                            let absorbed_assets_value = absorber_eth_value
-                                                                + absorber_wbtc_value;
-
-                                                            let max_absorb_amt = min(
-                                                                max_close_amt, absorber_yin_bal_before_absorb
-                                                            );
-
-                                                            common::assert_equalish(
-                                                                absorbed_assets_value,
-                                                                wadray::rmul_wr(
-                                                                    max_absorb_amt, (RAY_ONE.into() + penalty)
-                                                                ),
-                                                                10000000000000000_u128.into(),
-                                                                'wrong absorbed assets value'
-                                                            );
-                                                        }
-
-                                                        start_prank(
-                                                            CheatTarget::One(abbot.contract_address), whale_trove_owner
-                                                        );
-                                                        abbot.close_trove(whale_trove);
-                                                        stop_prank(CheatTarget::One(abbot.contract_address));
-                                                    },
-                                                    Option::None => { break; }
-                                                };
+                                            // Approve absorber for maximum yin
+                                            start_prank(CheatTarget::One(shrine.contract_address), searcher);
+                                            let yin_erc20: IERC20Dispatcher = IERC20Dispatcher {
+                                                contract_address: shrine.contract_address
                                             };
+                                            yin_erc20.approve(absorber.contract_address, BoundedInt::max());
+
+                                            stop_prank(CheatTarget::One(shrine.contract_address));
+
+                                            // Calculating the `trove_debt` necessary to achieve
+                                            // the `target_ltv`
+                                            let target_trove_yang_amts: Span<Wad> = array![
+                                                (*gates[0]).convert_to_yang(purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT),
+                                                (*gates[1])
+                                                    .convert_to_yang(purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT),
+                                            ]
+                                                .span();
+
+                                            let trove_value: Wad = purger_utils::get_sum_of_value(
+                                                shrine, yangs, target_trove_yang_amts
+                                            );
+
+                                            // In case of rounding down to zero, set to 1 wei.
+                                            let trove_debt: Wad = max(
+                                                wadray::rmul_wr(trove_value, *target_ltv) + (100 * WAD_ONE).into(),
+                                                1_u128.into()
+                                            );
+
+                                            // We skip test cases of partial liquidations where
+                                            // the trove debt is less than the minimum shares required for the 
+                                            // absorber to be operational.
+                                            if *absorb_type == AbsorbType::Partial
+                                                && trove_debt <= (absorber_contract::INITIAL_SHARES
+                                                    + absorber_contract::MINIMUM_RECIPIENT_SHARES)
+                                                    .into() {
+                                                continue;
+                                            }
+
+                                            // Resetting the thresholds to reasonable values
+                                            // to allow for creating troves at higher LTVs
+                                            purger_utils::set_thresholds(shrine, yangs, (80 * RAY_PERCENT).into());
+
+                                            // Creating the trove to be liquidated
+                                            let target_trove: u64 = purger_utils::funded_healthy_trove(
+                                                abbot, yangs, gates, trove_debt
+                                            );
+
+                                            // Now, the searcher deposits some yin into the absorber
+                                            // The amount depends on whether we want a full or partial absorption, or
+                                            // a full redistribution
+
+                                            start_prank(CheatTarget::One(absorber.contract_address), searcher);
+
+                                            match *absorb_type {
+                                                AbsorbType::Full => {
+                                                    absorber.provide(max(trove_debt, minimum_operational_shares));
+                                                },
+                                                AbsorbType::Partial => {
+                                                    // We provide *at least* the minimum shares
+                                                    absorber
+                                                        .provide(
+                                                            max((trove_debt.val / 2).into(), minimum_operational_shares)
+                                                        );
+                                                },
+                                                AbsorbType::None => {},
+                                            };
+
+                                            stop_prank(CheatTarget::One(absorber.contract_address));
+
+                                            if is_recovery_mode {
+                                                // Mint the desired threshold + 1% worth of the max forge amount of the whale trove
+                                                // to guarantee that the whale trove will exceed its threshold when thresholds are
+                                                // lowered in the next step
+                                                let max_forge_amt: Wad = shrine.get_max_forge(whale_trove);
+                                                let forge_amt: Wad = wadray::rmul_wr(
+                                                    max_forge_amt, *threshold + RAY_PERCENT.into()
+                                                );
+
+                                                start_prank(
+                                                    CheatTarget::One(abbot.contract_address), whale_trove_owner
+                                                );
+                                                abbot.forge(whale_trove, forge_amt, Zero::zero());
+                                                stop_prank(CheatTarget::One(abbot.contract_address));
+                                            }
+
+                                            // Setting the threshold to the desired value
+                                            // the target trove is now absorbable
+                                            purger_utils::set_thresholds(shrine, yangs, *threshold);
+
+                                            let target_trove_start_health: Health = shrine
+                                                .get_trove_health(target_trove);
+                                            if is_recovery_mode && (*threshold).is_non_zero() {
+                                                assert(shrine.is_recovery_mode(), 'not recovery mode');
+                                            } else if (*threshold).is_non_zero() {
+                                                // skip zero threshold because recovery mode
+                                                // is unavoidable
+                                                assert(!shrine.is_recovery_mode(), 'recovery mode');
+                                            }
+
+                                            let (penalty, max_close_amt, expected_compensation_value) = purger
+                                                .preview_absorb(target_trove)
+                                                .expect('Should be absorbable');
+
+                                            start_prank(CheatTarget::One(purger.contract_address), searcher);
+
+                                            let absorber_eth_bal_before_absorb: u128 = IERC20Dispatcher {
+                                                contract_address: *yangs[0]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+                                            let absorber_wbtc_bal_before_absorb: u128 = IERC20Dispatcher {
+                                                contract_address: *yangs[1]
+                                            }
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+
+                                            let absorber_yin_bal_before_absorb: Wad = yin_erc20
+                                                .balance_of(absorber.contract_address)
+                                                .try_into()
+                                                .unwrap();
+
+                                            let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+
+                                            // Checking that the compensation is correct
+                                            let actual_eth_comp: AssetBalance = *compensation[0];
+                                            let actual_wbtc_comp: AssetBalance = *compensation[1];
+
+                                            let expected_compensation_pct: Ray = wadray::rdiv_ww(
+                                                purger_contract::COMPENSATION_CAP.into(),
+                                                target_trove_start_health.value
+                                            );
+
+                                            let expected_eth_comp: u128 = scale_u128_by_ray(
+                                                purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT, expected_compensation_pct
+                                            );
+
+                                            let expected_wbtc_comp: u128 = scale_u128_by_ray(
+                                                purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT, expected_compensation_pct
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_eth_comp,
+                                                actual_eth_comp.amount,
+                                                1_u128,
+                                                'wrong eth compensation'
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_wbtc_comp,
+                                                actual_wbtc_comp.amount,
+                                                1_u128,
+                                                'wrong wbtc compensation'
+                                            );
+
+                                            let actual_compensation_value: Wad = purger_utils::get_sum_of_value(
+                                                shrine,
+                                                yangs,
+                                                array![
+                                                    (*gates[0]).convert_to_yang(actual_eth_comp.amount),
+                                                    (*gates[1]).convert_to_yang(actual_wbtc_comp.amount)
+                                                ]
+                                                    .span()
+                                            );
+
+                                            common::assert_equalish(
+                                                expected_compensation_value,
+                                                actual_compensation_value,
+                                                10000000000000000_u128.into(),
+                                                'wrong compensation value'
+                                            );
+
+                                            // If the trove wasn't fully liquidated, check
+                                            // that it is healthy
+                                            if max_close_amt < trove_debt {
+                                                assert(shrine.is_healthy(target_trove), 'trove should be healthy');
+                                            }
+
+                                            // Checking that the absorbed assets are equal in value to the
+                                            // debt liquidated, plus the penalty
+                                            if *absorb_type != AbsorbType::None {
+                                                // We subtract the absorber balance before the liquidation
+                                                //  in order to avoid including any leftover
+                                                // absorbed assets from previous liquidations
+                                                // in the calculation for the value of the
+                                                // absorption that *just* occured
+
+                                                let absorbed_eth: Wad = common::get_erc20_bal_as_yang(
+                                                    *gates[0], *yangs[0], absorber.contract_address
+                                                )
+                                                    - (*gates[0]).convert_to_yang(absorber_eth_bal_before_absorb);
+                                                let absorbed_wbtc: Wad = common::get_erc20_bal_as_yang(
+                                                    *gates[1], *yangs[1], absorber.contract_address
+                                                )
+                                                    - (*gates[1]).convert_to_yang(absorber_wbtc_bal_before_absorb);
+
+                                                let (current_eth_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[0]);
+                                                let (current_wbtc_yang_price, _, _) = shrine
+                                                    .get_current_yang_price(*yangs[1]);
+
+                                                let absorber_eth_value: Wad = absorbed_eth * current_eth_yang_price;
+                                                let absorber_wbtc_value: Wad = absorbed_wbtc * current_wbtc_yang_price;
+
+                                                let absorbed_assets_value = absorber_eth_value + absorber_wbtc_value;
+
+                                                let max_absorb_amt = min(max_close_amt, absorber_yin_bal_before_absorb);
+
+                                                let expected_absorbed_value: Wad = wadray::rmul_wr(
+                                                    max_absorb_amt, (RAY_ONE.into() + penalty)
+                                                );
+
+                                                common::assert_equalish(
+                                                    absorbed_assets_value,
+                                                    expected_absorbed_value,
+                                                    (2 * WAD_ONE).into(),
+                                                    'wrong absorbed assets value'
+                                                );
+                                            }
                                         },
                                         Option::None => { break; },
                                     };
@@ -3812,5 +3654,15 @@ mod test_purger {
                 Option::None => { break; }
             };
         };
+    }
+
+    #[test]
+    fn test_absorb_low_thresholds_parametrized1() {
+        test_absorb_low_thresholds(true);
+    }
+
+    #[test]
+    fn test_absorb_low_thresholds_parametrized2() {
+        test_absorb_low_thresholds(false);
     }
 }

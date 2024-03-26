@@ -327,18 +327,20 @@ pub mod shrine_utils {
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
-    pub fn advance_prices_for_suspension_period(shrine: IShrineDispatcher, yangs: Span<ContractAddress>) {
-        // avoid hitting iteration limit by splitting the suspension period into 4 parts
-        let mut period_div = 4;
-        let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
+    // Helper function to advance prices and multiplier values for a given time by splitting
+    // it into multiple periods to avoid hitting the iteration limit when trying to retrieve 
+    // the latest prices and multiplier after a prolonged period without updates
+    pub fn advance_prices_periodically(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, total_time: u64) {
+        let mut num_periods: u64 = 4;
+        let (time_per_period, rem_time) = DivRem::div_rem(total_time, num_periods.try_into().unwrap());
         let mut next_ts: u64 = get_block_timestamp();
 
-        start_prank(CheatTarget::All, admin());
+        start_prank(CheatTarget::One(shrine.contract_address), admin());
         loop {
-            if period_div.is_zero() {
+            if num_periods.is_zero() {
                 break;
             }
-            next_ts += suspension_grace_period_quarter;
+            next_ts += time_per_period;
             start_warp(CheatTarget::All, next_ts);
 
             let mut yangs_copy = yangs;
@@ -354,8 +356,10 @@ pub mod shrine_utils {
 
             shrine.set_multiplier(RAY_ONE.into());
 
-            period_div -= 1;
+            num_periods -= 1;
         };
+        next_ts += rem_time;
+        start_warp(CheatTarget::All, next_ts);
         stop_prank(CheatTarget::One(shrine.contract_address));
     }
 
@@ -635,7 +639,12 @@ pub mod shrine_utils {
 
     pub fn get_price_decrease_pct_for_target_ltv(shrine_health: Health, target_ltv: Ray) -> Ray {
         let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / target_ltv));
-        wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value)
+
+        if unhealthy_value >= shrine_health.value {
+            Zero::zero()
+        } else {
+            wadray::rdiv_ww((shrine_health.value - unhealthy_value), shrine_health.value)
+        }
     }
 
     pub fn recovery_mode_test_setup(
