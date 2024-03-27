@@ -11,7 +11,7 @@ mod test_shrine {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, Trove, YangSuspensionStatus};
+    use opus::types::{Health, HealthTrait, Trove, YangSuspensionStatus};
     use snforge_std::{
         CheatTarget, ContractClass, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp,
         stop_prank,
@@ -964,8 +964,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.ltv.is_zero(), 'LTV should be zero');
-
-        assert(shrine.is_healthy(trove_id), 'trove should be healthy');
+        assert(trove_health.is_healthy(), 'trove should be healthy');
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
@@ -1143,8 +1142,7 @@ mod test_shrine {
         let expected_value: Wad = yang1_price * shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
         assert(trove_health.ltv == expected_ltv, 'incorrect ltv');
-
-        assert(shrine.is_healthy(trove_id), 'trove should be healthy');
+        assert(trove_health.is_healthy(), 'trove should be healthy');
 
         let after_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         assert(after_max_forge_amt == before_max_forge_amt - forge_amt, 'incorrect max forge amt');
@@ -1402,8 +1400,7 @@ mod test_shrine {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
         assert(after_trove_health.ltv == expected_ltv, 'incorrect LTV');
-
-        assert(shrine.is_healthy(trove_id), 'trove should be healthy');
+        assert(after_trove_health.is_healthy(), 'trove should be healthy');
 
         let after_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         assert(after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount');
