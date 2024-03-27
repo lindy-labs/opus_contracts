@@ -555,7 +555,7 @@ pub mod purger {
         let threshold = trove_health.threshold;
         let ltv = trove_health.ltv;
 
-        // Handling the case where `ltv > 1` to avoid underflow
+        // Avoid underflow
         if ltv >= RAY_ONE.into() {
             return Option::Some(Zero::zero());
         }
