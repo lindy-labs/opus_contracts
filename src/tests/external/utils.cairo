@@ -1,8 +1,7 @@
 pub mod pragma_utils {
-    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
+    use core::traits::Into;
     use opus::core::roles::shrine_roles;
-    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::external::pragma::pragma as pragma_contract;
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -66,7 +65,11 @@ pub mod pragma_utils {
     ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(), mock_pragma.contract_address.into(), FRESHNESS_THRESHOLD.into(), SOURCES_THRESHOLD.into(),
+            admin().into(),
+            mock_pragma.contract_address.into(),
+            mock_pragma.contract_address.into(),
+            FRESHNESS_THRESHOLD.into(),
+            SOURCES_THRESHOLD.into(),
         ];
 
         let pragma_class = match pragma_class {
@@ -128,8 +131,9 @@ pub mod pragma_utils {
     pub fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
     ) {
+        let price = convert_price_to_pragma_scale(price);
         let response = PragmaPricesResponse {
-            price: convert_price_to_pragma_scale(price),
+            price,
             decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: timestamp,
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
@@ -137,6 +141,7 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
+        mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
     }
 }
 

@@ -9,5 +9,5 @@ pub trait IOracle<TContractState> {
     fn get_oracle(self: @TContractState) -> ContractAddress;
 
     // has to be ref self to allow emitting events from the function
-    fn fetch_price(ref self: TContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252>;
+    fn fetch_price(ref self: TContractState, yang: ContractAddress) -> Result<Wad, felt252>;
 }

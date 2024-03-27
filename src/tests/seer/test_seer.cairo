@@ -179,10 +179,7 @@ mod test_seer {
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
                 )
             ),
-            (
-                seer.contract_address,
-                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: true })
-            )
+            (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
 
         spy.assert_emitted(@expected_events_seer);
@@ -315,10 +312,7 @@ mod test_seer {
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
                 )
             ),
-            (
-                seer.contract_address,
-                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
-            )
+            (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
 
         spy.assert_emitted(@expected_events_seer);
@@ -423,10 +417,7 @@ mod test_seer {
                 seer.contract_address,
                 seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: eth_addr })
             ),
-            (
-                seer.contract_address,
-                seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone { forced: false })
-            )
+            (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
 
         spy.assert_emitted(@expected_events);
