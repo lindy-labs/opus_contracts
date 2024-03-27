@@ -9,7 +9,7 @@ pub mod shrine {
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
     use opus::interfaces::ISRC5::ISRC5;
     use opus::interfaces::IShrine::IShrine;
-    use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
+    use opus::types::{Health, HealthTrait, Trove, YangBalance, YangSuspensionStatus};
     use opus::utils::exp::{exp, neg_exp};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use wadray::{Ray, RAY_ONE, SignedWad, Wad, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
@@ -1121,8 +1121,7 @@ pub mod shrine {
 
         // Returns a bool indicating whether the given trove is healthy or not
         fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
-            let health: Health = self.get_trove_health(trove_id);
-            self.is_healthy_helper(health)
+            self.get_trove_health(trove_id).is_healthy()
         }
 
         // Returns the maximum amount of yin that a trove can forge based on its current health.
@@ -1182,11 +1181,6 @@ pub mod shrine {
             assert(self.is_live.read(), 'SH: System is not live');
         }
 
-        #[inline(always)]
-        fn is_healthy_helper(self: @ContractState, health: Health) -> bool {
-            health.ltv <= health.threshold
-        }
-
         // Checks that:
         // 1. the trove has at least the minimum value if it has non-zero debt
         // 2. if Shrine is in normal mode:
@@ -1232,7 +1226,7 @@ pub mod shrine {
                 // (2a)
                 assert(!self.is_recovery_mode(), 'SH: Will trigger recovery mode');
                 // (2b)
-                assert(self.is_healthy_helper(end_trove_health_with_base_threshold), 'SH: Trove LTV > threshold');
+                assert(end_trove_health_with_base_threshold.is_healthy(), 'SH: Trove LTV > threshold');
             }
         }
 

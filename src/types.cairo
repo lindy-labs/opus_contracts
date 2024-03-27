@@ -41,6 +41,13 @@ pub struct Health {
     pub debt: Wad,
 }
 
+#[generate_trait]
+pub impl HealthImpl of HealthTrait {
+    fn is_healthy(self: @Health) -> bool {
+        (*self.ltv) <= (*self.threshold)
+    }
+}
+
 #[derive(Copy, Debug, Drop, Serde)]
 pub struct YangBalance {
     pub yang_id: u32, //  ID of yang in Shrine
