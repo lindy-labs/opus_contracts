@@ -550,7 +550,7 @@ pub mod purger {
             return Option::None;
         }
 
-        // Handling the case where `ltv > 1` to avoid underflow
+        // Avoid underflow
         if ltv >= RAY_ONE.into() {
             return Option::Some(Zero::zero());
         }
