@@ -202,7 +202,7 @@ pub mod pragma {
             let pair_id: felt252 = self.yang_pair_ids.read(yang);
             assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-            // TODO: maybe use TWAP price if spot is not available?
+            // TODO: maybe just use TWAP price if spot is not available?
             let spot_price: Wad = self.fetch_spot_price(pair_id)?; // propagate Err if any
             let twap_price: Wad = self.fetch_twap_price(pair_id);
             let pessimistic_price: Wad = min(spot_price, twap_price);
