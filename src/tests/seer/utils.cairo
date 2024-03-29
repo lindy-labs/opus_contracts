@@ -9,7 +9,7 @@ pub mod seer_utils {
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
-    use opus::tests::external::utils::pragma_utils;
+    use opus::tests::external::utils::{pragma_utils, switchboard_utils};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
@@ -92,10 +92,17 @@ pub mod seer_utils {
         ISeerDispatcher { contract_address: seer_addr }
     }
 
-    pub fn add_oracles(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>, seer: ISeerDispatcher
+    pub fn append_pragma_oracle(
+        seer: ISeerDispatcher, pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
+        let mut existing_oracles: Span<ContractAddress> = seer.get_oracles();
+        loop {
+            match existing_oracles.pop_front() {
+                Option::Some(oracle) => oracles.append(*oracle),
+                Option::None => { break; }
+            };
+        };
 
         let (pragma, _) = pragma_utils::pragma_deploy(pragma_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
@@ -107,11 +114,24 @@ pub mod seer_utils {
         oracles.span()
     }
 
-    pub fn add_yangs(seer: ISeerDispatcher, yangs: Span<ContractAddress>) {
-        let oracles: Span<ContractAddress> = seer.get_oracles();
-        // assuming first oracle is Pragma
-        let pragma = IPragmaDispatcher { contract_address: *oracles.at(0) };
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+    pub fn append_switchboard_oracle(seer: ISeerDispatcher) -> Span<ContractAddress> {
+        let mut oracles: Array<ContractAddress> = ArrayTrait::new();
+        let mut existing_oracles: Span<ContractAddress> = seer.get_oracles();
+        loop {
+            match existing_oracles.pop_front() {
+                Option::Some(oracle) => oracles.append(*oracle),
+                Option::None => { break; }
+            };
+        };
+
+        let (switchboard, _) = switchboard_utils::switchboard_deploy();
+        oracles.append(switchboard.contract_address);
+
+        start_prank(CheatTarget::One(seer.contract_address), admin());
+        seer.set_oracles(oracles.span());
+        stop_prank(CheatTarget::One(seer.contract_address));
+
+        oracles.span()
     }
 
     pub fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {

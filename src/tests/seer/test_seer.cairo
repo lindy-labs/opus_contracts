@@ -14,8 +14,9 @@ mod test_seer {
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::pragma_utils;
+    use opus::tests::external::utils::{pragma_utils, switchboard_utils};
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -146,8 +147,8 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
-        seer_utils::add_yangs(seer, yangs);
+        let oracles: Span<ContractAddress> = seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
         // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let mut eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let mut wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
@@ -273,6 +274,72 @@ mod test_seer {
     }
 
     #[test]
+    fn test_update_prices_from_fallback_oracle_successful() {
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::None, Option::None,
+        );
+
+        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+            Option::None, shrine.contract_address, sentinel.contract_address
+        );
+
+        seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        let oracles: Span<ContractAddress> = seer_utils::append_switchboard_oracle(seer);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        switchboard_utils::add_yangs(*oracles.at(1), yangs);
+
+        // mock an ETH price update of spot Pragma that will fail,
+        // causing Seer to use Switchboard
+        let eth_addr: ContractAddress = *yangs[0];
+        let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
+        let pragma = IOracleDispatcher { contract_address: *oracles[0] };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        mock_pragma
+            .next_get_data_median(
+                pragma_utils::get_pair_id_for_yang(eth_addr),
+                PragmaPricesResponse {
+                    price: pragma_utils::convert_price_to_pragma_scale(eth_price),
+                    decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+                    last_updated_timestamp: get_block_timestamp(),
+                    num_sources_aggregated: 0,
+                    expiration_timestamp: Option::None,
+                }
+            );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.update_prices();
+
+        let expected_eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
+        let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
+        assert(expected_eth_price == shrine_eth_price, 'wrong eth price in shrine');
+
+        let pragma: ContractAddress = *oracles.at(0);
+        let switchboard: ContractAddress = *oracles.at(1);
+        let wbtc_addr: ContractAddress = *yangs[1];
+        // asserting that PriceUpdate event for ETH coming from Switchboard,
+        // but for WBTC coming from Pragma
+        let expected_events_seer = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: eth_addr, price: expected_eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate {
+                        oracle: pragma, yang: wbtc_addr, price: seer_utils::WBTC_INIT_PRICE.into()
+                    }
+                )
+            ),
+            (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
+        ];
+        spy.assert_emitted(@expected_events_seer);
+    }
+
+    #[test]
     fn test_update_prices_via_execute_task_successful() {
         let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
@@ -283,8 +350,8 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
-        seer_utils::add_yangs(seer, yangs);
+        let oracles: Span<ContractAddress> = seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
         // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
@@ -339,7 +406,7 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::add_oracles(Option::None, Option::None, seer);
+        seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
     }
@@ -354,9 +421,10 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::add_oracles(Option::None, Option::None, seer);
+        let oracles: Span<ContractAddress> = seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
         let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
-        seer_utils::add_yangs(seer, array![eth_yang].span());
+        let yangs = array![eth_yang, eth_yang].span();
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
@@ -382,16 +450,16 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(Option::None, Option::None, seer);
-        seer_utils::add_yangs(seer, yangs);
+        seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        let oracles: Span<ContractAddress> = seer_utils::append_switchboard_oracle(seer);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
-        // sanity check - when we have more than 1 oracles in the test suite,
-        // this test will need to be updated, because fetch_price Err will
-        // move to the next oracle in Seer
-        assert(oracles.len() == 1, 'update test setup');
-
-        // assuming first oracle is Pragma, mock a price update of eth that
+        // mock a price update of Pragma spot eth that
         // fails validation and fetch_price returns a Result::Err
+        // so that Switchboard is called as update - mock its price
+        // that it fails validation too, so there's nothing more to
+        // fall back on an a PriceUpdateMissed is emitted
         let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
@@ -408,7 +476,11 @@ mod test_seer {
                 }
             );
 
-        // using execute_task to not have a forced update
+        let switchboard = IOracleDispatcher { contract_address: *oracles[1] };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: switchboard.get_oracle() };
+        // mock a price update that fails Switchboard validation too
+        mock_switchboard.next_get_latest_result(switchboard_utils::ETH_USD_PAIR_ID, 0, 0);
+
         ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
 
         // expecting one PriceUpdateMissed event but also UpdatedPrices
@@ -442,8 +514,8 @@ mod test_seer {
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::add_oracles(Option::None, Option::None, seer);
-        seer_utils::add_yangs(seer, yangs);
+        let oracles: Span<ContractAddress> = seer_utils::append_pragma_oracle(seer, Option::None, Option::None);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };
         assert(task.probe_task(), 'should be ready 1');

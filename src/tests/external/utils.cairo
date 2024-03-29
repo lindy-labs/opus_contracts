@@ -84,22 +84,24 @@ pub mod pragma_utils {
         (pragma, mock_pragma)
     }
 
-    pub fn add_yangs_to_pragma(pragma: IPragmaDispatcher, yangs: Span<ContractAddress>) {
+    pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
+        // assuming yangs are always ordered as ETH, WBTC
         let eth_yang = *yangs.at(0);
         let wbtc_yang = *yangs.at(1);
 
         // add_yang does an assert on the response decimals, so we
         // need to provide a valid mock response for it to pass
-        let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
+        let oracle = IOracleDispatcher { contract_address: pragma };
         let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
         mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma.contract_address), admin());
-        pragma.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
-        pragma.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-        stop_prank(CheatTarget::One(pragma.contract_address));
+        start_prank(CheatTarget::One(pragma), admin());
+        let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
+        pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
+        pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
+        stop_prank(CheatTarget::One(pragma));
     }
 
     //
@@ -146,12 +148,15 @@ pub mod pragma_utils {
 }
 
 pub mod switchboard_utils {
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
+    use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
 
-    pub const ETH_PRICE: u128 = 3000000000000000000;
+    pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
+    pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
     pub const TIMESTAMP: u64 = 1710000000;
 
     pub fn admin() -> ContractAddress {
@@ -180,5 +185,25 @@ pub mod switchboard_utils {
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 
         (switchboard, mock_switchboard)
+    }
+
+    pub fn add_yangs(switchboard: ContractAddress, yangs: Span<ContractAddress>) {
+        // assuming yangs are always orderd as ETH, WBTC
+        let eth_yang = *yangs.at(0);
+        let wbtc_yang = *yangs.at(1);
+
+        // setting a yang pair_id does a sanity check, so we need
+        // to mock valid values
+        let oracle = IOracleDispatcher { contract_address: switchboard };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: oracle.get_oracle() };
+        mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
+        mock_switchboard.next_get_latest_result(WBTC_USD_PAIR_ID, WBTC_INIT_PRICE, TIMESTAMP);
+
+        // set up yangs in Switchboard
+        start_prank(CheatTarget::One(switchboard), admin());
+        let switchboard_dispatcher = ISwitchboardDispatcher { contract_address: switchboard };
+        switchboard_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
+        switchboard_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
+        stop_prank(CheatTarget::One(switchboard));
     }
 }

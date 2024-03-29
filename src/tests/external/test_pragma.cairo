@@ -356,7 +356,7 @@ mod test_pragma {
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let wbtc_addr = *yangs.at(1);
@@ -398,7 +398,7 @@ mod test_pragma {
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         // make spot price be lower than twap price
@@ -432,7 +432,7 @@ mod test_pragma {
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         // make twap price be lower than twap price
@@ -469,7 +469,7 @@ mod test_pragma {
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let now: u64 = 100000000;
@@ -513,7 +513,7 @@ mod test_pragma {
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs_to_pragma(pragma, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let now: u64 = 100000000;
