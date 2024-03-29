@@ -207,9 +207,8 @@ mod test_seer {
         start_warp(CheatTarget::All, next_ts);
         eth_price += (100 * WAD_SCALE).into();
         wbtc_price += (1000 * WAD_SCALE).into();
-        // assuming first oracle is Pragma
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
         pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
 
@@ -293,7 +292,7 @@ mod test_seer {
         let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
@@ -463,7 +462,7 @@ mod test_seer {
         let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
             .next_get_data_median(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
@@ -477,7 +476,7 @@ mod test_seer {
             );
 
         let switchboard = IOracleDispatcher { contract_address: *oracles[1] };
-        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: switchboard.get_oracle() };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: *switchboard.get_oracles().at(0) };
         // mock a price update that fails Switchboard validation too
         mock_switchboard.next_get_latest_result(switchboard_utils::ETH_USD_PAIR_ID, 0, 0);
 

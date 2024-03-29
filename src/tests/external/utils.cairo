@@ -92,7 +92,7 @@ pub mod pragma_utils {
         // add_yang does an assert on the response decimals, so we
         // need to provide a valid mock response for it to pass
         let oracle = IOracleDispatcher { contract_address: pragma };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *oracle.get_oracles().at(0) };
         mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
@@ -195,7 +195,7 @@ pub mod switchboard_utils {
         // setting a yang pair_id does a sanity check, so we need
         // to mock valid values
         let oracle = IOracleDispatcher { contract_address: switchboard };
-        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: oracle.get_oracle() };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: *oracle.get_oracles().at(0) };
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         mock_switchboard.next_get_latest_result(WBTC_USD_PAIR_ID, WBTC_INIT_PRICE, TIMESTAMP);
 

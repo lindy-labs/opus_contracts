@@ -28,7 +28,7 @@ mod test_switchboard {
 
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
         assert(oracle.get_name() == 'Switchboard', 'wrong name');
-        assert(oracle.get_oracle() == mock_switchboard.contract_address, 'wrong oracle');
+        assert(oracle.get_oracles() == array![mock_switchboard.contract_address].span(), 'wrong oracle');
     }
 
     #[test]

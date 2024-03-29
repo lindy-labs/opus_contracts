@@ -140,7 +140,7 @@ pub mod seer_utils {
 
         // assuming first oracle is Pragma
         let pragma = IOracleDispatcher { contract_address: *oracles.at(0) };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: pragma.get_oracle() };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         pragma_utils::mock_valid_price_update(mock_pragma, yang, price, current_ts);
     }
 }

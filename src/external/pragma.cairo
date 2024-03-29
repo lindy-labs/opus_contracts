@@ -193,9 +193,8 @@ pub mod pragma {
             'Pragma'
         }
 
-        fn get_oracle(self: @ContractState) -> ContractAddress {
-            // TODO: what about the twap oracle? return span?
-            self.spot_oracle.read().contract_address
+        fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
+            array![self.spot_oracle.read().contract_address, self.twap_oracle.read().contract_address].span()
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {

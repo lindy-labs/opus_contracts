@@ -59,7 +59,8 @@ mod test_pragma {
 
         let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         assert(oracle.get_name() == 'Pragma', 'wrong name');
-        assert(oracle.get_oracle() == mock_pragma.contract_address, 'wrong oracle address');
+        let oracles: Span<ContractAddress> = array![mock_pragma.contract_address, mock_pragma.contract_address].span();
+        assert(oracle.get_oracles() == oracles, 'wrong oracle addresses');
 
         let expected_events = array![
             (

@@ -103,8 +103,8 @@ pub mod switchboard {
             'Switchboard'
         }
 
-        fn get_oracle(self: @ContractState) -> ContractAddress {
-            self.oracle.read().contract_address
+        fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
+            array![self.oracle.read().contract_address].span()
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
