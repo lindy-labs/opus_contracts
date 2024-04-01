@@ -709,15 +709,13 @@ mod test_controller {
         controller.set_i_gain(100000000000000000000000_u128.into()); // 0.0001
 
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
-        let prev_multiplier: Ray = controller.get_current_multiplier();
-
         controller.update_multiplier();
 
         // Standard flow, updating the multiplier every hour
+        let prev_multiplier: Ray = controller.get_current_multiplier();
         controller_utils::fast_forward_1_hour();
-        let current_multiplier: Ray = controller.get_current_multiplier();
         controller.update_multiplier();
-
+        let current_multiplier: Ray = controller.get_current_multiplier();
         assert(current_multiplier > prev_multiplier, 'Multiplier should increase');
 
         // Suddenly the multiplier is updated multiple times within the same block.
