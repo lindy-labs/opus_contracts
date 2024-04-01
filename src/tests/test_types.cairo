@@ -1,4 +1,4 @@
-use opus::types::{DistributionInfo, Health, Provision, Request, Trove, YangBalance};
+use opus::types::{DistributionInfo, Health, HealthTrait, Provision, Request, Trove, YangBalance};
 use wadray::{Wad, Ray};
 
 #[test]
@@ -32,4 +32,16 @@ fn test_display_and_debug() {
     let expected = "Request { timestamp: 123, timelock: 456, is_valid: true }";
     assert_eq!(format!("{}", r), expected, "Provision display");
     assert_eq!(format!("{:?}", r), expected, "Provision debug");
+}
+
+#[test]
+fn test_is_healthy() {
+    let h = Health { threshold: 1_u128.into(), ltv: 0_u128.into(), value: 1_u128.into(), debt: 0_u128.into() };
+    assert(h.is_healthy(), 'is_healthy #1');
+
+    let h = Health { threshold: 1_u128.into(), ltv: 1_u128.into(), value: 1_u128.into(), debt: 1_u128.into() };
+    assert(h.is_healthy(), 'is_healthy #2');
+
+    let h = Health { threshold: 1_u128.into(), ltv: 2_u128.into(), value: 1_u128.into(), debt: 2_u128.into() };
+    assert(!h.is_healthy(), 'is_healthy #3');
 }

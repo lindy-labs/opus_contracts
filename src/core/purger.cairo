@@ -9,7 +9,7 @@ pub mod purger {
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
     use wadray::{Ray, RAY_ONE, Wad};
@@ -430,11 +430,14 @@ pub mod purger {
         //
         // If threshold exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`.
         fn get_absorption_penalty_internal(
-            self: @ContractState, threshold: Ray, ltv: Ray, ltv_after_compensation: Ray
+            self: @ContractState, trove_health_before_compensation: Health, ltv_after_compensation: Ray
         ) -> Option<Ray> {
-            if ltv <= threshold {
+            if trove_health_before_compensation.is_healthy() {
                 return Option::None;
             }
+
+            let threshold = trove_health_before_compensation.threshold;
+            let ltv = trove_health_before_compensation.ltv;
 
             // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case
             // to avoid underflow. Note that this also guarantees `ltv` is lesser than one.
@@ -492,8 +495,7 @@ pub mod purger {
             let (compensation_pct, compensation) = get_compensation(trove_health.value);
             let ltv_after_compensation: Ray = trove_health.ltv / (RAY_ONE.into() - compensation_pct);
 
-            match self
-                .get_absorption_penalty_internal(trove_health.threshold, trove_health.ltv, ltv_after_compensation) {
+            match self.get_absorption_penalty_internal(trove_health, ltv_after_compensation) {
                 Option::Some(penalty) => {
                     let value_after_compensation: Wad = wadray::rmul_rw(
                         RAY_ONE.into() - compensation_pct, trove_health.value
@@ -545,12 +547,15 @@ pub mod purger {
     }
 
     // Returns `Option::None` if the trove is not liquidatable, otherwise returns the liquidation penalty
-    fn get_liquidation_penalty_internal(threshold: Ray, ltv: Ray) -> Option<Ray> {
-        if ltv <= threshold {
+    fn get_liquidation_penalty_internal(trove_health: Health) -> Option<Ray> {
+        if trove_health.is_healthy() {
             return Option::None;
         }
 
-        // Handling the case where `ltv > 1` to avoid underflow
+        let threshold = trove_health.threshold;
+        let ltv = trove_health.ltv;
+
+        // Avoid underflow
         if ltv >= RAY_ONE.into() {
             return Option::Some(Zero::zero());
         }
@@ -578,7 +583,7 @@ pub mod purger {
     // 1. liquidation penalty (zero if trove is not liquidatable)
     // 2. maximum liquidation amount (zero if trove is not liquidatable)
     fn preview_liquidate_internal(trove_health: Health) -> Option<(Ray, Wad)> {
-        match get_liquidation_penalty_internal(trove_health.threshold, trove_health.ltv) {
+        match get_liquidation_penalty_internal(trove_health) {
             Option::Some(penalty) => {
                 let max_close_amt = get_max_close_amount_internal(
                     trove_health.threshold, trove_health.value, trove_health.debt, penalty
