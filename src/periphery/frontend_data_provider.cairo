@@ -1,5 +1,5 @@
 #[starknet::contract]
-pub mod trove_data_provider {
+pub mod frontend_data_provider {
     use core::num::traits::Zero;
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};

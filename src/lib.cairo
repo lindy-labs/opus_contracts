@@ -55,8 +55,8 @@ mod utils {
 }
 
 mod periphery {
+    pub mod frontend_data_provider;
     pub mod interfaces;
-    pub mod trove_data_provider;
 }
 
 // mock used for local devnet deployment
