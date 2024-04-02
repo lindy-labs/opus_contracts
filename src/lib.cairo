@@ -54,6 +54,11 @@ mod utils {
     pub mod reentrancy_guard;
 }
 
+mod periphery {
+    pub mod interfaces;
+    pub mod trove_data_provider;
+}
+
 // mock used for local devnet deployment
 mod mock {
     pub mod blesser;
