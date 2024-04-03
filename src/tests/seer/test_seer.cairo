@@ -287,7 +287,7 @@ mod test_seer {
         pragma_utils::add_yangs(*oracles.at(0), yangs);
         switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
-        // mock an ETH price update of spot Pragma that will fail,
+        // mock an ETH price update of spot Pragma that will fail due to too few sources,
         // causing Seer to use Switchboard
         let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
@@ -457,8 +457,8 @@ mod test_seer {
         // mock a price update of Pragma spot eth that
         // fails validation and fetch_price returns a Result::Err
         // so that Switchboard is called as update - mock its price
-        // that it fails validation too, so there's nothing more to
-        // fall back on an a PriceUpdateMissed is emitted
+        // such that it fails validation too, so there's nothing more to
+        // fall back on and a PriceUpdateMissed is emitted
         let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
@@ -482,7 +482,7 @@ mod test_seer {
 
         ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
 
-        // expecting one PriceUpdateMissed event but also UpdatedPrices
+        // expecting one PriceUpdateMissed event but also UpdatePricesDone
         let expected_events = array![
             (
                 seer.contract_address,
