@@ -54,6 +54,8 @@ pub mod purger_utils {
         purger: ContractClass,
         pragma: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
+        switchboard: Option<ContractClass>,
+        mock_switchboard: Option<ContractClass>,
         seer: Option<ContractClass>,
     }
 
@@ -343,8 +345,8 @@ pub mod purger_utils {
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
-        let oracles: Span<ContractAddress> = seer_utils::append_pragma_oracle(
-            seer, classes.pragma, classes.mock_pragma
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
+            seer, classes.pragma, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
         );
         pragma_utils::add_yangs(*oracles.at(0), yangs);
 
@@ -693,6 +695,8 @@ pub mod purger_utils {
             purger: declare("purger"),
             pragma: Option::Some(declare("pragma")),
             mock_pragma: Option::Some(declare("mock_pragma")),
+            switchboard: Option::Some(declare("switchboard")),
+            mock_switchboard: Option::Some(declare("mock_switchboard")),
             seer: Option::Some(declare("seer")),
         }
     }

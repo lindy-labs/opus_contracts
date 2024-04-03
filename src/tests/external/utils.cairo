@@ -167,20 +167,31 @@ pub mod switchboard_utils {
         'ETH'.try_into().unwrap()
     }
 
-    fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
+    fn mock_switchboard_deploy(mock_switchboard_class: Option<ContractClass>) -> IMockSwitchboardDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
-        let mock_switchboard_addr = declare("mock_switchboard")
-            .deploy(@calldata)
-            .expect('failed deploy mock switchboard');
+
+        let mock_switchboard_class = match mock_switchboard_class {
+            Option::Some(class) => class,
+            Option::None => declare("mock_switchboard"),
+        };
+
+        let mock_switchboard_addr = mock_switchboard_class.deploy(@calldata).expect('failed deploy mock switchboard');
         IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
     }
 
-    pub fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
-        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy();
+    pub fn switchboard_deploy(
+        switchboard_class: Option<ContractClass>, mock_switchboard_class: Option<ContractClass>
+    ) -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy(mock_switchboard_class);
 
         let mut calldata: Array<felt252> = array![admin().into(), mock_switchboard.contract_address.into()];
 
-        let switchboard_addr = declare("switchboard").deploy(@calldata).expect('failed deploy switchboard');
+        let switchboard_class = match switchboard_class {
+            Option::Some(class) => class,
+            Option::None => declare("switchboard"),
+        };
+
+        let switchboard_addr = switchboard_class.deploy(@calldata).expect('failed deploy switchboard');
 
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 
