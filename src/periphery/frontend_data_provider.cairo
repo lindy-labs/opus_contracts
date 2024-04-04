@@ -35,7 +35,7 @@ pub mod frontend_data_provider {
 
     #[abi(embed_v0)]
     impl IFrontendDataProviderImpl of IFrontendDataProvider<ContractState> {
-        // Returns an ordered array of YangInfo struct for a trove
+        // Returns an ordered array of TroveYangAssetInfo struct for a trove
         fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<TroveYangAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
@@ -69,7 +69,7 @@ pub mod frontend_data_provider {
             }
         }
 
-        // Returns an ordered array of YangInfo struct for the Shrine
+        // Returns an ordered array of ShrineYangAssetInfo struct for the Shrine
         fn get_shrine_deposits(self: @ContractState) -> Span<ShrineYangAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
@@ -105,8 +105,8 @@ pub mod frontend_data_provider {
 
     #[generate_trait]
     impl FrontendDataProviderHelpers of FrontendDataProviderHelpersTrait {
-        // Helper function to generate a YangInfo struct for a yang.
-        // Returns a tuple of a YangInfo struct and the yang price
+        // Helper function to generate a ShrineYangAssetInfo struct for a yang.
+        // Returns a tuple of a ShrineYangAssetInfo struct and the yang price
         fn get_shrine_yang_info_helper(
             self: @ContractState,
             shrine: IShrineDispatcher,
