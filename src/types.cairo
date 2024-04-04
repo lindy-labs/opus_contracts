@@ -232,14 +232,14 @@ pub struct RecoveryModeInfo {
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
-pub struct TroveYangAssetInfo {
-    pub shrine_yang_info: ShrineYangAssetInfo,
+pub struct TroveAssetInfo {
+    pub shrine_asset_info: ShrineAssetInfo,
     pub amount: u128, // Amount of the yang's asset in the asset's decimals for the trove
     pub value: Wad, // Value of the yang in the trove
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
-pub struct ShrineYangAssetInfo {
+pub struct ShrineAssetInfo {
     pub address: ContractAddress, // Address of the yang's ERC-20 asset
     pub price: Wad, // Price of the yang's asset
     pub threshold: Ray, // Base threshold of the yang

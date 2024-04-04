@@ -4,7 +4,7 @@ pub mod frontend_data_provider {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
-    use opus::types::{Health, RecoveryModeInfo, ShrineYangAssetInfo, TroveYangAssetInfo, YangBalance, YinInfo};
+    use opus::types::{Health, RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YangBalance, YinInfo};
     use starknet::ContractAddress;
     use wadray::{Ray, Wad};
 
@@ -57,8 +57,8 @@ pub mod frontend_data_provider {
             RecoveryModeInfo { is_recovery_mode: shrine.is_recovery_mode(), target_ltv, buffer_ltv }
         }
 
-        // Returns an ordered array of TroveYangAssetInfo struct for a trove
-        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<TroveYangAssetInfo> {
+        // Returns an ordered array of TroveAssetInfo struct for a trove
+        fn get_trove_assets_info(self: @ContractState, trove_id: u64) -> Span<TroveAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
@@ -67,7 +67,7 @@ pub mod frontend_data_provider {
 
             assert(trove_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut yang_infos: Array<TroveYangAssetInfo> = ArrayTrait::new();
+            let mut yang_infos: Array<TroveAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match trove_yang_balances.pop_front() {
@@ -75,14 +75,14 @@ pub mod frontend_data_provider {
                         let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
                         assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (shrine_yang_info, yang_price) = self
+                        let (shrine_asset_info, yang_price) = self
                             .get_shrine_yang_info_helper(
                                 shrine, sentinel, yang, *yang_balance.amount, current_rate_era
                             );
 
                         let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
-                        let trove_yang_info = TroveYangAssetInfo {
-                            shrine_yang_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
+                        let trove_yang_info = TroveAssetInfo {
+                            shrine_asset_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
                         };
                         yang_infos.append(trove_yang_info);
                     },
@@ -91,8 +91,8 @@ pub mod frontend_data_provider {
             }
         }
 
-        // Returns an ordered array of ShrineYangAssetInfo struct for the Shrine
-        fn get_shrine_deposits(self: @ContractState) -> Span<ShrineYangAssetInfo> {
+        // Returns an ordered array of ShrineAssetInfo struct for the Shrine
+        fn get_shrine_assets_info(self: @ContractState) -> Span<ShrineAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
@@ -101,7 +101,7 @@ pub mod frontend_data_provider {
 
             assert(shrine_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut yang_infos: Array<ShrineYangAssetInfo> = ArrayTrait::new();
+            let mut yang_infos: Array<ShrineAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match shrine_yang_balances.pop_front() {
@@ -127,8 +127,8 @@ pub mod frontend_data_provider {
 
     #[generate_trait]
     impl FrontendDataProviderHelpers of FrontendDataProviderHelpersTrait {
-        // Helper function to generate a ShrineYangAssetInfo struct for a yang.
-        // Returns a tuple of a ShrineYangAssetInfo struct and the yang price
+        // Helper function to generate a ShrineAssetInfo struct for a yang.
+        // Returns a tuple of a ShrineAssetInfo struct and the yang price
         fn get_shrine_yang_info_helper(
             self: @ContractState,
             shrine: IShrineDispatcher,
@@ -136,7 +136,7 @@ pub mod frontend_data_provider {
             yang: ContractAddress,
             yang_amt: Wad,
             current_rate_era: u64
-        ) -> (ShrineYangAssetInfo, Wad) {
+        ) -> (ShrineAssetInfo, Wad) {
             let gate = IGateDispatcher { contract_address: sentinel.get_gate_address(yang) };
             let deposited: u128 = gate.get_total_assets();
 
@@ -149,7 +149,7 @@ pub mod frontend_data_provider {
             let ceiling: u128 = sentinel.get_yang_asset_max(yang);
 
             (
-                ShrineYangAssetInfo {
+                ShrineAssetInfo {
                     address: yang,
                     price: asset_price,
                     threshold,
