@@ -1,13 +1,12 @@
 #[starknet::contract]
 pub mod frontend_data_provider {
-    use core::num::traits::Zero;
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
-    use opus::types::{AssetBalance, YangBalance};
+    use opus::types::{ShrineYangAssetInfo, TroveYangAssetInfo, YangBalance};
     use starknet::ContractAddress;
-    use wadray::Wad;
+    use wadray::{Ray, Wad};
 
     //
     // Storage
@@ -36,10 +35,8 @@ pub mod frontend_data_provider {
 
     #[abi(embed_v0)]
     impl IFrontendDataProviderImpl of IFrontendDataProvider<ContractState> {
-        // Returns a tuple of ordered arrays of 
-        // 1. asset balances for a given trove
-        // 2. total value of each deposited asset for a given trove
-        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> (Span<AssetBalance>, Span<Wad>) {
+        // Returns an ordered array of YangInfo struct for a trove
+        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<TroveYangAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
@@ -48,31 +45,32 @@ pub mod frontend_data_provider {
 
             assert(trove_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut trove_asset_balances: Array<AssetBalance> = ArrayTrait::new();
-            let mut yang_values: Array<Wad> = ArrayTrait::new();
-
+            let mut yang_infos: Array<TroveYangAssetInfo> = ArrayTrait::new();
+            let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match trove_yang_balances.pop_front() {
                     Option::Some(yang_balance) => {
-                        let asset: ContractAddress = *yang_addresses.pop_front().unwrap();
-                        assert(yang_balance.address == asset, 'FDP: Address mismatch');
-                        let asset_amt: u128 = sentinel.convert_to_assets(asset, *yang_balance.amount);
-                        trove_asset_balances.append(AssetBalance { address: asset, amount: asset_amt });
+                        let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
+                        assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (yang_price, _, _) = shrine.get_current_yang_price(asset);
-                        let yang_value: Wad = *yang_balance.amount * yang_price;
-                        yang_values.append(yang_value);
+                        let (shrine_yang_info, yang_price) = self
+                            .get_shrine_yang_info_helper(
+                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era
+                            );
+
+                        let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
+                        let trove_yang_info = TroveYangAssetInfo {
+                            shrine_yang_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
+                        };
+                        yang_infos.append(trove_yang_info);
                     },
-                    Option::None => { break (trove_asset_balances.span(), yang_values.span()); }
+                    Option::None => { break yang_infos.span(); }
                 }
             }
         }
 
-        // Returns a tuple of ordered arrays of 
-        // 1. asset balances for the Shrine
-        // 2. total value of each deposited asset for the Shrine
-        // 3. ceiling for the asset
-        fn get_shrine_deposits(self: @ContractState) -> (Span<AssetBalance>, Span<Wad>, Span<u128>) {
+        // Returns an ordered array of YangInfo struct for the Shrine
+        fn get_shrine_deposits(self: @ContractState) -> Span<ShrineYangAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
@@ -81,28 +79,65 @@ pub mod frontend_data_provider {
 
             assert(shrine_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut shrine_asset_balances: Array<AssetBalance> = ArrayTrait::new();
-            let mut yang_values: Array<Wad> = ArrayTrait::new();
-            let mut asset_ceilings: Array<u128> = ArrayTrait::new();
-
+            let mut yang_infos: Array<ShrineYangAssetInfo> = ArrayTrait::new();
+            let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match shrine_yang_balances.pop_front() {
                     Option::Some(yang_balance) => {
-                        let asset: ContractAddress = *yang_addresses.pop_front().unwrap();
-                        assert(yang_balance.address == asset, 'FDP: Address mismatch');
-                        let gate = IGateDispatcher { contract_address: sentinel.get_gate_address(asset) };
-                        let asset_amt: u128 = gate.get_total_assets();
-                        shrine_asset_balances.append(AssetBalance { address: asset, amount: asset_amt });
+                        let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
+                        assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (yang_price, _, _) = shrine.get_current_yang_price(asset);
-                        let yang_value: Wad = *yang_balance.amount * yang_price;
-                        yang_values.append(yang_value);
-
-                        asset_ceilings.append(sentinel.get_yang_asset_max(asset));
+                        let (shrine_yang_info, _) = self
+                            .get_shrine_yang_info_helper(
+                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era
+                            );
+                        yang_infos.append(shrine_yang_info);
                     },
-                    Option::None => { break (shrine_asset_balances.span(), yang_values.span(), asset_ceilings.span()); }
+                    Option::None => { break yang_infos.span(); }
                 }
             }
+        }
+    }
+
+    //
+    // Internal functions
+    //
+
+    #[generate_trait]
+    impl FrontendDataProviderHelpers of FrontendDataProviderHelpersTrait {
+        // Helper function to generate a YangInfo struct for a yang.
+        // Returns a tuple of a YangInfo struct and the yang price
+        fn get_shrine_yang_info_helper(
+            self: @ContractState,
+            shrine: IShrineDispatcher,
+            sentinel: ISentinelDispatcher,
+            yang: ContractAddress,
+            yang_amt: Wad,
+            current_rate_era: u64
+        ) -> (ShrineYangAssetInfo, Wad) {
+            let gate = IGateDispatcher { contract_address: sentinel.get_gate_address(yang) };
+            let deposited: u128 = gate.get_total_assets();
+
+            let (yang_price, _, _) = shrine.get_current_yang_price(yang);
+            let yang_value: Wad = yang_amt * yang_price;
+            let asset_price: Wad = yang_value / deposited.into();
+
+            let threshold: Ray = shrine.get_yang_threshold(yang);
+            let base_rate: Ray = shrine.get_yang_rate(yang, current_rate_era);
+            let ceiling: u128 = sentinel.get_yang_asset_max(yang);
+
+            (
+                ShrineYangAssetInfo {
+                    address: yang,
+                    price: asset_price,
+                    threshold,
+                    base_rate,
+                    deposited,
+                    ceiling,
+                    deposited_value: yang_value
+                },
+                yang_price
+            )
         }
     }
 }

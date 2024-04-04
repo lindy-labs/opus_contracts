@@ -212,3 +212,26 @@ pub mod pragma {
         pub sources: u32,
     }
 }
+
+//
+// Periphery - Frontend Data Provider
+//
+
+#[derive(Copy, Debug, Drop, Serde)]
+pub struct TroveYangAssetInfo {
+    pub shrine_yang_info: ShrineYangAssetInfo,
+    pub amount: u128, // Amount of the yang's asset in the asset's decimals for the trove
+    pub value: Wad, // Value of the yang in the trove
+}
+
+#[derive(Copy, Debug, Drop, Serde)]
+pub struct ShrineYangAssetInfo {
+    pub address: ContractAddress, // Address of the yang's ERC-20 asset
+    pub price: Wad, // Price of the yang's asset
+    pub threshold: Ray, // Base threshold of the yang
+    pub base_rate: Ray, // Base rate of the yang
+    pub deposited: u128, // Amount of yang's asset deposited in Shrine
+    pub ceiling: u128, // Maximum amount of yang's asset in Shrine
+    pub deposited_value: Wad // Value of yang deposited in Shrine
+}
+
