@@ -227,8 +227,8 @@ pub struct YinInfo {
 #[derive(Copy, Debug, Drop, Serde)]
 pub struct RecoveryModeInfo {
     pub is_recovery_mode: bool,
-    pub target_ltv: Ray,
-    pub buffer_ltv: Ray,
+    pub target_ltv: Ray, // Recovery mode is triggered once Shrine's LTV exceeds this
+    pub buffer_ltv: Ray, // Thresholds are scaled once Shrine's LTV exceeds this
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
