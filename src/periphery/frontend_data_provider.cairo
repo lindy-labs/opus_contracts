@@ -46,7 +46,7 @@ pub mod frontend_data_provider {
             let mut trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
             let mut yang_addresses: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            assert(trove_yang_balances.len() == yang_addresses.len(), 'TDP: Length mismatch');
+            assert(trove_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
             let mut trove_asset_balances: Array<AssetBalance> = ArrayTrait::new();
             let mut yang_values: Array<Wad> = ArrayTrait::new();
@@ -55,6 +55,7 @@ pub mod frontend_data_provider {
                 match trove_yang_balances.pop_front() {
                     Option::Some(yang_balance) => {
                         let asset: ContractAddress = *yang_addresses.pop_front().unwrap();
+                        assert(yang_balance.address == asset, 'FDP: Address mismatch');
                         let asset_amt: u128 = sentinel.convert_to_assets(asset, *yang_balance.amount);
                         trove_asset_balances.append(AssetBalance { address: asset, amount: asset_amt });
 
@@ -78,7 +79,7 @@ pub mod frontend_data_provider {
             let mut shrine_yang_balances: Span<YangBalance> = shrine.get_shrine_deposits();
             let mut yang_addresses: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            assert(shrine_yang_balances.len() == yang_addresses.len(), 'TDP: Length mismatch');
+            assert(shrine_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
             let mut shrine_asset_balances: Array<AssetBalance> = ArrayTrait::new();
             let mut yang_values: Array<Wad> = ArrayTrait::new();
@@ -88,7 +89,9 @@ pub mod frontend_data_provider {
                 match shrine_yang_balances.pop_front() {
                     Option::Some(yang_balance) => {
                         let asset: ContractAddress = *yang_addresses.pop_front().unwrap();
-                        let asset_amt: u128 = sentinel.convert_to_assets(asset, *yang_balance.amount);
+                        assert(yang_balance.address == asset, 'FDP: Address mismatch');
+                        let gate = IGateDispatcher { contract_address: sentinel.get_gate_address(asset) };
+                        let asset_amt: u128 = gate.get_total_assets();
                         shrine_asset_balances.append(AssetBalance { address: asset, amount: asset_amt });
 
                         let (yang_price, _, _) = shrine.get_current_yang_price(asset);
