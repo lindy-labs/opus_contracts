@@ -4,7 +4,7 @@ pub mod frontend_data_provider {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
-    use opus::types::{ShrineYangAssetInfo, TroveYangAssetInfo, YangBalance};
+    use opus::types::{Health, RecoveryModeInfo, ShrineYangAssetInfo, TroveYangAssetInfo, YangBalance, YinInfo};
     use starknet::ContractAddress;
     use wadray::{Ray, Wad};
 
@@ -35,6 +35,28 @@ pub mod frontend_data_provider {
 
     #[abi(embed_v0)]
     impl IFrontendDataProviderImpl of IFrontendDataProvider<ContractState> {
+        fn get_yin_info(self: @ContractState) -> YinInfo {
+            let shrine: IShrineDispatcher = self.shrine.read();
+
+            YinInfo {
+                yin_spot_price: shrine.get_yin_spot_price(),
+                yin_total_supply: shrine.get_total_yin(),
+                yin_ceiling: shrine.get_debt_ceiling(),
+            }
+        }
+
+        fn get_recovery_mode_info(self: @ContractState) -> RecoveryModeInfo {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let shrine_health: Health = shrine.get_shrine_health();
+
+            let target_factor: Ray = shrine.get_recovery_mode_target_factor();
+            let buffer_factor: Ray = shrine.get_recovery_mode_buffer_factor();
+            let target_ltv: Ray = target_factor * shrine_health.threshold;
+            let buffer_ltv: Ray = (target_factor + buffer_factor) * shrine_health.threshold;
+
+            RecoveryModeInfo { is_recovery_mode: shrine.is_recovery_mode(), target_ltv, buffer_ltv }
+        }
+
         // Returns an ordered array of TroveYangAssetInfo struct for a trove
         fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<TroveYangAssetInfo> {
             let shrine: IShrineDispatcher = self.shrine.read();

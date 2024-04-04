@@ -218,6 +218,20 @@ pub mod pragma {
 //
 
 #[derive(Copy, Debug, Drop, Serde)]
+pub struct YinInfo {
+    pub yin_spot_price: Wad, // Spot price of yin
+    pub yin_total_supply: Wad, // Total supply of yin
+    pub yin_ceiling: Wad, // Maximum amount of yin allowed
+}
+
+#[derive(Copy, Debug, Drop, Serde)]
+pub struct RecoveryModeInfo {
+    pub is_recovery_mode: bool,
+    pub target_ltv: Ray,
+    pub buffer_ltv: Ray,
+}
+
+#[derive(Copy, Debug, Drop, Serde)]
 pub struct TroveYangAssetInfo {
     pub shrine_yang_info: ShrineYangAssetInfo,
     pub amount: u128, // Amount of the yang's asset in the asset's decimals for the trove
