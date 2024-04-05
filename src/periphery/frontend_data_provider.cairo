@@ -1,12 +1,29 @@
 #[starknet::contract]
 pub mod frontend_data_provider {
+    use access_control::access_control_component;
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
+    use opus::periphery::roles::frontend_data_provider_roles;
     use opus::types::{Health, RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YangBalance, YinInfo};
-    use starknet::ContractAddress;
+    use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
+    use starknet::{ClassHash, ContractAddress};
     use wadray::{Ray, Wad};
+
+    //
+    // Components
+    //
+
+    component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
+
+    #[abi(embed_v0)]
+    impl AccessControlPublic = access_control_component::AccessControl<ContractState>;
+    impl AccessControlHelpers = access_control_component::AccessControlHelpers<ContractState>;
+
+    component!(path: upgradeable_component, storage: upgradeable, event: UpgradeableEvent);
+
+    impl UpgradeableHelpers = upgradeable_component::UpgradeableHelpers<ContractState>;
 
     //
     // Storage
@@ -14,9 +31,25 @@ pub mod frontend_data_provider {
 
     #[storage]
     struct Storage {
+        // components
+        #[substorage(v0)]
+        access_control: access_control_component::Storage,
+        #[substorage(v0)]
+        upgradeable: upgradeable_component::Storage,
         // Sentinel associated with the Shrine
         sentinel: ISentinelDispatcher,
         shrine: IShrineDispatcher,
+    }
+
+    //
+    // Events
+    //
+
+    #[event]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub enum Event {
+        AccessControlEvent: access_control_component::Event,
+        UpgradeableEvent: upgradeable_component::Event,
     }
 
     //
@@ -27,6 +60,18 @@ pub mod frontend_data_provider {
     fn constructor(ref self: ContractState, shrine: ContractAddress, sentinel: ContractAddress) {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
+    }
+
+    //
+    // Upgradeable
+    //
+
+    #[abi(embed_v0)]
+    impl IUpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.access_control.assert_has_role(frontend_data_provider_roles::UPGRADE);
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 
     //

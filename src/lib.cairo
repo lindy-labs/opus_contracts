@@ -52,11 +52,13 @@ mod utils {
     pub mod exp;
     pub mod math;
     pub mod reentrancy_guard;
+    pub mod upgradeable;
 }
 
 mod periphery {
     pub mod frontend_data_provider;
     pub mod interfaces;
+    pub mod roles;
 }
 
 // mock used for local devnet deployment
