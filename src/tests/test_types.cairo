@@ -69,7 +69,7 @@ fn test_distribution_info_packing() {
 
     // error should be capped to 2**123-1
     let max_error: u128 = 0x7ffffffffffffffffffffffffffffff;
-    let too_big_error: u128 = max_error * 2;
+    let too_big_error: u128 = max_error + 1;
 
     let distribution_info = DistributionInfo { asset_amt_per_share, error: too_big_error };
     let unpacked: DistributionInfo = StorePacking::unpack(StorePacking::pack(distribution_info));
