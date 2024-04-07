@@ -93,7 +93,7 @@ impl TroveStorePacking of StorePacking<Trove, u256> {
 //
 
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
-#[derive(Copy, Debug, Drop, Serde)]
+#[derive(Copy, Debug, Drop, PartialEq, Serde)]
 pub struct DistributionInfo {
     // Amount of asset in its decimal precision per share wad
     // This is packed into bits 0 to 127.
@@ -134,7 +134,7 @@ pub struct Reward {
     pub is_active: bool, // Whether the blesser (vesting contract) should be called
 }
 
-#[derive(Copy, Debug, Drop, Serde)]
+#[derive(Copy, Debug, Drop, PartialEq, Serde)]
 pub struct Provision {
     pub epoch: u32, // Epoch in which shares are issued
     pub shares: Wad, // Amount of shares for provider in the above epoch
@@ -155,7 +155,7 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
     }
 }
 
-#[derive(Copy, Debug, Drop, Serde)]
+#[derive(Copy, Debug, Drop, PartialEq, Serde)]
 pub struct Request {
     pub timestamp: u64, // Timestamp of request
     pub timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
