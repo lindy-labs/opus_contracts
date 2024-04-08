@@ -1,14 +1,11 @@
 {
-  "version": 1,
-  "variant": {
-    "type": "open_zeppelin",
-    "version": 1,
-    "public_key": "0x552319c490db673a5e1e93c334c40c67f49b98e09670c4d0487879d9a3949c0",
-    "legacy": true
-  },
-  "deployment": {
-    "status": "deployed",
-    "class_hash": "0x4d07e40e93398ed3c76981e72dd1fd22557a78ce36c0515f679e27f0bb5bc5f",
-    "address": "0x5e405cb48f615268de62931988de94f6d1a084d09ed28ef01d7252e295d3a4f"
+  "alpha-goerli": {
+    "devnet1": {
+      "address": "0xaad5a0afd7c1d9b66c5a5225dc03870414ba95df3160c0bdbf65124a012272",
+      "class_hash": "0x05400e90f7e0ae78bd02c77cd75527280470e2fe19c54970dd79dc37a9d3645c",
+      "deployed": true,
+      "private_key": "0xedc06d59c410a1edc3e34bdc522f9f4527f95842a8adbbfaa7cfe269753e85",
+      "public_key": "0x62941daea42fac0486085b92f0744316d61e60172fed6ff37580ea2d35c7d4"
+    }
   }
 }
