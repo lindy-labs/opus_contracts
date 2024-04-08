@@ -43,7 +43,6 @@ mod test_shrine_compound {
 
         // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
         let end_interval: u64 = start_interval + shrine_utils::FEED_LEN - 1;
-        // commented out because of gas usage error
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
@@ -86,11 +85,7 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -149,7 +144,6 @@ mod test_shrine_compound {
         // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier`
         // updates `start_interval`.
         let end_interval: u64 = start_interval + (num_intervals_before_skip + num_intervals_after_skip);
-        // commented out because of gas usage error
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
@@ -191,17 +185,12 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
             ),
         ];
         spy.assert_emitted(@expected_events);
     }
 
-    // Wrapper to get around gas issue
     // Test for `charge` with "missed" price and multiplier updates since before the start interval,
     // Start_interval does not have a price or multiplier update.
     // End interval does not have a price or multiplier update.
@@ -246,7 +235,8 @@ mod test_shrine_compound {
 
         // sanity check that some interest has accrued
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert(trove_health.debt > start_debt, '!(starting debt > forged)');
+        let first_accrued_interest: Wad = trove_health.debt - start_debt;
+        assert(first_accrued_interest.is_non_zero(), 'no interest accrued');
 
         // Advance timestamp to `T+END`, assuming price is still not updated since `T+LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+END`.
@@ -270,12 +260,14 @@ mod test_shrine_compound {
         let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(estimated_trove_health.debt == expected_debt, 'wrong compounded debt');
 
-        shrine.melt(common::trove1_owner_addr(), trove_id, Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
-        let interest: Wad = estimated_trove_health.debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        let second_accrued_interest: Wad = estimated_trove_health.debt - trove_health.debt;
+        assert(
+            shrine.get_budget() == before_budget + first_accrued_interest.into() + second_accrued_interest.into(),
+            'wrong budget'
+        );
 
         // Check events
         spy.fetch_events();
@@ -293,17 +285,16 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest })
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest })
             ),
         ];
         spy.assert_emitted(@expected_events);
     }
 
-    // Wrapper to get around gas issue
     // Test for `charge` with "missed" price and multiplier updates after the start interval,
     // Start interval has a price and multiplier update.
     // End interval does not have a price or multiplier update.
@@ -341,7 +332,8 @@ mod test_shrine_compound {
 
         // sanity check that some interest has accrued
         let trove_health: Health = shrine.get_trove_health(trove_id);
-        assert(trove_health.debt > start_debt, '!(starting debt > forged)');
+        let first_accrued_interest: Wad = trove_health.debt - start_debt;
+        assert(first_accrued_interest.is_non_zero(), 'no interest accrued');
 
         // Advance timestamp to `T+END`, to mock lack of price updates since `T+START/LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+END`.
@@ -366,12 +358,14 @@ mod test_shrine_compound {
         let estimated_trove_health: Health = shrine.get_trove_health(trove_id);
         assert(expected_debt == estimated_trove_health.debt, 'wrong compounded debt');
 
-        shrine.forge(common::trove1_owner_addr(), trove_id, Zero::zero(), Zero::zero());
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == expected_debt, 'debt not updated');
 
-        let interest: Wad = estimated_trove_health.debt - start_debt;
-        assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
+        let second_accrued_interest: Wad = estimated_trove_health.debt - trove_health.debt;
+        assert(
+            shrine.get_budget() == before_budget + first_accrued_interest.into() + second_accrued_interest.into(),
+            'wrong budget'
+        );
 
         // Check events
         spy.fetch_events();
@@ -389,18 +383,17 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest })
+            ),
+            (
+                shrine.contract_address,
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest })
             ),
         ];
 
         spy.assert_emitted(@expected_events);
     }
 
-    // Wrapper to get around gas issue
     // Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update` intervals
     // after start interval.
     // Start interval has a price and multiplier update.
@@ -483,18 +476,13 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
             ),
         ];
 
         spy.assert_emitted(@expected_events);
     }
 
-    // Wrapper to get around gas issue
     // Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update`
     // intervals after start interval onwards.
     // Start interval does not have a price or multiplier update.
@@ -616,17 +604,12 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
             ),
         ];
         spy.assert_emitted(@expected_events);
     }
 
-    // Wrapper to get around gas issue
     // Test for `charge` with "missed" price and multiplier update at the start interval.
     // Start interval does not have a price or multiplier update.
     // End interval has both price and multiplier update.
@@ -731,11 +714,7 @@ mod test_shrine_compound {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id, trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: 1 },
-                    }
-                )
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1003,12 +982,7 @@ mod test_shrine_compound {
             .append(
                 (
                     shrine.contract_address,
-                    shrine_contract::Event::TroveUpdated(
-                        shrine_contract::TroveUpdated {
-                            trove_id,
-                            trove: Trove { charge_from: end_interval, debt: expected_debt, last_rate_era: num_eras },
-                        }
-                    )
+                    shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
                 )
             );
 

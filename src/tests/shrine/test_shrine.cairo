@@ -896,17 +896,6 @@ mod test_shrine {
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id: trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
-                        },
-                    }
-                )
-            ),
-            (
-                shrine.contract_address,
                 shrine_contract::Event::YangTotalUpdated(
                     shrine_contract::YangTotalUpdated { yang, total: deposit_amt, }
                 )
@@ -981,17 +970,6 @@ mod test_shrine {
         shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
 
         let expected_events = array![
-            (
-                shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id: trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
-                        },
-                    }
-                )
-            ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::YangTotalUpdated(
@@ -1163,14 +1141,7 @@ mod test_shrine {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: forge_amt, last_rate_era: 1
-                        },
-                    }
-                )
+                shrine_contract::Event::Forge(shrine_contract::Forge { trove_id, amount: forge_amt })
             ),
             (
                 shrine.contract_address,
@@ -1416,16 +1387,7 @@ mod test_shrine {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(),
-                            debt: after_trove_health.debt,
-                            last_rate_era: 1
-                        },
-                    }
-                )
+                shrine_contract::Event::Melt(shrine_contract::Melt { trove_id, amount: melt_amt })
             ),
             (
                 shrine.contract_address,
