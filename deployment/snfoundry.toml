@@ -1,0 +1,4 @@
+[sncast.default]
+account = "devnet_admin"
+accounts-file = "admin_user.json"
+url = "http://0.0.0.0:5050"
