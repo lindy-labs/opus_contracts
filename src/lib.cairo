@@ -1,6 +1,6 @@
 mod types;
 
-mod core {
+pub mod core {
     pub mod abbot;
     pub mod absorber;
     pub mod allocator;

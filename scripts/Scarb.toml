@@ -18,7 +18,8 @@ casm = true
 sierra = true
 casm = true
 build-external-contracts = [
-    "opus::core::shrine::shrine"
+    "opus::core::shrine::shrine",
+    "opus::core::flash_mint::flash_mint"
 ]
 
 [profile.devnet]
