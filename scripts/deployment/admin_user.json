@@ -1,0 +1,11 @@
+{
+"alpha-goerli": {
+    "devnet1": {
+        "address": "0x6b8ac46493ea6f092d5f631c02ee81b7cc480223bf0bf760fff74e903c8e91f",
+        "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+        "deployed": true,
+        "private_key": "0x9f2aa8a811e471951a1e2261d2444493",
+        "public_key": "0x3e2bca49d59023f03673676e4e9b8b03c788eb4b046d86b42b1ed406f865fd9"
+    }
+    }
+}
