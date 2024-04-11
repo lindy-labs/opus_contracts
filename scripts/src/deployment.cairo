@@ -1,4 +1,4 @@
-use opus::core::roles::shrine_roles;
+use opus::core::roles::{absorber_roles, sentinel_roles, shrine_roles};
 use sncast_std::{
     declare, deploy, invoke, call, DeclareResult, DeployResult, InvokeResult, CallResult, get_nonce,
     DisplayContractAddress, DisplayClassHash
@@ -42,6 +42,8 @@ fn main() {
 
     let max_fee = 9999999999999999999;
     let salt = 0x3;
+
+    println!("Deploying contracts");
 
     // Declare and deploy Shrine
 
@@ -294,15 +296,154 @@ fn main() {
 
     // Grant roles
 
+    println!("Setting up roles");
+
+    let grant_role_selector: felt252 = selector!("grant_role");
+
+    // Absorber roles
     let invoke_nonce = get_nonce('pending');
-    let grant_flash_mint_roles = invoke(
+    let grant_absorber_roles_to_purger = invoke(
+        absorber,
+        grant_role_selector,
+        array![absorber_roles::purger().into(), purger.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: ABS -> PU failed');
+
+    println!("Absorber roles granted to Purger: {}", grant_absorber_roles_to_purger.transaction_hash);
+
+    // Sentinel roles
+    let invoke_nonce = get_nonce('pending');
+    let grant_sentinel_roles_to_abbot = invoke(
+        sentinel,
+        grant_role_selector,
+        array![sentinel_roles::abbot().into(), abbot.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SE -> ABB failed');
+
+    println!("Sentinel roles granted to Abbot: {}", grant_sentinel_roles_to_abbot.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_sentinel_roles_to_purger = invoke(
+        sentinel,
+        grant_role_selector,
+        array![sentinel_roles::purger().into(), purger.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SE -> PU failed');
+
+    println!("Sentinel roles granted to Purger: {}", grant_sentinel_roles_to_purger.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_sentinel_roles_to_caretaker = invoke(
+        sentinel,
+        grant_role_selector,
+        array![sentinel_roles::caretaker().into(), caretaker.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SE -> CA failed');
+
+    println!("Sentinel roles granted to Caretaker: {}", grant_sentinel_roles_to_caretaker.transaction_hash);
+
+    // Shrine roles
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_abbot = invoke(
         shrine,
-        selector!("grant_role"),
+        grant_role_selector,
+        array![shrine_roles::abbot().into(), abbot.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> ABB failed');
+
+    println!("Shrine roles granted to Abbot: {}", grant_shrine_roles_to_abbot.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_caretaker = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::caretaker().into(), caretaker.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> CA failed');
+
+    println!("Shrine roles granted to Caretaker: {}", grant_shrine_roles_to_caretaker.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_controller = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::controller().into(), controller.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> CTR failed');
+
+    println!("Shrine roles granted to Controller: {}", grant_shrine_roles_to_controller.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_equalizer = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::equalizer().into(), equalizer.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> EQ failed');
+
+    println!("Shrine roles granted to Equalizer: {}", grant_shrine_roles_to_equalizer.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_flash_mint = invoke(
+        shrine,
+        grant_role_selector,
         array![shrine_roles::flash_mint().into(), flash_mint.into()],
         Option::Some(max_fee),
         Option::Some(invoke_nonce)
     )
-        .expect('grant flash mint roles failed');
+        .expect('grant role: SHR -> FM failed');
 
-    println!("Flash Mint roles granted: {}", grant_flash_mint_roles.transaction_hash);
+    println!("Shrine roles granted to Flash Mint: {}", grant_shrine_roles_to_flash_mint.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_seer = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::seer().into(), seer.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> SEER failed');
+
+    println!("Shrine roles granted to Seer: {}", grant_shrine_roles_to_seer.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_purger = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::purger().into(), purger.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> PU failed');
+
+    println!("Shrine roles granted to Purger: {}", grant_shrine_roles_to_purger.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let grant_shrine_roles_to_sentinel = invoke(
+        shrine,
+        grant_role_selector,
+        array![shrine_roles::sentinel().into(), sentinel.into()],
+        Option::Some(max_fee),
+        Option::Some(invoke_nonce)
+    )
+        .expect('grant role: SHR -> SE failed');
+
+    println!("Shrine roles granted to Sentinel: {}", grant_shrine_roles_to_sentinel.transaction_hash);
 }
