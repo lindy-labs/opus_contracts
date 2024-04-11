@@ -256,7 +256,9 @@ pub mod shrine {
         RecoveryModeTargetFactorUpdated: RecoveryModeTargetFactorUpdated,
         RecoveryModeBufferFactorUpdated: RecoveryModeBufferFactorUpdated,
         ForgeFeePaid: ForgeFeePaid,
-        TroveUpdated: TroveUpdated,
+        Forge: Forge,
+        Melt: Melt,
+        Charge: Charge,
         TroveRedistributed: TroveRedistributed,
         DepositUpdated: DepositUpdated,
         YangPriceUpdated: YangPriceUpdated,
@@ -344,10 +346,24 @@ pub mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct TroveUpdated {
+    pub struct Forge {
         #[key]
         pub trove_id: u64,
-        pub trove: Trove
+        pub amount: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Melt {
+        #[key]
+        pub trove_id: u64,
+        pub amount: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Charge {
+        #[key]
+        pub trove_id: u64,
+        pub amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -982,7 +998,7 @@ pub mod shrine {
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-            self.emit(TroveUpdated { trove_id, trove });
+            self.emit(Forge { trove_id, amount });
         }
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -1013,7 +1029,7 @@ pub mod shrine {
 
             // Events
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-            self.emit(TroveUpdated { trove_id, trove });
+            self.emit(Melt { trove_id, amount: melt_amt });
         }
 
         // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -1595,13 +1611,9 @@ pub mod shrine {
 
                 self.total_troves_debt.write(new_total_troves_debt);
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+                self.emit(Charge { trove_id, amount: charged });
 
                 self.adjust_budget_helper(excess.into());
-            }
-
-            // Emit only if there is a change in the `Trove` struct
-            if updated_trove != trove {
-                self.emit(TroveUpdated { trove_id, trove: updated_trove });
             }
         }
 
