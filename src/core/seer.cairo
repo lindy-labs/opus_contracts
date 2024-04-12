@@ -87,9 +87,7 @@ pub mod seer {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct UpdatePricesDone {
-        pub forced: bool
-    }
+    pub struct UpdatePricesDone {}
 
     //
     // Constructor
@@ -166,7 +164,7 @@ pub mod seer {
 
         fn update_prices(ref self: ContractState) {
             self.access_control.assert_has_role(seer_roles::UPDATE_PRICES);
-            self.update_prices_internal(true);
+            self.update_prices_internal();
         }
     }
 
@@ -179,7 +177,7 @@ pub mod seer {
 
         fn execute_task(ref self: ContractState) {
             assert(self.probe_task(), 'SEER: Too soon to update prices');
-            self.update_prices_internal(false);
+            self.update_prices_internal();
         }
     }
 
@@ -189,7 +187,7 @@ pub mod seer {
 
     #[generate_trait]
     impl SeerInternalFunctions of SeerInternalFunctionsTrait {
-        fn update_prices_internal(ref self: ContractState, force_update: bool) {
+        fn update_prices_internal(ref self: ContractState) {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
@@ -220,7 +218,7 @@ pub mod seer {
                             //       in a try-catch block so that an exception does not
                             //       prevent all other price updates
 
-                            match oracle.fetch_price(*yang, force_update) {
+                            match oracle.fetch_price(*yang) {
                                 Result::Ok(oracle_price) => {
                                     let asset_amt_per_yang: Wad = sentinel.get_asset_amt_per_yang(*yang);
                                     let price: Wad = oracle_price * asset_amt_per_yang;
@@ -238,7 +236,7 @@ pub mod seer {
             };
 
             self.last_update_prices_call_timestamp.write(get_block_timestamp());
-            self.emit(UpdatePricesDone { forced: force_update });
+            self.emit(UpdatePricesDone {});
         }
     }
 }
