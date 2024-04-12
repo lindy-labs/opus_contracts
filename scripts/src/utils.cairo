@@ -7,9 +7,9 @@ use sncast_std::{
 use starknet::{ClassHash, ContractAddress};
 
 
-pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, debug_msg: ByteArray) {
+pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
     let invoke_nonce = get_nonce('pending');
-    let grant_role = invoke(
+    let _grant_role = invoke(
         target,
         selector!("grant_role"),
         array![role.into(), receiver.into()],
@@ -18,7 +18,7 @@ pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128
     )
         .expect('grant role failed');
 
-    println!("Role granted - {}: {}", debug_msg, grant_role.transaction_hash);
+    println!("Role granted: {}", msg);
 }
 
 
@@ -33,7 +33,7 @@ pub fn add_yang_to_sentinel(
     initial_price: u128,
     initial_base_rate: u128,
 ) {
-    println!("Approving {} for initial amount", asset_name);
+    println!("Approving initial amount: {}", asset_name);
 
     let invoke_nonce = get_nonce('pending');
     let _approve_token = invoke(
@@ -54,10 +54,10 @@ pub fn add_yang_to_sentinel(
         gate.into(),
     ];
     let invoke_nonce = get_nonce('pending');
-    let add_yang = invoke(
+    let _add_yang = invoke(
         sentinel, selector!("add_yang"), add_yang_calldata, Option::Some(MAX_FEE), Option::Some(invoke_nonce)
     )
         .expect('add yang failed');
 
-    println!("{} yang added: {}", asset_name, add_yang.transaction_hash)
+    println!("Yang successfully added: {}", asset_name)
 }

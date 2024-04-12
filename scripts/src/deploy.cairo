@@ -116,7 +116,7 @@ fn main() {
     // Set up debt ceiling and minimum trove value in Shrine
     let invoke_nonce = get_nonce('pending');
     let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
-    let set_debt_ceiling = invoke(
+    let _set_debt_ceiling = invoke(
         shrine,
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
@@ -125,11 +125,11 @@ fn main() {
     )
         .expect('set debt ceiling failed');
 
-    println!("Debt ceiling set to {}: {}", debt_ceiling, set_debt_ceiling.transaction_hash);
+    println!("Debt ceiling set: {}", debt_ceiling);
 
     let invoke_nonce = get_nonce('pending');
     let minimum_trove_value: u128 = constants::MINIMUM_TROVE_VALUE;
-    let set_minimum_trove_value = invoke(
+    let _set_minimum_trove_value = invoke(
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
@@ -138,5 +138,5 @@ fn main() {
     )
         .expect('set debt ceiling failed');
 
-    println!("Minimum trove value set to {}: {}", minimum_trove_value, set_minimum_trove_value.transaction_hash);
+    println!("Minimum trove value set: {}", minimum_trove_value);
 }
