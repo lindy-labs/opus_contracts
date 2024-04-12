@@ -27,12 +27,11 @@ fn main() {
     let controller: ContractAddress = core_deployment::deploy_controller(shrine);
 
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
-    let _eth_gate: ContractAddress = core_deployment::deploy_gate(
-        gate_class_hash, shrine, constants::eth_addr(), sentinel, "ETH"
-    );
-    let _strk_gate: ContractAddress = core_deployment::deploy_gate(
-        gate_class_hash, shrine, constants::strk_addr(), sentinel, "STRK"
-    );
+    let eth: ContractAddress = constants::eth_addr();
+    let strk: ContractAddress = constants::strk_addr();
+
+    let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
+    let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
 
     // Grant roles
 
@@ -42,7 +41,7 @@ fn main() {
 
     // Absorber roles
     let invoke_nonce = get_nonce('pending');
-    let _grant_absorber_roles_to_purger = invoke(
+    let grant_absorber_roles_to_purger = invoke(
         absorber,
         grant_role_selector,
         array![absorber_roles::purger().into(), purger.into()],
@@ -51,11 +50,11 @@ fn main() {
     )
         .expect('grant role: ABS -> PU failed');
 
-    println!("Absorber roles granted to Purger: {}", _grant_absorber_roles_to_purger.transaction_hash);
+    println!("Absorber roles granted to Purger: {}", grant_absorber_roles_to_purger.transaction_hash);
 
     // Sentinel roles
     let invoke_nonce = get_nonce('pending');
-    let _grant_sentinel_roles_to_abbot = invoke(
+    let grant_sentinel_roles_to_abbot = invoke(
         sentinel,
         grant_role_selector,
         array![sentinel_roles::abbot().into(), abbot.into()],
@@ -64,10 +63,10 @@ fn main() {
     )
         .expect('grant role: SE -> ABB failed');
 
-    println!("Sentinel roles granted to Abbot: {}", _grant_sentinel_roles_to_abbot.transaction_hash);
+    println!("Sentinel roles granted to Abbot: {}", grant_sentinel_roles_to_abbot.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_sentinel_roles_to_purger = invoke(
+    let grant_sentinel_roles_to_purger = invoke(
         sentinel,
         grant_role_selector,
         array![sentinel_roles::purger().into(), purger.into()],
@@ -76,10 +75,10 @@ fn main() {
     )
         .expect('grant role: SE -> PU failed');
 
-    println!("Sentinel roles granted to Purger: {}", _grant_sentinel_roles_to_purger.transaction_hash);
+    println!("Sentinel roles granted to Purger: {}", grant_sentinel_roles_to_purger.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_sentinel_roles_to_caretaker = invoke(
+    let grant_sentinel_roles_to_caretaker = invoke(
         sentinel,
         grant_role_selector,
         array![sentinel_roles::caretaker().into(), caretaker.into()],
@@ -88,11 +87,11 @@ fn main() {
     )
         .expect('grant role: SE -> CA failed');
 
-    println!("Sentinel roles granted to Caretaker: {}", _grant_sentinel_roles_to_caretaker.transaction_hash);
+    println!("Sentinel roles granted to Caretaker: {}", grant_sentinel_roles_to_caretaker.transaction_hash);
 
     // Shrine roles
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_abbot = invoke(
+    let grant_shrine_roles_to_abbot = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::abbot().into(), abbot.into()],
@@ -101,10 +100,10 @@ fn main() {
     )
         .expect('grant role: SHR -> ABB failed');
 
-    println!("Shrine roles granted to Abbot: {}", _grant_shrine_roles_to_abbot.transaction_hash);
+    println!("Shrine roles granted to Abbot: {}", grant_shrine_roles_to_abbot.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_caretaker = invoke(
+    let grant_shrine_roles_to_caretaker = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::caretaker().into(), caretaker.into()],
@@ -113,10 +112,10 @@ fn main() {
     )
         .expect('grant role: SHR -> CA failed');
 
-    println!("Shrine roles granted to Caretaker: {}", _grant_shrine_roles_to_caretaker.transaction_hash);
+    println!("Shrine roles granted to Caretaker: {}", grant_shrine_roles_to_caretaker.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_controller = invoke(
+    let grant_shrine_roles_to_controller = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::controller().into(), controller.into()],
@@ -125,10 +124,10 @@ fn main() {
     )
         .expect('grant role: SHR -> CTR failed');
 
-    println!("Shrine roles granted to Controller: {}", _grant_shrine_roles_to_controller.transaction_hash);
+    println!("Shrine roles granted to Controller: {}", grant_shrine_roles_to_controller.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_equalizer = invoke(
+    let grant_shrine_roles_to_equalizer = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::equalizer().into(), equalizer.into()],
@@ -137,10 +136,10 @@ fn main() {
     )
         .expect('grant role: SHR -> EQ failed');
 
-    println!("Shrine roles granted to Equalizer: {}", _grant_shrine_roles_to_equalizer.transaction_hash);
+    println!("Shrine roles granted to Equalizer: {}", grant_shrine_roles_to_equalizer.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_flash_mint = invoke(
+    let grant_shrine_roles_to_flash_mint = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::flash_mint().into(), flash_mint.into()],
@@ -149,10 +148,10 @@ fn main() {
     )
         .expect('grant role: SHR -> FM failed');
 
-    println!("Shrine roles granted to Flash Mint: {}", _grant_shrine_roles_to_flash_mint.transaction_hash);
+    println!("Shrine roles granted to Flash Mint: {}", grant_shrine_roles_to_flash_mint.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_seer = invoke(
+    let grant_shrine_roles_to_seer = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::seer().into(), seer.into()],
@@ -161,10 +160,10 @@ fn main() {
     )
         .expect('grant role: SHR -> SEER failed');
 
-    println!("Shrine roles granted to Seer: {}", _grant_shrine_roles_to_seer.transaction_hash);
+    println!("Shrine roles granted to Seer: {}", grant_shrine_roles_to_seer.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_purger = invoke(
+    let grant_shrine_roles_to_purger = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::purger().into(), purger.into()],
@@ -173,10 +172,10 @@ fn main() {
     )
         .expect('grant role: SHR -> PU failed');
 
-    println!("Shrine roles granted to Purger: {}", _grant_shrine_roles_to_purger.transaction_hash);
+    println!("Shrine roles granted to Purger: {}", grant_shrine_roles_to_purger.transaction_hash);
 
     let invoke_nonce = get_nonce('pending');
-    let _grant_shrine_roles_to_sentinel = invoke(
+    let grant_shrine_roles_to_sentinel = invoke(
         shrine,
         grant_role_selector,
         array![shrine_roles::sentinel().into(), sentinel.into()],
@@ -185,5 +184,57 @@ fn main() {
     )
         .expect('grant role: SHR -> SE failed');
 
-    println!("Shrine roles granted to Sentinel: {}", _grant_shrine_roles_to_sentinel.transaction_hash);
+    println!("Shrine roles granted to Sentinel: {}", grant_shrine_roles_to_sentinel.transaction_hash);
+
+    // Adding ETH and STRK yangs
+    core_deployment::add_yang_to_sentinel(
+        sentinel,
+        eth,
+        eth_gate,
+        "ETH",
+        constants::INITIAL_ETH_AMT,
+        constants::INITIAL_ETH_ASSET_MAX,
+        constants::INITIAL_ETH_THRESHOLD,
+        constants::INITIAL_ETH_PRICE,
+        constants::INITIAL_ETH_BASE_RATE,
+    );
+
+    core_deployment::add_yang_to_sentinel(
+        sentinel,
+        strk,
+        strk_gate,
+        "STRK",
+        constants::INITIAL_STRK_AMT,
+        constants::INITIAL_STRK_ASSET_MAX,
+        constants::INITIAL_STRK_THRESHOLD,
+        constants::INITIAL_STRK_PRICE,
+        constants::INITIAL_STRK_BASE_RATE,
+    );
+
+    // Set up debt ceiling and minimum trove value in Shrine
+    let invoke_nonce = get_nonce('pending');
+    let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
+    let set_debt_ceiling = invoke(
+        shrine,
+        selector!("set_debt_ceiling"),
+        array![debt_ceiling.into()],
+        Option::Some(MAX_FEE),
+        Option::Some(invoke_nonce)
+    )
+        .expect('set debt ceiling failed');
+
+    println!("Debt ceiling set to {}: {}", debt_ceiling, set_debt_ceiling.transaction_hash);
+
+    let invoke_nonce = get_nonce('pending');
+    let minimum_trove_value: u128 = constants::MINIMUM_TROVE_VALUE;
+    let set_minimum_trove_value = invoke(
+        shrine,
+        selector!("set_minimum_trove_value"),
+        array![minimum_trove_value.into()],
+        Option::Some(MAX_FEE),
+        Option::Some(invoke_nonce)
+    )
+        .expect('set debt ceiling failed');
+
+    println!("Minimum trove value set to {}: {}", minimum_trove_value, set_minimum_trove_value.transaction_hash);
 }
