@@ -1,9 +1,6 @@
 use deployment::constants::{MAX_FEE, SALT};
 use deployment::constants;
-use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce, invoke,
-    InvokeResult
-};
+use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce};
 use starknet::{ClassHash, ContractAddress};
 
 

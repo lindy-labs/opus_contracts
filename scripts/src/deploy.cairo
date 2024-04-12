@@ -8,11 +8,6 @@ use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress,
 use starknet::{ClassHash, ContractAddress};
 
 
-// Token constants
-const WBTC_DECIMALS: u8 = 8;
-const WBTC_SUPPLY: felt252 = 210000000000000;
-
-
 fn main() {
     let admin: ContractAddress = constants::admin();
 
@@ -32,6 +27,7 @@ fn main() {
     let controller: ContractAddress = core_deployment::deploy_controller(shrine);
 
     // Deploy mocks
+    println!("Deploying mocks");
     let _mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
     let _mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
 
@@ -45,11 +41,8 @@ fn main() {
         admin
     );
 
-    let balance = call(wbtc, selector!("balance_of"), array![admin.into()]).expect('balance_of failed');
-    println!("Balance of admin's WBTC: {}", balance);
-
     // Deploy gates
-
+    println!("Deploying Gates");
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
     let eth: ContractAddress = constants::eth_addr();
     let strk: ContractAddress = constants::strk_addr();
@@ -77,6 +70,8 @@ fn main() {
     utils::grant_role(shrine, sentinel, shrine_roles::sentinel(), "SHR -> SE");
 
     // Adding ETH and STRK yangs
+    println!("Setting up Shrine");
+
     utils::add_yang_to_sentinel(
         sentinel,
         eth,

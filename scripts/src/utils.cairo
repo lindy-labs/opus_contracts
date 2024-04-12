@@ -1,10 +1,7 @@
 use deployment::constants::MAX_FEE;
 use deployment::constants;
-use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce, invoke,
-    InvokeResult
-};
-use starknet::{ClassHash, ContractAddress};
+use sncast_std::{DisplayContractAddress, get_nonce, invoke, InvokeResult};
+use starknet::{ContractAddress};
 
 
 pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
