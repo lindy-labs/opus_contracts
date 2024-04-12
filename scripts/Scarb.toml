@@ -30,6 +30,9 @@ build-external-contracts = [
     "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",
+    "opus::mock::erc20_mintable::erc20_mintable",
+    "opus::mock::mock_pragma::mock_pragma",
+    "opus::mock::mock_switchboard::mock_switchboard",
 ]
 
 [profile.devnet]

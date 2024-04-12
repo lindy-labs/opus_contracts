@@ -1,6 +1,7 @@
 use deployment::constants::{MAX_FEE, SALT};
 use deployment::constants;
 use deployment::core_deployment;
+use deployment::mock_deployment;
 use opus::core::roles::{absorber_roles, sentinel_roles, shrine_roles};
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress, get_nonce};
 use starknet::{ClassHash, ContractAddress};
@@ -12,8 +13,11 @@ const WBTC_SUPPLY: felt252 = 210000000000000;
 
 
 fn main() {
+    let admin: ContractAddress = constants::admin();
+
     println!("Deploying contracts");
 
+    // Deploy core contracts
     let shrine: ContractAddress = core_deployment::deploy_shrine();
     let flash_mint: ContractAddress = core_deployment::deploy_flash_mint(shrine);
     let sentinel: ContractAddress = core_deployment::deploy_sentinel(shrine);
@@ -26,15 +30,34 @@ fn main() {
     let caretaker: ContractAddress = core_deployment::deploy_caretaker(shrine, abbot, sentinel, equalizer);
     let controller: ContractAddress = core_deployment::deploy_controller(shrine);
 
+    // Deploy mocks
+    let _mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
+    let _mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
+
+    let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
+    let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
+        erc20_mintable_class_hash,
+        'Wrapped BTC',
+        'WBTC',
+        constants::WBTC_DECIMALS,
+        constants::WBTC_INITIAL_SUPPLY,
+        admin
+    );
+
+    let balance = call(wbtc, selector!("balance_of"), array![admin.into()]).expect('balance_of failed');
+    println!("Balance of admin's WBTC: {}", balance);
+
+    // Deploy gates
+
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
     let eth: ContractAddress = constants::eth_addr();
     let strk: ContractAddress = constants::strk_addr();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
+    let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
 
     // Grant roles
-
     println!("Setting up roles");
 
     let grant_role_selector: felt252 = selector!("grant_role");
@@ -197,6 +220,18 @@ fn main() {
         constants::INITIAL_ETH_THRESHOLD,
         constants::INITIAL_ETH_PRICE,
         constants::INITIAL_ETH_BASE_RATE,
+    );
+
+    core_deployment::add_yang_to_sentinel(
+        sentinel,
+        wbtc,
+        wbtc_gate,
+        "WBTC",
+        constants::INITIAL_WBTC_AMT,
+        constants::INITIAL_WBTC_ASSET_MAX,
+        constants::INITIAL_WBTC_THRESHOLD,
+        constants::INITIAL_WBTC_PRICE,
+        constants::INITIAL_WBTC_BASE_RATE,
     );
 
     core_deployment::add_yang_to_sentinel(

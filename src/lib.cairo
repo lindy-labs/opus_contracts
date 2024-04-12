@@ -55,7 +55,7 @@ mod utils {
 }
 
 // mock used for local devnet deployment
-mod mock {
+pub mod mock {
     pub mod blesser;
     pub mod erc20;
     pub mod erc20_mintable;
