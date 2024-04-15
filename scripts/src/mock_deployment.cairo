@@ -1,5 +1,4 @@
-use deployment::constants::{MAX_FEE, SALT};
-use deployment::constants;
+use deployment::constants::MAX_FEE;
 use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce};
 use starknet::{ClassHash, ContractAddress};
 
@@ -12,11 +11,9 @@ pub fn deploy_mock_pragma() -> ContractAddress {
     let declare_mock_pragma = declare("mock_pragma", Option::Some(MAX_FEE), Option::None)
         .expect('failed mock_pragma declare');
 
-    println!("Class hash of mock Pragma: {}", declare_mock_pragma.class_hash);
-
     let nonce = get_nonce('latest');
     let deploy_mock_pragma = deploy(
-        declare_mock_pragma.class_hash, array![], Option::Some(SALT), true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
     )
         .expect('failed mock pragma deploy');
 
@@ -29,16 +26,9 @@ pub fn deploy_mock_switchboard() -> ContractAddress {
     let declare_mock_switchboard = declare("mock_switchboard", Option::Some(MAX_FEE), Option::None)
         .expect('failed mock_switchboard declare');
 
-    println!("Class hash of mock Switchboard: {}", declare_mock_switchboard.class_hash);
-
     let nonce = get_nonce('latest');
     let deploy_mock_switchboard = deploy(
-        declare_mock_switchboard.class_hash,
-        array![],
-        Option::Some(SALT),
-        true,
-        Option::Some(MAX_FEE),
-        Option::Some(nonce)
+        declare_mock_switchboard.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
     )
         .expect('failed mock switchboard deploy');
 
@@ -48,12 +38,7 @@ pub fn deploy_mock_switchboard() -> ContractAddress {
 }
 
 pub fn declare_erc20_mintable() -> ClassHash {
-    let declare_erc20_mintable = declare("erc20_mintable", Option::Some(MAX_FEE), Option::None)
-        .expect('failed mock_switchboard declare');
-
-    println!("Class hash of mock Switchboard: {}", declare_erc20_mintable.class_hash);
-
-    declare_erc20_mintable.class_hash
+    declare("erc20_mintable", Option::Some(MAX_FEE), Option::None).expect('failed mock_switchboard declare').class_hash
 }
 
 pub fn deploy_erc20_mintable(
@@ -67,7 +52,7 @@ pub fn deploy_erc20_mintable(
     let nonce = get_nonce('latest');
     let calldata: Array<felt252> = array![name, symbol, decimals.into(), initial_supply.into(), 0, recipient.into()];
     let declare_erc20_mintable = deploy(
-        class_hash, calldata, Option::Some(SALT), true, Option::Some(MAX_FEE), Option::Some(nonce)
+        class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
     )
         .expect('failed erc20 mintable deploy');
 

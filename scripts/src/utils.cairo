@@ -1,5 +1,4 @@
 use deployment::constants::MAX_FEE;
-use deployment::constants;
 use sncast_std::{DisplayContractAddress, get_nonce, invoke, InvokeResult};
 use starknet::{ContractAddress};
 

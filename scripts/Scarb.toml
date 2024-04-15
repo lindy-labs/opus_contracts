@@ -35,11 +35,6 @@ build-external-contracts = [
     "opus::mock::mock_switchboard::mock_switchboard",
 ]
 
-[profile.devnet]
-account = "devnet_admin"
-accounts-file = "devnet_accounts.json"
-url = "http://127.0.0.1:5050"
-
 [scripts]
-deploy = "sncast --url http://127.0.0.1:5050 --account devnet_admin --accounts-file devnet_admin.json script run deploy"
+deploy = "sncast --url http://127.0.0.1:5050 --profile devnet script run deploy"
 reset = "rm deploy_alpha-goerli_state.json"
