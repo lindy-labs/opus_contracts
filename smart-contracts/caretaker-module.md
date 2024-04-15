@@ -24,6 +24,8 @@ The transfer of collateral at the time of shutdown acts as a final system-wide r
 
 At the time of `shut`, there may be troves with unaccrued interest. This means that for each trove, the `Trove.debt` value in storage will be taken to be the amount of debt for that `Trove` , and collectively the prevailing total troves' debt in Shrine would similarly exclude all unaccrued interest. This may result in a permanent loss of income for the allocated recipients because they would otherwise have been minted as debt surpluses via the Equalizer. This design is intended as the alternative to charge interest on all troves may be too expensive.
 
+In addition, the protocol owned `yang` amounts are rebased to zero to the benefit of all trove owners. Note that in the initial transfer of collateral to the Caretaker, the total backing is calculated with the protocol owned `yang` amounts included, which means that a proportional amount of the underlying assets of the protocol owned `yang` amounts were also transferred to the Caretaker, to the benefit of yin holders. Therefore, this subsequent rebasing ensures that both yin holders and trove owners are treated fairly.
+
 ## Redeeming \`yin\` for assets
 
 <figure><img src="../.gitbook/assets/image (17).png" alt=""><figcaption></figcaption></figure>

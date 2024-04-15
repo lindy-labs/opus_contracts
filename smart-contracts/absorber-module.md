@@ -38,9 +38,11 @@ The internal shares are used to account for the following:
 
 On rare occasions, it is possible for a provider's shares to be carried over to the next epoch if the Absorber still has `yin`. This may happen if the trigger for the new epoch is the amount of yin represented per share falling below a certain threshold. In these cases, we keep track of a conversion rate of an epoch's share to the next epoch's share, and calculate the provider's entitlement in the new epoch. There may be some precision loss from this share conversion across epochs that will favour the protocol.
 
+If the provider would receive zero shares for the amount provided e.g. due to loss of precision, the transaction would revert.
+
 ### Initial shares
 
-Similar to the Gate, the Absorber is also susceptible to the first depositor front-running issue. To mitigate against this by increasing the cost of such an attack, a minimum amount of shares (`1000`) is minted into oblivion at the start of each epoch. This is either deducted from the `yin` provided by the first provider of the epoch or from the leftover `yin` of the previous epoch.
+Similar to the Gate, the Absorber is also susceptible to the first depositor front-running issue. To mitigate against this by increasing the cost of such an attack, a minimum amount of shares (`10 ** 9`) is minted into oblivion at the start of each epoch. This is either deducted from the `yin` provided by the first provider of the epoch or from the leftover `yin` of the previous epoch.
 
 ### Absorbed assets
 
@@ -48,7 +50,7 @@ Similar to redistributions in Shrine, absorptions are tracked with an absorption
 
 * Absorption ID starts from 1. 0 is used as the terminating condition.
 * Each absorption is tied to an epoch.
-* When `absorb` is called, we derive the amount of absorbed assets that each unit of internal share is entitled to.&#x20;
+* When `absorb` is called, we derive the amount of absorbed assets that each unit of internal share is entitled to. Any remainder amounts arising from the loss of precision will be transferred back to the Gate.
 
 To calculate a provider's entitlement to absorbed assets, we iterate over the absorption IDs that have occurred since the provider's last absorption ID, and for each absorption ID, we multiply the provider's shares with the corresponding amount of each absorbed asset.
 
@@ -66,9 +68,9 @@ Note that the amount of shares that is minted into oblivion at the start of each
 
 As the initial amount of shares minted into oblivion are excluded from receiving absorbed assets and rewards, there is a potential overflow issue when attempting to distribute absorbed assets and rewards if the remaining shares is a very small number.&#x20;
 
-To mitigate against potential overflows, the Absorber is available for absorptions only if there is a minimum number of shares (currently set at `10 ** 6`), even if there is some `yin` in the Absorber.
+To mitigate against potential overflows, the Absorber is available for absorptions only if there is a minimum number of shares (currently set at `10 ** 6`) excluding the initial shares, even if there is some `yin` in the Absorber.
 
-Note that this requirement is distinct from, and in addition to, the initial shares that is minted to oblivion at the start of each epoch to address the first depositor front-running issue.
+Note that this requirement is distinct from, and in addition to, the initial shares that is minted to oblivion at the start of each epoch to address the first depositor front-running issue. In other words, the Absorber is operational only if there is at least `10 ** 9 + 10 ** 6` shares.
 
 ## Removing liquidity
 
@@ -87,6 +89,8 @@ The purpose of imposing these restrictions are to:
 
 1. ensure there is sufficient liquidity to absorb any prospective liquidations when the risk of liquidations across the high in recovery mode;
 2. prevent risk-free yield-farming tactics where a provider earns yield in the form of interest and reward tokens, if any, but frontruns liquidations by removing liquidity just before the liquidation happens.
+
+Consequently, if a provider provides liquidity after submitting a request, the request would be invalidated by the provision, and the provider will need to submit a new request.
 
 Regardless of whether the provider has any remaining `yin` entitlement to be withdrawn, any absorbed assets and rewards that the provider is entitled to will also be withdrawn.
 

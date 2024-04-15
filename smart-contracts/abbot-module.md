@@ -15,26 +15,24 @@ The Abbot module is intended to be immutable and deployed only once per syntheti
 
 ## Description of key functions
 
-1. `open_trove`: sets the caller as the owner of a trove ID, deposits collateral tokens of `yang`s into the trove, and optionally forges debt for the trove. Other than setting the owner of a trove ID, this function is essentially a wrapper of `deposit` and `forge`.
+1. `open_trove`: sets the caller as the owner of a trove ID, deposits collateral tokens of `yang`s into the trove, and forges debt for the trove. Other than setting the owner of a trove ID, this function is essentially a wrapper of `deposit` and `forge`.
 2. `close_trove`: repay all debt for a trove and withdraw all collateral tokens of `yang`s. This function does not have any effect on the owner of the trove, which remains unchanged, and the trove owner can re-use this trove in the future. Therefore, this function is essentially a wrapper of `melt` and `withdraw`.
-3. `deposit`: Deposit collateral tokens for a `yang` from the caller into a trove
+3. `deposit`: Deposit collateral tokens for a `yang` from the caller into a trove. The caller must be the trove owner.
 4. `withdraw`: Withdraw collateral tokens for a `yang` from a trove to the caller, who must be the trove owner
 5. `forge`: Increase the debt for a trove and mint `yin` to the caller, who must be the trove owner
-6. `melt`: decrease the debt for a trove and burn `yin` from the caller
+6. `melt`: Decrease the debt for a trove and burn `yin` from the caller
 
 ## Opening a trove
 
-Before any actions can be taken, a user needs to first open a trove by depositing collateral. Users may optionally choose to forge the synthetic in the same transaction.\
+Before any actions can be taken, a user needs to first open a trove by depositing collateral and forging some debt.\
 \
-Opening a trove reserves a trove ID and makes the caller address the owner of that trove. This is significant because only the owner of a trove can withdraw collateral from the trove or forge synthetic with the trove's collateral.
+Opening a trove reserves a trove ID and makes the caller address the owner of that trove. This is significant because only the owner of a trove can deposit and withdraw collateral from the trove or forge synthetic with the trove's collateral.
 
 ## Depositing collateral
 
 <figure><img src="../.gitbook/assets/image (8).png" alt=""><figcaption></figcaption></figure>
 
 When a user deposits collateral into a trove, the underlying tokens are transferred to the Gate for that collateral, and the trove is incremented with the corresponding amount of that `yang` in Shrine.
-
-Note that anyone can deposit collateral in a trove. Users interacting with the Abbot without a user interface should exercise caution.
 
 ## Withdrawing collateral
 

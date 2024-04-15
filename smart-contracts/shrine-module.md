@@ -35,6 +35,7 @@ Note that the Shrine is meant to be called by other modules only, and not by an 
        * No further deposits can be made. This is enforced by the Sentinel.
        * Its threshold will decrease to zero linearly over the `SUSPENSION_GRACE_PERIOD`.
      * From the time of the suspension and before the `SUSPENSION_GRACE_PERIOD` elapses, the suspension can be reversed. However, once the `SUSPENSION_GRACE_PERIOD` elapses, the `yang` will be permanently suspended i.e. delisted.
+     * A delisted `yang`s will have its value marked down to zero and price updates will be skipped. This also means that a delisted `yang`'s base rate will no longer be taken into account for troves that have deposited it.
    * Each `yang` has a set of parameters attached to it:
      * base rate: the interest rate to be charged for the `yang`
      * threshold: determines the maximum percentage of the `yang`'s value that debt can be forged against
@@ -46,6 +47,13 @@ Note that the Shrine is meant to be called by other modules only, and not by an 
 6. The Shrine has a ceiling that caps the amount of yin that may be generated. When checking if the ceiling is exceeded, any debt surpluses should be included, and any debt deficits should be excluded.
    * However, note that the debt ceiling should not block the minting of any debt surpluses as `yin`.
    * Debt deficits are excluded to prevent a situation where the total `yin` supply exceeds the debt ceiling, but including the deficit would bring the resulting amount below the debt ceiling. In this situation, we do not want to allow more yin to be generated, except for minting of debt surpluses.
+7. The Shrine keeps track of `yang`s and troves' debt owned by the protocol.&#x20;
+   * These may arise in the following situations:
+     * The initial `yang` amount that is supplied during the onboarding of a new collateral type is attributed to the protocol.
+     * In the case of ordinary redistributions, any remainder debt arising from the loss of precision when calculating the amount of debt per Wad unit of `yang` will be transferred to the protocol.
+     * In the case of exceptional redistributions (i.e. no other trove has deposited the `yang` or the `yang` is delisted), both the `yang` and the debt for that `yang` is transferred to the protocol.
+   * If there is any troves' debt owned by the protocol, fees earned from troves (i.e. accrued interest and forge fees) will go towards reducing the protocol owned troves' debt back to zero before being added to the budget as a surplus.
+   * During shutdown, the protocol owned `yang` amounts are rebased to the benefit of trove owners. For more details, refer to the [Caretaker](caretaker-module.md#shutdown).
 
 ## Description of key functions
 
@@ -71,7 +79,7 @@ Interest is charged whenever an action is taken on a trove.
 
 The interest rate for a trove is determined by multiplying:
 
-1. the weighted average of the base rates of the `yang`s deposited in the trove; with
+1. the weighted average of the base rates of the `yang`s deposited in the trove, excluding delisted `yang`s; with
    * For example, assume that ETH has a base rate of 2% and BTC has a base rate of 1%. A trove has deposited 5 ETH and 0.5 BTC, amounting to 5 Wad units of ETH `yang` and 0.5 Wad unit of BTC `yang`. The average prices of ETH `yang` and BTC `yang` over the charging period are USD 1,000 and USD 10,000 respectively. This gives the trove an average value of USD 10,000 with the value of ETH and BTC in equal ratio. Accordingly, the weighted average base rate is (5,000 / 10,000) \* 2% + (5,000 / 10,000) \* 1% = 1.5%. If ETH price were higher, it would make up a larger percentage of the total collateral value, and so the weighted average base rate would be higher.
 2. the average multiplier value for the elapsed time period.
 
@@ -125,16 +133,22 @@ For all purposes other than the calculation of accrued interest, there is no pra
 
 There are a few pointers to take note of when it comes to redistributions.
 
-1. If no other troves has deposited a `yang` that is to be redistributed, then the debt and value attributed to that `yang` will be redistributed among all other `yang`s in the system according to their value proportionally to the total value of all remaining `yang`s in the system.&#x20;
+1. If no other troves has deposited a `yang` that is to be redistributed or the `yang` is delisted ("**exceptional redistribution**"), then the debt and value attributed to that `yang` will be transferred to the protocol. This ensures that the protocol owned troves' debt will always be backed by the equivalent `yang`s owned by the protocol. As the protocol owned troves' debt is gradually reduced to zero from forge fees and accrued interest, the collateral backing these debt also shifts from the protocol owned `yang` amounts to the respective troves.
 2. When redistributing a trove with more than one `yang`s deposited, if there is a small amount of debt remaining to be redistributed after a `yang` i.e. less than `10 ** 9` , then it is rounded up to the current `yang` , skipping the remaining `yang`(s) altogether. This deals with any loss of precision and ensures the debt is fully redistributed.
-
-Based on the above design, no redistributed debt or `yang` should accrue to the initial `yang` amounts deposited by the protocol via `Shrine.add_yang().`
+3. Any remainder arising from the loss of precision when calculating the amount of debt per Wad unit of `yang` will be transferred to the protocol.
 
 ## Recovery Mode
 
-Recovery mode is activated when the aggregate loan-to-value ratio of all troves in the Shrine is equal to or greater than 70% of the Shrine's threshold, which is in turn calculated based on the weighted average of all deposited `yang`s.
+To safeguard the solvency of the protocol, the Shrine ensures that its LTV (i.e. the aggregate loan-to-value ratio of all troves) does not exceed a certain percentage of its threshold, which is a weighted average of all deposited `yang`s. This is referred to as the "**target LTV**". The percentage is configurable and will be set to 70% at deployment. If the Shrine's LTV exceeds this target, recovery mode will be triggered. Note that a trove action will revert if it would trigger recovery mode in the Shrine.
 
-In recovery mode, the threshold for all yangs is gradually adjusted downwards depending on the the extent to which the Shrine's aggregate loan-to-value ratio is greater than the Shrine's recovery mode threshold, down to a floor of 50% of the `yang`'s original threshold. By adjusting the threshold downwards, troves are more susceptible to liquidations. The recovery mode therefore encourages users to either deposit more collateral or repay existing debt to avoid liquidation. This in turn improves the health of the protocol. Recovery mode is also intended to steer user's behaviour towards preventing it from being activated in the first place.
+When recovery mode is triggered, each trove will also have its unique target LTV calculated based on the same factor applied to its threshold. Stricter conditions will be applied to trove actions to prevent the Shrine's LTV from worsening:
+
+* If the trove's LTV exceeds its target LTV, then it can only take an action that would improve its LTV.
+* If the trove's LTV does not exceed its target LTV, then it may not take any action that would increase its LTV above its target LTV.
+
+In addition, thresholds will be scaled according to how much higher a trove's LTV is compared to its target LTV, down to a floor of 50% of the trove's original threshold. This scaling will take effect once the Shrine's LTV exceeds its target LTV with an additional buffer. The buffer is configurable, and will be set to 5% at deployment. In other words, recovery mode will be triggered if the Shrine's LTV exceeds 70% of its threshold, and thresholds will be scaled once the Shrine's LTV exceeds 75% of its threshold. By adjusting the threshold downwards, troves are more susceptible to liquidations. The recovery mode therefore encourages users to either deposit more collateral or repay existing debt to avoid liquidation. This in turn improves the health of the protocol. Recovery mode is also intended to steer user's behaviour towards preventing it from being activated in the first place.
+
+The buffer is put in place to further safeguard against another user intentionally triggering recovery mode by bringing the Shrine to the brink of recovery mode, and then accumulating interest on troves until recovery mode is reached.
 
 ## Emergency mechanism
 
@@ -148,8 +162,8 @@ The Shrine can be killed permanently using `Shrine.kill` . After the Shrine is k
 
 These are some properties of the Shrine module that should hold true at all times.
 
-* The total amount of a `yang` is equal to the sum of all troves' deposits of that `yang` (this includes any exceptionally redistributed yangs and their accompanying errors) and the initial amount seeded at the time of `add_yang`.
-* For a redistribution, the redistributed debt is equal to the sum of the amount of `yang` multiplied by the unit debt for that `yang` and the error for that `yang`, for all `yang`s, minus the carried over error from the previous redistribution, if any.
+* The total amount of a `yang` is equal to the sum of all troves' deposits of that `yang`  and the amount owned by the protocol (which includes the amount seeded at the time of `add_yang`).
+* For a redistribution, the redistributed debt is equal to the sum of the amount of `yang` multiplied by the unit debt for that `yang` and the error for that `yang`, for all `yang`s.
 * A trove that is healthy cannot become unhealthy as a result of `withdraw` or `forge`.
 * The accrual of interest is monotonic, meaning it only increases in value.
 
