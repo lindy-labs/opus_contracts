@@ -28,8 +28,8 @@ fn main() {
 
     // Deploy mocks
     println!("Deploying mocks");
-    let _mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
-    let _mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
+    let mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
+    let mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
     let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
@@ -128,4 +128,25 @@ fn main() {
         .expect('set debt ceiling failed');
 
     println!("Minimum trove value set: {}", minimum_trove_value);
+
+    // Print summary table of deployed contracts
+    println!("-------------------------------------------------\n");
+    println!("Deployed addresses");
+    println!("Shrine: {}", shrine);
+    println!("Abbot: {}", abbot);
+    println!("Sentinel: {}", sentinel);
+    println!("Gate[ETH]: {}", eth_gate);
+    println!("Gate[STRK]: {}", strk_gate);
+    println!("Gate[WBTC]: {}", wbtc_gate);
+    println!("Flash Mint: {}", flash_mint);
+    println!("Seer: {}", seer);
+    println!("Absorber: {}", absorber);
+    println!("Purger: {}", purger);
+    println!("Equalizer: {}", equalizer);
+    println!("Allocator: {}", allocator);
+    println!("Caretaker: {}", caretaker);
+    println!("Controller: {}", controller);
+    println!("Token[WBTC]: {}", wbtc);
+    println!("Mock Pragma: {}", mock_pragma);
+    println!("Mock Switchboard: {}", mock_switchboard);
 }

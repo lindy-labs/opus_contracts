@@ -16,8 +16,6 @@ pub fn deploy_mock_pragma() -> ContractAddress {
     )
         .expect('failed mock pragma deploy');
 
-    println!("Deployed mock Pragma to address: {}", deploy_mock_pragma.contract_address);
-
     deploy_mock_pragma.contract_address
 }
 
@@ -29,8 +27,6 @@ pub fn deploy_mock_switchboard() -> ContractAddress {
         declare_mock_switchboard.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed mock switchboard deploy');
-
-    println!("Deployed mock Switchboard to address: {}", deploy_mock_switchboard.contract_address);
 
     deploy_mock_switchboard.contract_address
 }
@@ -50,8 +46,6 @@ pub fn deploy_erc20_mintable(
     let calldata: Array<felt252> = array![name, symbol, decimals.into(), initial_supply.into(), 0, recipient.into()];
     let declare_erc20_mintable = deploy(class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
         .expect('failed erc20 mintable deploy');
-
-    println!("Deployed ERC20 {} to address: {}", symbol, declare_erc20_mintable.contract_address);
 
     declare_erc20_mintable.contract_address
 }

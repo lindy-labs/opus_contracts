@@ -29,8 +29,6 @@ pub fn deploy_shrine() -> ContractAddress {
     )
         .expect('failed shrine deploy');
 
-    println!("Deployed Shrine to address: {}", deploy_shrine.contract_address);
-
     deploy_shrine.contract_address
 }
 
@@ -44,8 +42,6 @@ pub fn deploy_flash_mint(shrine: ContractAddress) -> ContractAddress {
     )
         .expect('failed flash mint deploy');
 
-    println!("Deployed Flash Mint to address: {}", deploy_flash_mint.contract_address);
-
     deploy_flash_mint.contract_address
 }
 
@@ -57,8 +53,6 @@ pub fn deploy_sentinel(shrine: ContractAddress) -> ContractAddress {
         declare_sentinel.class_hash, sentinel_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed sentinel deploy');
-
-    println!("Deployed Sentinel to address: {}", deploy_sentinel.contract_address);
 
     deploy_sentinel.contract_address
 }
@@ -74,8 +68,6 @@ pub fn deploy_seer(shrine: ContractAddress, sentinel: ContractAddress) -> Contra
     )
         .expect('failed seer deploy');
 
-    println!("Deployed Seer to address: {}", deploy_seer.contract_address);
-
     deploy_seer.contract_address
 }
 
@@ -88,8 +80,6 @@ pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> Contr
     )
         .expect('failed abbot deploy');
 
-    println!("Deployed Abbot to address: {}", deploy_abbot.contract_address);
-
     deploy_abbot.contract_address
 }
 
@@ -101,8 +91,6 @@ pub fn deploy_absorber(shrine: ContractAddress, sentinel: ContractAddress) -> Co
         declare_absorber.class_hash, absorber_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed absorber deploy');
-
-    println!("Deployed Absorber to address: {}", deploy_absorber.contract_address);
 
     deploy_absorber.contract_address
 }
@@ -120,8 +108,6 @@ pub fn deploy_purger(
     )
         .expect('failed purger deploy');
 
-    println!("Deployed Purger to address: {}", deploy_purger.contract_address);
-
     deploy_purger.contract_address
 }
 
@@ -138,8 +124,6 @@ pub fn deploy_allocator() -> ContractAddress {
     )
         .expect('failed allocator deploy');
 
-    println!("Deployed Allocator to address: {}", deploy_allocator.contract_address);
-
     deploy_allocator.contract_address
 }
 
@@ -152,8 +136,6 @@ pub fn deploy_equalizer(shrine: ContractAddress, allocator: ContractAddress) -> 
         declare_equalizer.class_hash, equalizer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed equalizer deploy');
-
-    println!("Deployed Equalizer to address: {}", deploy_equalizer.contract_address);
 
     deploy_equalizer.contract_address
 }
@@ -171,8 +153,6 @@ pub fn deploy_caretaker(
         declare_caretaker.class_hash, caretaker_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed caretaker deploy');
-
-    println!("Deployed Caretaker to address: {}", deploy_caretaker.contract_address);
 
     deploy_caretaker.contract_address
 }
@@ -196,8 +176,6 @@ pub fn deploy_controller(shrine: ContractAddress) -> ContractAddress {
     )
         .expect('failed controller deploy');
 
-    println!("Deployed Controller to address: {}", deploy_controller.contract_address);
-
     deploy_controller.contract_address
 }
 
@@ -215,8 +193,6 @@ pub fn deploy_gate(
     let gate_calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into()];
     let deploy_gate = deploy(gate_class_hash, gate_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
         .expect('failed ETH gate deploy');
-
-    println!("Deployed {} Gate to address: {}", token_name, deploy_gate.contract_address);
 
     deploy_gate.contract_address
 }
