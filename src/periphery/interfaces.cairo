@@ -1,4 +1,4 @@
-use opus::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YinInfo};
+use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YinInfo};
 use starknet::ContractAddress;
 use wadray::Wad;
 

@@ -6,7 +6,8 @@ pub mod frontend_data_provider {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
     use opus::periphery::roles::frontend_data_provider_roles;
-    use opus::types::{Health, RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YangBalance, YinInfo};
+    use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YinInfo};
+    use opus::types::{Health, YangBalance};
     use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
     use starknet::{ClassHash, ContractAddress};
     use wadray::{Ray, Wad};
