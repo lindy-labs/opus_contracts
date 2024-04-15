@@ -1,5 +1,5 @@
 use deployment::constants::MAX_FEE;
-use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce};
+use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -11,9 +11,8 @@ pub fn deploy_mock_pragma() -> ContractAddress {
     let declare_mock_pragma = declare("mock_pragma", Option::Some(MAX_FEE), Option::None)
         .expect('failed mock_pragma declare');
 
-    let nonce = get_nonce('latest');
     let deploy_mock_pragma = deploy(
-        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed mock pragma deploy');
 
@@ -26,9 +25,8 @@ pub fn deploy_mock_switchboard() -> ContractAddress {
     let declare_mock_switchboard = declare("mock_switchboard", Option::Some(MAX_FEE), Option::None)
         .expect('failed mock_switchboard declare');
 
-    let nonce = get_nonce('latest');
     let deploy_mock_switchboard = deploy(
-        declare_mock_switchboard.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_mock_switchboard.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed mock switchboard deploy');
 
@@ -49,11 +47,8 @@ pub fn deploy_erc20_mintable(
     initial_supply: u128,
     recipient: ContractAddress
 ) -> ContractAddress {
-    let nonce = get_nonce('latest');
     let calldata: Array<felt252> = array![name, symbol, decimals.into(), initial_supply.into(), 0, recipient.into()];
-    let declare_erc20_mintable = deploy(
-        class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
-    )
+    let declare_erc20_mintable = deploy(class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
         .expect('failed erc20 mintable deploy');
 
     println!("Deployed ERC20 {} to address: {}", symbol, declare_erc20_mintable.contract_address);

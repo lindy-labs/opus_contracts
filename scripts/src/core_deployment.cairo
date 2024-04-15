@@ -1,7 +1,6 @@
 use deployment::constants::{admin, MAX_FEE};
 use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, get_nonce, invoke,
-    InvokeResult
+    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult
 };
 use starknet::{ClassHash, ContractAddress};
 use wadray::RAY_ONE;
@@ -24,10 +23,9 @@ const SEER_UPDATE_FREQUENCY: u64 = 1000;
 pub fn deploy_shrine() -> ContractAddress {
     let declare_shrine = declare("shrine", Option::Some(MAX_FEE), Option::None).expect('failed shrine declare');
 
-    let nonce = get_nonce('latest');
     let shrine_calldata: Array<felt252> = array![admin().into(), 'Cash', 'CASH',];
     let deploy_shrine = deploy(
-        declare_shrine.class_hash, shrine_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_shrine.class_hash, shrine_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed shrine deploy');
 
@@ -40,15 +38,9 @@ pub fn deploy_flash_mint(shrine: ContractAddress) -> ContractAddress {
     let declare_flash_mint = declare("flash_mint", Option::Some(MAX_FEE), Option::None)
         .expect('failed flash mint declare');
 
-    let nonce = get_nonce('latest');
     let flash_mint_calldata: Array<felt252> = array![shrine.into()];
     let deploy_flash_mint = deploy(
-        declare_flash_mint.class_hash,
-        flash_mint_calldata,
-        Option::None,
-        true,
-        Option::Some(MAX_FEE),
-        Option::Some(nonce)
+        declare_flash_mint.class_hash, flash_mint_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed flash mint deploy');
 
@@ -60,10 +52,9 @@ pub fn deploy_flash_mint(shrine: ContractAddress) -> ContractAddress {
 pub fn deploy_sentinel(shrine: ContractAddress) -> ContractAddress {
     let declare_sentinel = declare("sentinel", Option::Some(MAX_FEE), Option::None).expect('failed sentinel declare');
 
-    let nonce = get_nonce('latest');
     let sentinel_calldata: Array<felt252> = array![admin().into(), shrine.into()];
     let deploy_sentinel = deploy(
-        declare_sentinel.class_hash, sentinel_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_sentinel.class_hash, sentinel_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed sentinel deploy');
 
@@ -75,12 +66,11 @@ pub fn deploy_sentinel(shrine: ContractAddress) -> ContractAddress {
 pub fn deploy_seer(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_seer = declare("seer", Option::Some(MAX_FEE), Option::None).expect('failed seer declare');
 
-    let nonce = get_nonce('latest');
     let seer_calldata: Array<felt252> = array![
         admin().into(), shrine.into(), sentinel.into(), SEER_UPDATE_FREQUENCY.into()
     ];
     let deploy_seer = deploy(
-        declare_seer.class_hash, seer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_seer.class_hash, seer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed seer deploy');
 
@@ -92,10 +82,9 @@ pub fn deploy_seer(shrine: ContractAddress, sentinel: ContractAddress) -> Contra
 pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_abbot = declare("abbot", Option::Some(MAX_FEE), Option::None).expect('failed abbot declare');
 
-    let nonce = get_nonce('latest');
     let abbot_calldata: Array<felt252> = array![shrine.into(), sentinel.into()];
     let deploy_abbot = deploy(
-        declare_abbot.class_hash, abbot_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_abbot.class_hash, abbot_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed abbot deploy');
 
@@ -107,10 +96,9 @@ pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> Contr
 pub fn deploy_absorber(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_absorber = declare("absorber", Option::Some(MAX_FEE), Option::None).expect('failed absorber declare');
 
-    let nonce = get_nonce('latest');
     let absorber_calldata: Array<felt252> = array![admin().into(), shrine.into(), sentinel.into()];
     let deploy_absorber = deploy(
-        declare_absorber.class_hash, absorber_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_absorber.class_hash, absorber_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed absorber deploy');
 
@@ -124,12 +112,11 @@ pub fn deploy_purger(
 ) -> ContractAddress {
     let declare_purger = declare("purger", Option::Some(MAX_FEE), Option::None).expect('failed purger declare');
 
-    let nonce = get_nonce('latest');
     let purger_calldata: Array<felt252> = array![
         admin().into(), shrine.into(), sentinel.into(), absorber.into(), seer.into()
     ];
     let deploy_purger = deploy(
-        declare_purger.class_hash, purger_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_purger.class_hash, purger_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed purger deploy');
 
@@ -142,13 +129,12 @@ pub fn deploy_allocator() -> ContractAddress {
     let declare_allocator = declare("allocator", Option::Some(MAX_FEE), Option::None)
         .expect('failed allocator declare');
 
-    let nonce = get_nonce('latest');
     let num_recipients: felt252 = 1;
     let allocator_calldata: Array<felt252> = array![
         admin().into(), num_recipients, admin().into(), num_recipients, RAY_ONE.into()
     ];
     let deploy_allocator = deploy(
-        declare_allocator.class_hash, allocator_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_allocator.class_hash, allocator_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed allocator deploy');
 
@@ -161,10 +147,9 @@ pub fn deploy_equalizer(shrine: ContractAddress, allocator: ContractAddress) -> 
     let declare_equalizer = declare("equalizer", Option::Some(MAX_FEE), Option::None)
         .expect('failed equalizer declare');
 
-    let nonce = get_nonce('latest');
     let equalizer_calldata: Array<felt252> = array![admin().into(), shrine.into(), allocator.into()];
     let deploy_equalizer = deploy(
-        declare_equalizer.class_hash, equalizer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_equalizer.class_hash, equalizer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed equalizer deploy');
 
@@ -179,12 +164,11 @@ pub fn deploy_caretaker(
     let declare_caretaker = declare("caretaker", Option::Some(MAX_FEE), Option::None)
         .expect('failed caretaker declare');
 
-    let nonce = get_nonce('latest');
     let caretaker_calldata: Array<felt252> = array![
         admin().into(), shrine.into(), abbot.into(), sentinel.into(), equalizer.into()
     ];
     let deploy_caretaker = deploy(
-        declare_caretaker.class_hash, caretaker_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
+        declare_caretaker.class_hash, caretaker_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed caretaker deploy');
 
@@ -197,7 +181,6 @@ pub fn deploy_controller(shrine: ContractAddress) -> ContractAddress {
     let declare_controller = declare("controller", Option::Some(MAX_FEE), Option::None)
         .expect('failed controller declare');
 
-    let nonce = get_nonce('latest');
     let controller_calldata: Array<felt252> = array![
         admin().into(),
         shrine.into(),
@@ -209,12 +192,7 @@ pub fn deploy_controller(shrine: ContractAddress) -> ContractAddress {
         BETA_I.into()
     ];
     let deploy_controller = deploy(
-        declare_controller.class_hash,
-        controller_calldata,
-        Option::None,
-        true,
-        Option::Some(MAX_FEE),
-        Option::Some(nonce)
+        declare_controller.class_hash, controller_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
         .expect('failed controller deploy');
 
@@ -234,11 +212,8 @@ pub fn deploy_gate(
     sentinel: ContractAddress,
     token_name: ByteArray
 ) -> ContractAddress {
-    let nonce = get_nonce('latest');
     let gate_calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into()];
-    let deploy_gate = deploy(
-        gate_class_hash, gate_calldata, Option::None, true, Option::Some(MAX_FEE), Option::Some(nonce)
-    )
+    let deploy_gate = deploy(gate_class_hash, gate_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
         .expect('failed ETH gate deploy');
 
     println!("Deployed {} Gate to address: {}", token_name, deploy_gate.contract_address);

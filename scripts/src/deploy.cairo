@@ -4,7 +4,7 @@ use deployment::core_deployment;
 use deployment::mock_deployment;
 use deployment::utils;
 use opus::core::roles::{absorber_roles, sentinel_roles, shrine_roles};
-use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress, get_nonce};
+use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -109,27 +109,21 @@ fn main() {
     );
 
     // Set up debt ceiling and minimum trove value in Shrine
-    let invoke_nonce = get_nonce('pending');
     let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
     let _set_debt_ceiling = invoke(
-        shrine,
-        selector!("set_debt_ceiling"),
-        array![debt_ceiling.into()],
-        Option::Some(MAX_FEE),
-        Option::Some(invoke_nonce)
+        shrine, selector!("set_debt_ceiling"), array![debt_ceiling.into()], Option::Some(MAX_FEE), Option::None
     )
         .expect('set debt ceiling failed');
 
     println!("Debt ceiling set: {}", debt_ceiling);
 
-    let invoke_nonce = get_nonce('pending');
     let minimum_trove_value: u128 = constants::MINIMUM_TROVE_VALUE;
     let _set_minimum_trove_value = invoke(
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
         Option::Some(MAX_FEE),
-        Option::Some(invoke_nonce)
+        Option::None
     )
         .expect('set debt ceiling failed');
 

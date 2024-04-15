@@ -1,16 +1,11 @@
 use deployment::constants::MAX_FEE;
-use sncast_std::{DisplayContractAddress, get_nonce, invoke, InvokeResult};
+use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
 use starknet::{ContractAddress};
 
 
 pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
-    let invoke_nonce = get_nonce('pending');
     let _grant_role = invoke(
-        target,
-        selector!("grant_role"),
-        array![role.into(), receiver.into()],
-        Option::Some(MAX_FEE),
-        Option::Some(invoke_nonce)
+        target, selector!("grant_role"), array![role.into(), receiver.into()], Option::Some(MAX_FEE), Option::None
     )
         .expect('grant role failed');
 
@@ -31,13 +26,12 @@ pub fn add_yang_to_sentinel(
 ) {
     println!("Approving initial amount: {}", asset_name);
 
-    let invoke_nonce = get_nonce('pending');
     let _approve_token = invoke(
         asset,
         selector!("approve"),
         array![sentinel.into(), initial_asset_amt.into(), 0],
         Option::Some(MAX_FEE),
-        Option::Some(invoke_nonce),
+        Option::None,
     )
         .expect('approve asset failed');
 
@@ -49,10 +43,7 @@ pub fn add_yang_to_sentinel(
         initial_base_rate.into(),
         gate.into(),
     ];
-    let invoke_nonce = get_nonce('pending');
-    let _add_yang = invoke(
-        sentinel, selector!("add_yang"), add_yang_calldata, Option::Some(MAX_FEE), Option::Some(invoke_nonce)
-    )
+    let _add_yang = invoke(sentinel, selector!("add_yang"), add_yang_calldata, Option::Some(MAX_FEE), Option::None)
         .expect('add yang failed');
 
     println!("Yang successfully added: {}", asset_name)
