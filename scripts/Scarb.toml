@@ -36,5 +36,8 @@ build-external-contracts = [
 ]
 
 [scripts]
-deploy = "sncast --url http://127.0.0.1:5050 --profile devnet script run deploy"
+deploy = "sncast --profile devnet script run deploy"
 reset = "rm deploy_alpha-goerli_state.json"
+
+[profile.devnet]
+inherits = "dev"
