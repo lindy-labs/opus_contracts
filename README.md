@@ -14,4 +14,4 @@ In one shell, run `scarb run devnet` to boot up a Devnet instance. You can use t
 
 In another shell, from the `scripts` directory, run `scarb run deploy`. That will compile and deploy the contracts on the local Devnet and do the initial required setup.
 
-Note that Devnet deploymnets are ephemeral. Once you kill your Devnet instance, the state is lost. After restarting, you will have to deploy the contracts again, using the script mentioned above.
+Note that Devnet deployments are ephemeral. Once you kill your Devnet instance, the state is lost. After restarting, you will have to deploy the contracts again, using the script mentioned above.
