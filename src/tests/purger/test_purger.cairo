@@ -3093,420 +3093,401 @@ mod test_purger {
     // and the LTV at liquidation, and checks for the following for thresholds up to 78.74%:
     // 1. LTV has decreased to the target safety margin
     // 2. trove's debt is reduced by the close amount, which is less than the trove's debt
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized() {
+    fn test_absorb_less_than_trove_debt(
+        threshold: Ray, mut target_ltvs: Span<Ray>, is_recovery_mode: bool, kill_absorber: bool
+    ) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
-        let mut thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let mut target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-
         loop {
-            match thresholds.pop_front() {
-                Option::Some(threshold) => {
-                    let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
+            match target_ltvs.pop_front() {
+                Option::Some(target_ltv) => {
+                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
-                    // Inner loop iterating over LTVs at liquidation
-                    loop {
-                        match target_ltvs.pop_front() {
-                            Option::Some(target_ltv) => {
-                                let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-                                loop {
-                                    match is_recovery_mode_fuzz.pop_front() {
-                                        Option::Some(is_recovery_mode) => {
-                                            let mut kill_absorber_fuzz: Span<bool> = array![true, false].span();
+                    // Set thresholds to provided value
+                    purger_utils::set_thresholds(shrine, yangs, threshold);
 
-                                            match kill_absorber_fuzz.pop_front() {
-                                                Option::Some(kill_absorber) => {
-                                                    let (shrine, abbot, seer, absorber, purger, yangs, gates) =
-                                                        purger_utils::purger_deploy(
-                                                        classes
-                                                    );
-                                                    let mut purger_spy = spy_events(
-                                                        SpyOn::One(purger.contract_address)
-                                                    );
+                    let trove_debt: Wad = (purger_utils::TARGET_TROVE_YIN * 5).into();
+                    let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
-                                                    // Set thresholds to provided value
-                                                    purger_utils::set_thresholds(shrine, yangs, *threshold);
+                    // Accrue some interest
+                    common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
 
-                                                    let trove_debt: Wad = (purger_utils::TARGET_TROVE_YIN * 5).into();
-                                                    let target_trove: u64 = purger_utils::funded_healthy_trove(
-                                                        abbot, yangs, gates, trove_debt
-                                                    );
+                    let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
 
-                                                    // Accrue some interest
-                                                    common::advance_intervals_and_refresh_prices_and_multiplier(
-                                                        shrine, yangs, 500
-                                                    );
+                    // Fund the absorber with twice the target trove's debt
+                    let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
+                    purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
 
-                                                    let target_trove_start_health: Health = shrine
-                                                        .get_trove_health(target_trove);
+                    // sanity check
+                    assert(
+                        shrine.get_yin(absorber.contract_address) > target_trove_start_health.debt,
+                        'not full absorption'
+                    );
 
-                                                    // Fund the absorber with twice the target trove's debt
-                                                    let absorber_start_yin: Wad = (target_trove_start_health.debt.val
-                                                        * 2)
-                                                        .into();
-                                                    purger_utils::funded_absorber(
-                                                        shrine, abbot, absorber, yangs, gates, absorber_start_yin
-                                                    );
+                    // Make the target trove absorbable
+                    purger_utils::lower_prices_to_raise_trove_ltv(
+                        shrine,
+                        seer,
+                        yangs,
+                        target_trove_start_health.value,
+                        target_trove_start_health.debt,
+                        *target_ltv
+                    );
 
-                                                    // sanity check
-                                                    assert(
-                                                        shrine
-                                                            .get_yin(
-                                                                absorber.contract_address
-                                                            ) > target_trove_start_health
-                                                            .debt,
-                                                        'not full absorption'
-                                                    );
+                    if is_recovery_mode {
+                        purger_utils::trigger_recovery_mode(
+                            shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                        );
+                    } else {
+                        assert(!shrine.is_recovery_mode(), 'recovery mode');
+                    }
 
-                                                    // Make the target trove absorbable
-                                                    purger_utils::lower_prices_to_raise_trove_ltv(
-                                                        shrine,
-                                                        seer,
-                                                        yangs,
-                                                        target_trove_start_health.value,
-                                                        target_trove_start_health.debt,
-                                                        *target_ltv
-                                                    );
+                    let mut target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
 
-                                                    if *is_recovery_mode {
-                                                        purger_utils::trigger_recovery_mode(
-                                                            shrine,
-                                                            seer,
-                                                            yangs,
-                                                            common::RecoveryModeSetupType::ExceedsBuffer
-                                                        );
-                                                    } else {
-                                                        assert(!shrine.is_recovery_mode(), 'recovery mode');
-                                                    }
+                    purger_utils::assert_trove_is_absorbable(
+                        shrine, purger, target_trove, target_trove_updated_start_health
+                    );
 
-                                                    let mut target_trove_updated_start_health: Health = shrine
-                                                        .get_trove_health(target_trove);
+                    if kill_absorber {
+                        absorber_utils::kill_absorber(absorber);
+                        assert(!absorber.get_live(), 'sanity check');
+                    }
 
-                                                    purger_utils::assert_trove_is_absorbable(
-                                                        shrine, purger, target_trove, target_trove_updated_start_health
-                                                    );
+                    let (penalty, max_close_amt, expected_compensation_value) = purger
+                        .preview_absorb(target_trove)
+                        .expect('Should be absorbable');
 
-                                                    if *kill_absorber {
-                                                        absorber_utils::kill_absorber(absorber);
-                                                        assert(!absorber.get_live(), 'sanity check');
-                                                    }
+                    if !is_recovery_mode {
+                        assert(max_close_amt < target_trove_updated_start_health.debt, 'close amount == debt');
+                    }
 
-                                                    let (penalty, max_close_amt, expected_compensation_value) = purger
-                                                        .preview_absorb(target_trove)
-                                                        .expect('Should be absorbable');
+                    let caller: ContractAddress = purger_utils::random_user();
+                    start_prank(CheatTarget::One(purger.contract_address), caller);
+                    let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
-                                                    if !(*is_recovery_mode) {
-                                                        assert(
-                                                            max_close_amt < target_trove_updated_start_health.debt,
-                                                            'close amount == debt'
-                                                        );
-                                                    }
+                    // Check that LTV is close to safety margin
+                    let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+                    assert(
+                        target_trove_after_health.debt == target_trove_updated_start_health.debt - max_close_amt,
+                        'wrong debt after liquidation'
+                    );
 
-                                                    let caller: ContractAddress = purger_utils::random_user();
-                                                    start_prank(CheatTarget::One(purger.contract_address), caller);
-                                                    let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+                    // Perform this check only if close amount is less than 
+                    // trove's debt. Close amount may be equal to trove's debt 
+                    // after recovery mode is triggered. 
+                    if max_close_amt != target_trove_updated_start_health.debt {
+                        purger_utils::assert_ltv_at_safety_margin(
+                            target_trove_updated_start_health.threshold, target_trove_after_health.ltv, Option::None
+                        );
+                    }
 
-                                                    // Check that LTV is close to safety margin
-                                                    let target_trove_after_health: Health = shrine
-                                                        .get_trove_health(target_trove);
-                                                    assert(
-                                                        target_trove_after_health
-                                                            .debt == target_trove_updated_start_health
-                                                            .debt
-                                                            - max_close_amt,
-                                                        'wrong debt after liquidation'
-                                                    );
+                    let (expected_freed_pct, expected_freed_amts) = purger_utils::get_expected_liquidation_assets(
+                        purger_utils::target_trove_yang_asset_amts(),
+                        target_trove_updated_start_health,
+                        max_close_amt,
+                        penalty,
+                        Option::Some(expected_compensation_value)
+                    );
+                    let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+                        yangs, expected_freed_amts
+                    );
 
-                                                    // Perform this check only if close amount is less than 
-                                                    // trove's debt. Close amount may be equal to trove's debt 
-                                                    // after recovery mode is triggered. 
-                                                    if max_close_amt != target_trove_updated_start_health.debt {
-                                                        purger_utils::assert_ltv_at_safety_margin(
-                                                            target_trove_updated_start_health.threshold,
-                                                            target_trove_after_health.ltv,
-                                                            Option::None
-                                                        );
-                                                    }
+                    purger_spy.fetch_events();
 
-                                                    let (expected_freed_pct, expected_freed_amts) =
-                                                        purger_utils::get_expected_liquidation_assets(
-                                                        purger_utils::target_trove_yang_asset_amts(),
-                                                        target_trove_updated_start_health,
-                                                        max_close_amt,
-                                                        penalty,
-                                                        Option::Some(expected_compensation_value)
-                                                    );
-                                                    let expected_freed_assets: Span<AssetBalance> =
-                                                        common::combine_assets_and_amts(
-                                                        yangs, expected_freed_amts
-                                                    );
+                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                    let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
-                                                    purger_spy.fetch_events();
+                    common::assert_asset_balances_equalish(
+                        purged_event.freed_assets, expected_freed_assets, 1000_u128, 'wrong freed assets for event'
+                    );
+                    assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+                    assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                    common::assert_equalish(
+                        purged_event.percentage_freed, expected_freed_pct, 1000000_u128.into(), 'wrong Purged freed pct'
+                    );
+                    assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+                    assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
 
-                                                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
-                                                    let purged_event = purger_utils::deserialize_purged_event(
-                                                        raw_purged_event
-                                                    );
+                    let expected_events = array![
+                        (
+                            purger.contract_address,
+                            purger_contract::Event::Compensate(
+                                purger_contract::Compensate { recipient: caller, compensation }
+                            ),
+                        ),
+                    ];
+                    purger_spy.assert_emitted(@expected_events);
 
-                                                    common::assert_asset_balances_equalish(
-                                                        purged_event.freed_assets,
-                                                        expected_freed_assets,
-                                                        1000_u128,
-                                                        'wrong freed assets for event'
-                                                    );
-                                                    assert(
-                                                        purged_event.trove_id == target_trove, 'wrong Purged trove ID'
-                                                    );
-                                                    assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
-                                                    common::assert_equalish(
-                                                        purged_event.percentage_freed,
-                                                        expected_freed_pct,
-                                                        1000000_u128.into(),
-                                                        'wrong Purged freed pct'
-                                                    );
-                                                    assert(
-                                                        purged_event.funder == absorber.contract_address,
-                                                        'wrong Purged funder'
-                                                    );
-                                                    assert(
-                                                        purged_event.recipient == absorber.contract_address,
-                                                        'wrong Purged recipient'
-                                                    );
-
-                                                    let expected_events = array![
-                                                        (
-                                                            purger.contract_address,
-                                                            purger_contract::Event::Compensate(
-                                                                purger_contract::Compensate {
-                                                                    recipient: caller, compensation
-                                                                }
-                                                            ),
-                                                        ),
-                                                    ];
-                                                    purger_spy.assert_emitted(@expected_events);
-
-                                                    shrine_utils::assert_shrine_invariants(
-                                                        shrine, yangs, abbot.get_troves_count()
-                                                    );
-                                                },
-                                                Option::None => { break; },
-                                            };
-                                        },
-                                        Option::None => { break; },
-                                    };
-                                };
-                            },
-                            Option::None => { break; },
-                        };
-                    };
+                    shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                 },
                 Option::None => { break; },
             };
         };
     }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold1_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], true, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold1_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], true, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold1_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], false, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold1_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], false, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold2_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], true, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold2_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], true, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold2_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], false, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold2_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], false, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold3_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], true, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold3_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], true, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold3_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], false, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold3_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], false, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold4_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], true, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold4_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], true, false);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold4_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], false, true);
+    }
+
+    #[test]
+    fn test_absorb_less_than_trove_debt_parametrized_threshold4_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], false, false);
+    }
+
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
     // and the LTV at liquidation, and checks that the trove's debt is absorbed in full for thresholds
     // from 78.74% onwards.
-    fn test_absorb_trove_debt(is_recovery_mode: bool) {
+    fn test_absorb_trove_debt(
+        threshold: Ray, mut target_ltvs: Span<Ray>, expected_penalty: Ray, is_recovery_mode: bool, kill_absorber: bool
+    ) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
-        let mut thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let mut target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-
-        // This array should match `target_ltvs_by_threshold`. However, since only the first
-        // LTV in the inner span of `target_ltvs_by_threshold` has a non-zero penalty, and the
-        // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
-        // the array to be concise.
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
-        let mut expected_penalties: Span<Ray> = array![
-            // First threshold of 78.75% (Ray)
-            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
-            // Second threshold of 80% (Ray)
-            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
-            // Third threshold of 90% (Ray)
-            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
-            // Fourth threshold of 96% (Ray)
-            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
-            // Fifth threshold of 97% (Ray)
-            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
-            // Sixth threshold of 99% (Ray)
-            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
-        ]
-            .span();
-
+        // Inner loop iterating over LTVs at liquidation
         loop {
-            match thresholds.pop_front() {
-                Option::Some(threshold) => {
-                    let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-                    let expected_penalty: Ray = *expected_penalties.pop_front().unwrap();
-                    // Inner loop iterating over LTVs at liquidation
-                    loop {
-                        match target_ltvs.pop_front() {
-                            Option::Some(target_ltv) => {
-                                let mut kill_absorber_fuzz: Span<bool> = array![true, false].span();
+            match target_ltvs.pop_front() {
+                Option::Some(target_ltv) => {
+                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
-                                match kill_absorber_fuzz.pop_front() {
-                                    Option::Some(kill_absorber) => {
-                                        let (shrine, abbot, seer, absorber, purger, yangs, gates) =
-                                            purger_utils::purger_deploy(
-                                            classes
-                                        );
-                                        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+                    // Set thresholds to provided value
+                    purger_utils::set_thresholds(shrine, yangs, threshold);
 
-                                        // Set thresholds to provided value
-                                        purger_utils::set_thresholds(shrine, yangs, *threshold);
+                    let trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
+                    let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
-                                        let trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
-                                        let target_trove: u64 = purger_utils::funded_healthy_trove(
-                                            abbot, yangs, gates, trove_debt
-                                        );
+                    // Accrue some interest
+                    common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
 
-                                        // Accrue some interest
-                                        common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+                    let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
 
-                                        let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+                    // Fund the absorber with twice the target trove's debt
+                    let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
+                    purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
 
-                                        // Fund the absorber with twice the target trove's debt
-                                        let absorber_start_yin: Wad = (target_trove_start_health.debt.val * 2).into();
-                                        purger_utils::funded_absorber(
-                                            shrine, abbot, absorber, yangs, gates, absorber_start_yin
-                                        );
+                    // sanity check
+                    assert(
+                        shrine.get_yin(absorber.contract_address) > target_trove_start_health.debt,
+                        'not full absorption'
+                    );
 
-                                        // sanity check
-                                        assert(
-                                            shrine.get_yin(absorber.contract_address) > target_trove_start_health.debt,
-                                            'not full absorption'
-                                        );
+                    // Make the target trove absorbable
+                    purger_utils::lower_prices_to_raise_trove_ltv(
+                        shrine,
+                        seer,
+                        yangs,
+                        target_trove_start_health.value,
+                        target_trove_start_health.debt,
+                        *target_ltv
+                    );
 
-                                        // Make the target trove absorbable
-                                        purger_utils::lower_prices_to_raise_trove_ltv(
-                                            shrine,
-                                            seer,
-                                            yangs,
-                                            target_trove_start_health.value,
-                                            target_trove_start_health.debt,
-                                            *target_ltv
-                                        );
+                    let mut target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
 
-                                        let mut target_trove_updated_start_health: Health = shrine
-                                            .get_trove_health(target_trove);
+                    if is_recovery_mode {
+                        purger_utils::trigger_recovery_mode(
+                            shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                        );
+                        target_trove_updated_start_health = shrine.get_trove_health(target_trove);
+                    } else {
+                        assert(!shrine.is_recovery_mode(), 'recovery mode');
+                    }
 
-                                        if is_recovery_mode {
-                                            purger_utils::trigger_recovery_mode(
-                                                shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
-                                            );
-                                            target_trove_updated_start_health = shrine.get_trove_health(target_trove);
-                                        } else {
-                                            assert(!shrine.is_recovery_mode(), 'recovery mode');
-                                        }
+                    purger_utils::assert_trove_is_absorbable(
+                        shrine, purger, target_trove, target_trove_updated_start_health
+                    );
 
-                                        purger_utils::assert_trove_is_absorbable(
-                                            shrine, purger, target_trove, target_trove_updated_start_health
-                                        );
+                    if kill_absorber {
+                        absorber_utils::kill_absorber(absorber);
+                        assert(!absorber.get_live(), 'sanity check');
+                    }
 
-                                        if *kill_absorber {
-                                            absorber_utils::kill_absorber(absorber);
-                                            assert(!absorber.get_live(), 'sanity check');
-                                        }
+                    let (penalty, max_close_amt, expected_compensation_value) = purger
+                        .preview_absorb(target_trove)
+                        .expect('Should be absorbable');
+                    assert(max_close_amt == target_trove_updated_start_health.debt, 'close amount != debt');
+                    if *target_ltv >= ninety_nine_pct {
+                        assert(penalty.is_zero(), 'wrong penalty');
+                    } else {
+                        let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
+                        if is_recovery_mode {
+                            if expected_penalty.is_zero() {
+                                assert_eq!(penalty, expected_penalty, "wrong rm penalty #1");
+                            } else {
+                                assert(penalty < expected_penalty - error_margin, 'wrong rm penalty #2');
+                            }
+                        } else {
+                            common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong penalty');
+                        }
+                    }
 
-                                        let (penalty, max_close_amt, expected_compensation_value) = purger
-                                            .preview_absorb(target_trove)
-                                            .expect('Should be absorbable');
-                                        assert(
-                                            max_close_amt == target_trove_updated_start_health.debt,
-                                            'close amount != debt'
-                                        );
-                                        if *target_ltv >= ninety_nine_pct {
-                                            assert(penalty.is_zero(), 'wrong penalty');
-                                        } else {
-                                            let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
-                                            if is_recovery_mode {
-                                                if expected_penalty.is_zero() {
-                                                    assert_eq!(penalty, expected_penalty, "wrong rm penalty #1");
-                                                } else {
-                                                    assert(
-                                                        penalty < expected_penalty - error_margin, 'wrong rm penalty #2'
-                                                    );
-                                                }
-                                            } else {
-                                                common::assert_equalish(
-                                                    penalty, expected_penalty, error_margin, 'wrong penalty'
-                                                );
-                                            }
-                                        }
+                    let caller: ContractAddress = purger_utils::random_user();
+                    start_prank(CheatTarget::One(purger.contract_address), caller);
+                    let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
-                                        let caller: ContractAddress = purger_utils::random_user();
-                                        start_prank(CheatTarget::One(purger.contract_address), caller);
-                                        let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+                    let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+                    assert(target_trove_after_health.ltv.is_zero(), 'wrong LTV after liquidation');
+                    assert(target_trove_after_health.value.is_zero(), 'wrong value after liquidation');
+                    assert(target_trove_after_health.debt.is_zero(), 'wrong debt after liquidation');
 
-                                        let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
-                                        assert(target_trove_after_health.ltv.is_zero(), 'wrong LTV after liquidation');
-                                        assert(
-                                            target_trove_after_health.value.is_zero(), 'wrong value after liquidation'
-                                        );
-                                        assert(
-                                            target_trove_after_health.debt.is_zero(), 'wrong debt after liquidation'
-                                        );
+                    let target_trove_yang_asset_amts: Span<u128> = purger_utils::target_trove_yang_asset_amts();
+                    let (_, expected_freed_asset_amts) = purger_utils::get_expected_liquidation_assets(
+                        target_trove_yang_asset_amts,
+                        target_trove_updated_start_health,
+                        max_close_amt,
+                        penalty,
+                        Option::Some(expected_compensation_value)
+                    );
 
-                                        let target_trove_yang_asset_amts: Span<u128> =
-                                            purger_utils::target_trove_yang_asset_amts();
-                                        let (_, expected_freed_asset_amts) =
-                                            purger_utils::get_expected_liquidation_assets(
-                                            target_trove_yang_asset_amts,
-                                            target_trove_updated_start_health,
-                                            max_close_amt,
-                                            penalty,
-                                            Option::Some(expected_compensation_value)
-                                        );
+                    let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+                        yangs, expected_freed_asset_amts,
+                    );
 
-                                        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                                            yangs, expected_freed_asset_amts,
-                                        );
+                    purger_spy.fetch_events();
 
-                                        purger_spy.fetch_events();
+                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                    let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
-                                        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
-                                        let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
+                    assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
+                    assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
+                    assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
+                    assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
+                    assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+                    common::assert_asset_balances_equalish(
+                        purged_event.freed_assets, expected_freed_assets, 100000_u128, 'wrong freed assets for event'
+                    );
 
-                                        assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
-                                        assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
-                                        assert(
-                                            purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct'
-                                        );
-                                        assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
-                                        assert(
-                                            purged_event.recipient == absorber.contract_address,
-                                            'wrong Purged recipient'
-                                        );
-                                        common::assert_asset_balances_equalish(
-                                            purged_event.freed_assets,
-                                            expected_freed_assets,
-                                            100000_u128,
-                                            'wrong freed assets for event'
-                                        );
+                    let expected_events = array![
+                        (
+                            purger.contract_address,
+                            purger_contract::Event::Compensate(
+                                purger_contract::Compensate { recipient: caller, compensation }
+                            ),
+                        ),
+                    ];
+                    purger_spy.assert_emitted(@expected_events);
 
-                                        let expected_events = array![
-                                            (
-                                                purger.contract_address,
-                                                purger_contract::Event::Compensate(
-                                                    purger_contract::Compensate { recipient: caller, compensation }
-                                                ),
-                                            ),
-                                        ];
-                                        purger_spy.assert_emitted(@expected_events);
-
-                                        shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
-                                    },
-                                    Option::None => { break; },
-                                };
-                            },
-                            Option::None => { break; },
-                        };
-                    };
+                    shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                 },
                 Option::None => { break; },
             };
@@ -3514,13 +3495,219 @@ mod test_purger {
     }
 
     #[test]
-    fn test_absorb_trove_debt_parametrized1() {
-        test_absorb_trove_debt(false);
+    fn test_absorb_trove_debt_parametrized_threshold1_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], false, true);
     }
 
     #[test]
-    fn test_absorb_trove_debt_parametrized2() {
-        test_absorb_trove_debt(true);
+    fn test_absorb_trove_debt_parametrized_threshold1_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold1_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold1_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], true, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold2_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], false, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold2_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold2_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold2_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], true, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold3_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], false, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold3_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold3_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold3_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], true, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold4_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], false, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold4_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold4_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold4_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], true, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold5_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], false, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold5_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold5_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold5_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], true, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold6_a() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], false, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold6_b() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], true, true);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold6_c() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], false, false);
+    }
+
+    #[test]
+    fn test_absorb_trove_debt_parametrized_threshold6_d() {
+        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
+        let target_ltvs_by_threshold: Span<Span<Ray>> =
+            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
+        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
+        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], true, false);
     }
 
     #[test]
