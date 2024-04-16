@@ -6,9 +6,13 @@ description: The arbiter of collateral prices
 
 The Seer module acts as a coordinator of individual oracle modules, reading the price of the underlying collateral tokens of `yang`s from the adapter modules of oracles and submitting them to the Shrine.
 
-In order for an oracle to be onboarded to the Seer, an adapter module needs to be implemented that conforms to the `IOracle` interface. This abstracts away the individualized differences between different oracle designs and implementations, and lets the Seer obtain the prices from multiple sources.
+In order for an oracle to be onboarded to the Seer, an adapter module needs to be implemented that conforms to the `IOracle` interface. This abstracts away the individualized differences between different oracle designs and implementations, and lets the Seer obtain the prices from multiple sources.&#x20;
 
-Therefore, the adapter module for each oracle is also responsible for the parameters that determine whether a price is valid, and whether a given price is valid.&#x20;
+Therefore, the adapter module for each oracle is also responsible for the parameters that determine whether a price is valid, and whether a given price is valid.
+
+An advantage of this modular design is the ability to build different mechanisms for price determination for each oracle based on its capabilities as well as different considerations depending on their priority in the protocol.&#x20;
+
+* For example, the adapter for Pragma adopts a pessimistic design that takes the lower of the spot price and the 7-days TWAP price. As the primary oracle, this lets the protocol prioritize robustness against price manipulation attacks and safeguarding against volatility.
 
 The Seer module is designed with simplicity in mind and does not perform any further manipulation of prices obtained from an oracle. If the price from an oracle is invalid, then it will look to the next fallback oracle, if any.
 
@@ -31,5 +35,5 @@ Option (2) is intended to enable price updates when redistributions occur to ens
 
 ## Supported Oracles
 
-The protocol will rely on [Pragma](https://www.pragmaoracle.com/) at launch. Fallback oracles will be added once more oracles are launched on Starknet.
+At launch, the protocol will rely on [Pragma](https://www.pragma.build/) as the primary oracle and [Switchboard](https://switchboard.xyz/) as the fallback oracle. More fallback oracles may be added as and when they are available on Starknet.
 
