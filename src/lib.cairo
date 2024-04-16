@@ -1,6 +1,6 @@
 mod types;
 
-mod core {
+pub mod core {
     pub mod abbot;
     pub mod absorber;
     pub mod allocator;
@@ -55,7 +55,7 @@ mod utils {
 }
 
 // mock used for local devnet deployment
-mod mock {
+pub mod mock {
     pub mod blesser;
     pub mod erc20;
     pub mod erc20_mintable;

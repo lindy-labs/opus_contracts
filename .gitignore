@@ -6,3 +6,5 @@ workspace.code-workspace
 target/
 
 .snfoundry_cache/
+
+scripts/deploy_alpha-goerli_state.json
