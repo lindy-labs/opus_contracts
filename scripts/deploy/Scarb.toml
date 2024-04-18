@@ -8,7 +8,7 @@ edition = "2023_11"
 [dependencies]
 sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.21.0" }
 starknet = ">=2.6.3"
-opus = { path = "../" }
+opus = { path = "../../" }
 
 [lib]
 sierra = true
@@ -30,14 +30,20 @@ build-external-contracts = [
     "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",
+    "opus::external::pragma::pragma",
+    "opus::external::switchboard::switchboard",
     "opus::mock::erc20_mintable::erc20_mintable",
     "opus::mock::mock_pragma::mock_pragma",
     "opus::mock::mock_switchboard::mock_switchboard",
 ]
 
 [scripts]
-deploy = "sncast --profile devnet script run deploy"
+deploy_devnet = "sncast --profile devnet script run deploy_devnet"
+deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
 reset = "rm deploy_alpha-goerli_state.json"
 
 [profile.devnet]
 inherits = "dev"
+
+[profile.sepolia]
+inherits = "release"

@@ -3,28 +3,28 @@ use deployment::constants;
 use deployment::core_deployment;
 use deployment::mock_deployment;
 use deployment::utils;
-use opus::core::roles::{absorber_roles, sentinel_roles, shrine_roles};
+use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
 
 fn main() {
-    let admin: ContractAddress = constants::admin();
+    let admin: ContractAddress = constants::devnet::admin();
 
     println!("Deploying contracts");
 
     // Deploy core contracts
-    let shrine: ContractAddress = core_deployment::deploy_shrine();
+    let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
     let flash_mint: ContractAddress = core_deployment::deploy_flash_mint(shrine);
-    let sentinel: ContractAddress = core_deployment::deploy_sentinel(shrine);
-    let seer: ContractAddress = core_deployment::deploy_seer(shrine, sentinel);
+    let sentinel: ContractAddress = core_deployment::deploy_sentinel(admin, shrine);
+    let seer: ContractAddress = core_deployment::deploy_seer(admin, shrine, sentinel);
     let abbot: ContractAddress = core_deployment::deploy_abbot(shrine, sentinel);
-    let absorber: ContractAddress = core_deployment::deploy_absorber(shrine, sentinel);
-    let purger: ContractAddress = core_deployment::deploy_purger(shrine, sentinel, absorber, seer);
-    let allocator: ContractAddress = core_deployment::deploy_allocator();
-    let equalizer: ContractAddress = core_deployment::deploy_equalizer(shrine, allocator);
-    let caretaker: ContractAddress = core_deployment::deploy_caretaker(shrine, abbot, sentinel, equalizer);
-    let controller: ContractAddress = core_deployment::deploy_controller(shrine);
+    let absorber: ContractAddress = core_deployment::deploy_absorber(admin, shrine, sentinel);
+    let purger: ContractAddress = core_deployment::deploy_purger(admin, shrine, sentinel, absorber, seer);
+    let allocator: ContractAddress = core_deployment::deploy_allocator(admin);
+    let equalizer: ContractAddress = core_deployment::deploy_equalizer(admin, shrine, allocator);
+    let caretaker: ContractAddress = core_deployment::deploy_caretaker(admin, shrine, abbot, sentinel, equalizer);
+    let controller: ContractAddress = core_deployment::deploy_controller(admin, shrine);
 
     // Deploy mocks
     println!("Deploying mocks");
@@ -59,6 +59,8 @@ fn main() {
     utils::grant_role(sentinel, abbot, sentinel_roles::abbot(), "SE -> ABB");
     utils::grant_role(sentinel, purger, sentinel_roles::purger(), "SE -> PU");
     utils::grant_role(sentinel, caretaker, sentinel_roles::caretaker(), "SE -> CA");
+
+    utils::grant_role(seer, purger, seer_roles::purger(), "SEER -> PU");
 
     utils::grant_role(shrine, abbot, shrine_roles::abbot(), "SHR -> ABB");
     utils::grant_role(shrine, caretaker, shrine_roles::caretaker(), "SHR -> CA");
