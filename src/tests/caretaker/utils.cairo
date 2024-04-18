@@ -44,8 +44,8 @@ pub mod caretaker_utils {
             equalizer.contract_address.into(),
         ];
 
-        let caretaker_class = declare("caretaker");
-        let caretaker = caretaker_class.deploy(@calldata).expect('failed deploy caretaker');
+        let caretaker_class = declare("caretaker").unwrap();
+        let (caretaker, _) = caretaker_class.deploy(@calldata).expect('failed deploy caretaker');
 
         // allow Caretaker to do its business with Shrine
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());

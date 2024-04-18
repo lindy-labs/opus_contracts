@@ -156,7 +156,7 @@ pub mod shrine_utils {
     }
 
     pub fn declare_shrine() -> ContractClass {
-        declare("shrine")
+        declare("shrine").unwrap()
     }
 
     pub fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {
@@ -169,7 +169,7 @@ pub mod shrine_utils {
 
         start_warp(CheatTarget::All, DEPLOYMENT_TIMESTAMP);
 
-        let shrine_addr = shrine_class.deploy(@calldata).expect('shrine deploy failed');
+        let (shrine_addr, _) = shrine_class.deploy(@calldata).unwrap();
 
         shrine_addr
     }

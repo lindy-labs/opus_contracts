@@ -33,9 +33,10 @@ pub mod gate_utils {
 
         let gate_class = match gate_class {
             Option::Some(class) => class,
-            Option::None => declare("gate"),
+            Option::None => declare("gate").unwrap(),
         };
-        gate_class.deploy(@calldata).expect('gate deploy failed')
+        let (gate_addr, _) = gate_class.deploy(@calldata).expect('gate deploy failed');
+        gate_addr
     }
 
     pub fn eth_gate_deploy(token_class: Option<ContractClass>) -> (ContractAddress, ContractAddress, ContractAddress) {

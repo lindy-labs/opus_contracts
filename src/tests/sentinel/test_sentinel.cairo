@@ -197,7 +197,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Asset of gate is not yang',))]
     fn test_add_yang_gate_yang_mismatch() {
-        let token_class = declare("erc20_mintable");
+        let token_class = declare("erc20_mintable").unwrap();
         let (sentinel, _, _, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::Some(token_class));
         let wbtc: ContractAddress = common::wbtc_token_deploy(Option::Some(token_class));
 
