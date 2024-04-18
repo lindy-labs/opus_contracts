@@ -53,8 +53,8 @@ mod test_absorber {
 
     #[test]
     fn test_set_reward_pass() {
-        let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let blesser_class = Option::Some(declare("blesser").unwrap());
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );
@@ -2191,8 +2191,8 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_depleted_active_reward() {
-        let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let blesser_class = Option::Some(declare("blesser").unwrap());
+        let token_class = Option::Some(declare("erc20_mintable"));
+        let blesser_class = Option::Some(declare("blesser"));
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );

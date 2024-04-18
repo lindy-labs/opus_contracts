@@ -52,10 +52,10 @@ pub mod sentinel_utils {
 
         let sentinel_class = match sentinel_class {
             Option::Some(class) => class,
-            Option::None => declare("sentinel").unwrap()
+            Option::None => declare("sentinel")
         };
 
-        let (sentinel_addr, _) = sentinel_class.deploy(@calldata).expect('failed deploy sentinel');
+        let sentinel_addr = sentinel_class.deploy(@calldata).expect('failed deploy sentinel');
 
         // Grant `abbot` role to `mock_abbot`
         start_prank(CheatTarget::One(sentinel_addr), admin());
@@ -83,14 +83,14 @@ pub mod sentinel_utils {
         let token_class = Option::Some(
             match token_class {
                 Option::Some(class) => class,
-                Option::None => declare("erc20_mintable").unwrap()
+                Option::None => declare("erc20_mintable")
             }
         );
 
         let gate_class = Option::Some(
             match gate_class {
                 Option::Some(class) => class,
-                Option::None => declare("gate").unwrap()
+                Option::None => declare("gate")
             }
         );
 

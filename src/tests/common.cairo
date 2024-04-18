@@ -193,11 +193,10 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable").unwrap(),
+        Option::None => declare("erc20_mintable"),
     };
 
-    let (token_addr, _) = token_class.deploy(@calldata).unwrap();
-    token_addr
+    token_class.deploy(@calldata).expect('erc20 deploy failed')
 }
 
 // Helper function to fund a user account with yang assets
@@ -400,4 +399,3 @@ pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 
     combined_asset_amts.span()
 }
-

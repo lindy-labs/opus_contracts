@@ -48,11 +48,11 @@ pub mod transmuter_utils {
     //
 
     pub fn declare_transmuter() -> ContractClass {
-        declare("transmuter").unwrap()
+        declare("transmuter")
     }
 
     pub fn declare_erc20() -> ContractClass {
-        declare("erc20_mintable").unwrap()
+        declare("erc20_mintable")
     }
 
     pub fn transmuter_deploy(
@@ -70,7 +70,7 @@ pub mod transmuter_utils {
             Option::None => declare_transmuter(),
         };
 
-        let (transmuter_addr, _) = transmuter_class.deploy(@calldata).expect('transmuter deploy failed');
+        let transmuter_addr = transmuter_class.deploy(@calldata).expect('transmuter deploy failed');
 
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
@@ -138,10 +138,8 @@ pub mod transmuter_utils {
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
         let mut calldata: Array<felt252> = array![admin().into()];
 
-        let transmuter_registry_class = declare("transmuter_registry").unwrap();
-        let (transmuter_registry_addr, _) = transmuter_registry_class
-            .deploy(@calldata)
-            .expect('TR registry deploy failed');
+        let transmuter_registry_class = declare("transmuter_registry");
+        let transmuter_registry_addr = transmuter_registry_class.deploy(@calldata).expect('TR registry deploy failed');
 
         ITransmuterRegistryDispatcher { contract_address: transmuter_registry_addr }
     }
