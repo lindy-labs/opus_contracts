@@ -1,0 +1,43 @@
+[package]
+name = "deployment"
+version = "0.1.0"
+edition = "2023_11"
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.21.0" }
+starknet = ">=2.6.3"
+opus = { path = "../" }
+
+[lib]
+sierra = true
+casm = true
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+build-external-contracts = [
+    "opus::core::abbot::abbot",
+    "opus::core::absorber::absorber",
+    "opus::core::allocator::allocator",
+    "opus::core::caretaker::caretaker",
+    "opus::core::controller::controller",
+    "opus::core::equalizer::equalizer",
+    "opus::core::flash_mint::flash_mint",
+    "opus::core::gate::gate",
+    "opus::core::purger::purger",
+    "opus::core::seer::seer",
+    "opus::core::sentinel::sentinel",
+    "opus::core::shrine::shrine",
+    "opus::mock::erc20_mintable::erc20_mintable",
+    "opus::mock::mock_pragma::mock_pragma",
+    "opus::mock::mock_switchboard::mock_switchboard",
+]
+
+[scripts]
+deploy = "sncast --profile devnet script run deploy"
+reset = "rm deploy_alpha-goerli_state.json"
+
+[profile.devnet]
+inherits = "dev"
