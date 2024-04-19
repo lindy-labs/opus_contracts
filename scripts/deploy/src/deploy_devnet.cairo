@@ -59,9 +59,7 @@ fn main() {
     utils::grant_role(sentinel, abbot, sentinel_roles::abbot(), "SE -> ABB");
     utils::grant_role(sentinel, purger, sentinel_roles::purger(), "SE -> PU");
     utils::grant_role(sentinel, caretaker, sentinel_roles::caretaker(), "SE -> CA");
-
     utils::grant_role(seer, purger, seer_roles::purger(), "SEER -> PU");
-
     utils::grant_role(shrine, abbot, shrine_roles::abbot(), "SHR -> ABB");
     utils::grant_role(shrine, caretaker, shrine_roles::caretaker(), "SHR -> CA");
     utils::grant_role(shrine, controller, shrine_roles::controller(), "SHR -> CTR");

@@ -38,9 +38,8 @@ build-external-contracts = [
 ]
 
 [scripts]
-deploy_devnet = "sncast --profile devnet script run deploy_devnet"
+deploy_devnet = "rm deploy_devnet_alpha-goerli_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet"
 deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
-reset = "rm deploy_alpha-goerli_state.json"
 
 [profile.devnet]
 inherits = "dev"
