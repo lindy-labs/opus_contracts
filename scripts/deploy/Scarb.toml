@@ -45,5 +45,10 @@ reset = "rm deploy_alpha-goerli_state.json"
 [profile.devnet]
 inherits = "dev"
 
-[profile.sepolia]
-inherits = "release"
+# temporarily commenting out until a bug in the toolchain
+# is fixed https://github.com/foundry-rs/starknet-foundry/issues/2042
+# for more context:
+# https://github.com/milancermak/snfoundry-script-poc
+# https://t.me/starknet_foundry_support/2894
+# [profile.sepolia]
+# inherits = "release"
