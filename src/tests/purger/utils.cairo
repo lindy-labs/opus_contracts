@@ -298,6 +298,11 @@ pub mod purger_utils {
     }
 
     pub fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+        // This array should match `ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt`. 
+        // However, since only the first LTV in the inner span of has a non-zero penalty, and the
+        // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
+        // the array to be concise.
+
         array![
             // First threshold of 78.75% (Ray)
             124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
