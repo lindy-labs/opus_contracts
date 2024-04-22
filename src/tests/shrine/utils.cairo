@@ -169,7 +169,7 @@ pub mod shrine_utils {
 
         start_warp(CheatTarget::All, DEPLOYMENT_TIMESTAMP);
 
-        let (shrine_addr, _) = shrine_class.deploy(@calldata).unwrap();
+        let (shrine_addr, _) = shrine_class.deploy(@calldata).expect('shrine deploy failed');
 
         shrine_addr
     }

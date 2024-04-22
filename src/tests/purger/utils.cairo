@@ -369,7 +369,7 @@ pub mod purger_utils {
             seer.contract_address.into()
         ];
 
-        let (purger_addr, _) = classes.purger.deploy(@calldata).expect('failed deploy purger');
+        let (purger_addr, _) = classes.purger.deploy(@calldata).expect('purger deploy failed');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
@@ -433,7 +433,7 @@ pub mod purger_utils {
             Option::None => declare("flash_liquidator").unwrap(),
         };
 
-        let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
+        let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }

@@ -55,7 +55,7 @@ pub mod sentinel_utils {
             Option::None => declare("sentinel").unwrap()
         };
 
-        let (sentinel_addr, _) = sentinel_class.deploy(@calldata).expect('failed deploy sentinel');
+        let (sentinel_addr, _) = sentinel_class.deploy(@calldata).expect('sentinel deploy failed');
 
         // Grant `abbot` role to `mock_abbot`
         start_prank(CheatTarget::One(sentinel_addr), admin());

@@ -196,7 +196,7 @@ pub fn deploy_token(
         Option::None => declare("erc20_mintable").unwrap(),
     };
 
-    let (token_addr, _) = token_class.deploy(@calldata).unwrap();
+    let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
     token_addr
 }
 
@@ -400,4 +400,3 @@ pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 
     combined_asset_amts.span()
 }
-

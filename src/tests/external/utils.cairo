@@ -55,7 +55,7 @@ pub mod pragma_utils {
             Option::None => declare("mock_pragma").unwrap(),
         };
 
-        let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('failed deploy mock pragma');
+        let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('mock pragma deploy failed');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
@@ -77,7 +77,7 @@ pub mod pragma_utils {
             Option::None => declare("pragma").unwrap(),
         };
 
-        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('failed deploy pragma');
+        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma deploy failed');
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
@@ -177,7 +177,7 @@ pub mod switchboard_utils {
 
         let (mock_switchboard_addr, _) = mock_switchboard_class
             .deploy(@calldata)
-            .expect('failed deploy mock switchboard');
+            .expect('mock switchboard deploy failed');
         IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
     }
 
@@ -193,7 +193,7 @@ pub mod switchboard_utils {
             Option::None => declare("switchboard").unwrap(),
         };
 
-        let (switchboard_addr, _) = switchboard_class.deploy(@calldata).expect('failed deploy switchboard');
+        let (switchboard_addr, _) = switchboard_class.deploy(@calldata).expect('switchboard deploy failed');
 
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 
