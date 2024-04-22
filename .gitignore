@@ -7,4 +7,4 @@ target/
 
 .snfoundry_cache/
 
-scripts/deploy_alpha-goerli_state.json
+scripts/deploy_devnet_alpha-sepolia_state.json
