@@ -1,6 +1,7 @@
-use deployment::constants::{admin, MAX_FEE};
+use deployment::constants::MAX_FEE;
 use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult
+    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
+    ScriptCommandError
 };
 use starknet::{ClassHash, ContractAddress};
 use wadray::RAY_ONE;
@@ -20,10 +21,9 @@ const SEER_UPDATE_FREQUENCY: u64 = 1000;
 // Deployment helpers
 //
 
-pub fn deploy_shrine() -> ContractAddress {
+pub fn deploy_shrine(admin: ContractAddress) -> ContractAddress {
     let declare_shrine = declare("shrine", Option::Some(MAX_FEE), Option::None).expect('failed shrine declare');
-
-    let shrine_calldata: Array<felt252> = array![admin().into(), 'Cash', 'CASH',];
+    let shrine_calldata: Array<felt252> = array![admin.into(), 'Cash', 'CASH',];
     let deploy_shrine = deploy(
         declare_shrine.class_hash, shrine_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
@@ -45,10 +45,10 @@ pub fn deploy_flash_mint(shrine: ContractAddress) -> ContractAddress {
     deploy_flash_mint.contract_address
 }
 
-pub fn deploy_sentinel(shrine: ContractAddress) -> ContractAddress {
+pub fn deploy_sentinel(admin: ContractAddress, shrine: ContractAddress) -> ContractAddress {
     let declare_sentinel = declare("sentinel", Option::Some(MAX_FEE), Option::None).expect('failed sentinel declare');
 
-    let sentinel_calldata: Array<felt252> = array![admin().into(), shrine.into()];
+    let sentinel_calldata: Array<felt252> = array![admin.into(), shrine.into()];
     let deploy_sentinel = deploy(
         declare_sentinel.class_hash, sentinel_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
@@ -57,11 +57,11 @@ pub fn deploy_sentinel(shrine: ContractAddress) -> ContractAddress {
     deploy_sentinel.contract_address
 }
 
-pub fn deploy_seer(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
+pub fn deploy_seer(admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_seer = declare("seer", Option::Some(MAX_FEE), Option::None).expect('failed seer declare');
 
     let seer_calldata: Array<felt252> = array![
-        admin().into(), shrine.into(), sentinel.into(), SEER_UPDATE_FREQUENCY.into()
+        admin.into(), shrine.into(), sentinel.into(), SEER_UPDATE_FREQUENCY.into()
     ];
     let deploy_seer = deploy(
         declare_seer.class_hash, seer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
@@ -83,10 +83,10 @@ pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> Contr
     deploy_abbot.contract_address
 }
 
-pub fn deploy_absorber(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
+pub fn deploy_absorber(admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_absorber = declare("absorber", Option::Some(MAX_FEE), Option::None).expect('failed absorber declare');
 
-    let absorber_calldata: Array<felt252> = array![admin().into(), shrine.into(), sentinel.into()];
+    let absorber_calldata: Array<felt252> = array![admin.into(), shrine.into(), sentinel.into()];
     let deploy_absorber = deploy(
         declare_absorber.class_hash, absorber_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
@@ -96,12 +96,16 @@ pub fn deploy_absorber(shrine: ContractAddress, sentinel: ContractAddress) -> Co
 }
 
 pub fn deploy_purger(
-    shrine: ContractAddress, sentinel: ContractAddress, absorber: ContractAddress, seer: ContractAddress
+    admin: ContractAddress,
+    shrine: ContractAddress,
+    sentinel: ContractAddress,
+    absorber: ContractAddress,
+    seer: ContractAddress
 ) -> ContractAddress {
     let declare_purger = declare("purger", Option::Some(MAX_FEE), Option::None).expect('failed purger declare');
 
     let purger_calldata: Array<felt252> = array![
-        admin().into(), shrine.into(), sentinel.into(), absorber.into(), seer.into()
+        admin.into(), shrine.into(), sentinel.into(), absorber.into(), seer.into()
     ];
     let deploy_purger = deploy(
         declare_purger.class_hash, purger_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
@@ -111,13 +115,13 @@ pub fn deploy_purger(
     deploy_purger.contract_address
 }
 
-pub fn deploy_allocator() -> ContractAddress {
+pub fn deploy_allocator(admin: ContractAddress) -> ContractAddress {
     let declare_allocator = declare("allocator", Option::Some(MAX_FEE), Option::None)
         .expect('failed allocator declare');
 
     let num_recipients: felt252 = 1;
     let allocator_calldata: Array<felt252> = array![
-        admin().into(), num_recipients, admin().into(), num_recipients, RAY_ONE.into()
+        admin.into(), num_recipients, admin.into(), num_recipients, RAY_ONE.into()
     ];
     let deploy_allocator = deploy(
         declare_allocator.class_hash, allocator_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
@@ -127,11 +131,13 @@ pub fn deploy_allocator() -> ContractAddress {
     deploy_allocator.contract_address
 }
 
-pub fn deploy_equalizer(shrine: ContractAddress, allocator: ContractAddress) -> ContractAddress {
+pub fn deploy_equalizer(
+    admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress
+) -> ContractAddress {
     let declare_equalizer = declare("equalizer", Option::Some(MAX_FEE), Option::None)
         .expect('failed equalizer declare');
 
-    let equalizer_calldata: Array<felt252> = array![admin().into(), shrine.into(), allocator.into()];
+    let equalizer_calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.into()];
     let deploy_equalizer = deploy(
         declare_equalizer.class_hash, equalizer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
     )
@@ -141,13 +147,17 @@ pub fn deploy_equalizer(shrine: ContractAddress, allocator: ContractAddress) -> 
 }
 
 pub fn deploy_caretaker(
-    shrine: ContractAddress, abbot: ContractAddress, sentinel: ContractAddress, equalizer: ContractAddress
+    admin: ContractAddress,
+    shrine: ContractAddress,
+    abbot: ContractAddress,
+    sentinel: ContractAddress,
+    equalizer: ContractAddress
 ) -> ContractAddress {
     let declare_caretaker = declare("caretaker", Option::Some(MAX_FEE), Option::None)
         .expect('failed caretaker declare');
 
     let caretaker_calldata: Array<felt252> = array![
-        admin().into(), shrine.into(), abbot.into(), sentinel.into(), equalizer.into()
+        admin.into(), shrine.into(), abbot.into(), sentinel.into(), equalizer.into()
     ];
     let deploy_caretaker = deploy(
         declare_caretaker.class_hash, caretaker_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
@@ -157,12 +167,12 @@ pub fn deploy_caretaker(
     deploy_caretaker.contract_address
 }
 
-pub fn deploy_controller(shrine: ContractAddress) -> ContractAddress {
+pub fn deploy_controller(admin: ContractAddress, shrine: ContractAddress) -> ContractAddress {
     let declare_controller = declare("controller", Option::Some(MAX_FEE), Option::None)
         .expect('failed controller declare');
 
     let controller_calldata: Array<felt252> = array![
-        admin().into(),
+        admin.into(),
         shrine.into(),
         P_GAIN.into(),
         I_GAIN.into(),
@@ -197,3 +207,22 @@ pub fn deploy_gate(
     deploy_gate.contract_address
 }
 
+pub fn deploy_pragma(
+    admin: ContractAddress,
+    spot_oracle: ContractAddress,
+    twap_oracle: ContractAddress,
+    freshness_threshold: u64,
+    sources_threshold: u32
+) -> ContractAddress {
+    let declare_pragma = declare("pragma", Option::Some(MAX_FEE), Option::None).expect('failed pragma declare');
+    let calldata: Array<felt252> = array![
+        admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into()
+    ];
+
+    let deploy_pragma = deploy(
+        declare_pragma.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed pragma deploy');
+
+    deploy_pragma.contract_address
+}

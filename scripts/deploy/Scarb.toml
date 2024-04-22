@@ -8,7 +8,7 @@ edition = "2023_11"
 [dependencies]
 sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.21.0" }
 starknet = ">=2.6.3"
-opus = { path = "../" }
+opus = { path = "../../" }
 
 [lib]
 sierra = true
@@ -30,14 +30,24 @@ build-external-contracts = [
     "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",
+    "opus::external::pragma::pragma",
+    "opus::external::switchboard::switchboard",
     "opus::mock::erc20_mintable::erc20_mintable",
     "opus::mock::mock_pragma::mock_pragma",
     "opus::mock::mock_switchboard::mock_switchboard",
 ]
 
 [scripts]
-deploy = "sncast --profile devnet script run deploy"
-reset = "rm deploy_alpha-goerli_state.json"
+deploy_devnet = "rm deploy_devnet_alpha-goerli_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet"
+deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
 
 [profile.devnet]
 inherits = "dev"
+
+# temporarily commenting out until a bug in the toolchain
+# is fixed https://github.com/foundry-rs/starknet-foundry/issues/2042
+# for more context:
+# https://github.com/milancermak/snfoundry-script-poc
+# https://t.me/starknet_foundry_support/2894
+# [profile.sepolia]
+# inherits = "release"

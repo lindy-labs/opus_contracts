@@ -1,7 +1,7 @@
+use core::array::ArrayTrait;
 use deployment::constants::MAX_FEE;
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
 use starknet::{ContractAddress};
-
 
 pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
@@ -12,6 +12,18 @@ pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128
     println!("Role granted: {}", msg);
 }
 
+pub fn set_oracles_to_seer(seer: ContractAddress, mut oracles: Span<ContractAddress>) {
+    let mut calldata: Array<felt252> = Default::default();
+    calldata.append(oracles.len().into());
+    while let Option::Some(oracle) = oracles.pop_front() {
+        calldata.append((*oracle).into());
+    };
+
+    let _set_oracles = invoke(seer, selector!("set_oracles"), calldata, Option::Some(MAX_FEE), Option::None)
+        .expect('set oracles failed');
+
+    println!("Oracles set");
+}
 
 pub fn add_yang_to_sentinel(
     sentinel: ContractAddress,
