@@ -42,8 +42,8 @@ pub mod controller_utils {
             BETA_I.into()
         ];
 
-        let controller_class = declare("controller");
-        let controller_addr = controller_class.deploy(@calldata).expect('controller deploy failed');
+        let controller_class = declare("controller").unwrap();
+        let (controller_addr, _) = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         start_prank(CheatTarget::All, shrine_utils::admin());

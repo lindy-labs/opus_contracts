@@ -369,7 +369,7 @@ pub mod purger_utils {
             seer.contract_address.into()
         ];
 
-        let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
+        let (purger_addr, _) = classes.purger.deploy(@calldata).expect('purger deploy failed');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
@@ -430,10 +430,10 @@ pub mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare("flash_liquidator"),
+            Option::None => declare("flash_liquidator").unwrap(),
         };
 
-        let flash_liquidator_addr = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
+        let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
@@ -696,19 +696,19 @@ pub mod purger_utils {
 
     pub fn declare_contracts() -> PurgerTestClasses {
         PurgerTestClasses {
-            abbot: Option::Some(declare("abbot")),
-            sentinel: Option::Some(declare("sentinel")),
-            token: Option::Some(declare("erc20_mintable")),
-            gate: Option::Some(declare("gate")),
-            shrine: Option::Some(declare("shrine")),
-            absorber: Option::Some(declare("absorber")),
-            blesser: declare("blesser"),
-            purger: declare("purger"),
-            pragma: Option::Some(declare("pragma")),
-            mock_pragma: Option::Some(declare("mock_pragma")),
-            switchboard: Option::Some(declare("switchboard")),
-            mock_switchboard: Option::Some(declare("mock_switchboard")),
-            seer: Option::Some(declare("seer")),
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: declare("blesser").unwrap(),
+            purger: declare("purger").unwrap(),
+            pragma: Option::Some(declare("pragma").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            switchboard: Option::Some(declare("switchboard").unwrap()),
+            mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),
+            seer: Option::Some(declare("seer").unwrap()),
         }
     }
 

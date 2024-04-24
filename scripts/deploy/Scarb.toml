@@ -6,7 +6,7 @@ edition = "2023_11"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.21.0" }
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
 starknet = ">=2.6.3"
 opus = { path = "../../" }
 
@@ -38,7 +38,7 @@ build-external-contracts = [
 ]
 
 [scripts]
-deploy_devnet = "rm deploy_devnet_alpha-goerli_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet"
+deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet"
 deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
 
 [profile.devnet]

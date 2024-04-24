@@ -110,10 +110,10 @@ pub mod absorber_utils {
 
         let absorber_class = match absorber_class {
             Option::Some(class) => class,
-            Option::None => declare("absorber")
+            Option::None => declare("absorber").unwrap()
         };
 
-        let absorber_addr = absorber_class.deploy(@calldata).expect('absorber deploy failed');
+        let (absorber_addr, _) = absorber_class.deploy(@calldata).expect('absorber deploy failed');
 
         start_prank(CheatTarget::One(absorber_addr), admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
@@ -161,10 +161,10 @@ pub mod absorber_utils {
 
         let blesser_class = match blesser_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_blesser")
+            Option::None => declare("mock_blesser").unwrap()
         };
 
-        let mock_blesser_addr = blesser_class.deploy(@calldata).expect('blesser deploy failed');
+        let (mock_blesser_addr, _) = blesser_class.deploy(@calldata).expect('blesser deploy failed');
 
         if mint_to_blesser {
             let token_minter = IMintableDispatcher { contract_address: asset };
@@ -267,13 +267,13 @@ pub mod absorber_utils {
         let token_class = Option::Some(
             match token_class {
                 Option::Some(class) => class,
-                Option::None => declare("erc20_mintable")
+                Option::None => declare("erc20_mintable").unwrap()
             }
         );
 
         let blesser_class = match blesser_class {
             Option::Some(class) => class,
-            Option::None => declare("blesser")
+            Option::None => declare("blesser").unwrap()
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
@@ -697,13 +697,13 @@ pub mod absorber_utils {
         Option<ContractClass>
     ) {
         (
-            Option::Some(declare("abbot")),
-            Option::Some(declare("sentinel")),
-            Option::Some(declare("erc20_mintable")),
-            Option::Some(declare("gate")),
-            Option::Some(declare("shrine")),
-            Option::Some(declare("absorber")),
-            Option::Some(declare("blesser")),
+            Option::Some(declare("abbot").unwrap()),
+            Option::Some(declare("sentinel").unwrap()),
+            Option::Some(declare("erc20_mintable").unwrap()),
+            Option::Some(declare("gate").unwrap()),
+            Option::Some(declare("shrine").unwrap()),
+            Option::Some(declare("absorber").unwrap()),
+            Option::Some(declare("blesser").unwrap()),
         )
     }
 }

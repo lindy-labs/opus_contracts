@@ -51,10 +51,10 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer")
+            Option::None => declare("seer").unwrap()
         };
 
-        let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
+        let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
@@ -78,10 +78,10 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer")
+            Option::None => declare("seer").unwrap()
         };
 
-        let seer_addr = seer_class.deploy(@calldata).expect('failed seer deploy');
+        let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
