@@ -51,6 +51,17 @@ fn main() {
     let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
 
+    println!("Deploying oracles");
+    let pragma: ContractAddress = core_deployment::deploy_pragma(
+        admin,
+        constants::sepolia::pragma_spot_oracle(),
+        constants::sepolia::pragma_twap_oracle(),
+        constants::PRAGMA_FRESHNESS_THRESHOLD,
+        constants::PRAGMA_SOURCES_THRESHOLD
+    );
+    let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard,);
+    utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
+
     // Grant roles
     println!("Setting up roles");
 
@@ -132,21 +143,23 @@ fn main() {
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
     println!("Deployed addresses");
-    println!("Shrine: {}", shrine);
     println!("Abbot: {}", abbot);
-    println!("Sentinel: {}", sentinel);
-    println!("Gate[ETH]: {}", eth_gate);
-    println!("Gate[STRK]: {}", strk_gate);
-    println!("Gate[WBTC]: {}", wbtc_gate);
-    println!("Flash Mint: {}", flash_mint);
-    println!("Seer: {}", seer);
     println!("Absorber: {}", absorber);
-    println!("Purger: {}", purger);
-    println!("Equalizer: {}", equalizer);
     println!("Allocator: {}", allocator);
     println!("Caretaker: {}", caretaker);
     println!("Controller: {}", controller);
-    println!("Token[WBTC]: {}", wbtc);
+    println!("Equalizer: {}", equalizer);
+    println!("Flash Mint: {}", flash_mint);
+    println!("Gate[ETH]: {}", eth_gate);
+    println!("Gate[STRK]: {}", strk_gate);
+    println!("Gate[WBTC]: {}", wbtc_gate);
     println!("Mock Pragma: {}", mock_pragma);
     println!("Mock Switchboard: {}", mock_switchboard);
+    println!("Pragma: {}", pragma);
+    println!("Purger: {}", purger);
+    println!("Seer: {}", seer);
+    println!("Sentinel: {}", sentinel);
+    println!("Shrine: {}", shrine);
+    println!("Switchboard: {}", switchboard);
+    println!("Token[WBTC]: {}", wbtc);
 }
