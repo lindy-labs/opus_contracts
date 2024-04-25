@@ -33,13 +33,7 @@ pub const INITIAL_STRK_PRICE: u128 = 1800000000000000000; // 1.80 (Wad)
 pub const INITIAL_STRK_BASE_RATE: u128 = 40000000000000000000000000; // 4% (Ray)
 
 // Constants for mocks
-pub const WBTC_DECIMALS: u8 = 8;
 pub const WBTC_INITIAL_SUPPLY: u128 = 2099999997690000; // approx. 21_000_000 * 10 ** 8
-
-// Constants for Pragma and Switchboard
-pub const WBTC_USD_PAIR_ID: felt252 = 'WBTC/USD';
-pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
-pub const STRK_USD_PAIR_ID: felt252 = 'STRK/USD';
 
 // Chain constants
 pub fn erc20_class_hash() -> ClassHash {

@@ -2,6 +2,7 @@ mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
     use core::result::ResultTrait;
+    use opus::constants::ETH_USD_PAIR_ID;
     use opus::core::shrine::shrine;
     use opus::external::interfaces::{
         IPragmaSpotOracleDispatcher, IPragmaSpotOracleDispatcherTrait, IPragmaTwapOracleDispatcher,
@@ -253,7 +254,7 @@ mod test_pragma {
     fn test_set_yang_pair_id_unauthorized_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), common::badguy());
-        pragma.set_yang_pair_id(mock_eth_token_addr(), pragma_utils::ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_id(mock_eth_token_addr(), ETH_USD_PAIR_ID);
     }
 
     #[test]
@@ -271,7 +272,7 @@ mod test_pragma {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         let invalid_yang_addr = Zero::zero();
-        pragma.set_yang_pair_id(invalid_yang_addr, pragma_utils::ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_id(invalid_yang_addr, ETH_USD_PAIR_ID);
     }
 
     #[test]
@@ -407,7 +408,7 @@ mod test_pragma {
         let twap_eth_price: u128 = 1650 * WAD_SCALE;
         mock_pragma
             .next_get_data_median(
-                pragma_utils::ETH_USD_PAIR_ID,
+                ETH_USD_PAIR_ID,
                 PragmaPricesResponse {
                     price: spot_eth_price,
                     decimals: WAD_DECIMALS.into(),
@@ -416,7 +417,7 @@ mod test_pragma {
                     expiration_timestamp: Option::None,
                 }
             );
-        mock_pragma.next_calculate_twap(pragma_utils::ETH_USD_PAIR_ID, (twap_eth_price, WAD_DECIMALS.into()));
+        mock_pragma.next_calculate_twap(ETH_USD_PAIR_ID, (twap_eth_price, WAD_DECIMALS.into()));
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         start_warp(CheatTarget::All, TS);
@@ -441,7 +442,7 @@ mod test_pragma {
         let twap_eth_price: u128 = 1650 * WAD_SCALE;
         mock_pragma
             .next_get_data_median(
-                pragma_utils::ETH_USD_PAIR_ID,
+                ETH_USD_PAIR_ID,
                 PragmaPricesResponse {
                     price: spot_eth_price,
                     decimals: WAD_DECIMALS.into(),
@@ -450,7 +451,7 @@ mod test_pragma {
                     expiration_timestamp: Option::None,
                 }
             );
-        mock_pragma.next_calculate_twap(pragma_utils::ETH_USD_PAIR_ID, (twap_eth_price, WAD_DECIMALS.into()));
+        mock_pragma.next_calculate_twap(ETH_USD_PAIR_ID, (twap_eth_price, WAD_DECIMALS.into()));
 
         start_prank(CheatTarget::One(pragma.contract_address), common::non_zero_address());
         start_warp(CheatTarget::All, TS);
@@ -495,7 +496,7 @@ mod test_pragma {
                 pragma.contract_address,
                 pragma_contract::Event::InvalidSpotPriceUpdate(
                     pragma_contract::InvalidSpotPriceUpdate {
-                        pair_id: pragma_utils::ETH_USD_PAIR_ID,
+                        pair_id: ETH_USD_PAIR_ID,
                         price: eth_price,
                         pragma_last_updated_ts: now,
                         pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES,
@@ -548,7 +549,7 @@ mod test_pragma {
                 pragma.contract_address,
                 pragma_contract::Event::InvalidSpotPriceUpdate(
                     pragma_contract::InvalidSpotPriceUpdate {
-                        pair_id: pragma_utils::ETH_USD_PAIR_ID,
+                        pair_id: ETH_USD_PAIR_ID,
                         price: eth_price,
                         pragma_last_updated_ts: now,
                         pragma_num_sources: num_sources

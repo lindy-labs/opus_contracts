@@ -3,6 +3,7 @@ use deployment::constants;
 use deployment::core_deployment;
 use deployment::mock_deployment;
 use deployment::utils;
+use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
@@ -59,14 +60,14 @@ fn main() {
         constants::PRAGMA_FRESHNESS_THRESHOLD,
         constants::PRAGMA_SOURCES_THRESHOLD
     );
-    utils::set_yang_pair_id_for_oracle(pragma, eth, constants::ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, wbtc, constants::WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, strk, constants::STRK_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
     let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard);
-    utils::set_yang_pair_id_for_oracle(switchboard, eth, constants::ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, constants::WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, strk, constants::STRK_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, eth, ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
 
     utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
 
