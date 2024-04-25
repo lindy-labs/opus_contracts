@@ -59,7 +59,15 @@ fn main() {
         constants::PRAGMA_FRESHNESS_THRESHOLD,
         constants::PRAGMA_SOURCES_THRESHOLD
     );
-    let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard,);
+    utils::set_yang_pair_id_for_oracle(pragma, eth, constants::ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, wbtc, constants::WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, strk, constants::STRK_USD_PAIR_ID);
+
+    let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard);
+    utils::set_yang_pair_id_for_oracle(switchboard, eth, constants::ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, constants::WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, strk, constants::STRK_USD_PAIR_ID);
+
     utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
 
     // Grant roles

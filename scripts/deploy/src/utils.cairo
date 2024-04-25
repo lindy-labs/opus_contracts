@@ -60,3 +60,10 @@ pub fn add_yang_to_sentinel(
 
     println!("Yang successfully added: {}", asset_name)
 }
+
+pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_id: felt252) {
+    let _set_yang_pair_id = invoke(
+        oracle, selector!("set_yang_pair_id"), array![yang.into(), pair_id], Option::Some(MAX_FEE), Option::None,
+    )
+        .expect('set yang pair id failed');
+}
