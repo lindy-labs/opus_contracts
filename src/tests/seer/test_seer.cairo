@@ -4,6 +4,7 @@ mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::array::SpanTrait;
     use core::num::traits::Zero;
+    use opus::constants::PRAGMA_DECIMALS;
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
@@ -314,7 +315,7 @@ mod test_seer {
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
-                    decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+                    decimals: PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: get_block_timestamp(),
                     num_sources_aggregated: 0,
                     expiration_timestamp: Option::None,
@@ -489,7 +490,7 @@ mod test_seer {
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
-                    decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+                    decimals: PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: get_block_timestamp(),
                     num_sources_aggregated: 0,
                     expiration_timestamp: Option::None,

@@ -2,7 +2,7 @@ mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
     use core::result::ResultTrait;
-    use opus::constants::ETH_USD_PAIR_ID;
+    use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS};
     use opus::core::shrine::shrine;
     use opus::external::interfaces::{
         IPragmaSpotOracleDispatcher, IPragmaSpotOracleDispatcherTrait, IPragmaTwapOracleDispatcher,
@@ -177,7 +177,7 @@ mod test_pragma {
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
-        let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
+        let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
@@ -209,7 +209,7 @@ mod test_pragma {
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
-        let price: u128 = 999 * pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
+        let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
@@ -221,13 +221,13 @@ mod test_pragma {
         let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD';
         let response = PragmaPricesResponse {
             price: price,
-            decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+            decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: current_ts + 100,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
         mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
-        let twap_response: (u128, u32) = (price, pragma_utils::PRAGMA_DECIMALS.into());
+        let twap_response: (u128, u32) = (price, PRAGMA_DECIMALS.into());
         mock_pragma.next_calculate_twap(pepe_token_pair_id_2, twap_response);
 
         pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id_2);
@@ -289,7 +289,7 @@ mod test_pragma {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pepe_spot_response = PragmaPricesResponse {
             price: 1000,
-            decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+            decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: TS,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None
@@ -305,7 +305,7 @@ mod test_pragma {
     fn test_set_yang_pair_id_spot_too_many_decimals_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
-        let pragma_price_scale: u128 = pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let invalid_decimals: u32 = (WAD_DECIMALS + 1).into();
@@ -327,12 +327,12 @@ mod test_pragma {
     fn test_set_yang_pair_id_twap_too_many_decimals_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
-        let pragma_price_scale: u128 = pow(10_u128, pragma_utils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let pepe_spot_response = PragmaPricesResponse {
             price: pepe_price,
-            decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+            decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: 10000000,
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
@@ -531,7 +531,7 @@ mod test_pragma {
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
-                    decimals: pragma_utils::PRAGMA_DECIMALS.into(),
+                    decimals: PRAGMA_DECIMALS.into(),
                     last_updated_timestamp: now,
                     num_sources_aggregated: num_sources,
                     expiration_timestamp: Option::None,
