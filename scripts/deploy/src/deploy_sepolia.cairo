@@ -1,5 +1,6 @@
 use deployment::constants::MAX_FEE;
 use deployment::{constants, core_deployment, utils};
+use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
