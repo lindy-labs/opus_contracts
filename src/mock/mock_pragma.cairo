@@ -15,7 +15,7 @@ struct PragmaPricesResponseWrapper {
 pub trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaSpotOracleDispatcher`
     fn next_get_data_median(ref self: TContractState, pair_id: felt252, response: PragmaPricesResponse);
-    // Sets a valid price response based on price only
+    // Sets a valid price response based on price and number of sources
     fn next_get_valid_data_median(ref self: TContractState, pair_id: felt252, price: u128, num_sources: u32);
     // Note that `calculate_twap()` is part of `IPragmaTwapOracleDispatcher`
     fn next_calculate_twap(ref self: TContractState, pair_id: felt252, response: (u128, u32));
