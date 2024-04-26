@@ -2,9 +2,11 @@ use deployment::constants::{MAX_FEE, SALT};
 use deployment::constants;
 use deployment::core_deployment;
 use deployment::mock_deployment;
+use deployment::mock_utils;
 use deployment::utils;
-use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
+use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_DECIMALS, WBTC_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
+use opus::utils::math::wad_to_fixed_point;
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
@@ -34,12 +36,7 @@ fn main() {
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
     let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
-        erc20_mintable_class_hash,
-        'Wrapped BTC',
-        'WBTC',
-        constants::WBTC_DECIMALS,
-        constants::WBTC_INITIAL_SUPPLY,
-        admin
+        erc20_mintable_class_hash, 'Wrapped BTC', 'WBTC', WBTC_DECIMALS, constants::WBTC_INITIAL_SUPPLY, admin
     );
 
     // Deploy gates
@@ -54,20 +51,10 @@ fn main() {
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
-        admin,
-        constants::sepolia::pragma_spot_oracle(),
-        constants::sepolia::pragma_twap_oracle(),
-        constants::PRAGMA_FRESHNESS_THRESHOLD,
-        constants::PRAGMA_SOURCES_THRESHOLD
+        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD
     );
-    utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
     let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard);
-    utils::set_yang_pair_id_for_oracle(switchboard, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
 
     utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
 
@@ -148,6 +135,44 @@ fn main() {
         .expect('set debt ceiling failed');
 
     println!("Minimum trove value set: {}", minimum_trove_value);
+
+    // Set up mock oracles
+    println!("Setting up mock oracles");
+    let eth_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_ETH_PRICE.into(), PRAGMA_DECIMALS);
+    let strk_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_WBTC_PRICE.into(), PRAGMA_DECIMALS);
+    let wbtc_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_STRK_PRICE.into(), PRAGMA_DECIMALS);
+
+    mock_utils::set_mock_pragma_prices(
+        mock_pragma,
+        array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
+        array![
+            (eth_pragma_price, eth_pragma_price),
+            (strk_pragma_price, strk_pragma_price),
+            (wbtc_pragma_price, wbtc_pragma_price),
+        ]
+            .span()
+    );
+
+    mock_utils::set_mock_switchboard_prices(
+        mock_switchboard,
+        array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
+        array![
+            constants::INITIAL_ETH_PRICE.into(),
+            constants::INITIAL_STRK_PRICE.into(),
+            constants::INITIAL_WBTC_PRICE.into(),
+        ]
+            .span()
+    );
+
+    // Set up oracles
+    println!("Setting up oracles");
+    utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
+
+    utils::set_yang_pair_id_for_oracle(switchboard, eth, ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
 
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");

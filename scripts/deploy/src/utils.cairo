@@ -1,7 +1,7 @@
 use core::array::ArrayTrait;
 use deployment::constants::MAX_FEE;
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
-use starknet::{ContractAddress};
+use starknet::ContractAddress;
 
 pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
