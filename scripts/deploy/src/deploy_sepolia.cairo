@@ -110,7 +110,8 @@ fn main() {
     // Set up oracles
     println!("Setting up oracles");
     utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
+    // TWAP is not available for STRK/USD on Sepolia yet
+    //utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
     println!("-------------------------------------------------\n");
     println!("Abbot: {}", abbot);
