@@ -518,6 +518,16 @@
         "status": "Success",
         "timestamp": 1714361713,
         "misc": null
+      },
+      "219aec8d3b2e9d0242998a12d367b869488750095694ad43832c6c73e1e152a4": {
+        "name": "invoke",
+        "output": {
+          "type": "InvokeResponse",
+          "transaction_hash": "0x763314d0b1ee5aa2281df2826e97f5d51e3741e744abca2734d1e001240c56"
+        },
+        "status": "Success",
+        "timestamp": 1714623104,
+        "misc": null
       }
     }
   }
