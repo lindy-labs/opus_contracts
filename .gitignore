@@ -6,3 +6,5 @@ workspace.code-workspace
 target/
 
 .snfoundry_cache/
+
+scripts/deploy/deploy_devnet_alpha-sepolia_state.json

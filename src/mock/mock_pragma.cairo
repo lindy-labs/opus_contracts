@@ -13,46 +13,71 @@ struct PragmaPricesResponseWrapper {
 
 #[starknet::interface]
 pub trait IMockPragma<TContractState> {
-    // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
-    fn next_get_data_median(ref self: TContractState, pair_id: felt252, price_response: PragmaPricesResponse);
+    // Note that `get_data_median()` is part of `IPragmaSpotOracleDispatcher`
+    fn next_get_data_median(ref self: TContractState, pair_id: felt252, response: PragmaPricesResponse);
+    // Sets a valid price response based on price and number of sources
+    fn next_get_valid_data_median(ref self: TContractState, pair_id: felt252, price: u128, num_sources: u32);
+    // Note that `calculate_twap()` is part of `IPragmaTwapOracleDispatcher`
+    fn next_calculate_twap(ref self: TContractState, pair_id: felt252, response: (u128, u32));
 }
 
 #[starknet::contract]
 pub mod mock_pragma {
-    use core::panic_with_felt252;
-    use opus::external::interfaces::IPragmaOracle;
-    use opus::types::pragma::{DataType, PragmaPricesResponse};
+    use opus::constants::PRAGMA_DECIMALS;
+    use opus::external::interfaces::{IPragmaSpotOracle, IPragmaTwapOracle};
+    use opus::types::pragma::{AggregationMode, DataType, PragmaPricesResponse};
+    use starknet::get_block_timestamp;
     use super::{IMockPragma, PragmaPricesResponseWrapper};
 
     #[storage]
     struct Storage {
-        // Mapping from pair ID to price response data struct
-        price_response: LegacyMap::<felt252, PragmaPricesResponseWrapper>,
+        // Mapping from pair ID to price response data struct for get_data_median
+        get_data_median_response: LegacyMap::<felt252, PragmaPricesResponseWrapper>,
+        // Mapping from pair ID to TWAP price response for calculate_twap
+        calculate_twap_response: LegacyMap::<felt252, (u128, u32)>
     }
 
     #[abi(embed_v0)]
     impl IMockPragmaImpl of IMockPragma<ContractState> {
-        fn next_get_data_median(ref self: ContractState, pair_id: felt252, price_response: PragmaPricesResponse) {
+        fn next_get_data_median(ref self: ContractState, pair_id: felt252, response: PragmaPricesResponse) {
             self
-                .price_response
+                .get_data_median_response
                 .write(
                     pair_id,
                     PragmaPricesResponseWrapper {
-                        price: price_response.price,
-                        decimals: price_response.decimals,
-                        last_updated_timestamp: price_response.last_updated_timestamp,
-                        num_sources_aggregated: price_response.num_sources_aggregated,
+                        price: response.price,
+                        decimals: response.decimals,
+                        last_updated_timestamp: response.last_updated_timestamp,
+                        num_sources_aggregated: response.num_sources_aggregated,
                     }
                 );
+        }
+
+        fn next_get_valid_data_median(ref self: ContractState, pair_id: felt252, price: u128, num_sources: u32) {
+            self
+                .get_data_median_response
+                .write(
+                    pair_id,
+                    PragmaPricesResponseWrapper {
+                        price: price,
+                        decimals: PRAGMA_DECIMALS.into(),
+                        last_updated_timestamp: get_block_timestamp(),
+                        num_sources_aggregated: num_sources,
+                    }
+                );
+        }
+
+        fn next_calculate_twap(ref self: ContractState, pair_id: felt252, response: (u128, u32)) {
+            self.calculate_twap_response.write(pair_id, response);
         }
     }
 
     #[abi(embed_v0)]
-    impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
+    impl IPragmaSpotOracleImpl of IPragmaSpotOracle<ContractState> {
         fn get_data_median(self: @ContractState, data_type: DataType) -> PragmaPricesResponse {
             match data_type {
                 DataType::SpotEntry(pair_id) => {
-                    let wrapper: PragmaPricesResponseWrapper = self.price_response.read(pair_id);
+                    let wrapper: PragmaPricesResponseWrapper = self.get_data_median_response.read(pair_id);
 
                     PragmaPricesResponse {
                         price: wrapper.price,
@@ -62,8 +87,19 @@ pub mod mock_pragma {
                         expiration_timestamp: Option::None,
                     }
                 },
-                DataType::FutureEntry(_) => { panic_with_felt252('only spot') },
-                DataType::GenericEntry(_) => { panic_with_felt252('only spot') },
+                _ => { core::panic_with_felt252('only spot') }
+            }
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl IPragmaTwapOracleImpl of IPragmaTwapOracle<ContractState> {
+        fn calculate_twap(
+            self: @ContractState, data_type: DataType, aggregation_mode: AggregationMode, time: u64, start_time: u64
+        ) -> (u128, u32) {
+            match data_type {
+                DataType::SpotEntry(pair_id) => { self.calculate_twap_response.read(pair_id) },
+                _ => { core::panic_with_felt252('only spot') }
             }
         }
     }

@@ -91,9 +91,9 @@ pub mod equalizer_utils {
 
         let allocator_class = match allocator_class {
             Option::Some(class) => class,
-            Option::None => declare("allocator")
+            Option::None => declare("allocator").unwrap()
         };
-        let allocator_addr = allocator_class.deploy(@calldata).expect('failed allocator deploy');
+        let (allocator_addr, _) = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
         IAllocatorDispatcher { contract_address: allocator_addr }
     }
@@ -115,8 +115,8 @@ pub mod equalizer_utils {
 
         let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into()];
 
-        let equalizer_class = declare("equalizer");
-        let equalizer_addr = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
+        let equalizer_class = declare("equalizer").unwrap();
+        let (equalizer_addr, _) = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
 
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };
         start_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]), admin);

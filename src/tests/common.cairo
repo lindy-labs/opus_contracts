@@ -193,10 +193,11 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable"),
+        Option::None => declare("erc20_mintable").unwrap(),
     };
 
-    token_class.deploy(@calldata).expect('erc20 deploy failed')
+    let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
+    token_addr
 }
 
 // Helper function to fund a user account with yang assets

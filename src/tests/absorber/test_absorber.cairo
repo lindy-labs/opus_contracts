@@ -53,8 +53,8 @@ mod test_absorber {
 
     #[test]
     fn test_set_reward_pass() {
-        let token_class = Option::Some(declare("erc20_mintable"));
-        let blesser_class = Option::Some(declare("blesser"));
+        let token_class = Option::Some(declare("erc20_mintable").unwrap());
+        let blesser_class = Option::Some(declare("blesser").unwrap());
         let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );
@@ -911,7 +911,7 @@ mod test_absorber {
 
         // Step 5
         // Reset the event spy so all previous unchecked events are dropped
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        spy.events = array![];
 
         let first_provider_before_reward_bals = common::get_token_balances(reward_tokens, first_provider.into());
         let first_provider_before_absorbed_bals = common::get_token_balances(yangs, first_provider.into());
@@ -980,7 +980,7 @@ mod test_absorber {
 
         // Step 6
         // Reset the event spy so all previous unchecked events are dropped
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        spy.events = array![];
 
         let second_provider_before_reward_bals = common::get_token_balances(reward_tokens, second_provider.into());
         let second_provider_before_absorbed_bals = common::get_token_balances(yangs, second_provider.into());
@@ -2191,8 +2191,8 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_depleted_active_reward() {
-        let token_class = Option::Some(declare("erc20_mintable"));
-        let blesser_class = Option::Some(declare("blesser"));
+        let token_class = Option::Some(declare("erc20_mintable").unwrap());
+        let blesser_class = Option::Some(declare("blesser").unwrap());
         let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
             Option::None, Option::None, token_class, Option::None, Option::None, Option::None
         );

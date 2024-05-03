@@ -1,6 +1,7 @@
-mod types;
+pub mod constants;
+pub mod types;
 
-mod core {
+pub mod core {
     pub mod abbot;
     pub mod absorber;
     pub mod allocator;
@@ -47,7 +48,7 @@ mod interfaces {
     pub mod ITransmuter;
 }
 
-mod utils {
+pub mod utils {
     pub mod address_registry;
     pub mod exp;
     pub mod math;
@@ -63,7 +64,7 @@ mod periphery {
 }
 
 // mock used for local devnet deployment
-mod mock {
+pub mod mock {
     pub mod blesser;
     pub mod erc20;
     pub mod erc20_mintable;

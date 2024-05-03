@@ -7,18 +7,25 @@ version = "0.3.0"
 source = "git+https://github.com/lindy-labs/access_control.git?tag=v0.3.0#8fdfc97e15c4fb1b6cb1aa0da91d94e5956c3b1a"
 
 [[package]]
+name = "deployment"
+version = "0.1.0"
+dependencies = [
+ "opus",
+ "sncast_std",
+]
+
+[[package]]
 name = "opus"
 version = "0.1.0"
 dependencies = [
  "access_control",
- "snforge_std",
  "wadray",
 ]
 
 [[package]]
-name = "snforge_std"
+name = "sncast_std"
 version = "0.22.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.22.0#9b215944c6c5871c738381b4ded61bbf06e7ba35"
+source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.22.0#9b215944c6c5871c738381b4ded61bbf06e7ba35"
 
 [[package]]
 name = "wadray"

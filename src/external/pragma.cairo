@@ -8,15 +8,21 @@
 #[starknet::contract]
 pub mod pragma {
     use access_control::access_control_component;
+    use core::cmp::min;
     use core::num::traits::Zero;
-    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use opus::external::interfaces::{
+        IPragmaSpotOracleDispatcher, IPragmaSpotOracleDispatcherTrait, IPragmaTwapOracleDispatcher,
+        IPragmaTwapOracleDispatcherTrait
+    };
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
-    use opus::types::pragma::{DataType, PragmaPricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{AggregationMode, DataType, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
+
+    const TWAP_DURATION: u64 = 7 * 24 * 60 * 60; // 7 days * 24 hours * 60 minutes * 60 seconds
 
     //
     // Components
@@ -49,9 +55,12 @@ pub mod pragma {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
-        // interface to the Pragma oracle contract
-        oracle: IPragmaOracleDispatcher,
-        // values used to determine if we consider a price update fresh or stale:
+        // interface to the spot Pragma oracle contract
+        spot_oracle: IPragmaSpotOracleDispatcher,
+        // interface to the twap Pragma oracle contract,
+        twap_oracle: IPragmaTwapOracleDispatcher,
+        // values used to determine if we consider a price update from the spot
+        // oracle fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which we consider a
         // price update valid
@@ -72,15 +81,15 @@ pub mod pragma {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
-        InvalidPriceUpdate: InvalidPriceUpdate,
+        InvalidSpotPriceUpdate: InvalidSpotPriceUpdate,
         PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
         YangPairIdSet: YangPairIdSet,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct InvalidPriceUpdate {
+    pub struct InvalidSpotPriceUpdate {
         #[key]
-        pub yang: ContractAddress,
+        pub pair_id: felt252,
         pub price: Wad,
         pub pragma_last_updated_ts: u64,
         pub pragma_num_sources: u32,
@@ -106,14 +115,16 @@ pub mod pragma {
     fn constructor(
         ref self: ContractState,
         admin: ContractAddress,
-        oracle: ContractAddress,
+        spot_oracle: ContractAddress,
+        twap_oracle: ContractAddress,
         freshness_threshold: u64,
         sources_threshold: u32
     ) {
         self.access_control.initializer(admin, Option::Some(pragma_roles::default_admin_role()));
 
         // init storage
-        self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
+        self.spot_oracle.write(IPragmaSpotOracleDispatcher { contract_address: spot_oracle });
+        self.twap_oracle.write(IPragmaTwapOracleDispatcher { contract_address: twap_oracle });
         let new_thresholds = PriceValidityThresholds { freshness: freshness_threshold, sources: sources_threshold };
         self.price_validity_thresholds.write(new_thresholds);
 
@@ -138,10 +149,19 @@ pub mod pragma {
 
             // doing a sanity check if Pragma actually offers a price feed
             // of the requested asset and if it's suitable for our needs
-            let response: PragmaPricesResponse = self.oracle.read().get_data_median(DataType::SpotEntry(pair_id));
+
+            let response: PragmaPricesResponse = self.spot_oracle.read().get_data_median(DataType::SpotEntry(pair_id));
             // Pragma returns 0 decimals for an unknown pair ID
-            assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
-            assert(response.decimals <= 18, 'PGM: Too many decimals');
+            assert(response.decimals.is_non_zero(), 'PGM: Spot unknown pair ID');
+            assert(response.decimals <= 18, 'PGM: Spot too many decimals');
+
+            let start_time: u64 = get_block_timestamp() - TWAP_DURATION;
+            let (_, decimals) = self
+                .twap_oracle
+                .read()
+                .calculate_twap(DataType::SpotEntry(pair_id), AggregationMode::Median, TWAP_DURATION, start_time);
+            assert(decimals.is_non_zero(), 'PGM: TWAP unknown pair ID');
+            assert(decimals <= 18, 'PGM: TWAP too many decimals');
 
             self.yang_pair_ids.write(yang, pair_id);
 
@@ -173,36 +193,18 @@ pub mod pragma {
             'Pragma'
         }
 
-        fn get_oracle(self: @ContractState) -> ContractAddress {
-            self.oracle.read().contract_address
+        fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
+            array![self.spot_oracle.read().contract_address, self.twap_oracle.read().contract_address].span()
         }
 
-        fn fetch_price(ref self: ContractState, yang: ContractAddress, force_update: bool) -> Result<Wad, felt252> {
+        fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
             let pair_id: felt252 = self.yang_pair_ids.read(yang);
             assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-            let response: PragmaPricesResponse = self.oracle.read().get_data_median(DataType::SpotEntry(pair_id));
-
-            // convert price value to Wad
-            let price: Wad = fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
-
-            // if we receive what we consider a valid price from the oracle,
-            // return it back, otherwise emit an event about the update being invalid
-            // the check can be overridden with the `force_update` flag
-            if force_update || self.is_valid_price_update(response) {
-                return Result::Ok(price);
-            }
-
-            self
-                .emit(
-                    InvalidPriceUpdate {
-                        yang,
-                        price,
-                        pragma_last_updated_ts: response.last_updated_timestamp,
-                        pragma_num_sources: response.num_sources_aggregated,
-                    }
-                );
-            Result::Err('PGM: Invalid price update')
+            let spot_price: Wad = self.fetch_spot_price(pair_id)?; // propagate Err if any
+            let twap_price: Wad = self.fetch_twap_price(pair_id);
+            let pessimistic_price: Wad = min(spot_price, twap_price);
+            Result::Ok(pessimistic_price)
         }
     }
 
@@ -212,6 +214,39 @@ pub mod pragma {
 
     #[generate_trait]
     impl PragmaInternalFunctions of PragmaInternalFunctionsTrait {
+        fn fetch_spot_price(ref self: ContractState, pair_id: felt252) -> Result<Wad, felt252> {
+            let response: PragmaPricesResponse = self.spot_oracle.read().get_data_median(DataType::SpotEntry(pair_id));
+
+            // convert price value to Wad
+            let price: Wad = fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
+
+            // if we receive what we consider a valid price from the oracle,
+            // return it back, otherwise emit an event about the update being invalid
+            if self.is_valid_price_update(response) {
+                Result::Ok(price)
+            } else {
+                self
+                    .emit(
+                        InvalidSpotPriceUpdate {
+                            pair_id,
+                            price,
+                            pragma_last_updated_ts: response.last_updated_timestamp,
+                            pragma_num_sources: response.num_sources_aggregated,
+                        }
+                    );
+                Result::Err('PGM: Invalid price update')
+            }
+        }
+
+        fn fetch_twap_price(ref self: ContractState, pair_id: felt252) -> Wad {
+            let start_time: u64 = get_block_timestamp() - TWAP_DURATION;
+            let (twap, decimals) = self
+                .twap_oracle
+                .read()
+                .calculate_twap(DataType::SpotEntry(pair_id), AggregationMode::Median, TWAP_DURATION, start_time);
+            fixed_point_to_wad(twap, decimals.try_into().unwrap())
+        }
+
         fn is_valid_price_update(self: @ContractState, update: PragmaPricesResponse) -> bool {
             let required: PriceValidityThresholds = self.price_validity_thresholds.read();
 
