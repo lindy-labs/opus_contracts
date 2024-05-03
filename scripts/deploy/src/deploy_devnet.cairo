@@ -1,10 +1,5 @@
 use deployment::constants::{MAX_FEE, SALT};
-use deployment::constants;
-use deployment::core_deployment;
-use deployment::mock_deployment;
-use deployment::mock_utils;
-use deployment::periphery_deployment;
-use deployment::utils;
+use deployment::{constants, core_deployment, mock_deployment, mock_utils, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_DECIMALS, WBTC_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
 use opus::utils::math::wad_to_fixed_point;
