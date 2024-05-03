@@ -58,7 +58,10 @@ pub mod frontend_data_provider {
     //
 
     #[constructor]
-    fn constructor(ref self: ContractState, shrine: ContractAddress, sentinel: ContractAddress) {
+    fn constructor(
+        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
+    ) {
+        self.access_control.initializer(admin, Option::Some(frontend_data_provider_roles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
     }
