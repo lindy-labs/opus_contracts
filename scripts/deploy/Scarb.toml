@@ -35,6 +35,7 @@ build-external-contracts = [
     "opus::mock::erc20_mintable::erc20_mintable",
     "opus::mock::mock_pragma::mock_pragma",
     "opus::mock::mock_switchboard::mock_switchboard",
+    "opus::periphery::frontend_data_provider::frontend_data_provider",
 ]
 
 [scripts]

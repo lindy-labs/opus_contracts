@@ -3,6 +3,7 @@ use deployment::constants;
 use deployment::core_deployment;
 use deployment::mock_deployment;
 use deployment::mock_utils;
+use deployment::periphery_deployment;
 use deployment::utils;
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_DECIMALS, WBTC_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
@@ -174,6 +175,11 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
 
+    // Peripheral deployment
+    let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
+        admin, shrine, sentinel
+    );
+
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
     println!("Deployed addresses");
@@ -184,6 +190,7 @@ fn main() {
     println!("Controller: {}", controller);
     println!("Equalizer: {}", equalizer);
     println!("Flash Mint: {}", flash_mint);
+    println!("Frontend Data Provider: {}", frontend_data_provider);
     println!("Gate[ETH]: {}", eth_gate);
     println!("Gate[STRK]: {}", strk_gate);
     println!("Gate[WBTC]: {}", wbtc_gate);
