@@ -15,14 +15,18 @@ struct PragmaPricesResponseWrapper {
 pub trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaSpotOracleDispatcher`
     fn next_get_data_median(ref self: TContractState, pair_id: felt252, response: PragmaPricesResponse);
+    // Sets a valid price response based on price and number of sources
+    fn next_get_valid_data_median(ref self: TContractState, pair_id: felt252, price: u128, num_sources: u32);
     // Note that `calculate_twap()` is part of `IPragmaTwapOracleDispatcher`
     fn next_calculate_twap(ref self: TContractState, pair_id: felt252, response: (u128, u32));
 }
 
 #[starknet::contract]
 pub mod mock_pragma {
+    use opus::constants::PRAGMA_DECIMALS;
     use opus::external::interfaces::{IPragmaSpotOracle, IPragmaTwapOracle};
     use opus::types::pragma::{AggregationMode, DataType, PragmaPricesResponse};
+    use starknet::get_block_timestamp;
     use super::{IMockPragma, PragmaPricesResponseWrapper};
 
     #[storage]
@@ -45,6 +49,20 @@ pub mod mock_pragma {
                         decimals: response.decimals,
                         last_updated_timestamp: response.last_updated_timestamp,
                         num_sources_aggregated: response.num_sources_aggregated,
+                    }
+                );
+        }
+
+        fn next_get_valid_data_median(ref self: ContractState, pair_id: felt252, price: u128, num_sources: u32) {
+            self
+                .get_data_median_response
+                .write(
+                    pair_id,
+                    PragmaPricesResponseWrapper {
+                        price: price,
+                        decimals: PRAGMA_DECIMALS.into(),
+                        last_updated_timestamp: get_block_timestamp(),
+                        num_sources_aggregated: num_sources,
                     }
                 );
         }

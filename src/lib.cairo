@@ -1,4 +1,5 @@
-mod types;
+pub mod constants;
+pub mod types;
 
 pub mod core {
     pub mod abbot;
@@ -47,7 +48,7 @@ mod interfaces {
     pub mod ITransmuter;
 }
 
-mod utils {
+pub mod utils {
     pub mod address_registry;
     pub mod exp;
     pub mod math;

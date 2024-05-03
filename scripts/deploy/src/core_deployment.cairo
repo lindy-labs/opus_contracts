@@ -226,3 +226,16 @@ pub fn deploy_pragma(
 
     deploy_pragma.contract_address
 }
+
+pub fn deploy_switchboard(admin: ContractAddress, oracle: ContractAddress) -> ContractAddress {
+    let declare_switchboard = declare("switchboard", Option::Some(MAX_FEE), Option::None)
+        .expect('failed switchboard declare');
+    let calldata: Array<felt252> = array![admin.into(), oracle.into()];
+
+    let deploy_switchboard = deploy(
+        declare_switchboard.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed switchboard deploy');
+
+    deploy_switchboard.contract_address
+}

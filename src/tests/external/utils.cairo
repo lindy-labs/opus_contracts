@@ -1,6 +1,7 @@
 pub mod pragma_utils {
     use core::num::traits::Zero;
     use core::traits::Into;
+    use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
     use opus::core::roles::shrine_roles;
     use opus::external::pragma::pragma as pragma_contract;
     use opus::external::roles::pragma_roles;
@@ -29,10 +30,7 @@ pub mod pragma_utils {
     pub const SOURCES_THRESHOLD: u32 = 3;
     pub const UPDATE_FREQUENCY: u64 = 10 * 60; // 10 minutes * 60 seconds
     pub const DEFAULT_NUM_SOURCES: u32 = 5;
-    pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
-    pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
     pub const PEPE_USD_PAIR_ID: felt252 = 'PEPE/USD';
-    pub const PRAGMA_DECIMALS: u8 = 8;
 
     //
     // Constant addresses

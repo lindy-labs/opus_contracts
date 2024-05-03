@@ -1,5 +1,6 @@
 use deployment::constants::MAX_FEE;
 use deployment::{constants, core_deployment, utils};
+use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
@@ -105,6 +106,11 @@ fn main() {
         .expect('set debt ceiling failed');
 
     println!("Minimum trove value set: {}", minimum_trove_value);
+
+    // Set up oracles
+    println!("Setting up oracles");
+    utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
     println!("-------------------------------------------------\n");
     println!("Abbot: {}", abbot);
