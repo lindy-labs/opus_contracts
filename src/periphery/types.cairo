@@ -4,9 +4,9 @@ use wadray::{Ray, Wad};
 
 #[derive(Copy, Debug, Drop, Serde)]
 pub struct YinInfo {
-    pub yin_spot_price: Wad, // Spot price of yin
-    pub yin_total_supply: Wad, // Total supply of yin
-    pub yin_ceiling: Wad, // Maximum amount of yin allowed
+    pub spot_price: Wad, // Spot price of yin
+    pub total_supply: Wad, // Total supply of yin
+    pub ceiling: Wad, // Maximum amount of yin allowed
 }
 
 #[derive(Copy, Debug, Drop, Serde)]

@@ -88,9 +88,9 @@ pub mod frontend_data_provider {
             let shrine: IShrineDispatcher = self.shrine.read();
 
             YinInfo {
-                yin_spot_price: shrine.get_yin_spot_price(),
-                yin_total_supply: shrine.get_total_yin(),
-                yin_ceiling: shrine.get_debt_ceiling(),
+                spot_price: shrine.get_yin_spot_price(),
+                total_supply: shrine.get_total_yin(),
+                ceiling: shrine.get_debt_ceiling(),
             }
         }
 
@@ -116,7 +116,7 @@ pub mod frontend_data_provider {
 
             assert(trove_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut yang_infos: Array<TroveAssetInfo> = ArrayTrait::new();
+            let mut asset_infos: Array<TroveAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match trove_yang_balances.pop_front() {
@@ -133,9 +133,9 @@ pub mod frontend_data_provider {
                         let trove_yang_info = TroveAssetInfo {
                             shrine_asset_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
                         };
-                        yang_infos.append(trove_yang_info);
+                        asset_infos.append(trove_yang_info);
                     },
-                    Option::None => { break yang_infos.span(); }
+                    Option::None => { break asset_infos.span(); }
                 }
             }
         }
@@ -150,7 +150,7 @@ pub mod frontend_data_provider {
 
             assert(shrine_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
-            let mut yang_infos: Array<ShrineAssetInfo> = ArrayTrait::new();
+            let mut asset_infos: Array<ShrineAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
             loop {
                 match shrine_yang_balances.pop_front() {
@@ -162,9 +162,9 @@ pub mod frontend_data_provider {
                             .get_shrine_yang_info_helper(
                                 shrine, sentinel, yang, *yang_balance.amount, current_rate_era
                             );
-                        yang_infos.append(shrine_yang_info);
+                        asset_infos.append(shrine_yang_info);
                     },
-                    Option::None => { break yang_infos.span(); }
+                    Option::None => { break asset_infos.span(); }
                 }
             }
         }
