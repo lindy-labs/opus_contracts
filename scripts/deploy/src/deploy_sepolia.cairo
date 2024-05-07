@@ -113,6 +113,7 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
     // Peripheral deployment
+    println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
         admin, shrine, sentinel
     );
