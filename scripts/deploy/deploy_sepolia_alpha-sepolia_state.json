@@ -528,6 +528,29 @@
         "status": "Success",
         "timestamp": 1714623104,
         "misc": null
+      },
+      "a0c6d143f2f8ba10d8a5038653c8a128ad9a3a78d91cebc698d9b128ee8ac67f": {
+        "name": "declare",
+        "output": {
+          "type": "DeclareResponse",
+          "class_hash": "0xcf41883647354a7b73b19ff51c4613a2f084124b75bea0f4dad33329c2ae63",
+          "transaction_hash": "0x7000aa72f175dd2e396443d0ef08a04e512f1a684f4d5ad5115c451c5872411"
+        },
+        "status": "Success",
+        "timestamp": 1715052833,
+        "misc": null
+      },
+
+      "d26a9e3e01718f030181958dad59ccac02f3c8ec27500daf0930b264cb619fe0": {
+        "name": "deploy",
+        "output": {
+          "type": "DeployResponse",
+          "contract_address": "0x6b5a9c82979978e0fa2584422f2048f9c3f2fed04e82cba9f435f9c5b66195a",
+          "transaction_hash": "0x7fe2f9045ab9d9b84377722b6e9766907b34799891fb44518ea72098203e622"
+        },
+        "status": "Success",
+        "timestamp": 1715054721,
+        "misc": null
       }
     }
   }

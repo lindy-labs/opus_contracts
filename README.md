@@ -29,6 +29,7 @@ Note that Devnet deployments are ephemeral. Once you kill your Devnet instance, 
 | Controller  | `0x3297c2080d6c565055ca1c7695b9b6e458600515ebd76101ec4221bcea877ce` |
 | Equalizer   | `0x43d5cd32847304e168fca09feef5620aaf7c3a0e6fa1689416541be95d8d183` |
 | Flash Mint  | `0x2c6c7acedfbb6607ecc33cd6b2134f3dea2f16998b44219067063ae4ccb6e42` |
+| Frontend Data Provider | `0x6b5a9c82979978e0fa2584422f2048f9c3f2fed04e82cba9f435f9c5b66195a` |
 | Gate[ETH]   | `0x20ee25588aa6225c58a55110fc5f5b983d074d4ed5b1d98788825a9d3305ac0` |
 | Gate[STRK]  | `0x594f653061a2181514fad04dc005f7eb8210786a45b577f416029e0ffb01cd7` |
 | Pragma      | `0x71415935245134eaa125de2df12772443726d5a149a4995f60208c28653a54f` |
