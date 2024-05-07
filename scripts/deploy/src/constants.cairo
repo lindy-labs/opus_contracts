@@ -1,7 +1,7 @@
 use starknet::{ClassHash, ContractAddress};
 
 // Constants for deployment
-pub const MAX_FEE: felt252 = 999999999999999;
+pub const MAX_FEE: felt252 = 9999999999999999;
 pub const SALT: felt252 = 0x3;
 
 // Constants for Shrine

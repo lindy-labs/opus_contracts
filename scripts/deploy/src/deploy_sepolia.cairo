@@ -13,7 +13,7 @@ fn main() {
 
     println!("Deploying core contracts");
     //let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
-    let shrine: ContractAddress = 0x4b3bfe81472b5a01dc3c1fba3456bb0979852deaca43da49d406189371d09e6.try_into().unwrap();
+    let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
     let flash_mint: ContractAddress = core_deployment::deploy_flash_mint(shrine);
     let sentinel: ContractAddress = core_deployment::deploy_sentinel(admin, shrine);
     let seer: ContractAddress = core_deployment::deploy_seer(admin, shrine, sentinel);
