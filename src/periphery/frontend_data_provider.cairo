@@ -37,7 +37,6 @@ pub mod frontend_data_provider {
         access_control: access_control_component::Storage,
         #[substorage(v0)]
         upgradeable: upgradeable_component::Storage,
-        // Sentinel associated with the Shrine
         sentinel: ISentinelDispatcher,
         shrine: IShrineDispatcher,
     }
@@ -125,15 +124,15 @@ pub mod frontend_data_provider {
                         assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
                         let (shrine_asset_info, yang_price) = self
-                            .get_shrine_yang_info_helper(
+                            .get_shrine_asset_info_helper(
                                 shrine, sentinel, yang, *yang_balance.amount, current_rate_era
                             );
 
                         let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
-                        let trove_yang_info = TroveAssetInfo {
+                        let trove_asset_info = TroveAssetInfo {
                             shrine_asset_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
                         };
-                        asset_infos.append(trove_yang_info);
+                        asset_infos.append(trove_asset_info);
                     },
                     Option::None => { break asset_infos.span(); }
                 }
@@ -158,11 +157,11 @@ pub mod frontend_data_provider {
                         let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
                         assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (shrine_yang_info, _) = self
-                            .get_shrine_yang_info_helper(
+                        let (shrine_asset_info, _) = self
+                            .get_shrine_asset_info_helper(
                                 shrine, sentinel, yang, *yang_balance.amount, current_rate_era
                             );
-                        asset_infos.append(shrine_yang_info);
+                        asset_infos.append(shrine_asset_info);
                     },
                     Option::None => { break asset_infos.span(); }
                 }
@@ -178,7 +177,7 @@ pub mod frontend_data_provider {
     impl FrontendDataProviderHelpers of FrontendDataProviderHelpersTrait {
         // Helper function to generate a ShrineAssetInfo struct for a yang.
         // Returns a tuple of a ShrineAssetInfo struct and the yang price
-        fn get_shrine_yang_info_helper(
+        fn get_shrine_asset_info_helper(
             self: @ContractState,
             shrine: IShrineDispatcher,
             sentinel: ISentinelDispatcher,
