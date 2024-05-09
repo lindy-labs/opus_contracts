@@ -28,7 +28,7 @@ pub mod sentinel {
 
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
-    const LOOP_START: u64 = 1;
+    const LOOP_START: u32 = 1;
 
     //
     // Storage
@@ -42,10 +42,10 @@ pub mod sentinel {
         // mapping between a yang address and our deployed Gate
         yang_to_gate: LegacyMap::<ContractAddress, IGateDispatcher>,
         // length of the yang_addresses array
-        yang_addresses_count: u64,
+        yang_addresses_count: u32,
         // array of yang addresses added to the Shrine via this Sentinel
         // starts from index 1
-        yang_addresses: LegacyMap::<u64, ContractAddress>,
+        yang_addresses: LegacyMap::<u32, ContractAddress>,
         // The Shrine associated with this Sentinel
         shrine: IShrineDispatcher,
         // mapping between a yang address and the cap on the yang's asset in the
@@ -119,8 +119,8 @@ pub mod sentinel {
         }
 
         fn get_yang_addresses(self: @ContractState) -> Span<ContractAddress> {
-            let mut idx: u64 = LOOP_START;
-            let loop_end: u64 = self.yang_addresses_count.read() + LOOP_START;
+            let mut idx: u32 = LOOP_START;
+            let loop_end: u32 = self.yang_addresses_count.read() + LOOP_START;
             let mut addresses: Array<ContractAddress> = ArrayTrait::new();
             loop {
                 if idx == loop_end {
@@ -131,11 +131,11 @@ pub mod sentinel {
             }
         }
 
-        fn get_yang_addresses_count(self: @ContractState) -> u64 {
+        fn get_yang_addresses_count(self: @ContractState) -> u32 {
             self.yang_addresses_count.read()
         }
 
-        fn get_yang(self: @ContractState, idx: u64) -> ContractAddress {
+        fn get_yang(self: @ContractState, idx: u32) -> ContractAddress {
             self.yang_addresses.read(idx)
         }
 
@@ -190,7 +190,7 @@ pub mod sentinel {
             let gate = IGateDispatcher { contract_address: gate };
             assert(gate.get_asset() == yang, 'SE: Asset of gate is not yang');
 
-            let index: u64 = self.yang_addresses_count.read() + 1;
+            let index: u32 = self.yang_addresses_count.read() + 1;
             self.yang_addresses_count.write(index);
             self.yang_addresses.write(index, yang);
             self.yang_to_gate.write(yang, gate);

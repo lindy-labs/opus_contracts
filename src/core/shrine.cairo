@@ -538,6 +538,46 @@ pub mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
+        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
+        // Starts from yang ID 1.
+        // Note that zero values are added to the return array because downstream
+        // computation assumes the full array of yangs.
+        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
+
+                current_yang_id += 1;
+            }
+        }
+
+        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
+        // Starts from yang ID 1.
+        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let yang_total: Wad = self.yang_total.read(current_yang_id);
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
+
+                current_yang_id += 1;
+            }
+        }
+
         fn get_budget(self: @ContractState) -> SignedWad {
             self.budget.read()
         }
@@ -1407,46 +1447,6 @@ pub mod shrine {
                     base_threshold * ((SUSPENSION_GRACE_PERIOD - ts_diff).into() / SUSPENSION_GRACE_PERIOD.into())
                 },
                 YangSuspensionStatus::Permanent => { Zero::zero() },
-            }
-        }
-
-        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
-        // Starts from yang ID 1.
-        // Note that zero values are added to the return array because downstream
-        // computation assumes the full array of yangs.
-        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
-
-                current_yang_id += 1;
-            }
-        }
-
-        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
-        // Starts from yang ID 1.
-        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let yang_total: Wad = self.yang_total.read(current_yang_id);
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
-
-                current_yang_id += 1;
             }
         }
 

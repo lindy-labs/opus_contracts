@@ -1,5 +1,5 @@
 use deployment::constants::MAX_FEE;
-use deployment::{constants, core_deployment, utils};
+use deployment::{constants, core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
 use sncast_std::{
@@ -13,7 +13,7 @@ fn main() {
 
     println!("Deploying core contracts");
     //let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
-    let shrine: ContractAddress = 0x4b3bfe81472b5a01dc3c1fba3456bb0979852deaca43da49d406189371d09e6.try_into().unwrap();
+    let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
     let flash_mint: ContractAddress = core_deployment::deploy_flash_mint(shrine);
     let sentinel: ContractAddress = core_deployment::deploy_sentinel(admin, shrine);
     let seer: ContractAddress = core_deployment::deploy_seer(admin, shrine, sentinel);
@@ -112,6 +112,12 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
 
+    // Peripheral deployment
+    println!("Deploying periphery contracts");
+    let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
+        admin, shrine, sentinel
+    );
+
     println!("-------------------------------------------------\n");
     println!("Abbot: {}", abbot);
     println!("Absorber: {}", absorber);
@@ -120,6 +126,7 @@ fn main() {
     println!("Controller: {}", controller);
     println!("Equalizer: {}", equalizer);
     println!("Flash Mint: {}", flash_mint);
+    println!("Frontend Data Provider: {}", frontend_data_provider);
     println!("Gate[ETH]: {}", eth_gate);
     println!("Gate[STRK]: {}", strk_gate);
     println!("Pragma: {}", pragma);
