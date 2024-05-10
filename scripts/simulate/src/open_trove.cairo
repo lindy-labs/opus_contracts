@@ -1,5 +1,6 @@
 use deployment::constants::MAX_FEE;
-use deployment::{constants, core_deployment, periphery_deployment, utils};
+use deployment::constants;
+use simulation::utils;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
     ScriptCommandError

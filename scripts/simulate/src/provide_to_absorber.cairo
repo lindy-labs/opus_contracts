@@ -1,6 +1,6 @@
 use core::integer::BoundedInt;
 use deployment::constants::MAX_FEE;
-use deployment::{constants, core_deployment, mock_utils, periphery_deployment, utils};
+use deployment::{constants, mock_utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::utils::math::wad_to_fixed_point;
 use sncast_std::{
