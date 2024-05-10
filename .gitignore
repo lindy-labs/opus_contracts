@@ -8,3 +8,7 @@ target/
 .snfoundry_cache/
 
 scripts/deploy/deploy_devnet_alpha-sepolia_state.json
+
+scripts/simulate/open_trove_alpha-sepolia_state.json
+scripts/simulate/provide_to_absorber_alpha-sepolia_state.json
+scripts/simulate/crash_prices_alpha-sepolia_state.json

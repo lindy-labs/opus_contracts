@@ -6,9 +6,9 @@ edition = "2023_11"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
-starknet = ">=2.6.3"
-opus = { path = "../../" }
+sncast_std.workspace = true 
+starknet.workspace = true
+opus.workspace = true
 
 [lib]
 sierra = true
@@ -39,19 +39,5 @@ build-external-contracts = [
 ]
 
 [scripts]
-deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet"
+deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet --package deployment"
 deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
-
-[profile.devnet]
-inherits = "dev"
-
-# temporarily commenting out until a bug in the toolchain
-# is fixed https://github.com/foundry-rs/starknet-foundry/issues/2042
-# for more context:
-# https://github.com/milancermak/snfoundry-script-poc
-# https://t.me/starknet_foundry_support/2894
-# [profile.sepolia]
-# inherits = "release"
-
-
-# curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }'

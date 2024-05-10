@@ -6,9 +6,18 @@ edition = "2023_11"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
-starknet = ">=2.6.3"
-opus = { path = "../../" }
+sncast_std.workspace = true 
+starknet.workspace = true
+opus.workspace = true
 deployment = { path = "../deploy/" }
 
-# curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }'
+[scripts]
+setup_absorption = """
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run open_trove --package simulation; 
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run open_trove --package simulation;
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user3 script run open_trove --package simulation;
+rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run provide_to_absorber --package simulation;
+rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run provide_to_absorber --package simulation;
+rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user3 script run provide_to_absorber --package simulation;
+curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }';
+rm crash_prices_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run crash_prices --package simulation;"""

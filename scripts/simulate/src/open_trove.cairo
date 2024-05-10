@@ -10,11 +10,13 @@ use wadray::WAD_ONE;
 
 fn main() {
     // To update for each devnet instance
-    let abbot: ContractAddress = 0x2d69a1605970fdc3e23a3af8c98fdcdfde9011224614eb99a5dd492b5b839a3.try_into().unwrap();
-    let eth_gate: ContractAddress = 0x168d9af3c4c3b85ac3429432d769c7dbbebbbbc815475fe7cb446927b2b9b6b
+    let abbot: ContractAddress = 293212255598816008570921754636627554761055299333086153945661526532054986037
         .try_into()
         .unwrap();
-    let strk_gate: ContractAddress = 0x1cf8842c9340da2e81534f53f71a00c61cf667cad2df04609fa96a80017357f
+    let eth_gate: ContractAddress = 2854927889298976482304332453752777576635504087813950583519355364528784326047
+        .try_into()
+        .unwrap();
+    let strk_gate: ContractAddress = 2047265481346033047803571763905070421575510855949894757182676932001894918837
         .try_into()
         .unwrap();
 
@@ -26,16 +28,17 @@ fn main() {
         2,
         // eth
         constants::eth_addr().into(),
-        (5 * WAD_ONE).into(),
+        // 0.5 eth (Wad)
+        5000000000000000000.into(),
         // strk
         constants::strk_addr().into(),
-        (500 * WAD_ONE).into(),
+        (50 * WAD_ONE).into(),
         // forge amt
-        (10000 * WAD_ONE).into(),
+        (1000 * WAD_ONE).into(),
         0,
     ];
 
-    invoke(abbot, selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None,)
+    invoke(abbot, selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None)
         .expect('open trove failed');
 
     println!("Trove opened");
