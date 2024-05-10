@@ -9,8 +9,6 @@ use starknet::{ContractAddress, get_block_timestamp};
 pub fn set_mock_pragma_prices(
     mock_pragma: ContractAddress, mut pair_ids: Span<felt252>, mut prices: Span<(u128, u128)>
 ) {
-    println!("setting mock pragma prices");
-    println!("mock pragma addr: {}", mock_pragma);
     let num_sources = PRAGMA_SOURCES_THRESHOLD + 1;
 
     loop {

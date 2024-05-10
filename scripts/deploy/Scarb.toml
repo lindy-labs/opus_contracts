@@ -52,3 +52,6 @@ inherits = "dev"
 # https://t.me/starknet_foundry_support/2894
 # [profile.sepolia]
 # inherits = "release"
+
+
+# curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }'

@@ -4,5 +4,7 @@ mod deploy_devnet;
 mod deploy_sepolia;
 pub mod mock_deployment;
 pub mod mock_utils;
+pub mod open_trove;
 pub mod periphery_deployment;
+pub mod provide_to_absorber;
 pub mod utils;
