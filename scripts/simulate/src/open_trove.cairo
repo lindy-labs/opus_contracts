@@ -1,10 +1,7 @@
-use scripts::constants::MAX_FEE;
 use scripts::addresses;
+use scripts::constants::MAX_FEE;
 use simulation::utils;
-use sncast_std::{
-    DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
-    ScriptCommandError
-};
+use sncast_std::{invoke, InvokeResult, ScriptCommandError};
 use starknet::ContractAddress;
 use wadray::WAD_ONE;
 
@@ -27,7 +24,9 @@ fn main() {
         0,
     ];
 
-    invoke(addresses::devnet::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None)
+    invoke(
+        addresses::devnet::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None
+    )
         .expect('open trove failed');
 
     println!("Trove opened");

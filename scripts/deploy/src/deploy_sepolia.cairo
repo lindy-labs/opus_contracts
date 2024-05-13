@@ -1,9 +1,8 @@
-use scripts::constants::MAX_FEE;
 use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
-use scripts::constants;
 use scripts::addresses;
+use scripts::constants;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
     ScriptCommandError
@@ -91,7 +90,11 @@ fn main() {
     // Set up debt ceiling and minimum trove value in Shrine
     let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
     let _set_debt_ceiling = invoke(
-        shrine, selector!("set_debt_ceiling"), array![debt_ceiling.into()], Option::Some(MAX_FEE), Option::None
+        shrine,
+        selector!("set_debt_ceiling"),
+        array![debt_ceiling.into()],
+        Option::Some(constants::MAX_FEE),
+        Option::None
     )
         .expect('set debt ceiling failed');
 
@@ -102,7 +105,7 @@ fn main() {
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
-        Option::Some(MAX_FEE),
+        Option::Some(constants::MAX_FEE),
         Option::None
     )
         .expect('set debt ceiling failed');

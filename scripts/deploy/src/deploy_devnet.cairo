@@ -116,7 +116,11 @@ fn main() {
     // Set up debt ceiling and minimum trove value in Shrine
     let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
     let _set_debt_ceiling = invoke(
-        shrine, selector!("set_debt_ceiling"), array![debt_ceiling.into()], Option::Some(constants::MAX_FEE), Option::None
+        shrine,
+        selector!("set_debt_ceiling"),
+        array![debt_ceiling.into()],
+        Option::Some(constants::MAX_FEE),
+        Option::None
     )
         .expect('set debt ceiling failed');
 

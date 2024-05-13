@@ -32,3 +32,10 @@ inherits = "dev"
 # https://t.me/starknet_foundry_support/2894
 # [profile.sepolia]
 # inherits = "release"
+
+[tool]
+fmt.workspace = true
+
+[workspace.tool.fmt]
+sort-module-level-items = true
+max-line-length = 120

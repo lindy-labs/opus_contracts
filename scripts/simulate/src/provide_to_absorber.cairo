@@ -1,11 +1,7 @@
 use core::integer::BoundedInt;
-use scripts::constants::MAX_FEE;
-use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
-use sncast_std::{
-    DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
-    ScriptCommandError
-};
+use scripts::constants::MAX_FEE;
+use sncast_std::{invoke, InvokeResult, ScriptCommandError};
 use starknet::ContractAddress;
 use wadray::WAD_ONE;
 

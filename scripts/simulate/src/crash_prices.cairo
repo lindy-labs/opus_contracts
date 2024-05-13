@@ -1,15 +1,10 @@
-use core::integer::BoundedInt;
-use scripts::constants;
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
+use scripts::constants;
 use scripts::mock_utils;
-use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
-    ScriptCommandError
-};
+use sncast_std::{invoke, InvokeResult, ScriptCommandError};
 use starknet::ContractAddress;
-use wadray::WAD_ONE;
 
 fn main() {
     let eth_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_ETH_PRICE / 4).into(), PRAGMA_DECIMALS);
@@ -27,6 +22,8 @@ fn main() {
             .span()
     );
 
-    invoke(addresses::devnet::seer(), selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,)
+    invoke(
+        addresses::devnet::seer(), selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
+    )
         .expect('update prices failed');
 }

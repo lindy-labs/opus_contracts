@@ -1,7 +1,7 @@
 use core::array::ArrayTrait;
 use core::integer::BoundedInt;
 use scripts::constants::MAX_FEE;
-use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
+use sncast_std::{invoke, InvokeResult};
 use starknet::ContractAddress;
 
 

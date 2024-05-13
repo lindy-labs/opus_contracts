@@ -21,3 +21,6 @@ rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile d
 rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user3 script run provide_to_absorber --package simulation;
 curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }';
 rm crash_prices_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run crash_prices --package simulation;"""
+
+[tool]
+fmt.workspace = true
