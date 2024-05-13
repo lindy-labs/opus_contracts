@@ -17,7 +17,7 @@ fn main() {
     let wbtc_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_WBTC_PRICE / 4).into(), PRAGMA_DECIMALS);
 
     mock_utils::set_mock_pragma_prices(
-        deployed::mock_pragma(),
+        deployed::devnet::mock_pragma(),
         array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
         array![
             (eth_pragma_price, eth_pragma_price),
@@ -27,6 +27,6 @@ fn main() {
             .span()
     );
 
-    invoke(deployed::seer(), selector!("execute_task"), array![], Option::Some(MAX_FEE), Option::None,)
+    invoke(deployed::devnet::seer(), selector!("execute_task"), array![], Option::Some(MAX_FEE), Option::None,)
         .expect('update prices failed');
 }

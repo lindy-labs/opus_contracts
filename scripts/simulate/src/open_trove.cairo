@@ -11,8 +11,8 @@ use wadray::WAD_ONE;
 
 fn main() {
     // Approve ETH and STRK
-    utils::max_approve_token_for_gate(constants::eth_addr(), deployed::eth_gate());
-    utils::max_approve_token_for_gate(constants::strk_addr(), deployed::strk_gate());
+    utils::max_approve_token_for_gate(constants::eth_addr(), deployed::devnet::eth_gate());
+    utils::max_approve_token_for_gate(constants::strk_addr(), deployed::devnet::strk_gate());
 
     let open_trove_calldata: Array<felt252> = array![
         2,
@@ -28,7 +28,7 @@ fn main() {
         0,
     ];
 
-    invoke(deployed::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None)
+    invoke(deployed::devnet::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None)
         .expect('open trove failed');
 
     println!("Trove opened");

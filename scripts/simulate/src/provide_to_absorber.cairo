@@ -16,15 +16,21 @@ fn main() {
 
     let max_u128: u128 = BoundedInt::max();
     invoke(
-        deployed::shrine(),
+        deployed::devnet::shrine(),
         selector!("approve"),
-        array![deployed::absorber().into(), max_u128.into(), max_u128.into()],
+        array![deployed::devnet::absorber().into(), max_u128.into(), max_u128.into()],
         Option::Some(MAX_FEE),
         Option::None,
     )
         .expect('approve CASH failed');
 
-    invoke(deployed::absorber(), selector!("provide"), array![provide_amt.into()], Option::Some(MAX_FEE), Option::None,)
+    invoke(
+        deployed::devnet::absorber(),
+        selector!("provide"),
+        array![provide_amt.into()],
+        Option::Some(MAX_FEE),
+        Option::None,
+    )
         .expect('provide failed');
 
     println!("Provided {} CASH to Absorber", provide_amt);
