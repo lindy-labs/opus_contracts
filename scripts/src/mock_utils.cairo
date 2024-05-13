@@ -1,8 +1,8 @@
-use deployment::constants::{MAX_FEE, PRAGMA_SOURCES_THRESHOLD};
 use opus::constants::PRAGMA_DECIMALS;
 use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
 use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
 use opus::types::pragma::PragmaPricesResponse;
+use scripts::constants::{MAX_FEE, PRAGMA_SOURCES_THRESHOLD};
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
 use starknet::{ContractAddress, get_block_timestamp};
 

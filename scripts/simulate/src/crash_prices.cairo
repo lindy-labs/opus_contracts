@@ -1,9 +1,9 @@
 use core::integer::BoundedInt;
-use deployment::constants::MAX_FEE;
-use deployment::{constants, mock_utils};
+use scripts::constants;
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::utils::math::wad_to_fixed_point;
-use simulation::deployed;
+use scripts::addresses;
+use scripts::mock_utils;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
     ScriptCommandError
@@ -17,7 +17,7 @@ fn main() {
     let wbtc_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_WBTC_PRICE / 4).into(), PRAGMA_DECIMALS);
 
     mock_utils::set_mock_pragma_prices(
-        deployed::devnet::mock_pragma(),
+        addresses::devnet::mock_pragma(),
         array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
         array![
             (eth_pragma_price, eth_pragma_price),
@@ -27,6 +27,6 @@ fn main() {
             .span()
     );
 
-    invoke(deployed::devnet::seer(), selector!("execute_task"), array![], Option::Some(MAX_FEE), Option::None,)
+    invoke(addresses::devnet::seer(), selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,)
         .expect('update prices failed');
 }

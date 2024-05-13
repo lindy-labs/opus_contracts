@@ -1,4 +1,4 @@
-use deployment::constants::MAX_FEE;
+use scripts::constants::MAX_FEE;
 use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 

@@ -9,6 +9,7 @@ edition = "2023_11"
 sncast_std.workspace = true 
 starknet.workspace = true
 opus.workspace = true
+scripts.workspace = true
 
 [lib]
 sierra = true

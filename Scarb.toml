@@ -3,6 +3,9 @@ name = "opus"
 version = "0.1.0"
 edition = "2023_11"
 
+[workspace]
+members = ["scripts"]
+
 # Build each contract as a standalone JSON file
 [[target.starknet-contract]]
 sierra = true

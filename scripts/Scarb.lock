@@ -11,6 +11,7 @@ name = "deployment"
 version = "0.1.0"
 dependencies = [
  "opus",
+ "scripts",
  "sncast_std",
 ]
 
@@ -23,11 +24,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "scripts"
+version = "0.1.0"
+
+[[package]]
 name = "simulation"
 version = "0.1.0"
 dependencies = [
- "deployment",
  "opus",
+ "scripts",
  "sncast_std",
 ]
 

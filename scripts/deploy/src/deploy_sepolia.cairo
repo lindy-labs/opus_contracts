@@ -1,7 +1,9 @@
-use deployment::constants::MAX_FEE;
-use deployment::{constants, core_deployment, periphery_deployment, utils};
+use scripts::constants::MAX_FEE;
+use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
+use scripts::constants;
+use scripts::addresses;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
     ScriptCommandError
@@ -9,7 +11,7 @@ use sncast_std::{
 use starknet::{ClassHash, ContractAddress};
 
 fn main() {
-    let admin: ContractAddress = constants::sepolia::admin();
+    let admin: ContractAddress = addresses::sepolia::admin();
 
     println!("Deploying core contracts");
     //let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
@@ -28,16 +30,16 @@ fn main() {
     println!("Deploying gates");
     // there's no WBTC on Starknet Sepolia
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
-    let eth: ContractAddress = constants::eth_addr();
-    let strk: ContractAddress = constants::strk_addr();
+    let eth: ContractAddress = addresses::eth_addr();
+    let strk: ContractAddress = addresses::strk_addr();
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
         admin,
-        constants::sepolia::pragma_spot_oracle(),
-        constants::sepolia::pragma_twap_oracle(),
+        addresses::sepolia::pragma_spot_oracle(),
+        addresses::sepolia::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
         constants::PRAGMA_SOURCES_THRESHOLD
     );

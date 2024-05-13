@@ -1,3 +1,8 @@
+[package]
+name = "scripts"
+version = "0.1.0"
+edition = "2023_11"
+
 [workspace]
 members = ["deploy", "simulate"]
 
@@ -5,6 +10,7 @@ members = ["deploy", "simulate"]
 sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
 starknet = ">=2.6.3"
 opus = { path = "../" }
+scripts = { path = "./" }
 
 [profile.devnet]
 inherits = "dev"

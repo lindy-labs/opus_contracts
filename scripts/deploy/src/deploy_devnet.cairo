@@ -1,14 +1,16 @@
-use deployment::constants::{MAX_FEE, SALT};
-use deployment::{constants, core_deployment, mock_deployment, mock_utils, periphery_deployment, utils};
+use deployment::{core_deployment, mock_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_DECIMALS, WBTC_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
 use opus::utils::math::wad_to_fixed_point;
+use scripts::addresses;
+use scripts::constants;
+use scripts::mock_utils;
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
 
 fn main() {
-    let admin: ContractAddress = constants::devnet::admin();
+    let admin: ContractAddress = addresses::devnet::admin();
 
     println!("Deploying contracts");
 
@@ -38,8 +40,8 @@ fn main() {
     // Deploy gates
     println!("Deploying Gates");
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
-    let eth: ContractAddress = constants::eth_addr();
-    let strk: ContractAddress = constants::strk_addr();
+    let eth: ContractAddress = addresses::eth_addr();
+    let strk: ContractAddress = addresses::strk_addr();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
     let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
@@ -114,7 +116,7 @@ fn main() {
     // Set up debt ceiling and minimum trove value in Shrine
     let debt_ceiling: u128 = constants::INITIAL_DEBT_CEILING;
     let _set_debt_ceiling = invoke(
-        shrine, selector!("set_debt_ceiling"), array![debt_ceiling.into()], Option::Some(MAX_FEE), Option::None
+        shrine, selector!("set_debt_ceiling"), array![debt_ceiling.into()], Option::Some(constants::MAX_FEE), Option::None
     )
         .expect('set debt ceiling failed');
 
@@ -125,7 +127,7 @@ fn main() {
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
-        Option::Some(MAX_FEE),
+        Option::Some(constants::MAX_FEE),
         Option::None
     )
         .expect('set debt ceiling failed');

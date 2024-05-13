@@ -1,8 +1,6 @@
-use starknet::{ClassHash, ContractAddress};
+use starknet::ClassHash;
 
-// Constants for deployment
 pub const MAX_FEE: felt252 = 9999999999999999;
-pub const SALT: felt252 = 0x3;
 
 // Constants for Shrine
 pub const INITIAL_DEBT_CEILING: u128 = 500000000000000000000000; // 500_000 (Wad)
@@ -38,51 +36,4 @@ pub const WBTC_INITIAL_SUPPLY: u128 = 2099999997690000; // approx. 21_000_000 * 
 // Chain constants
 pub fn erc20_class_hash() -> ClassHash {
     0x046ded64ae2dead6448e247234bab192a9c483644395b66f2155f2614e5804b0.try_into().expect('invalid ERC20 class hash')
-}
-
-// https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/
-
-pub fn eth_addr() -> ContractAddress {
-    0x49D36570D4E46F48E99674BD3FCC84644DDD6B96F7C741B1562B82F9E004DC7.try_into().expect('invalid ETH address')
-}
-
-pub fn strk_addr() -> ContractAddress {
-    0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d.try_into().expect('invalid STRK address')
-}
-
-pub fn wbtc_addr() -> ContractAddress {
-    // only on mainnet
-    0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
-}
-
-// Deployment constants
-
-pub mod devnet {
-    use starknet::ContractAddress;
-
-    // devnet_admin.json
-    pub fn admin() -> ContractAddress {
-        0x42044b3252fcdaeccfc2514c2b72107aed76855f7251469e2f105d97ec6b6e5.try_into().expect('invalid admin address')
-    }
-}
-
-pub mod sepolia {
-    use starknet::ContractAddress;
-
-    pub fn admin() -> ContractAddress {
-        0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
-    }
-
-    // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
-    pub fn pragma_spot_oracle() -> ContractAddress {
-        0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a
-            .try_into()
-            .expect('invalid pragma spot address')
-    }
-
-    pub fn pragma_twap_oracle() -> ContractAddress {
-        0x54563a0537b3ae0ba91032d674a6d468f30a59dc4deb8f0dce4e642b94be15c
-            .try_into()
-            .expect('invalid pragma twap address')
-    }
 }

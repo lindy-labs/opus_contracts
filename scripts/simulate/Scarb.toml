@@ -9,7 +9,7 @@ edition = "2023_11"
 sncast_std.workspace = true 
 starknet.workspace = true
 opus.workspace = true
-deployment = { path = "../deploy/" }
+scripts.workspace = true
 
 [scripts]
 setup_absorption = """
