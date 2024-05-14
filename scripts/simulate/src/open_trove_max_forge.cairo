@@ -1,5 +1,5 @@
 use scripts::addresses;
-use scripts::constants::MAX_FEE;
+use scripts::constants::{MAX_FEE, MINIMUM_TROVE_VALUE};
 use simulation::utils;
 use sncast_std::{call, CallResult, invoke, InvokeResult, ScriptCommandError};
 use starknet::ContractAddress;
@@ -14,13 +14,13 @@ fn main() {
         2,
         // eth
         addresses::eth_addr().into(),
-        // 1 eth (Wad)
-        10000000000000000000.into(),
+        // 0.5 eth (Wad)
+        5000000000000000000.into(),
         // strk
         addresses::strk_addr().into(),
-        (1000 * WAD_ONE).into(),
+        (50 * WAD_ONE).into(),
         // forge amt
-        (2500 * WAD_ONE).into(),
+        MINIMUM_TROVE_VALUE.into(),
         0,
     ];
 
@@ -29,9 +29,20 @@ fn main() {
     )
         .expect('open trove failed');
 
+    println!("Trove opened");
+
     let call_result = call(addresses::devnet::abbot(), selector!("get_troves_count"), array![])
         .expect('`get_troves_count` failed');
     let trove_id = *call_result.data.at(0);
+
+    let call_result = call(addresses::devnet::shrine(), selector!("get_max_forge"), array![trove_id])
+        .expect('`get_max_forge` failed');
+    let max_forge_amt: u128 = (*call_result.data.at(0)).try_into().unwrap() - 1;
+
+    let forge_calldata: Array<felt252> = array![trove_id, max_forge_amt.into(), 0];
+
+    invoke(addresses::devnet::abbot(), selector!("forge"), forge_calldata, Option::Some(MAX_FEE), Option::None)
+        .expect('forge failed');
 
     println!("Trove opened with ID {}", trove_id);
 }

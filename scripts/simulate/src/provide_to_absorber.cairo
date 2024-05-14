@@ -6,7 +6,7 @@ use starknet::ContractAddress;
 use wadray::WAD_ONE;
 
 fn main() {
-    let provide_amt: u128 = 500 * WAD_ONE;
+    let provide_amt: u128 = 1000 * WAD_ONE;
 
     let max_u128: u128 = BoundedInt::max();
     invoke(

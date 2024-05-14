@@ -5,11 +5,20 @@ use scripts::constants;
 use scripts::mock_utils;
 use sncast_std::{invoke, InvokeResult, ScriptCommandError};
 use starknet::ContractAddress;
+use wadray::Ray;
 
 fn main() {
-    let eth_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_ETH_PRICE / 4).into(), PRAGMA_DECIMALS);
-    let strk_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_STRK_PRICE / 4).into(), PRAGMA_DECIMALS);
-    let wbtc_pragma_price: u128 = wad_to_fixed_point((constants::INITIAL_WBTC_PRICE / 4).into(), PRAGMA_DECIMALS);
+    let pct_initial_price: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
+
+    let eth_pragma_price: u128 = wad_to_fixed_point(
+        wadray::rmul_wr(constants::INITIAL_ETH_PRICE.into(), pct_initial_price), PRAGMA_DECIMALS
+    );
+    let strk_pragma_price: u128 = wad_to_fixed_point(
+        wadray::rmul_wr(constants::INITIAL_STRK_PRICE.into(), pct_initial_price), PRAGMA_DECIMALS
+    );
+    let wbtc_pragma_price: u128 = wad_to_fixed_point(
+        wadray::rmul_wr(constants::INITIAL_WBTC_PRICE.into(), pct_initial_price), PRAGMA_DECIMALS
+    );
 
     mock_utils::set_mock_pragma_prices(
         addresses::devnet::mock_pragma(),
