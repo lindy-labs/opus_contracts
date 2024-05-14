@@ -26,6 +26,10 @@ dependencies = [
 [[package]]
 name = "scripts"
 version = "0.1.0"
+dependencies = [
+ "opus",
+ "sncast_std",
+]
 
 [[package]]
 name = "simulation"

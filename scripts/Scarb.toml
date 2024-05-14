@@ -6,6 +6,11 @@ edition = "2023_11"
 [workspace]
 members = ["deploy", "simulate"]
 
+[dependencies]
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
+starknet = ">=2.6.3"
+opus = { path = "../" }
+
 [workspace.dependencies]
 sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
 starknet = ">=2.6.3"
