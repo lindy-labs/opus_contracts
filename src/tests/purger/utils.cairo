@@ -23,9 +23,7 @@ pub mod purger_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
-    use snforge_std::{
-        declare, CheatTarget, ContractClass, ContractClassTrait, Event, event_name_hash, start_prank, stop_prank
-    };
+    use snforge_std::{declare, CheatTarget, ContractClass, ContractClassTrait, Event, start_prank, stop_prank};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
@@ -715,7 +713,7 @@ pub mod purger_utils {
     // Helper function to deserialize the `Purged` event specifically for the purger
     // tests
     pub fn deserialize_purged_event(evt: Event) -> purger_contract::Purged {
-        assert(evt.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+        assert(*evt.keys.at(0) == selector!("Purged"), 'wrong event');
         let purge_amt: u128 = (*evt.data.at(0)).try_into().unwrap();
         let pct_freed: u128 = (*evt.data.at(1)).try_into().unwrap();
         purger_contract::Purged {

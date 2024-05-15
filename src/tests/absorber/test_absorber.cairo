@@ -974,7 +974,7 @@ mod test_absorber {
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name((spy.events).span(), 'Bestow');
+        common::assert_event_not_emitted_by_name((spy.events).span(), selector!("Bestow"));
 
         spy.assert_emitted(@expected_events);
 
@@ -1041,7 +1041,7 @@ mod test_absorber {
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name((spy.events).span(), 'Bestow');
+        common::assert_event_not_emitted_by_name((spy.events).span(), selector!("Bestow"));
 
         spy.assert_emitted(@expected_events);
     }

@@ -74,7 +74,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -174,7 +174,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -274,7 +274,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -372,7 +372,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -465,7 +465,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -593,7 +593,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -703,7 +703,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -967,7 +967,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         expected_events
             .append(
@@ -1075,7 +1075,7 @@ mod test_shrine_compound {
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ProtocolOwnedTrovesDebtUpdated');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
