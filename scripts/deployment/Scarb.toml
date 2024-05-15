@@ -13,11 +13,9 @@ scripts.workspace = true
 
 [lib]
 sierra = true
-casm = true
 
 [[target.starknet-contract]]
 sierra = true
-casm = true
 build-external-contracts = [
     "opus::core::abbot::abbot",
     "opus::core::absorber::absorber",
