@@ -42,8 +42,8 @@ dependencies = [
 
 [[package]]
 name = "sncast_std"
-version = "0.22.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.22.0#9b215944c6c5871c738381b4ded61bbf06e7ba35"
+version = "0.23.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.23.0#f2bff8f796763ada77fe6033ec1b034ceee22abd"
 
 [[package]]
 name = "wadray"
