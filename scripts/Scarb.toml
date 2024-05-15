@@ -1,0 +1,46 @@
+[package]
+name = "scripts"
+version = "0.1.0"
+edition = "2023_11"
+
+[workspace]
+members = ["deployment", "simulation"]
+
+[dependencies]
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
+starknet = ">=2.6.3"
+opus = { path = "../" }
+
+[workspace.dependencies]
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
+starknet = ">=2.6.3"
+opus = { path = "../" }
+scripts = { path = "./" }
+
+[profile.devnet]
+inherits = "dev"
+
+[profile.devnet-user1]
+inherits = "dev"
+
+[profile.devnet-user2]
+inherits = "dev"
+
+[profile.devnet-user3]
+inherits = "dev"
+
+
+# temporarily commenting out until a bug in the toolchain
+# is fixed https://github.com/foundry-rs/starknet-foundry/issues/2042
+# for more context:
+# https://github.com/milancermak/snfoundry-script-poc
+# https://t.me/starknet_foundry_support/2894
+# [profile.sepolia]
+# inherits = "release"
+
+[tool]
+fmt.workspace = true
+
+[workspace.tool.fmt]
+sort-module-level-items = true
+max-line-length = 120

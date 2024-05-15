@@ -1,0 +1,14 @@
+[sncast.devnet-user1]
+account = "devnet_user1"
+accounts-file = "../devnet_accounts.json"
+url = "http://127.0.0.1:5050"
+
+[sncast.devnet-user2]
+account = "devnet_user2"
+accounts-file = "../devnet_accounts.json"
+url = "http://127.0.0.1:5050"
+
+[sncast.devnet-user3]
+account = "devnet_user3"
+accounts-file = "../devnet_accounts.json"
+url = "http://127.0.0.1:5050"

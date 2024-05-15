@@ -4,8 +4,8 @@
 repos:
   - repo: local
     hooks:
-    - id: cairo-1.x-format
-      name: cairo-1.x-format
+    - id: cairo-format
+      name: cairo-format
       language: system
-      entry: scarb fmt
+      entry: scarb fmt --workspace
       pass_filenames: false

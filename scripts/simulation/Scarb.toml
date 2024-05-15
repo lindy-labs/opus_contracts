@@ -1,0 +1,29 @@
+[package]
+name = "simulation"
+version = "0.1.0"
+edition = "2023_11"
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+sncast_std.workspace = true 
+starknet.workspace = true
+opus.workspace = true
+scripts.workspace = true
+
+[scripts]
+setup_trove = """
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; 
+sncast --account devnet_user1 --accounts-file ../devnet_accounts.json --url http://localhost:5050 script run open_trove --package simulation"""
+
+setup_absorption = """
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run open_trove --package simulation; 
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run open_trove --package simulation;
+rm open_trove_max_forge_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user3 script run open_trove_max_forge --package simulation;
+rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run provide_to_absorber --package simulation;
+rm provide_to_absorber_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run provide_to_absorber --package simulation;
+curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }';
+rm crash_prices_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run crash_prices --package simulation;"""
+
+[tool]
+fmt.workspace = true

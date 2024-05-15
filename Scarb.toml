@@ -3,6 +3,9 @@ name = "opus"
 version = "0.1.0"
 edition = "2023_11"
 
+[workspace]
+members = ["scripts"]
+
 # Build each contract as a standalone JSON file
 [[target.starknet-contract]]
 sierra = true
@@ -25,7 +28,8 @@ access_control = { git = "https://github.com/lindy-labs/access_control.git", tag
 snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.22.0" }
 
 [scripts]
-devnet = "starknet-devnet --seed 1087810753 --gas-price 1000"
+restart_devnet = "rm devnet_dump.json 2> /dev/null; starknet-devnet --seed 1087810753 --gas-price 1000 --dump-on exit --dump-path devnet_dump.json"
+load_devnet = "starknet-devnet --seed 1087810753 --gas-price 1000 --dump-path devnet_dump.json"
 test = "snforge test"
 
 [tool.fmt]

@@ -10,11 +10,11 @@ To run Opus locally, you'll need to install [starknet-devnet-rs](https://github.
 
 ### Setup
 
-In one shell, run `scarb run devnet` to boot up a Devnet instance. You can use the `http://localhost:5050` as the RPC address.
+In one shell, run `scarb run load_devnet` to boot up a Devnet instance with the initial deployment and setup of contracts based on the `devnet_dump.json` state file. The RPC address of this Devnet instance is `http://localhost:5050`.
 
-In another shell, from the `scripts` directory, run `scarb run deploy_devnet`. That will compile and deploy the contracts on the local Devnet and do the initial required setup.
+To start a clean Devnet instance, run `scarb run restart_devnet`. In another shell, from the `scripts` directory, run `scarb run deploy_devnet -p deployment`. That will compile and deploy the contracts on the local Devnet and do the initial required setup.
 
-Note that Devnet deployments are ephemeral. Once you kill your Devnet instance, the state is lost. After restarting, you will have to deploy the contracts again, using the script mentioned above.
+Once you kill your Devnet instance, the state is lost unless the latest `devnet_dump.json` state file is committed. 
 
 ### Addresses
 
