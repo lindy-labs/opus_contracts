@@ -7,7 +7,7 @@ target/
 
 .snfoundry_cache/
 
-scripts/deploy/deploy_devnet_alpha-sepolia_state.json
+scripts/deployment/deploy_devnet_alpha-sepolia_state.json
 
 scripts/simulation/open_trove_alpha-sepolia_state.json
 scripts/simulation/open_trove_max_forge_alpha-sepolia_state.json
