@@ -13,11 +13,9 @@ scripts.workspace = true
 
 [lib]
 sierra = true
-casm = true
 
 [[target.starknet-contract]]
 sierra = true
-casm = true
 build-external-contracts = [
     "opus::core::abbot::abbot",
     "opus::core::absorber::absorber",
@@ -41,7 +39,7 @@ build-external-contracts = [
 
 [scripts]
 deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet --package deployment"
-deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia"
+deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia --package deployment"
 
 [tool]
 fmt.workspace = true

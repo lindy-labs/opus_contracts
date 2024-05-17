@@ -2995,7 +2995,7 @@ mod test_purger {
                                                     purger_spy.fetch_events();
 
                                                     common::assert_event_not_emitted_by_name(
-                                                        purger_spy.events.span(), 'Purged'
+                                                        purger_spy.events.span(), selector!("Purged")
                                                     );
 
                                                     let expected_events = array![

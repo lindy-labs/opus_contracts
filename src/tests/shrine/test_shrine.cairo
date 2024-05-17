@@ -1239,7 +1239,7 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, forge_amt);
 
         spy.fetch_events();
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ForgeFeePaid');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ForgeFeePaid"));
     }
 
     #[test]
