@@ -42,6 +42,7 @@ deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast 
 deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia --package deployment"
 
 upgrade_fdp_devnet = "rm upgrade_fdp_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run upgrade_fdp_devnet --package deployment"
+upgrade_fdp_sepolia = "sncast --profile sepolia script run upgrade_fdp_sepolia --package deployment"
 
 [tool]
 fmt.workspace = true
