@@ -110,7 +110,6 @@ pub mod frontend_data_provider {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
-            let mut shrine_yang_balances: Span<YangBalance> = shrine.get_shrine_deposits();
             let mut trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
             let mut yang_addresses: Span<ContractAddress> = sentinel.get_yang_addresses();
 
@@ -126,11 +125,7 @@ pub mod frontend_data_provider {
 
                         let (shrine_asset_info, yang_price) = self
                             .get_shrine_asset_info_helper(
-                                shrine,
-                                sentinel,
-                                yang,
-                                (*shrine_yang_balances.pop_front().unwrap()).amount,
-                                current_rate_era
+                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era
                             );
 
                         let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
