@@ -11,7 +11,7 @@ mod test_abbot {
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, Health};
+    use opus::types::{AssetBalance, Health, YangBalance};
     use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::ContractAddress;
@@ -28,6 +28,7 @@ mod test_abbot {
         );
 
         let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut expected_events = ArrayTrait::new();
 
         // Deploying the first trove
         let trove_owner: ContractAddress = common::trove1_owner_addr();
@@ -55,12 +56,11 @@ mod test_abbot {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
+                    let asset_amt: u128 = *deposited_amts_copy.pop_front().unwrap();
                     let expected_initial_yang: Wad = fixed_point_to_wad(
                         sentinel_utils::get_initial_asset_amt(*yang), decimals
                     );
-                    let expected_deposited_yang: Wad = fixed_point_to_wad(
-                        *deposited_amts_copy.pop_front().unwrap(), decimals
-                    );
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(asset_amt, decimals);
                     let expected_yang_total: Wad = expected_initial_yang + expected_deposited_yang;
                     assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1');
                     yangs_total.append(expected_yang_total);
@@ -68,6 +68,22 @@ mod test_abbot {
                     assert(
                         shrine.get_deposit(*yang, trove_id) == expected_deposited_yang, 'wrong trove yang balance #1'
                     );
+
+                    expected_events
+                        .append(
+                            (
+                                abbot.contract_address,
+                                abbot_contract::Event::Deposit(
+                                    abbot_contract::Deposit {
+                                        user: trove_owner,
+                                        trove_id,
+                                        yang: *yang,
+                                        yang_amt: expected_deposited_yang,
+                                        asset_amt
+                                    }
+                                )
+                            )
+                        );
                 },
                 Option::None => { break; },
             };
@@ -104,10 +120,9 @@ mod test_abbot {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
+                    let asset_amt: u128 = *second_deposit_amts.pop_front().unwrap();
                     let before_yang_total: Wad = *yangs_total.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = fixed_point_to_wad(
-                        *second_deposit_amts.pop_front().unwrap(), decimals
-                    );
+                    let expected_deposited_yang: Wad = fixed_point_to_wad(asset_amt, decimals);
                     let expected_yang_total: Wad = before_yang_total + expected_deposited_yang;
                     assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #2');
 
@@ -115,6 +130,22 @@ mod test_abbot {
                         shrine.get_deposit(*yang, second_trove_id) == expected_deposited_yang,
                         'wrong trove yang balance #2'
                     );
+
+                    expected_events
+                        .append(
+                            (
+                                abbot.contract_address,
+                                abbot_contract::Event::Deposit(
+                                    abbot_contract::Deposit {
+                                        user: trove_owner,
+                                        trove_id: second_trove_id,
+                                        yang: *yang,
+                                        yang_amt: expected_deposited_yang,
+                                        asset_amt
+                                    }
+                                )
+                            )
+                        );
                 },
                 Option::None => { break; },
             };
@@ -123,20 +154,24 @@ mod test_abbot {
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt + second_forge_amt, 'wrong total debt #2');
 
-        let expected_events = array![
-            (
-                abbot.contract_address,
-                abbot_contract::Event::TroveOpened(
-                    abbot_contract::TroveOpened { user: trove_owner, trove_id: trove_id, }
+        expected_events
+            .append(
+                (
+                    abbot.contract_address,
+                    abbot_contract::Event::TroveOpened(
+                        abbot_contract::TroveOpened { user: trove_owner, trove_id: trove_id }
+                    )
                 )
-            ),
-            (
-                abbot.contract_address,
-                abbot_contract::Event::TroveOpened(
-                    abbot_contract::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+            );
+        expected_events
+            .append(
+                (
+                    abbot.contract_address,
+                    abbot_contract::Event::TroveOpened(
+                        abbot_contract::TroveOpened { user: trove_owner, trove_id: second_trove_id }
+                    )
                 )
-            ),
-        ];
+            );
         spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
@@ -198,14 +233,52 @@ mod test_abbot {
         );
 
         let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut expected_events = ArrayTrait::new();
+
+        let mut before_trove_owner_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![trove_owner].span()
+        );
+        let mut trove_yang_deposits: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.close_trove(trove_id);
 
+        let mut after_trove_owner_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![trove_owner].span()
+        );
+
         let mut yangs_copy = yangs;
         loop {
             match yangs_copy.pop_front() {
-                Option::Some(yang) => { assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount'); },
+                Option::Some(yang) => {
+                    assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
+
+                    let mut after_trove_owner_asset_bal_arr: Span<u128> = *after_trove_owner_asset_bals
+                        .pop_front()
+                        .unwrap();
+                    let after_trove_owner_asset_bal: u128 = *after_trove_owner_asset_bal_arr.pop_front().unwrap();
+
+                    let mut before_trove_owner_asset_bal_arr: Span<u128> = *before_trove_owner_asset_bals
+                        .pop_front()
+                        .unwrap();
+                    let before_trove_owner_asset_bal: u128 = *before_trove_owner_asset_bal_arr.pop_front().unwrap();
+
+                    expected_events
+                        .append(
+                            (
+                                abbot.contract_address,
+                                abbot_contract::Event::Withdraw(
+                                    abbot_contract::Withdraw {
+                                        user: trove_owner,
+                                        trove_id,
+                                        yang: *yang,
+                                        yang_amt: (*trove_yang_deposits.pop_front().unwrap()).amount,
+                                        asset_amt: after_trove_owner_asset_bal - before_trove_owner_asset_bal
+                                    }
+                                )
+                            )
+                        );
+                },
                 Option::None => { break; },
             };
         };
@@ -213,9 +286,10 @@ mod test_abbot {
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.debt.is_zero(), 'wrong trove debt');
 
-        let expected_events = array![
-            (abbot.contract_address, abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id })),
-        ];
+        expected_events
+            .append(
+                (abbot.contract_address, abbot_contract::Event::TroveClosed(abbot_contract::TroveClosed { trove_id })),
+            );
         spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
@@ -239,6 +313,9 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
+        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut expected_events = ArrayTrait::new();
+
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         let mut yangs_copy = yangs;
         let mut deposited_amts_copy = deposited_amts;
@@ -253,6 +330,22 @@ mod test_abbot {
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(after_trove_yang == before_trove_yang + expected_deposited_yang, 'wrong yang amount #1');
 
+                    expected_events
+                        .append(
+                            (
+                                abbot.contract_address,
+                                abbot_contract::Event::Deposit(
+                                    abbot_contract::Deposit {
+                                        user: trove_owner,
+                                        trove_id: trove_id,
+                                        yang: *yang,
+                                        yang_amt: expected_deposited_yang,
+                                        asset_amt: deposit_amt
+                                    }
+                                )
+                            )
+                        );
+
                     // Depositing 0 should pass
                     abbot.deposit(trove_id, AssetBalance { address: *yang, amount: 0_u128 });
                     assert(shrine.get_deposit(*yang, trove_id) == after_trove_yang, 'wrong yang amount #2');
@@ -262,6 +355,8 @@ mod test_abbot {
         };
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -350,10 +445,23 @@ mod test_abbot {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
+        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
+
+        let expected_events = array![
+            (
+                abbot.contract_address,
+                abbot_contract::Event::Withdraw(
+                    abbot_contract::Withdraw {
+                        user: trove_owner, trove_id, yang: asset_addr, yang_amt: amount.into(), asset_amt: amount
+                    }
+                )
+            )
+        ];
 
         assert(
             shrine.get_deposit(asset_addr, trove_id) == (abbot_utils::ETH_DEPOSIT_AMT - amount).into(),
@@ -361,6 +469,8 @@ mod test_abbot {
         );
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
+
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
