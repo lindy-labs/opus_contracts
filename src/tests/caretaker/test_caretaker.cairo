@@ -135,8 +135,16 @@ mod test_caretaker {
             };
         };
 
+        let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[0], amount: (g0_before_balance - g0_after_balance).val, });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[1], amount: (g1_before_balance - g1_after_balance).val, });
         let expected_events = array![
-            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Shut(caretaker_contract::Shut { assets: expected_ringfenced_assets.span() })
+            ),
         ];
         spy.assert_emitted(@expected_events);
     }
@@ -459,8 +467,17 @@ mod test_caretaker {
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
 
+        let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[0], amount: (gate0_before_balance - gate0_after_balance).val, });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[1], amount: (gate1_before_balance - gate1_after_balance).val, });
+
         let expected_events = array![
-            (caretaker.contract_address, caretaker_contract::Event::Shut(caretaker_contract::Shut {})),
+            (
+                caretaker.contract_address,
+                caretaker_contract::Event::Shut(caretaker_contract::Shut { assets: expected_ringfenced_assets.span() })
+            ),
             (
                 caretaker.contract_address,
                 caretaker_contract::Event::Release(
