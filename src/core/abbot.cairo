@@ -69,8 +69,8 @@ pub mod abbot {
         pub trove_id: u64,
         #[key]
         pub yang: ContractAddress,
-        yang_amt: Wad,
-        asset_amt: u128
+        pub yang_amt: Wad,
+        pub asset_amt: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -81,8 +81,8 @@ pub mod abbot {
         pub trove_id: u64,
         #[key]
         pub yang: ContractAddress,
-        yang_amt: Wad,
-        asset_amt: u128
+        pub yang_amt: Wad,
+        pub asset_amt: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
