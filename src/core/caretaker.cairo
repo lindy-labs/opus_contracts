@@ -29,13 +29,6 @@ pub mod caretaker {
     impl ReentrancyGuardHelpers = reentrancy_guard_component::ReentrancyGuardHelpers<ContractState>;
 
     //
-    // Constants
-    //
-
-    // A dummy trove ID for Caretaker, required in Gate to emit events
-    const DUMMY_TROVE_ID: u64 = 0;
-
-    //
     // Storage
     //
 
@@ -74,7 +67,9 @@ pub mod caretaker {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct Shut {}
+    pub struct Shut {
+        pub assets: Span<AssetBalance>
+    }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Release {
@@ -229,12 +224,15 @@ pub mod caretaker {
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             let caretaker = get_contract_address();
 
+            let mut ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
+
             let mut yangs_copy = yangs;
             loop {
                 match yangs_copy.pop_front() {
                     Option::Some(yang) => {
                         let backed_yang: Wad = wadray::rmul_rw(capped_backing_pct, shrine.get_yang_total(*yang));
-                        sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
+                        let amount: u128 = sentinel.exit(*yang, caretaker, backed_yang);
+                        ringfenced_assets.append(AssetBalance { address: *yang, amount });
                     },
                     Option::None => { break; },
                 };
@@ -251,7 +249,7 @@ pub mod caretaker {
             // the Absorber, and allow the first provider in such a situation to gain a windfall
             // of the final debt surplus minted to the Absorber.
 
-            self.emit(Shut {});
+            self.emit(Shut { assets: ringfenced_assets.span() });
         }
 
         // Releases all remaining collateral in a trove to the trove owner directly.
@@ -290,7 +288,7 @@ pub mod caretaker {
                         let asset_amt: u128 = if deposited_yang.is_zero() {
                             0
                         } else {
-                            let exit_amt: u128 = sentinel.exit(*yang, trove_owner, trove_id, deposited_yang);
+                            let exit_amt: u128 = sentinel.exit(*yang, trove_owner, deposited_yang);
                             // Seize the collateral only after assets have been
                             // transferred so that the asset amount per yang in Gate
                             // does not change and user receives the correct amount

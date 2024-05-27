@@ -53,10 +53,36 @@ pub mod abbot {
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub enum Event {
+        // Component events
+        ReentrancyGuardEvent: reentrancy_guard_component::Event,
+        Deposit: Deposit,
+        Withdraw: Withdraw,
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
-        // Component events
-        ReentrancyGuardEvent: reentrancy_guard_component::Event
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Deposit {
+        #[key]
+        pub user: ContractAddress,
+        #[key]
+        pub trove_id: u64,
+        #[key]
+        pub yang: ContractAddress,
+        yang_amt: Wad,
+        asset_amt: u128
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Withdraw {
+        #[key]
+        pub user: ContractAddress,
+        #[key]
+        pub trove_id: u64,
+        #[key]
+        pub yang: ContractAddress,
+        yang_amt: Wad,
+        asset_amt: u128
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -244,8 +270,10 @@ pub mod abbot {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();
 
-            let yang_amt: Wad = self.sentinel.read().enter(yang_asset.address, user, trove_id, yang_asset.amount);
+            let yang_amt: Wad = self.sentinel.read().enter(yang_asset.address, user, yang_asset.amount);
             self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
+
+            self.emit(Deposit { user, trove_id, yang: yang_asset.address, yang_amt, asset_amt: yang_asset.amount });
 
             self.reentrancy_guard.end();
         }
@@ -257,8 +285,10 @@ pub mod abbot {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();
 
-            self.sentinel.read().exit(yang, user, trove_id, yang_amt);
+            let asset_amt: u128 = self.sentinel.read().exit(yang, user, yang_amt);
             self.shrine.read().withdraw(yang, trove_id, yang_amt);
+
+            self.emit(Withdraw { user, trove_id, yang, yang_amt, asset_amt });
 
             self.reentrancy_guard.end();
         }
