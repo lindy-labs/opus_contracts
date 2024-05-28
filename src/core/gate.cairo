@@ -26,37 +26,6 @@ pub mod gate {
     }
 
     //
-    // Events
-    //
-
-    #[event]
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub enum Event {
-        Enter: Enter,
-        Exit: Exit,
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct Enter {
-        #[key]
-        pub user: ContractAddress,
-        #[key]
-        pub trove_id: u64,
-        pub asset_amt: u128,
-        pub yang_amt: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct Exit {
-        #[key]
-        pub user: ContractAddress,
-        #[key]
-        pub trove_id: u64,
-        pub asset_amt: u128,
-        pub yang_amt: Wad
-    }
-
-    //
     // Constructor
     //
 
@@ -135,7 +104,7 @@ pub mod gate {
         // Transfers the stipulated amount of assets, in the asset's decimals, from the given
         // user to the Gate and returns the corresponding yang amount in Wad.
         // `asset_amt` is denominated in the decimals of the asset.
-        fn enter(ref self: ContractState, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
+        fn enter(ref self: ContractState, user: ContractAddress, asset_amt: u128) -> Wad {
             self.assert_sentinel();
 
             let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
@@ -145,7 +114,6 @@ pub mod gate {
 
             let success: bool = self.asset.read().transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
-            self.emit(Enter { user, trove_id, asset_amt, yang_amt });
 
             yang_amt
         }
@@ -153,7 +121,7 @@ pub mod gate {
         // Transfers such amount of assets, in the asset's decimals, corresponding to the
         // stipulated yang amount to the given user.
         // The return value is denominated in the decimals of the asset.
-        fn exit(ref self: ContractState, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
+        fn exit(ref self: ContractState, user: ContractAddress, yang_amt: Wad) -> u128 {
             self.assert_sentinel();
 
             let asset_amt: u128 = self.convert_to_assets_helper(yang_amt);
@@ -163,8 +131,6 @@ pub mod gate {
 
             let success: bool = self.asset.read().transfer(user, asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
-
-            self.emit(Exit { user, trove_id, asset_amt, yang_amt });
 
             asset_amt
         }

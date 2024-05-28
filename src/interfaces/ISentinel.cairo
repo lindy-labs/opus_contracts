@@ -22,12 +22,8 @@ pub trait ISentinel<TContractState> {
         gate: ContractAddress
     );
     fn set_yang_asset_max(ref self: TContractState, yang: ContractAddress, new_asset_max: u128);
-    fn enter(
-        ref self: TContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128
-    ) -> Wad;
-    fn exit(
-        ref self: TContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad
-    ) -> u128;
+    fn enter(ref self: TContractState, yang: ContractAddress, user: ContractAddress, asset_amt: u128) -> Wad;
+    fn exit(ref self: TContractState, yang: ContractAddress, user: ContractAddress, yang_amt: Wad) -> u128;
     fn kill_gate(ref self: TContractState, yang: ContractAddress);
     fn suspend_yang(ref self: TContractState, yang: ContractAddress);
     fn unsuspend_yang(ref self: TContractState, yang: ContractAddress);

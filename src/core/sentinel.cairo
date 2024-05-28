@@ -252,9 +252,7 @@ pub mod sentinel {
         // Core functions
         //
 
-        fn enter(
-            ref self: ContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128
-        ) -> Wad {
+        fn enter(ref self: ContractState, yang: ContractAddress, user: ContractAddress, asset_amt: u128) -> Wad {
             self.access_control.assert_has_role(sentinel_roles::ENTER);
 
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
@@ -267,17 +265,15 @@ pub mod sentinel {
             let max_amt: u128 = self.yang_asset_max.read(yang);
             assert(current_total + asset_amt <= max_amt, 'SE: Exceeds max amount allowed');
 
-            gate.enter(user, trove_id, asset_amt)
+            gate.enter(user, asset_amt)
         }
 
-        fn exit(
-            ref self: ContractState, yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad
-        ) -> u128 {
+        fn exit(ref self: ContractState, yang: ContractAddress, user: ContractAddress, yang_amt: Wad) -> u128 {
             self.access_control.assert_has_role(sentinel_roles::EXIT);
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
             assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
 
-            gate.exit(user, trove_id, yang_amt)
+            gate.exit(user, yang_amt)
         }
     }
 
