@@ -10,8 +10,8 @@ pub trait IGate<TContractState> {
     fn get_total_assets(self: @TContractState) -> u128;
     fn get_total_yang(self: @TContractState) -> Wad;
     // external
-    fn enter(ref self: TContractState, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad;
-    fn exit(ref self: TContractState, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128;
+    fn enter(ref self: TContractState, user: ContractAddress, asset_amt: u128) -> Wad;
+    fn exit(ref self: TContractState, user: ContractAddress, yang_amt: Wad) -> u128;
     // view
     fn get_asset_amt_per_yang(self: @TContractState) -> Wad;
     fn convert_to_yang(self: @TContractState, asset_amt: u128) -> Wad;

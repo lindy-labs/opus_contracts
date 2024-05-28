@@ -10,7 +10,7 @@ mod test_gate {
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
     use wadray::{WAD_SCALE, Wad};
 
@@ -52,10 +52,7 @@ mod test_gate {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
 
-        let mut spy = spy_events(SpyOn::One(gate));
-
         let user = common::eth_hoarder();
-        let trove_id = common::TROVE_1;
         gate_utils::approve_gate_for_token(gate, eth, user);
 
         let asset_amt = 20_u128 * WAD_SCALE;
@@ -64,7 +61,7 @@ mod test_gate {
         start_prank(CheatTarget::One(gate), gate_utils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, asset_amt);
 
         let eth = IERC20Dispatcher { contract_address: eth };
 
@@ -72,28 +69,15 @@ mod test_gate {
         assert(enter_yang_amt.val == asset_amt, 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
-
-        let expected_events = array![
-            (
-                gate.contract_address,
-                gate_contract::Event::Enter(
-                    gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
-                )
-            ),
-        ];
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_wbtc_gate_enter_pass() {
         let (shrine, wbtc, gate) = gate_utils::wbtc_gate_deploy(Option::None);
 
-        let mut spy = spy_events(SpyOn::One(gate));
-
         gate_utils::add_wbtc_as_yang(shrine, wbtc);
 
         let user = common::wbtc_hoarder();
-        let trove_id = common::TROVE_1;
         gate_utils::approve_gate_for_token(gate, wbtc, user);
 
         let asset_amt = 3_u128 * common::WBTC_SCALE;
@@ -102,7 +86,7 @@ mod test_gate {
         start_prank(CheatTarget::One(gate), gate_utils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, asset_amt);
 
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
@@ -110,22 +94,11 @@ mod test_gate {
         assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / common::WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
-
-        let expected_events = array![
-            (
-                gate.contract_address,
-                gate_contract::Event::Enter(
-                    gate_contract::Enter { user, trove_id, asset_amt, yang_amt: enter_yang_amt, }
-                )
-            ),
-        ];
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]
     fn test_eth_gate_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(gate));
 
         gate_utils::add_eth_as_yang(shrine, eth);
 
@@ -134,7 +107,6 @@ mod test_gate {
 
         let eth = IERC20Dispatcher { contract_address: eth };
 
-        let trove_id = common::TROVE_1;
         let asset_amt = 10_u128 * WAD_SCALE;
         let exit_yang_amt: Wad = (2_u128 * WAD_SCALE).into();
         let remaining_yang_amt = 8_u128 * WAD_SCALE;
@@ -143,22 +115,12 @@ mod test_gate {
         start_prank(CheatTarget::One(gate), gate_utils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        gate.enter(user, trove_id, asset_amt);
+        gate.enter(user, asset_amt);
 
-        let exit_amt = gate.exit(user, trove_id, exit_yang_amt);
+        let exit_amt = gate.exit(user, exit_yang_amt);
         assert(exit_amt == exit_yang_amt.val, 'exit amount');
         assert(gate.get_total_assets() == remaining_yang_amt, 'get_total_assets');
         assert(eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance');
-
-        let expected_events = array![
-            (
-                gate.contract_address,
-                gate_contract::Event::Exit(
-                    gate_contract::Exit { user, trove_id, asset_amt: exit_amt, yang_amt: exit_yang_amt, }
-                )
-            ),
-        ];
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -166,7 +128,7 @@ mod test_gate {
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.enter(common::badguy(), common::TROVE_1, WAD_SCALE);
+        IGateDispatcher { contract_address: gate }.enter(common::badguy(), WAD_SCALE);
     }
 
     #[test]
@@ -174,7 +136,7 @@ mod test_gate {
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.exit(common::badguy(), common::TROVE_1, WAD_SCALE.into());
+        IGateDispatcher { contract_address: gate }.exit(common::badguy(), WAD_SCALE.into());
     }
 
     #[test]
@@ -203,7 +165,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let enter1_yang_amt = gate.enter(user1, trove1, enter1_amt);
+        let enter1_yang_amt = gate.enter(user1, enter1_amt);
 
         // simulate depositing
         shrine_utils::make_root(shrine.contract_address, shrine_utils::admin());
@@ -229,7 +191,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let enter2_yang_amt = gate.enter(user1, trove1, enter2_amt);
+        let enter2_yang_amt = gate.enter(user1, enter2_amt);
 
         // simulate depositing
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -267,7 +229,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let enter3_yang_amt = gate.enter(user2, trove2, enter3_amt);
+        let enter3_yang_amt = gate.enter(user2, enter3_amt);
 
         // simulate depositing
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -301,7 +263,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let enter4_yang_amt = gate.enter(user2, trove2, enter4_amt);
+        let enter4_yang_amt = gate.enter(user2, enter4_amt);
 
         // simulate depositing
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -323,7 +285,7 @@ mod test_gate {
 
         // simulate sentinel calling exit
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let exit_amt = gate.exit(eth.contract_address, trove2, enter4_yang_amt);
+        let exit_amt = gate.exit(eth.contract_address, enter4_yang_amt);
 
         // simulate withdrawing
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -361,7 +323,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        gate.enter(user, common::TROVE_1, enter_amt);
+        gate.enter(user, enter_amt);
     }
 
     #[test]
@@ -391,7 +353,7 @@ mod test_gate {
 
         // simulate sentinel calling enter
         start_prank(CheatTarget::One(gate.contract_address), gate_utils::mock_sentinel());
-        let enter_yang_amt = gate.enter(user, trove_id, enter_amt);
+        let enter_yang_amt = gate.enter(user, enter_amt);
 
         // simulate depositing
         shrine_utils::make_root(shrine.contract_address, shrine_utils::admin());
@@ -401,6 +363,6 @@ mod test_gate {
         //
         // exit
         //
-        gate.exit(user, trove_id, exit_amt.into());
+        gate.exit(user, exit_amt.into());
     }
 }
