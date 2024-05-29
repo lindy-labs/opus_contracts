@@ -22,18 +22,18 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 
 | Module | Address |
 | ------ | --------|
-| Abbot       | `0x05a097b69be75e365885f344243c6a3fb4365211b1c317be7618f3a053cc20cb` |
-| Absorber    | `0x02d8ae43423a20893bc1ede1539c040bea032f49330288b6e057b513c17bc4ec` |
-| Allocator   | `0x03d134bc438882a51f55483b25a7a4883729d683f27bca3f002a0095cc2a913d` |
-| Caretaker   | `0x07423c57bc6bad36297b71966b9f20df7d035380030fa9e31853881aa7d045f8` |
-| Controller  | `0x01e5ade161e8acce42b1e5189c0dacce56bf1071f8e7dd7e820a21a8e680a055` |
-| Equalizer   | `0x07c979c9afebd8b6085dedbb67759df2d9f023a86db586955a9b8b1e1e86b0cf` |
-| Flash Mint  | `0x06d6a03a1d2e0c8332a28a6df144be4bb63c8948cc90b31fa1fd8401b62d8ca5` |
-| Frontend Data Provider | `0x026d62645f9afb9bf1d6b2285bdbf9624cc67c74533f215204589006635e4c88` |
-| Gate[ETH]   | `0x034653f27732d4402f81ec67824ba67fe1cd9ab47aefaee1b504285a65522c3d` |
-| Gate[STRK]  | `0x00164af10285f1eb49adbdc741df26f4766c7fde1870ccafbce71e4b50d251da` |
-| Pragma      | `0x00db796445e4325aee38b9b3e8091a82fd7d6be5e152fd2f66bed3b2ab688078` |
-| Purger      | `0x005fdc4824f97fbbdfca1f61ce8a8c303ed57d88f799bf00e7aaae39091612cf` |
-| Seer        | `0x042b1f32e25ecd7550c210c4764bb1da102b703415ff1ab24626fe882129d143` |
-| Sentinel    | `0x066138521c751f0afd02cd6c9cca1a1b0328fd5515b255f4cdca9e259db6c0dc` |
-| Shrine      | `0x04e0a8e930582c94e7bebb68a8d272e4c37e86d29b8748e19042ccdf6b86085b` |
+| Abbot       | `0x04280b97ecb8f1e0536e41888e387a04c3796e393f7086e5e24d61614927bc30` |
+| Absorber    | `0x05cf86333b32580be7a73c8150f2176047bab151df7506b6e30217594798fab5` |
+| Allocator   | `0x00dd24daea0f6cf5ee0a206e6a27c4d5b66a978f19e3a4877de23ab5a76f905d` |
+| Caretaker   | `0x004eb68cdc4009f0a7af80ecb34b91822649b139713e7e9eb9b11b10ee47aada` |
+| Controller  | `0x0005efaa9df09e86be5aa8ffa453adc11977628ddc0cb493625ca0f3caaa94b2` |
+| Equalizer   | `0x013be5f3de034ca1a0dec2b2da4cce2d0fe5505511cbea7a309979c45202d052` |
+| Flash Mint  | `0x0726e7d7bef2bcfc2814e0d5f0735b1a9326a98f2307a5edfda8db82d60d3f5f` |
+| Frontend Data Provider | `0x03d124e4166a09fb92787d480d44d6c25e6f638f706f8ae4074ee2766b634293` |
+| Gate[ETH]   | `0x02e1e0988565d99cd3a384e9f9cf2d348af50ee1ad549880aa37ba625e8c98d6` |
+| Gate[STRK]  | `0x05c6ec6e1748fbab3d65c2aa7897aeb7d7ec843331c1a469666e162da735fd5f` |
+| Pragma      | `0x02a67fac89d6921b05067b99e2491ce753778958ec89b0b0221b22c16a3073f7` |
+| Purger      | `0x0397fda455fd16d76995da81908931057594527b46cc99e12b8e579a9127e372` |
+| Seer        | `0x07bdece1aeb7f2c31a90a6cc73dfdba1cb9055197cca24b6117c9e0895a1832d` |
+| Sentinel    | `0x04c4d997f2a4b1fbf9db9c290ea1c97cb596e7765e058978b25683efd88e586d` |
+| Shrine      | `0x0398c179d65929f3652b6b82875eaf5826ea1c9a9dd49271e0d749328186713e` |
