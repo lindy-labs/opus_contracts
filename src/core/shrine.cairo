@@ -246,7 +246,6 @@ pub mod shrine {
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
-        YangTotalUpdated: YangTotalUpdated,
         TotalTrovesDebtUpdated: TotalTrovesDebtUpdated,
         ProtocolOwnedTrovesDebtUpdated: ProtocolOwnedTrovesDebtUpdated,
         BudgetAdjusted: BudgetAdjusted,
@@ -260,7 +259,6 @@ pub mod shrine {
         Melt: Melt,
         Charge: Charge,
         TroveRedistributed: TroveRedistributed,
-        DepositUpdated: DepositUpdated,
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
         MinimumTroveValueUpdated: MinimumTroveValueUpdated,
@@ -279,13 +277,6 @@ pub mod shrine {
         pub yang_id: u32,
         pub start_price: Wad,
         pub initial_rate: Ray
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct YangTotalUpdated {
-        #[key]
-        pub yang: ContractAddress,
-        pub total: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -373,15 +364,6 @@ pub mod shrine {
         #[key]
         pub trove_id: u64,
         pub debt: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct DepositUpdated {
-        #[key]
-        pub yang: ContractAddress,
-        #[key]
-        pub trove_id: u64,
-        pub amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -724,7 +706,6 @@ pub mod shrine {
 
             // Event emissions
             self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
-            self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
 
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
@@ -974,10 +955,6 @@ pub mod shrine {
             // Update trove balance
             let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) + amount;
             self.deposits.write((yang_id, trove_id), new_trove_balance);
-
-            // Events
-            self.emit(YangTotalUpdated { yang, total: new_total });
-            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
         // Withdraw a specified amount of a Yang from a Trove with trove safety check
@@ -1567,10 +1544,6 @@ pub mod shrine {
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
-
-            // Emit events
-            self.emit(YangTotalUpdated { yang, total: new_total });
-            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
         // Adds the accumulated interest as debt to the trove
