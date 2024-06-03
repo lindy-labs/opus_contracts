@@ -399,12 +399,6 @@ mod test_shrine {
                     }
                 )
             ),
-            (
-                shrine.contract_address,
-                shrine_contract::Event::YangTotalUpdated(
-                    shrine_contract::YangTotalUpdated { yang: new_yang_address, total: Zero::zero() }
-                )
-            ),
         ];
 
         spy.assert_emitted(@expected_events);
@@ -865,7 +859,6 @@ mod test_shrine {
     #[test]
     fn test_shrine_deposit_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
@@ -892,34 +885,6 @@ mod test_shrine {
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
-
-        let expected_events = array![
-            (
-                shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id: trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
-                        },
-                    }
-                )
-            ),
-            (
-                shrine.contract_address,
-                shrine_contract::Event::YangTotalUpdated(
-                    shrine_contract::YangTotalUpdated { yang, total: deposit_amt, }
-                )
-            ),
-            (
-                shrine.contract_address,
-                shrine_contract::Event::DepositUpdated(
-                    shrine_contract::DepositUpdated { yang, trove_id, amount: deposit_amt, }
-                )
-            ),
-        ];
-
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -947,7 +912,6 @@ mod test_shrine {
     #[test]
     fn test_shrine_withdraw_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
 
         start_prank(CheatTarget::All, shrine_utils::admin());
 
@@ -979,34 +943,6 @@ mod test_shrine {
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, 1);
-
-        let expected_events = array![
-            (
-                shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id: trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: Zero::zero(), last_rate_era: 1
-                        },
-                    }
-                )
-            ),
-            (
-                shrine.contract_address,
-                shrine_contract::Event::YangTotalUpdated(
-                    shrine_contract::YangTotalUpdated { yang: yang1_addr, total: remaining_amt }
-                )
-            ),
-            (
-                shrine.contract_address,
-                shrine_contract::Event::DepositUpdated(
-                    shrine_contract::DepositUpdated { yang: yang1_addr, trove_id, amount: remaining_amt }
-                )
-            ),
-        ];
-
-        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -1163,14 +1099,7 @@ mod test_shrine {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(), debt: forge_amt, last_rate_era: 1
-                        },
-                    }
-                )
+                shrine_contract::Event::Forge(shrine_contract::Forge { trove_id, amount: forge_amt })
             ),
             (
                 shrine.contract_address,
@@ -1268,7 +1197,7 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, forge_amt);
 
         spy.fetch_events();
-        common::assert_event_not_emitted_by_name(spy.events.span(), 'ForgeFeePaid');
+        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ForgeFeePaid"));
     }
 
     #[test]
@@ -1416,16 +1345,7 @@ mod test_shrine {
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::TroveUpdated(
-                    shrine_contract::TroveUpdated {
-                        trove_id,
-                        trove: Trove {
-                            charge_from: shrine_utils::current_interval(),
-                            debt: after_trove_health.debt,
-                            last_rate_era: 1
-                        },
-                    }
-                )
+                shrine_contract::Event::Melt(shrine_contract::Melt { trove_id, amount: melt_amt })
             ),
             (
                 shrine.contract_address,

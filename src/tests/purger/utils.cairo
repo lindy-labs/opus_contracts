@@ -17,14 +17,13 @@ pub mod purger_utils {
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
+    use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
-    use snforge_std::{
-        declare, CheatTarget, ContractClass, ContractClassTrait, Event, event_name_hash, start_prank, stop_prank
-    };
+    use snforge_std::{declare, CheatTarget, ContractClass, ContractClassTrait, Event, start_prank, stop_prank};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
@@ -53,6 +52,8 @@ pub mod purger_utils {
         purger: ContractClass,
         pragma: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
+        switchboard: Option<ContractClass>,
+        mock_switchboard: Option<ContractClass>,
         seer: Option<ContractClass>,
     }
 
@@ -295,6 +296,11 @@ pub mod purger_utils {
     }
 
     pub fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
+        // This array should match `ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt`. 
+        // However, since only the first LTV in the inner span of has a non-zero penalty, and the
+        // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
+        // the array to be concise.
+
         array![
             // First threshold of 78.75% (Ray)
             124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
@@ -342,8 +348,10 @@ pub mod purger_utils {
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
-        seer_utils::add_oracles(classes.pragma, classes.mock_pragma, seer);
-        seer_utils::add_yangs(seer, yangs);
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
+            seer, classes.pragma, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
+        );
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
@@ -359,7 +367,7 @@ pub mod purger_utils {
             seer.contract_address.into()
         ];
 
-        let purger_addr = classes.purger.deploy(@calldata).expect('failed deploy purger');
+        let (purger_addr, _) = classes.purger.deploy(@calldata).expect('purger deploy failed');
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
@@ -420,10 +428,10 @@ pub mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare("flash_liquidator"),
+            Option::None => declare("flash_liquidator").unwrap(),
         };
 
-        let flash_liquidator_addr = fl_class.deploy(@calldata).expect('failed deploy flash liquidator');
+        let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');
 
         IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
@@ -686,24 +694,26 @@ pub mod purger_utils {
 
     pub fn declare_contracts() -> PurgerTestClasses {
         PurgerTestClasses {
-            abbot: Option::Some(declare("abbot")),
-            sentinel: Option::Some(declare("sentinel")),
-            token: Option::Some(declare("erc20_mintable")),
-            gate: Option::Some(declare("gate")),
-            shrine: Option::Some(declare("shrine")),
-            absorber: Option::Some(declare("absorber")),
-            blesser: declare("blesser"),
-            purger: declare("purger"),
-            pragma: Option::Some(declare("pragma")),
-            mock_pragma: Option::Some(declare("mock_pragma")),
-            seer: Option::Some(declare("seer")),
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: declare("blesser").unwrap(),
+            purger: declare("purger").unwrap(),
+            pragma: Option::Some(declare("pragma").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            switchboard: Option::Some(declare("switchboard").unwrap()),
+            mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),
+            seer: Option::Some(declare("seer").unwrap()),
         }
     }
 
-    // Helper function to deserialize the `Purged` event specifically for the purger 
+    // Helper function to deserialize the `Purged` event specifically for the purger
     // tests
     pub fn deserialize_purged_event(evt: Event) -> purger_contract::Purged {
-        assert(evt.keys.at(0) == @event_name_hash('Purged'), 'wrong event');
+        assert(*evt.keys.at(0) == selector!("Purged"), 'wrong event');
         let purge_amt: u128 = (*evt.data.at(0)).try_into().unwrap();
         let pct_freed: u128 = (*evt.data.at(1)).try_into().unwrap();
         purger_contract::Purged {

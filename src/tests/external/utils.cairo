@@ -1,8 +1,8 @@
 pub mod pragma_utils {
-    use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
+    use core::traits::Into;
+    use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
     use opus::core::roles::shrine_roles;
-    use opus::external::interfaces::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use opus::external::pragma::pragma as pragma_contract;
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -30,10 +30,7 @@ pub mod pragma_utils {
     pub const SOURCES_THRESHOLD: u32 = 3;
     pub const UPDATE_FREQUENCY: u64 = 10 * 60; // 10 minutes * 60 seconds
     pub const DEFAULT_NUM_SOURCES: u32 = 5;
-    pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
-    pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
     pub const PEPE_USD_PAIR_ID: felt252 = 'PEPE/USD';
-    pub const PRAGMA_DECIMALS: u8 = 8;
 
     //
     // Constant addresses
@@ -53,10 +50,10 @@ pub mod pragma_utils {
 
         let mock_pragma_class = match mock_pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_pragma"),
+            Option::None => declare("mock_pragma").unwrap(),
         };
 
-        let mock_pragma_addr = mock_pragma_class.deploy(@calldata).expect('failed deploy mock pragma');
+        let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('mock pragma deploy failed');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
@@ -66,37 +63,43 @@ pub mod pragma_utils {
     ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(), mock_pragma.contract_address.into(), FRESHNESS_THRESHOLD.into(), SOURCES_THRESHOLD.into(),
+            admin().into(),
+            mock_pragma.contract_address.into(),
+            mock_pragma.contract_address.into(),
+            FRESHNESS_THRESHOLD.into(),
+            SOURCES_THRESHOLD.into(),
         ];
 
         let pragma_class = match pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("pragma"),
+            Option::None => declare("pragma").unwrap(),
         };
 
-        let pragma_addr = pragma_class.deploy(@calldata).expect('failed deploy pragma');
+        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma deploy failed');
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
         (pragma, mock_pragma)
     }
 
-    pub fn add_yangs_to_pragma(pragma: IPragmaDispatcher, yangs: Span<ContractAddress>) {
+    pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
+        // assuming yangs are always ordered as ETH, WBTC
         let eth_yang = *yangs.at(0);
         let wbtc_yang = *yangs.at(1);
 
         // add_yang does an assert on the response decimals, so we
         // need to provide a valid mock response for it to pass
-        let oracle = IOracleDispatcher { contract_address: pragma.contract_address };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: oracle.get_oracle() };
+        let oracle = IOracleDispatcher { contract_address: pragma };
+        let mock_pragma = IMockPragmaDispatcher { contract_address: *oracle.get_oracles().at(0) };
         mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma.contract_address), admin());
-        pragma.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
-        pragma.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-        stop_prank(CheatTarget::One(pragma.contract_address));
+        start_prank(CheatTarget::One(pragma), admin());
+        let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
+        pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
+        pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
+        stop_prank(CheatTarget::One(pragma));
     }
 
     //
@@ -128,8 +131,9 @@ pub mod pragma_utils {
     pub fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
     ) {
+        let price = convert_price_to_pragma_scale(price);
         let response = PragmaPricesResponse {
-            price: convert_price_to_pragma_scale(price),
+            price,
             decimals: PRAGMA_DECIMALS.into(),
             last_updated_timestamp: timestamp,
             num_sources_aggregated: DEFAULT_NUM_SOURCES,
@@ -137,16 +141,20 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data_median(pair_id, response);
+        mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
     }
 }
 
 pub mod switchboard_utils {
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
+    use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
 
-    pub const ETH_PRICE: u128 = 3000000000000000000;
+    pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
+    pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
     pub const TIMESTAMP: u64 = 1710000000;
 
     pub fn admin() -> ContractAddress {
@@ -157,23 +165,56 @@ pub mod switchboard_utils {
         'ETH'.try_into().unwrap()
     }
 
-    fn mock_switchboard_deploy() -> IMockSwitchboardDispatcher {
+    fn mock_switchboard_deploy(mock_switchboard_class: Option<ContractClass>) -> IMockSwitchboardDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
-        let mock_switchboard_addr = declare("mock_switchboard")
+
+        let mock_switchboard_class = match mock_switchboard_class {
+            Option::Some(class) => class,
+            Option::None => declare("mock_switchboard").unwrap(),
+        };
+
+        let (mock_switchboard_addr, _) = mock_switchboard_class
             .deploy(@calldata)
-            .expect('failed deploy mock switchboard');
+            .expect('mock switchboard deploy failed');
         IMockSwitchboardDispatcher { contract_address: mock_switchboard_addr }
     }
 
-    pub fn switchboard_deploy() -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
-        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy();
+    pub fn switchboard_deploy(
+        switchboard_class: Option<ContractClass>, mock_switchboard_class: Option<ContractClass>
+    ) -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+        let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy(mock_switchboard_class);
 
         let mut calldata: Array<felt252> = array![admin().into(), mock_switchboard.contract_address.into()];
 
-        let switchboard_addr = declare("switchboard").deploy(@calldata).expect('failed deploy switchboard');
+        let switchboard_class = match switchboard_class {
+            Option::Some(class) => class,
+            Option::None => declare("switchboard").unwrap(),
+        };
+
+        let (switchboard_addr, _) = switchboard_class.deploy(@calldata).expect('switchboard deploy failed');
 
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 
         (switchboard, mock_switchboard)
+    }
+
+    pub fn add_yangs(switchboard: ContractAddress, yangs: Span<ContractAddress>) {
+        // assuming yangs are always orderd as ETH, WBTC
+        let eth_yang = *yangs.at(0);
+        let wbtc_yang = *yangs.at(1);
+
+        // setting a yang pair_id does a sanity check, so we need
+        // to mock valid values
+        let oracle = IOracleDispatcher { contract_address: switchboard };
+        let mock_switchboard = IMockSwitchboardDispatcher { contract_address: *oracle.get_oracles().at(0) };
+        mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
+        mock_switchboard.next_get_latest_result(WBTC_USD_PAIR_ID, WBTC_INIT_PRICE, TIMESTAMP);
+
+        // set up yangs in Switchboard
+        start_prank(CheatTarget::One(switchboard), admin());
+        let switchboard_dispatcher = ISwitchboardDispatcher { contract_address: switchboard };
+        switchboard_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
+        switchboard_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
+        stop_prank(CheatTarget::One(switchboard));
     }
 }

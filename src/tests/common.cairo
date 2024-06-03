@@ -7,9 +7,7 @@ use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
-use snforge_std::{
-    CheatTarget, ContractClass, ContractClassTrait, declare, event_name_hash, Event, start_prank, start_warp, stop_prank
-};
+use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, Event, start_prank, start_warp, stop_prank};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
 use wadray::{Ray, Wad};
@@ -193,10 +191,11 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable"),
+        Option::None => declare("erc20_mintable").unwrap(),
     };
 
-    token_class.deploy(@calldata).expect('erc20 deploy failed')
+    let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
+    token_addr
 }
 
 // Helper function to fund a user account with yang assets
@@ -329,7 +328,7 @@ pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangB
 
 // Helper to assert that an event was not emitted at all by checking the event name only
 // without checking specific values of the event's members
-pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, Event)>, event_name: felt252) {
+pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, Event)>, event_selector: felt252) {
     let end_idx = emitted_events.len();
     let mut current_idx = 0;
     loop {
@@ -339,7 +338,7 @@ pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, E
 
         let (_, raw_event) = emitted_events.at(current_idx);
 
-        assert(raw_event.keys.at(0) != @event_name_hash(event_name), 'event name emitted');
+        assert(*raw_event.keys.at(0) != event_selector, 'event name emitted');
 
         current_idx += 1;
     };

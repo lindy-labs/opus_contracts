@@ -246,7 +246,6 @@ pub mod shrine {
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
         YangAdded: YangAdded,
-        YangTotalUpdated: YangTotalUpdated,
         TotalTrovesDebtUpdated: TotalTrovesDebtUpdated,
         ProtocolOwnedTrovesDebtUpdated: ProtocolOwnedTrovesDebtUpdated,
         BudgetAdjusted: BudgetAdjusted,
@@ -256,9 +255,10 @@ pub mod shrine {
         RecoveryModeTargetFactorUpdated: RecoveryModeTargetFactorUpdated,
         RecoveryModeBufferFactorUpdated: RecoveryModeBufferFactorUpdated,
         ForgeFeePaid: ForgeFeePaid,
-        TroveUpdated: TroveUpdated,
+        Forge: Forge,
+        Melt: Melt,
+        Charge: Charge,
         TroveRedistributed: TroveRedistributed,
-        DepositUpdated: DepositUpdated,
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
         MinimumTroveValueUpdated: MinimumTroveValueUpdated,
@@ -277,13 +277,6 @@ pub mod shrine {
         pub yang_id: u32,
         pub start_price: Wad,
         pub initial_rate: Ray
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct YangTotalUpdated {
-        #[key]
-        pub yang: ContractAddress,
-        pub total: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -344,10 +337,24 @@ pub mod shrine {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct TroveUpdated {
+    pub struct Forge {
         #[key]
         pub trove_id: u64,
-        pub trove: Trove
+        pub amount: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Melt {
+        #[key]
+        pub trove_id: u64,
+        pub amount: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct Charge {
+        #[key]
+        pub trove_id: u64,
+        pub amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -357,15 +364,6 @@ pub mod shrine {
         #[key]
         pub trove_id: u64,
         pub debt: Wad
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct DepositUpdated {
-        #[key]
-        pub yang: ContractAddress,
-        #[key]
-        pub trove_id: u64,
-        pub amount: Wad
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -522,6 +520,46 @@ pub mod shrine {
             self.deposits.read((yang_id, trove_id))
         }
 
+        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
+        // Starts from yang ID 1.
+        // Note that zero values are added to the return array because downstream
+        // computation assumes the full array of yangs.
+        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
+
+                current_yang_id += 1;
+            }
+        }
+
+        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
+        // Starts from yang ID 1.
+        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let yang_total: Wad = self.yang_total.read(current_yang_id);
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
+
+                current_yang_id += 1;
+            }
+        }
+
         fn get_budget(self: @ContractState) -> SignedWad {
             self.budget.read()
         }
@@ -668,7 +706,6 @@ pub mod shrine {
 
             // Event emissions
             self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
-            self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
 
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
@@ -918,10 +955,6 @@ pub mod shrine {
             // Update trove balance
             let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) + amount;
             self.deposits.write((yang_id, trove_id), new_trove_balance);
-
-            // Events
-            self.emit(YangTotalUpdated { yang, total: new_total });
-            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
         // Withdraw a specified amount of a Yang from a Trove with trove safety check
@@ -982,7 +1015,7 @@ pub mod shrine {
                 self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             }
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-            self.emit(TroveUpdated { trove_id, trove });
+            self.emit(Forge { trove_id, amount });
         }
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -1013,7 +1046,7 @@ pub mod shrine {
 
             // Events
             self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
-            self.emit(TroveUpdated { trove_id, trove });
+            self.emit(Melt { trove_id, amount: melt_amt });
         }
 
         // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -1394,46 +1427,6 @@ pub mod shrine {
             }
         }
 
-        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
-        // Starts from yang ID 1.
-        // Note that zero values are added to the return array because downstream
-        // computation assumes the full array of yangs.
-        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
-
-                current_yang_id += 1;
-            }
-        }
-
-        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
-        // Starts from yang ID 1.
-        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let yang_total: Wad = self.yang_total.read(current_yang_id);
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
-
-                current_yang_id += 1;
-            }
-        }
-
         // Returns a tuple of:
         // 1. the custom threshold (maximum LTV before liquidation)
         // 2. the total value of the yangs, at a given interval
@@ -1551,10 +1544,6 @@ pub mod shrine {
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
-
-            // Emit events
-            self.emit(YangTotalUpdated { yang, total: new_total });
-            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
         // Adds the accumulated interest as debt to the trove
@@ -1595,13 +1584,9 @@ pub mod shrine {
 
                 self.total_troves_debt.write(new_total_troves_debt);
                 self.emit(TotalTrovesDebtUpdated { total: new_total_troves_debt });
+                self.emit(Charge { trove_id, amount: charged });
 
                 self.adjust_budget_helper(excess.into());
-            }
-
-            // Emit only if there is a change in the `Trove` struct
-            if updated_trove != trove {
-                self.emit(TroveUpdated { trove_id, trove: updated_trove });
             }
         }
 

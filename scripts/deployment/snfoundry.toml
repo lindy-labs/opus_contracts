@@ -1,0 +1,9 @@
+[sncast.devnet]
+account = "devnet_admin"
+accounts-file = "../devnet_accounts.json"
+url = "http://127.0.0.1:5050"
+
+[sncast.sepolia]
+account = "../sepolia_admin.json"
+keystore = "../sepolia_admin_keystore.json"
+url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"

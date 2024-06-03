@@ -64,10 +64,10 @@ pub mod abbot_utils {
 
         let abbot_class = match abbot_class {
             Option::Some(class) => class,
-            Option::None => declare("abbot"),
+            Option::None => declare("abbot").unwrap(),
         };
 
-        let abbot_addr = abbot_class.deploy(@calldata).expect('abbot deploy failed');
+        let (abbot_addr, _) = abbot_class.deploy(@calldata).expect('abbot deploy failed');
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
