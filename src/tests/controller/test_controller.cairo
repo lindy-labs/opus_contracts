@@ -6,7 +6,8 @@ mod test_controller {
     use opus::tests::common;
     use opus::tests::controller::utils::controller_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use starknet::get_block_timestamp;
     use wadray::{Ray, SignedRay, Wad};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
@@ -680,6 +681,101 @@ mod test_controller {
             match prices.pop_front() {
                 Option::Some(price) => {
                     controller_utils::fast_forward_1_hour();
+                    controller_utils::set_yin_spot_price(shrine, price);
+
+                    let p_term: SignedRay = controller.get_p_term();
+                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+
+                    let i_term: SignedRay = controller.get_i_term();
+                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+
+                    let multiplier: Ray = controller.get_current_multiplier();
+                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+
+                    controller.update_multiplier();
+                },
+                Option::None => { break; }
+            };
+        };
+    }
+
+    // Multiple updates in one interval
+    #[test]
+    fn test_against_ground_truth5() {
+        let (controller, shrine) = controller_utils::deploy_controller();
+
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+
+        // Updating `i_gain` to match the ground truth simulation
+        controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
+        controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
+
+        let mut seconds_since_last_update_arr: Array<u64> = array![60, 138, 222, 300, 126, 78, 42, 420, 246];
+
+        let mut prices: Array<Wad> = array![
+            999000000000000000_u128.into(),
+            999000000000000000_u128.into(),
+            999000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            997000000000000000_u128.into(),
+            997000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+        ];
+
+        let mut expected_p_terms_for_update: Array<SignedRay> = array![
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 27000000000000100000000000, sign: false },
+            SignedRay { val: 27000000000000100000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+        ];
+
+        let mut expected_i_terms_for_update: Array<SignedRay> = array![
+            SignedRay { val: 1666665833333960000000, sign: false },
+            SignedRay { val: 3833331416668110000000, sign: false },
+            SignedRay { val: 6166663583335650000000, sign: false },
+            SignedRay { val: 8333329166669800000000, sign: false },
+            SignedRay { val: 6999986000042010000000, sign: false },
+            SignedRay { val: 4333324666692670000000, sign: false },
+            SignedRay { val: 3499984250106320000000, sign: false },
+            SignedRay { val: 34999842501063200000000, sign: false },
+            SignedRay { val: 13666639333415300000000, sign: false },
+        ];
+
+        let mut expected_multipliers: Array<Ray> = array![
+            1001001666665830000000000000_u128.into(),
+            1001005499997250000000000000_u128.into(),
+            1001009999995000000000000000_u128.into(),
+            1008014499992750000000000000_u128.into(),
+            1008015333315170000000000000_u128.into(),
+            1027011333310670000000000000_u128.into(),
+            1027007833308920000000000000_u128.into(),
+            1008038499826750000000000000_u128.into(),
+            1008048666481830000000000000_u128.into(),
+        ];
+
+        // Update for first hour after deployment
+        controller_utils::fast_forward_1_hour();
+        let price: Wad = 999000000000000000_u128.into();
+        controller_utils::set_yin_spot_price(shrine, price);
+        controller.update_multiplier();
+
+        // Multiple updates in the second hour
+        loop {
+            match seconds_since_last_update_arr.pop_front() {
+                Option::Some(seconds_since_last_update) => {
+                    start_warp(CheatTarget::All, get_block_timestamp() + seconds_since_last_update);
+
+                    let price: Wad = prices.pop_front().unwrap();
                     controller_utils::set_yin_spot_price(shrine, price);
 
                     let p_term: SignedRay = controller.get_p_term();
