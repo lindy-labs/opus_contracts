@@ -3,11 +3,11 @@ mod test_controller {
     use opus::core::controller::controller as controller_contract;
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::common::{assert_equalish, badguy};
     use opus::tests::common;
     use opus::tests::controller::utils::controller_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use starknet::get_block_timestamp;
     use wadray::{Ray, SignedRay, Wad};
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
@@ -143,7 +143,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_p_gain_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_p_gain(1_u128.into());
     }
 
@@ -151,7 +151,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_i_gain_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_i_gain(1_u128.into());
     }
 
@@ -159,7 +159,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_p_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_alpha_p(1);
     }
 
@@ -167,7 +167,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_i_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_alpha_i(1);
     }
 
@@ -175,7 +175,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_p_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_beta_p(1);
     }
 
@@ -183,12 +183,12 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_i_unauthorized() {
         let (controller, _) = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, badguy());
+        start_prank(CheatTarget::All, common::badguy());
         controller.set_beta_i(1);
     }
 
     #[test]
-    fn test_against_ground_truth() {
+    fn test_against_ground_truth1() {
         let (controller, shrine) = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
@@ -201,22 +201,22 @@ mod test_controller {
 
         controller_utils::fast_forward_1_hour();
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
+
+        let expected_p_term: SignedRay = 18715000000000000_u128.into();
+        common::assert_equalish(controller.get_p_term(), expected_p_term, ERROR_MARGIN.into(), 'Wrong p term #2');
+
+        let expected_i_term = Zero::zero();
+        common::assert_equalish(controller.get_i_term(), expected_i_term, ERROR_MARGIN.into(), 'Wrong i term #2');
+
         controller.update_multiplier();
-
-        assert_equalish(controller.get_p_term(), 18715000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #2');
-
-        assert_equalish(controller.get_i_term(), Zero::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
 
         controller_utils::fast_forward_1_hour();
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE2.into());
-        controller.update_multiplier();
 
-        assert_equalish(
-            controller.get_p_term(), 177156100000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #3'
-        );
-        assert_equalish(
-            controller.get_i_term(), 5720000000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong i term #3'
-        );
+        let expected_p_term: SignedRay = 177156100000166000_u128.into();
+        common::assert_equalish(controller.get_p_term(), expected_p_term, ERROR_MARGIN.into(), 'Wrong p term #3');
+        let expected_i_term: SignedRay = 5719999990640490000_u128.into();
+        common::assert_equalish(controller.get_i_term(), expected_i_term, ERROR_MARGIN.into(), 'Wrong i term #3');
     }
 
     #[test]
@@ -284,190 +284,190 @@ mod test_controller {
             1000069974303700000_u128.into()
         ];
 
-        let mut gt_p_terms: Array<SignedRay> = array![
-            SignedRay { val: 970590147927647000000000000, sign: false },
-            SignedRay { val: 894070898474206000000000000, sign: false },
-            SignedRay { val: 821673437507969000000000000, sign: false },
-            SignedRay { val: 682223134755347000000000000, sign: false },
-            SignedRay { val: 563650679126526000000000000, sign: false },
+        let mut expected_p_terms_for_update: Array<SignedRay> = array![
+            SignedRay { val: 970590147927674000000000000, sign: false },
+            SignedRay { val: 894070898474171000000000000, sign: false },
+            SignedRay { val: 821673437507823000000000000, sign: false },
+            SignedRay { val: 682223134755399000000000000, sign: false },
+            SignedRay { val: 563650679126548000000000000, sign: false },
             SignedRay { val: 466883377897327000000000000, sign: false },
-            SignedRay { val: 388027439175095000000000000, sign: false },
-            SignedRay { val: 322421778769981000000000000, sign: false },
-            SignedRay { val: 267128295084547000000000000, sign: false },
-            SignedRay { val: 220807295545965000000000000, sign: false },
-            SignedRay { val: 181797017511202000000000000, sign: false },
-            SignedRay { val: 148839923137893000000000000, sign: false },
-            SignedRay { val: 120979934404742000000000000, sign: false },
-            SignedRay { val: 97352460220021900000000000, sign: false },
-            SignedRay { val: 77590330680972000000000000, sign: false },
-            SignedRay { val: 61032188256437500000000000, sign: false },
-            SignedRay { val: 47127014107944500000000000, sign: false },
-            SignedRay { val: 35766291049440400000000000, sign: false },
-            SignedRay { val: 26457120564074500000000000, sign: false },
-            SignedRay { val: 19019740391049200000000000, sign: false },
+            SignedRay { val: 388027439175130000000000000, sign: false },
+            SignedRay { val: 322421778770012000000000000, sign: false },
+            SignedRay { val: 267128295084519000000000000, sign: false },
+            SignedRay { val: 220807295545977000000000000, sign: false },
+            SignedRay { val: 181797017511170000000000000, sign: false },
+            SignedRay { val: 148839923137911000000000000, sign: false },
+            SignedRay { val: 120979934404774000000000000, sign: false },
+            SignedRay { val: 97352460220028900000000000, sign: false },
+            SignedRay { val: 77590330680959900000000000, sign: false },
+            SignedRay { val: 61032188256458100000000000, sign: false },
+            SignedRay { val: 47127014107940200000000000, sign: false },
+            SignedRay { val: 35766291049451300000000000, sign: false },
+            SignedRay { val: 26457120564083400000000000, sign: false },
+            SignedRay { val: 19019740391042100000000000, sign: false },
             SignedRay { val: 13092320818861100000000000, sign: false },
-            SignedRay { val: 8626275988050790000000000, sign: false },
-            SignedRay { val: 5349866590771690000000000, sign: false },
-            SignedRay { val: 2994352321987200000000000, sign: false },
-            SignedRay { val: 1465538181737340000000000, sign: false },
-            SignedRay { val: 580077744495169000000000, sign: false },
-            SignedRay { val: 149299065094387000000000, sign: false },
-            SignedRay { val: 11771833128707600000000, sign: false },
-            SignedRay { val: 454868699248396000000, sign: true },
-            SignedRay { val: 10137648168357900000000, sign: false },
-            SignedRay { val: 556094500531630000000, sign: true },
-            SignedRay { val: 10318737437779200000000, sign: false },
-            SignedRay { val: 601597192010593000000, sign: true },
-            SignedRay { val: 11443607803844600000000, sign: false },
-            SignedRay { val: 444309924306484000000, sign: true },
-            SignedRay { val: 12884852286933400000000, sign: false },
-            SignedRay { val: 307254269093854000000, sign: true },
-            SignedRay { val: 11694088217335100000000, sign: false },
-            SignedRay { val: 434714972188474000000, sign: true },
-            SignedRay { val: 11899277040162700000000, sign: false },
+            SignedRay { val: 8626275988046590000000000, sign: false },
+            SignedRay { val: 5349866590772710000000000, sign: false },
+            SignedRay { val: 2994352321986510000000000, sign: false },
+            SignedRay { val: 1465538181738630000000000, sign: false },
+            SignedRay { val: 580077744495632000000000, sign: false },
+            SignedRay { val: 149299065094574000000000, sign: false },
+            SignedRay { val: 11771833128759300000000, sign: false },
+            SignedRay { val: 454868699272035000000, sign: true },
+            SignedRay { val: 10137648168311100000000, sign: false },
+            SignedRay { val: 556094500630732000000, sign: true },
+            SignedRay { val: 10318737437826600000000, sign: false },
+            SignedRay { val: 601597192058065000000, sign: true },
+            SignedRay { val: 11443607803861600000000, sign: false },
+            SignedRay { val: 444309924236667000000, sign: true },
+            SignedRay { val: 12884852286878500000000, sign: false },
+            SignedRay { val: 307254269060489000000, sign: true },
+            SignedRay { val: 11694088217369400000000, sign: false },
+            SignedRay { val: 434714972222878000000, sign: true },
+            SignedRay { val: 11899277040145300000000, sign: false },
             SignedRay { val: 414014311714013000000, sign: true },
-            SignedRay { val: 11702480865715000000000, sign: false },
-            SignedRay { val: 384014080725509000000, sign: true },
-            SignedRay { val: 12195217294212000000000, sign: false },
-            SignedRay { val: 395708534480748000000, sign: true },
-            SignedRay { val: 11651447644416500000000, sign: false },
-            SignedRay { val: 417616564726968000000, sign: true },
-            SignedRay { val: 12022963179828800000000, sign: false },
-            SignedRay { val: 346412629605555000000, sign: true },
-            SignedRay { val: 12908797294705800000000, sign: false },
-            SignedRay { val: 342622403010459000000, sign: true }
+            SignedRay { val: 11702480865749300000000, sign: false },
+            SignedRay { val: 384014080753663000000, sign: true },
+            SignedRay { val: 12195217294123800000000, sign: false },
+            SignedRay { val: 395708534452025000000, sign: true },
+            SignedRay { val: 11651447644382300000000, sign: false },
+            SignedRay { val: 417616564708359000000, sign: true },
+            SignedRay { val: 12022963179793800000000, sign: false },
+            SignedRay { val: 346412629582555000000, sign: true },
+            SignedRay { val: 12908797294632500000000, sign: false },
+            SignedRay { val: 342622403036553000000, sign: true }
         ];
 
-        let mut gt_i_terms: Array<SignedRay> = array![
+        let mut expected_i_terms_for_update: Array<SignedRay> = array![
             SignedRay { val: 0, sign: false },
-            SignedRay { val: 990050483961299000000000, sign: false },
-            SignedRay { val: 1953370315705950000000000, sign: false },
-            SignedRay { val: 2889955680281540000000000, sign: false },
-            SignedRay { val: 3770244771413480000000000, sign: false },
-            SignedRay { val: 4596260901939910000000000, sign: false },
-            SignedRay { val: 5372013197354250000000000, sign: false },
-            SignedRay { val: 6101374292736350000000000, sign: false },
-            SignedRay { val: 6787069709320670000000000, sign: false },
-            SignedRay { val: 7431087143392610000000000, sign: false },
-            SignedRay { val: 8035494683284410000000000, sign: false },
-            SignedRay { val: 8601979946211740000000000, sign: false },
-            SignedRay { val: 9131928503019010000000000, sign: false },
-            SignedRay { val: 9626503856398830000000000, sign: false },
-            SignedRay { val: 10086524917164800000000000, sign: false },
-            SignedRay { val: 10513037568019600000000000, sign: false },
-            SignedRay { val: 10906753462460900000000000, sign: false },
-            SignedRay { val: 11267958508146100000000000, sign: false },
-            SignedRay { val: 11597433365183300000000000, sign: false },
-            SignedRay { val: 11895407749273100000000000, sign: false },
-            SignedRay { val: 12162339343970200000000000, sign: false },
-            SignedRay { val: 12398027453761000000000000, sign: false },
-            SignedRay { val: 12603115431573400000000000, sign: false },
-            SignedRay { val: 12778011609926200000000000, sign: false },
-            SignedRay { val: 12922145856373900000000000, sign: false },
-            SignedRay { val: 13035733763855500000000000, sign: false },
-            SignedRay { val: 13119132970012600000000000, sign: false },
-            SignedRay { val: 13172183000149500000000000, sign: false },
-            SignedRay { val: 13194931251653000000000000, sign: false },
-            SignedRay { val: 13187240619906900000000000, sign: false },
-            SignedRay { val: 13208883367510000000000000, sign: false },
-            SignedRay { val: 13200660003177300000000000, sign: false },
-            SignedRay { val: 13222430859433100000000000, sign: false },
-            SignedRay { val: 13213989055419400000000000, sign: false },
-            SignedRay { val: 13236523886693600000000000, sign: false },
-            SignedRay { val: 13228893228445400000000000, sign: false },
-            SignedRay { val: 13252336945406000000000000, sign: false },
-            SignedRay { val: 13245589086793100000000000, sign: false },
-            SignedRay { val: 13268287148763300000000000, sign: false },
-            SignedRay { val: 13260711819200200000000000, sign: false },
-            SignedRay { val: 13283541868395200000000000, sign: false },
-            SignedRay { val: 13276088742621000000000000, sign: false },
-            SignedRay { val: 13298792233296800000000000, sign: false },
-            SignedRay { val: 13291523662104200000000000, sign: false },
-            SignedRay { val: 13314541428040600000000000, sign: false },
-            SignedRay { val: 13307199809685200000000000, sign: false },
-            SignedRay { val: 13329870249804400000000000, sign: false },
-            SignedRay { val: 13322395570385200000000000, sign: false },
-            SignedRay { val: 13345304448818300000000000, sign: false },
-            SignedRay { val: 13338281310237400000000000, sign: false },
-            SignedRay { val: 13361739540689300000000000, sign: false }
+            SignedRay { val: 990050483961308000000000, sign: false },
+            SignedRay { val: 963319831744643000000000, sign: false },
+            SignedRay { val: 936585364575532000000000, sign: false },
+            SignedRay { val: 880289091131965000000000, sign: false },
+            SignedRay { val: 826016130526438000000000, sign: false },
+            SignedRay { val: 775752295414337000000000, sign: false },
+            SignedRay { val: 729361095382119000000000, sign: false },
+            SignedRay { val: 685695416584344000000000, sign: false },
+            SignedRay { val: 644017434071918000000000, sign: false },
+            SignedRay { val: 604407539891812000000000, sign: false },
+            SignedRay { val: 566485262927299000000000, sign: false },
+            SignedRay { val: 529948556807289000000000, sign: false },
+            SignedRay { val: 494575353379855000000000, sign: false },
+            SignedRay { val: 460021060765948000000000, sign: false },
+            SignedRay { val: 426512650854796000000000, sign: false },
+            SignedRay { val: 393715894441363000000000, sign: false },
+            SignedRay { val: 361205045685150000000000, sign: false },
+            SignedRay { val: 329474857037308000000000, sign: false },
+            SignedRay { val: 297974384089785000000000, sign: false },
+            SignedRay { val: 266931594697062000000000, sign: false },
+            SignedRay { val: 235688109790782000000000, sign: false },
+            SignedRay { val: 205087977812360000000000, sign: false },
+            SignedRay { val: 174896178352891000000000, sign: false },
+            SignedRay { val: 144134246447625000000000, sign: false },
+            SignedRay { val: 113587907481662000000000, sign: false },
+            SignedRay { val: 83399206157124800000000, sign: false },
+            SignedRay { val: 53050030136946600000000, sign: false },
+            SignedRay { val: 22748251503505800000000, sign: false },
+            SignedRay { val: 7690631746253880000000, sign: true },
+            SignedRay { val: 21642747603124400000000, sign: false },
+            SignedRay { val: 8223364333188300000000, sign: true },
+            SignedRay { val: 21770856255759900000000, sign: false },
+            SignedRay { val: 8441804013921670000000, sign: true },
+            SignedRay { val: 22534831274218800000000, sign: false },
+            SignedRay { val: 7630658247792590000000, sign: true },
+            SignedRay { val: 23443716960556000000000, sign: false },
+            SignedRay { val: 6747858612635160000000, sign: true },
+            SignedRay { val: 22698061970200100000000, sign: false },
+            SignedRay { val: 7575329563260990000000, sign: true },
+            SignedRay { val: 22830049195037500000000, sign: false },
+            SignedRay { val: 7453125774297640000000, sign: true },
+            SignedRay { val: 22703490675876200000000, sign: false },
+            SignedRay { val: 7268571192803940000000, sign: true },
+            SignedRay { val: 23017765936335400000000, sign: false },
+            SignedRay { val: 7341618355226480000000, sign: true },
+            SignedRay { val: 22670440119227300000000, sign: false },
+            SignedRay { val: 7474679419119640000000, sign: true },
+            SignedRay { val: 22908878433052100000000, sign: false },
+            SignedRay { val: 7023138580674010000000, sign: true },
+            SignedRay { val: 23458230451766600000000, sign: false }
         ];
 
-        let mut gt_multipliers: Array<Ray> = array![
-            1970590147927650000000000000_u128.into(),
-            1895060948958170000000000000_u128.into(),
-            1823626807823680000000000000_u128.into(),
-            1685113090435630000000000000_u128.into(),
-            1567420923897940000000000000_u128.into(),
-            1471479638799270000000000000_u128.into(),
-            1393399452372450000000000000_u128.into(),
-            1328523153062720000000000000_u128.into(),
-            1273915364793870000000000000_u128.into(),
-            1228238382689360000000000000_u128.into(),
-            1189832512194490000000000000_u128.into(),
-            1157441903084100000000000000_u128.into(),
-            1130111862907760000000000000_u128.into(),
-            1106978964076420000000000000_u128.into(),
-            1087676855598140000000000000_u128.into(),
-            1071545225824460000000000000_u128.into(),
-            1058033767570410000000000000_u128.into(),
-            1047034249557590000000000000_u128.into(),
-            1038054553929260000000000000_u128.into(),
-            1030915148140320000000000000_u128.into(),
-            1025254660162830000000000000_u128.into(),
-            1021024303441810000000000000_u128.into(),
-            1017952982022350000000000000_u128.into(),
-            1015772363931910000000000000_u128.into(),
-            1014387684038110000000000000_u128.into(),
-            1013615811508350000000000000_u128.into(),
-            1013268432035110000000000000_u128.into(),
-            1013183954833280000000000000_u128.into(),
-            1013194476382950000000000000_u128.into(),
-            1013197378268080000000000000_u128.into(),
-            1013208327273010000000000000_u128.into(),
-            1013210978740620000000000000_u128.into(),
-            1013221829262240000000000000_u128.into(),
-            1013225432663220000000000000_u128.into(),
-            1013236079576770000000000000_u128.into(),
-            1013241778080730000000000000_u128.into(),
-            1013252029691140000000000000_u128.into(),
-            1013257283175010000000000000_u128.into(),
-            1013267852433790000000000000_u128.into(),
-            1013272611096240000000000000_u128.into(),
-            1013283127854080000000000000_u128.into(),
-            1013287791223490000000000000_u128.into(),
-            1013298408219220000000000000_u128.into(),
-            1013303718879400000000000000_u128.into(),
-            1013314145719510000000000000_u128.into(),
-            1013318851257330000000000000_u128.into(),
-            1013329452633240000000000000_u128.into(),
-            1013334418533570000000000000_u128.into(),
-            1013344958036190000000000000_u128.into(),
-            1013351190107530000000000000_u128.into(),
-            1013361396918290000000000000_u128.into()
+        let mut expected_multipliers: Array<Ray> = array![
+            1970590147927670000000000000_u128.into(),
+            1895060948958132000000000000_u128.into(),
+            1823626807823529000000000000_u128.into(),
+            1684123039951719000000000000_u128.into(),
+            1565467553582256000000000000_u128.into(),
+            1468589683118985000000000000_u128.into(),
+            1389629207601071000000000000_u128.into(),
+            1323926892160809000000000000_u128.into(),
+            1268543351596485000000000000_u128.into(),
+            1222137008396633000000000000_u128.into(),
+            1183045442485134000000000000_u128.into(),
+            1150010815940730000000000000_u128.into(),
+            1122076368224509000000000000_u128.into(),
+            1098376984130216100000000000_u128.into(),
+            1078544927095105700000000000_u128.into(),
+            1061918721968078900000000000_u128.into(),
+            1047947242653236300000000000_u128.into(),
+            1036521211989577800000000000_u128.into(),
+            1027147800466805900000000000_u128.into(),
+            1019647189632169200000000000_u128.into(),
+            1013657226797647900000000000_u128.into(),
+            1009128895692534440000000000_u128.into(),
+            1005790642678375850000000000_u128.into(),
+            1003374336478151760000000000_u128.into(),
+            1001784568606539140000000000_u128.into(),
+            1000837799898424919000000000_u128.into(),
+            1000346286178733361000000000_u128.into(),
+            1000148221069422831000000000_u128.into(),
+            1000075343412941180400000000_u128.into(),
+            1000025195267925563000000000_u128.into(),
+            1000013396021356239800000000_u128.into(),
+            1000023738120707762700000000_u128.into(),
+            1000012945894730513600000000_u128.into(),
+            1000024772660045699800000000_u128.into(),
+            1000013648717336060500000000_u128.into(),
+            1000027789025313304700000000_u128.into(),
+            1000015505804443702900000000_u128.into(),
+            1000028389946565290300000000_u128.into(),
+            1000015515488385342100000000_u128.into(),
+            1000027022009447084400000000_u128.into(),
+            1000014840705320062500000000_u128.into(),
+            1000027079404286489200000000_u128.into(),
+            1000014866350820824900000000_u128.into(),
+            1000027630136777196100000000_u128.into(),
+            1000015353486209079400000000_u128.into(),
+            1000027327595225491200000000_u128.into(),
+            1000014911205199292500000000_u128.into(),
+            1000027218723879901500000000_u128.into(),
+            1000015087786384349900000000_u128.into(),
+            1000028794537147010600000000_u128.into(),
+            1000016092469468056100000000_u128.into(),
         ];
 
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
+                    controller_utils::fast_forward_1_hour();
                     controller_utils::set_yin_spot_price(shrine, price);
+
+                    let i_term: SignedRay = controller.get_i_term();
+                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+
+                    let p_term: SignedRay = controller.get_p_term();
+                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+
+                    let multiplier: Ray = controller.get_current_multiplier();
+                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+
                     controller.update_multiplier();
 
-                    assert_equalish(
-                        controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
-                    );
-
-                    assert_equalish(
-                        controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
-                    );
-
-                    assert_equalish(
-                        controller.get_current_multiplier(),
-                        gt_multipliers.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong multiplier'
-                    );
-
-                    controller_utils::fast_forward_1_hour();
+                    let (shrine_multiplier, _, _) = shrine.get_current_multiplier();
+                    assert_eq!(multiplier, shrine_multiplier, "wrong multiplier in shrine");
                 },
                 Option::None => { break; }
             };
@@ -495,43 +495,43 @@ mod test_controller {
             996000000000000000_u128.into(),
             995000000000000000_u128.into()
         ];
-        let mut gt_p_terms: Array<SignedRay> = array![
+        let mut expected_p_terms_for_update: Array<SignedRay> = array![
             SignedRay { val: 1000000000000000000000000, sign: false },
             SignedRay { val: 1000000000000000000000000, sign: false },
             SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
             SignedRay { val: 8000000000000000000000000, sign: false },
-            SignedRay { val: 8000000000000000000000000, sign: false },
-            SignedRay { val: 27000000000000000000000000, sign: false },
-            SignedRay { val: 64000000000000000000000000, sign: false },
-            SignedRay { val: 64000000000000000000000000, sign: false },
+            SignedRay { val: 27000000000000100000000000, sign: false },
+            SignedRay { val: 64000000000000200000000000, sign: false },
+            SignedRay { val: 64000000000000200000000000, sign: false },
             SignedRay { val: 125000000000000000000000000, sign: false },
             SignedRay { val: 125000000000000000000000000, sign: false }
         ];
-        let mut gt_i_terms: Array<SignedRay> = array![
+        let mut expected_i_terms_for_update: Array<SignedRay> = array![
             SignedRay { val: 0, sign: false },
-            SignedRay { val: 99999950000037500000000, sign: false },
+            SignedRay { val: 99999950000037600000000, sign: false },
             SignedRay { val: 199999900000075000000000, sign: false },
             SignedRay { val: 299999850000113000000000, sign: false },
-            SignedRay { val: 499999450001313000000000, sign: false },
-            SignedRay { val: 699999050002513000000000, sign: false },
-            SignedRay { val: 999997700011625000000000, sign: false },
-            SignedRay { val: 1399994500050020000000000, sign: false },
-            SignedRay { val: 1799991300088420000000000, sign: false },
-            SignedRay { val: 2299985050205610000000000, sign: false }
+            SignedRay { val: 199999600001200000000000, sign: false },
+            SignedRay { val: 399999200002400000000000, sign: false },
+            SignedRay { val: 299998650009113000000000, sign: false },
+            SignedRay { val: 399996800038400000000000, sign: false },
+            SignedRay { val: 799993600076800000000000, sign: false },
+            SignedRay { val: 499993750117186000000000, sign: false }
         ];
-        let mut gt_multipliers: Array<Ray> = array![
+        let mut expected_multipliers: Array<Ray> = array![
             1001000000000000000000000000_u128.into(),
-            1001099999950000000000000000_u128.into(),
-            1001199999900000000000000000_u128.into(),
-            1008299999850000000000000000_u128.into(),
-            1008499999450000000000000000_u128.into(),
-            1027699999050000000000000000_u128.into(),
-            1064999997700010000000000000_u128.into(),
-            1065399994500050000000000000_u128.into(),
-            1126799991300090000000000000_u128.into(),
-            1127299985050210000000000000_u128.into()
+            1001099999950000040000000000_u128.into(),
+            1001199999900000080000000000_u128.into(),
+            1008299999850000140000000000_u128.into(),
+            1008499999450001340000000000_u128.into(),
+            1027699999050002600000000000_u128.into(),
+            1064699997850011700000000000_u128.into(),
+            1064699995450047700000000000_u128.into(),
+            1126099992250086000000000000_u128.into(),
+            1126299987350194000000000000_u128.into()
         ];
-        let mut gt_update_intervals: Array<u64> = array![1, 4, 6, 7, 9];
+        let mut update_intervals: Array<u64> = array![1, 4, 6, 7, 9];
 
         let mut current_interval: u64 = 1;
         let end_interval: u64 = 10;
@@ -541,29 +541,29 @@ mod test_controller {
                 break;
             }
 
-            if gt_update_intervals.len() > 0 {
-                if current_interval == *gt_update_intervals.at(0) {
-                    let _ = gt_update_intervals.pop_front();
+            let mut multiplier: Ray = controller.get_current_multiplier();
+            let mut i_term = controller.get_i_term();
+            if update_intervals.len() > 0 {
+                if current_interval == *update_intervals.at(0) {
+                    let _ = update_intervals.pop_front();
                     let price: Wad = prices.pop_front().unwrap();
                     controller_utils::set_yin_spot_price(shrine, price);
+
+                    i_term = controller.get_i_term();
+                    multiplier = controller.get_current_multiplier();
                     controller.update_multiplier();
                 }
             }
 
-            assert_equalish(
-                controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
-            );
+            let p_term: SignedRay = controller.get_p_term();
+            let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
 
-            assert_equalish(
-                controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
-            );
+            let expected_i_term_for_update = expected_i_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
 
-            assert_equalish(
-                controller.get_current_multiplier(),
-                gt_multipliers.pop_front().unwrap(),
-                ERROR_MARGIN.into(),
-                'Wrong multiplier'
-            );
+            let expected_multiplier = expected_multipliers.pop_front().unwrap();
+            common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
 
             controller_utils::fast_forward_1_hour();
             current_interval += 1;
@@ -605,98 +605,192 @@ mod test_controller {
             999875348924666000_u128.into()
         ];
 
-        let mut gt_p_terms: Array<SignedRay> = array![
+        let mut expected_p_terms_for_update: Array<SignedRay> = array![
             SignedRay { val: 1000000000000000000000000000, sign: true },
-            SignedRay { val: 746195479082780000000000000, sign: true },
-            SignedRay { val: 539523383476549000000000000, sign: true },
-            SignedRay { val: 495564327004449000000000000, sign: true },
-            SignedRay { val: 422207524565069000000000000, sign: true },
-            SignedRay { val: 350809670272340000000000000, sign: true },
-            SignedRay { val: 279021745992780000000000000, sign: true },
-            SignedRay { val: 211084503271797000000000000, sign: true },
-            SignedRay { val: 150007593859640000000000000, sign: true },
-            SignedRay { val: 98033733163599700000000000, sign: true },
-            SignedRay { val: 57236566790630100000000000, sign: true },
-            SignedRay { val: 28386114337654400000000000, sign: true },
-            SignedRay { val: 10809080591591700000000000, sign: true },
-            SignedRay { val: 2448543705069680000000000, sign: true },
-            SignedRay { val: 101940531609356000000000, sign: true },
-            SignedRay { val: 74475965338374500000000, sign: false },
-            SignedRay { val: 1893220914100550000000, sign: false },
-            SignedRay { val: 4942406121262390000000, sign: true },
-            SignedRay { val: 370158792771361000000000, sign: false },
-            SignedRay { val: 76076761869019800000000, sign: false },
-            SignedRay { val: 1936814769447970000000, sign: false }
+            SignedRay { val: 746195479083163000000000000, sign: true },
+            SignedRay { val: 539523383475842000000000000, sign: true },
+            SignedRay { val: 495564327004783000000000000, sign: true },
+            SignedRay { val: 422207524564506000000000000, sign: true },
+            SignedRay { val: 350809670272374000000000000, sign: true },
+            SignedRay { val: 279021745992382000000000000, sign: true },
+            SignedRay { val: 211084503271561000000000000, sign: true },
+            SignedRay { val: 150007593859528000000000000, sign: true },
+            SignedRay { val: 98033733163741300000000000, sign: true },
+            SignedRay { val: 57236566790689500000000000, sign: true },
+            SignedRay { val: 28386114337710200000000000, sign: true },
+            SignedRay { val: 10809080591526600000000000, sign: true },
+            SignedRay { val: 2448543705060000000000000, sign: true },
+            SignedRay { val: 101940531608629000000000, sign: true },
+            SignedRay { val: 74475965338492500000000, sign: false },
+            SignedRay { val: 1893220914080160000000, sign: false },
+            SignedRay { val: 4942406121069110000000, sign: true },
+            SignedRay { val: 370158792771876000000000, sign: false },
+            SignedRay { val: 76076761868840400000000, sign: false },
+            SignedRay { val: 1936814769458320000000, sign: false }
         ];
 
-        let mut gt_i_terms: Array<SignedRay> = array![
+        let mut expected_i_terms_for_update: Array<SignedRay> = array![
             SignedRay { val: 0, sign: false },
-            SignedRay { val: 999950003749688000000000, sign: true },
-            SignedRay { val: 1906934104693500000000000, sign: true },
-            SignedRay { val: 2720992763528470000000000, sign: true },
-            SignedRay { val: 3512314473517650000000000, sign: true },
-            SignedRay { val: 4262490363876780000000000, sign: true },
-            SignedRay { val: 4967745706202580000000000, sign: true },
-            SignedRay { val: 5621182239604350000000000, sign: true },
-            SignedRay { val: 6216585331384020000000000, sign: true },
-            SignedRay { val: 6747916081914270000000000, sign: true },
-            SignedRay { val: 7209007702967550000000000, sign: true },
-            SignedRay { val: 7594386633212950000000000, sign: true },
-            SignedRay { val: 7899433542145930000000000, sign: true },
-            SignedRay { val: 8120536824601320000000000, sign: true },
-            SignedRay { val: 8255319961245460000000000, sign: true },
-            SignedRay { val: 8302034161409560000000000, sign: true },
-            SignedRay { val: 8259960981062700000000000, sign: true },
-            SignedRay { val: 8247590105801630000000000, sign: true },
-            SignedRay { val: 8264623955204720000000000, sign: true },
-            SignedRay { val: 8192823161553290000000000, sign: true },
-            SignedRay { val: 8150450673359900000000000, sign: true }
+            SignedRay { val: 999950003749689000000000, sign: true },
+            SignedRay { val: 906984100943969000000000, sign: true },
+            SignedRay { val: 814058658834616000000000, sign: true },
+            SignedRay { val: 791321709989352000000000, sign: true },
+            SignedRay { val: 750175890358791000000000, sign: true },
+            SignedRay { val: 705255342325826000000000, sign: true },
+            SignedRay { val: 653436533401461000000000, sign: true },
+            SignedRay { val: 595403091779449000000000, sign: true },
+            SignedRay { val: 531330750530118000000000, sign: true },
+            SignedRay { val: 461091621053498000000000, sign: true },
+            SignedRay { val: 385378930245532000000000, sign: true },
+            SignedRay { val: 305046908933185000000000, sign: true },
+            SignedRay { val: 221103282454939000000000, sign: true },
+            SignedRay { val: 134783136643973000000000, sign: true },
+            SignedRay { val: 46714200163985700000000, sign: true },
+            SignedRay { val: 42073180346892300000000, sign: false },
+            SignedRay { val: 12370875261032900000000, sign: false },
+            SignedRay { val: 17033849402874100000000, sign: true },
+            SignedRay { val: 71800793651462500000000, sign: false },
+            SignedRay { val: 42372488193362600000000, sign: false }
         ];
 
-        let mut gt_multipliers: Array<Ray> = array![
+        let mut expected_multipliers: Array<Ray> = array![
             200000000000000000000000000_u128.into(),
-            252804570913471000000000000_u128.into(),
-            458569682418758000000000000_u128.into(),
-            501714680232022000000000000_u128.into(),
-            574280160961414000000000000_u128.into(),
-            644927839363783000000000000_u128.into(),
-            716010508301017000000000000_u128.into(),
-            783294314488599000000000000_u128.into(),
-            843775820808976000000000000_u128.into(),
-            895218350754486000000000000_u128.into(),
-            935554425506402000000000000_u128.into(),
-            964019499029133000000000000_u128.into(),
-            981291485866262000000000000_u128.into(),
-            989430919470329000000000000_u128.into(),
-            991642739507145000000000000_u128.into(),
-            991772441803929000000000000_u128.into(),
-            991741932239851000000000000_u128.into(),
-            991747467488077000000000000_u128.into(),
-            992105534837567000000000000_u128.into(),
-            991883253600316000000000000_u128.into(),
-            991851486141410000000000000_u128.into()
+            252804570913087000000000000_u128.into(),
+            458569682419464000000000000_u128.into(),
+            502714630235438000000000000_u128.into(),
+            576187095066670000000000000_u128.into(),
+            647648832127279000000000000_u128.into(),
+            719522822774933000000000000_u128.into(),
+            787556804852712000000000000_u128.into(),
+            848743566515292000000000000_u128.into(),
+            900839532993949000000000000_u128.into(),
+            941771010837727000000000000_u128.into(),
+            970767415110991000000000000_u128.into(),
+            988500493569295000000000000_u128.into(),
+            997025306103552000000000000_u128.into(),
+            999542173049293000000000000_u128.into(),
+            999892978628531000000000000_u128.into(),
+            999997252201097000000000000_u128.into(),
+            1000049501649490000000000000_u128.into(),
+            1000365495818630000000000000_u128.into(),
+            1000130843706120000000000000_u128.into(),
+            1000116110096610000000000000_u128.into(),
         ];
 
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    controller_utils::set_yin_spot_price(shrine, price);
-                    controller.update_multiplier();
-
-                    assert_equalish(
-                        controller.get_p_term(), gt_p_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong p term'
-                    );
-                    assert_equalish(
-                        controller.get_i_term(), gt_i_terms.pop_front().unwrap(), ERROR_MARGIN.into(), 'Wrong i term'
-                    );
-                    assert_equalish(
-                        controller.get_current_multiplier(),
-                        gt_multipliers.pop_front().unwrap(),
-                        ERROR_MARGIN.into(),
-                        'Wrong multiplier'
-                    );
-
                     controller_utils::fast_forward_1_hour();
+                    controller_utils::set_yin_spot_price(shrine, price);
+
+                    let p_term: SignedRay = controller.get_p_term();
+                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+
+                    let i_term: SignedRay = controller.get_i_term();
+                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+
+                    let multiplier: Ray = controller.get_current_multiplier();
+                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+
+                    controller.update_multiplier();
+                },
+                Option::None => { break; }
+            };
+        };
+    }
+
+    // Multiple updates in one interval
+    #[test]
+    fn test_against_ground_truth5() {
+        let (controller, shrine) = controller_utils::deploy_controller();
+
+        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+
+        // Updating `i_gain` to match the ground truth simulation
+        controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
+        controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
+
+        let mut seconds_since_last_update_arr: Array<u64> = array![60, 138, 222, 300, 126, 78, 42, 420, 246];
+
+        let mut prices: Array<Wad> = array![
+            999000000000000000_u128.into(),
+            999000000000000000_u128.into(),
+            999000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            997000000000000000_u128.into(),
+            997000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+            998000000000000000_u128.into(),
+        ];
+
+        let mut expected_p_terms_for_update: Array<SignedRay> = array![
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 1000000000000000000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 27000000000000100000000000, sign: false },
+            SignedRay { val: 27000000000000100000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+            SignedRay { val: 8000000000000020000000000, sign: false },
+        ];
+
+        let mut expected_i_terms_for_update: Array<SignedRay> = array![
+            SignedRay { val: 1666665833333960000000, sign: false },
+            SignedRay { val: 3833331416668110000000, sign: false },
+            SignedRay { val: 6166663583335650000000, sign: false },
+            SignedRay { val: 8333329166669800000000, sign: false },
+            SignedRay { val: 6999986000042010000000, sign: false },
+            SignedRay { val: 4333324666692670000000, sign: false },
+            SignedRay { val: 3499984250106320000000, sign: false },
+            SignedRay { val: 34999842501063200000000, sign: false },
+            SignedRay { val: 13666639333415300000000, sign: false },
+        ];
+
+        let mut expected_multipliers: Array<Ray> = array![
+            1001001666665830000000000000_u128.into(),
+            1001005499997250000000000000_u128.into(),
+            1001009999995000000000000000_u128.into(),
+            1008014499992750000000000000_u128.into(),
+            1008015333315170000000000000_u128.into(),
+            1027011333310670000000000000_u128.into(),
+            1027007833308920000000000000_u128.into(),
+            1008038499826750000000000000_u128.into(),
+            1008048666481830000000000000_u128.into(),
+        ];
+
+        // Update for first hour after deployment
+        controller_utils::fast_forward_1_hour();
+        let price: Wad = 999000000000000000_u128.into();
+        controller_utils::set_yin_spot_price(shrine, price);
+        controller.update_multiplier();
+
+        // Multiple updates in the second hour
+        loop {
+            match seconds_since_last_update_arr.pop_front() {
+                Option::Some(seconds_since_last_update) => {
+                    start_warp(CheatTarget::All, get_block_timestamp() + seconds_since_last_update);
+
+                    let price: Wad = prices.pop_front().unwrap();
+                    controller_utils::set_yin_spot_price(shrine, price);
+
+                    let p_term: SignedRay = controller.get_p_term();
+                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+
+                    let i_term: SignedRay = controller.get_i_term();
+                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+
+                    let multiplier: Ray = controller.get_current_multiplier();
+                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+
+                    controller.update_multiplier();
                 },
                 Option::None => { break; }
             };
@@ -707,7 +801,8 @@ mod test_controller {
     fn test_frequent_updates() {
         let (controller, shrine) = controller_utils::deploy_controller();
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
-        controller.set_i_gain(100000000000000000000000_u128.into()); // Ensuring the integral gain is non-zero
+        // Ensuring the integral gain is non-zero
+        controller.set_i_gain(100000000000000000000000_u128.into()); // 0.0001
 
         controller_utils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
