@@ -128,12 +128,11 @@ pub mod controller {
 
             if i_gain.is_non_zero() {
                 let old_i_term = self.i_term.read();
-                let new_i_term_without_gain: SignedRay = self.get_i_term_without_gain();
                 multiplier += old_i_term;
 
                 // Skip new i_term if timestamp did not advance from the last i_term
                 if get_block_timestamp() > self.i_term_last_updated.read() {
-                    multiplier += i_gain * new_i_term_without_gain;
+                    multiplier += i_gain * self.get_i_term_without_gain();
                 }
             }
 
