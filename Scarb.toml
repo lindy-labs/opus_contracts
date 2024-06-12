@@ -19,7 +19,7 @@ allowed-libfuncs-deny = true
 sierra-replace-ids = true
 
 [dependencies]
-starknet = ">= 2.6.0"
+starknet = ">= 2.6.4"
 wadray = { git = "https://github.com/lindy-labs/wadray.git", tag = "v0.3.0" }
 access_control = { git = "https://github.com/lindy-labs/access_control.git", tag = "v0.3.0" }
 
