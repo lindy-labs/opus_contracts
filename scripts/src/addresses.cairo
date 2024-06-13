@@ -26,83 +26,83 @@ pub mod devnet {
     // these deployments are based on replaying the transactions in `scripts/devnet_dump.json` and should not be used 
     // in the deployment package
     pub fn abbot() -> ContractAddress {
-        0x24957207e8e66e8aa79b9ed3ea728656a0a9f1746db5128a591728ba8d23257.try_into().unwrap()
+        0x2f8940f748fee76656e25627fb9fc9237cf76827eb94f1cb8ed6db00e57491e.try_into().unwrap()
     }
 
     pub fn absorber() -> ContractAddress {
-        0x3f49c8ac257f0ec7762c64a70d4d0517fa70bb0187ab2304248117ff01716ec.try_into().unwrap()
+        0x6ad5948495fb2b102c72035770371a6370414ac845ae678c55a256d5cc87d76.try_into().unwrap()
     }
 
     pub fn allocator() -> ContractAddress {
-        0x18fa2a5f5409a6796fbccca89dcadc752fa719ae2914cff36c97d209493b868.try_into().unwrap()
+        0x281e7062aa4ee1d58eb9692ec0a1737852c98b6466c7787b5c24ab98c15a640.try_into().unwrap()
     }
 
     pub fn caretaker() -> ContractAddress {
-        0x4ca7205c4d6151c2194b5bced8a0e6c34455f18a86fa6658b8c3ee916bc975f.try_into().unwrap()
+        0x5dfcded9b418bab8774ae07ea6a04a4f462f4db23c574472e4ea68ecdbb30be.try_into().unwrap()
     }
 
     pub fn controller() -> ContractAddress {
-        0xceb53abb5ecac290fc5ddb379a184523f18dafde9a4df876de8943261d708c.try_into().unwrap()
+        0x66d29efb9936beef9192a010027788254c9c3329d551e274dd17002c425a07.try_into().unwrap()
     }
 
     pub fn equalizer() -> ContractAddress {
-        0x31cf8fff930b466755e77006c34da64aa41d494e3eb0761af87a281469deddf.try_into().unwrap()
+        0x1e53d5b14a7d9d7b8bd90707e4b7e7ccb2aae85f823e5bed449e807488f7684.try_into().unwrap()
     }
 
     pub fn eth_gate() -> ContractAddress {
-        0xa1889b408e206392030ee584bd939b4a0de72c9614c22f069da6bb562549cc.try_into().unwrap()
+        0x7ce8dbfcf1625a285ab2263bbef126d347547263bd897078732080101a7a3eb.try_into().unwrap()
     }
 
     pub fn flash_mint() -> ContractAddress {
-        0x1515b5621019f6bfcb95adbf848345441b59a7becbf3820f6dd67049a73b2a3.try_into().unwrap()
+        0x5a1f1bc3b5eac6b514ddaf085ca9a668f5c1511bf265b9aa65cdc32791a405b.try_into().unwrap()
     }
 
     pub fn frontend_data_provider() -> ContractAddress {
-        0x7460f81aadcbddd5db3cc9fb713c2884eecb4dba08796217b335b668cab6625.try_into().unwrap()
+        0x397c140f6eded24bbad9b8ac00920fd12e33e8c6f7cc40ca16fbd5ebf993c5b.try_into().unwrap()
     }
 
     pub fn mock_pragma() -> ContractAddress {
-        0x6723b14bcd87ff758ee1bed90beb3c94b02a27ad826bb8ea4b02432f175c474.try_into().unwrap()
+        0x5275fc46b59af9a110b087b2129ccdfd996677d6ce4aaba2f0bcd7561bfa2fc.try_into().unwrap()
     }
 
     pub fn mock_switchboard() -> ContractAddress {
-        0x310e773ea6cc8195d53adbb8b3a1015588d828183d6e0d866049bc06ae91c74.try_into().unwrap()
+        0x6bcfe770eca653c2940f51537885e88e3499e04ab2df82e58ec6bc8a8d4325d.try_into().unwrap()
     }
 
     pub fn pragma() -> ContractAddress {
-        0x64b783719a0e563fd3cc6cab27dd50e73c87ba252bbba6f1b0d4633d9178377.try_into().unwrap()
+        0x267595a58145771b39b66feb57bf50fd9321506d12a39ebace38c4995a3b77a.try_into().unwrap()
     }
 
     pub fn purger() -> ContractAddress {
-        0x34e0a9935b6f43df9ad7a3c9a3163d969c8c7cf2b47eb67b15272f302065dfd.try_into().unwrap()
+        0x707c16dc18135483948fcb68e963a3c68cdbeeeef1e2bfe679ce032ad306403.try_into().unwrap()
     }
 
     pub fn seer() -> ContractAddress {
-        0x5e529e6d64c87aadaacbe2c1d51d5742ecf431ddc069c0fea1d19c69c778844.try_into().unwrap()
+        0x428adfdb17ceb3d7a6cc8898e14c5f035a92b1db5ed0a11d6339122a57e5b40.try_into().unwrap()
     }
 
     pub fn sentinel() -> ContractAddress {
-        0x4b4553a4bd0a721d638316361738064e98680d189c77f8e9fa3a38f45a5afc2.try_into().unwrap()
+        0x75b3bb3a8c234a01b0b10f29fcb32f28b6d2ccf13b0e741ee8c77d902415b36.try_into().unwrap()
     }
 
     pub fn shrine() -> ContractAddress {
-        0x34f5f676c27c4c3374ef3dbeeb93772fb0b958f6243f7084b9aa36d770d8c4b.try_into().unwrap()
+        0x6a3ca8d0d0a0a022c78fc03dc19783f9b75b51d1629e678ad14154abcef67a.try_into().unwrap()
     }
 
     pub fn strk_gate() -> ContractAddress {
-        0x6d866137e5a1a2491211fd8fc39d1b1309b2afb85d474a52c57d1c6cca1ab21.try_into().unwrap()
+        0xe5ac1bcb276ab1e46b1e647f030b7e3e8624038dd4d61bbdc010ba3de58925.try_into().unwrap()
     }
 
     pub fn switchboard() -> ContractAddress {
-        0x4472c93e2481da98c49ec1733d879a2a7305518cafdf738895e2882f15570b6.try_into().unwrap()
+        0x6a2f82103368f594915e49baed4a345b6371c053583b7a77512e24e955ac83f.try_into().unwrap()
     }
 
     pub fn wbtc() -> ContractAddress {
-        0x1da68ae2be2f199c32df6361c1e2a94333922fff8fcd64b16be5f750a3112c8.try_into().unwrap()
+        0x6d092cf0cf10d761e1e615cf1c0249299742175097ba3a6da62f69d532af813.try_into().unwrap()
     }
 
     pub fn wbtc_gate() -> ContractAddress {
-        0x266a21b2fb5fa8ff2225f2187553742f6feea0ccba98d7f35470916edb0f24a.try_into().unwrap()
+        0x1aad2d6cc4356359fc88784228d73442488a79bd8af97b2ed83aa866bda6219.try_into().unwrap()
     }
 }
 

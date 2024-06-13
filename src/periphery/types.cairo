@@ -1,3 +1,4 @@
+use opus::types::Health;
 use starknet::ContractAddress;
 use wadray::{Ray, Wad};
 
@@ -20,6 +21,10 @@ pub struct RecoveryModeInfo {
 pub struct TroveInfo {
     pub trove_id: u64,
     pub owner: ContractAddress,
+    pub max_forge_amt: Wad,
+    pub is_liquidatable: bool,
+    pub is_absorbable: bool,
+    pub health: Health,
     pub assets: Span<TroveAssetInfo>,
 }
 
