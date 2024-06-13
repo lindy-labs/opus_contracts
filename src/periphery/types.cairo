@@ -17,6 +17,13 @@ pub struct RecoveryModeInfo {
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
+pub struct TroveInfo {
+    pub trove_id: u64,
+    pub owner: ContractAddress,
+    pub assets: Span<TroveAssetInfo>,
+}
+
+#[derive(Copy, Debug, Drop, Serde)]
 pub struct TroveAssetInfo {
     pub shrine_asset_info: ShrineAssetInfo,
     pub amount: u128, // Amount of the yang's asset in the asset's decimals for the trove

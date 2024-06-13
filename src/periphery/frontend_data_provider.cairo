@@ -1,12 +1,13 @@
 #[starknet::contract]
 pub mod frontend_data_provider {
     use access_control::access_control_component;
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
     use opus::periphery::roles::frontend_data_provider_roles;
-    use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YinInfo};
+    use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, TroveInfo, YinInfo};
     use opus::types::{Health, YangBalance};
     use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
     use starknet::{ClassHash, ContractAddress};
@@ -37,6 +38,7 @@ pub mod frontend_data_provider {
         access_control: access_control_component::Storage,
         #[substorage(v0)]
         upgradeable: upgradeable_component::Storage,
+        abbot: IAbbotDispatcher,
         sentinel: ISentinelDispatcher,
         shrine: IShrineDispatcher,
     }
@@ -105,10 +107,12 @@ pub mod frontend_data_provider {
             RecoveryModeInfo { is_recovery_mode: shrine.is_recovery_mode(), target_ltv, buffer_ltv }
         }
 
-        // Returns an ordered array of TroveAssetInfo struct for a trove
-        fn get_trove_assets_info(self: @ContractState, trove_id: u64) -> Span<TroveAssetInfo> {
+        // Returns a TroveInfo struct for a trove
+        fn get_trove_info(self: @ContractState, trove_id: u64) -> TroveInfo {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
+
+            let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id).unwrap();
 
             let mut shrine_yang_balances: Span<YangBalance> = shrine.get_shrine_deposits();
             let mut trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
@@ -139,7 +143,7 @@ pub mod frontend_data_provider {
                         };
                         asset_infos.append(trove_asset_info);
                     },
-                    Option::None => { break asset_infos.span(); }
+                    Option::None => { break TroveInfo { trove_id, owner: trove_owner, assets: asset_infos.span() }; }
                 }
             }
         }
