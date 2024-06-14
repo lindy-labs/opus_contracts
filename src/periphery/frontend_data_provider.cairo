@@ -1,12 +1,14 @@
 #[starknet::contract]
 pub mod frontend_data_provider {
     use access_control::access_control_component;
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::periphery::interfaces::IFrontendDataProvider;
     use opus::periphery::roles::frontend_data_provider_roles;
-    use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, YinInfo};
+    use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, TroveInfo, YinInfo};
     use opus::types::{Health, YangBalance};
     use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
     use starknet::{ClassHash, ContractAddress};
@@ -37,6 +39,8 @@ pub mod frontend_data_provider {
         access_control: access_control_component::Storage,
         #[substorage(v0)]
         upgradeable: upgradeable_component::Storage,
+        abbot: IAbbotDispatcher,
+        purger: IPurgerDispatcher,
         sentinel: ISentinelDispatcher,
         shrine: IShrineDispatcher,
     }
@@ -58,11 +62,18 @@ pub mod frontend_data_provider {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress
+        ref self: ContractState,
+        admin: ContractAddress,
+        shrine: ContractAddress,
+        sentinel: ContractAddress,
+        abbot: ContractAddress,
+        purger: ContractAddress
     ) {
         self.access_control.initializer(admin, Option::Some(frontend_data_provider_roles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
+        self.abbot.write(IAbbotDispatcher { contract_address: abbot });
+        self.purger.write(IPurgerDispatcher { contract_address: purger });
     }
 
     //
@@ -105,10 +116,20 @@ pub mod frontend_data_provider {
             RecoveryModeInfo { is_recovery_mode: shrine.is_recovery_mode(), target_ltv, buffer_ltv }
         }
 
-        // Returns an ordered array of TroveAssetInfo struct for a trove
-        fn get_trove_assets_info(self: @ContractState, trove_id: u64) -> Span<TroveAssetInfo> {
+        // Returns a TroveInfo struct for a trove
+        fn get_trove_info(self: @ContractState, trove_id: u64) -> TroveInfo {
             let shrine: IShrineDispatcher = self.shrine.read();
             let sentinel: ISentinelDispatcher = self.sentinel.read();
+
+            let trove_owner: ContractAddress = self.abbot.read().get_trove_owner(trove_id).unwrap();
+            let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+            let is_liquidatable: bool = !shrine.is_healthy(trove_id);
+            let is_absorbable: bool = if !is_liquidatable {
+                false
+            } else {
+                self.purger.read().is_absorbable(trove_id)
+            };
+            let health: Health = shrine.get_trove_health(trove_id);
 
             let mut shrine_yang_balances: Span<YangBalance> = shrine.get_shrine_deposits();
             let mut trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
@@ -139,7 +160,17 @@ pub mod frontend_data_provider {
                         };
                         asset_infos.append(trove_asset_info);
                     },
-                    Option::None => { break asset_infos.span(); }
+                    Option::None => {
+                        break TroveInfo {
+                            trove_id,
+                            owner: trove_owner,
+                            max_forge_amt,
+                            is_liquidatable,
+                            is_absorbable,
+                            health,
+                            assets: asset_infos.span()
+                        };
+                    }
                 }
             }
         }

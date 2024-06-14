@@ -120,7 +120,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        admin, shrine, sentinel
+        admin, shrine, sentinel, abbot, purger
     );
 
     println!("-------------------------------------------------\n");
