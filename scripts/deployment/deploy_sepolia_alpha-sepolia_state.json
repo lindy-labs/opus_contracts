@@ -86,17 +86,6 @@
         "timestamp": 1716974342,
         "misc": null
       },
-      "61bd2a4505d5386ebf029a20bc0670408c6744f2385faefe59245a40e3e321b9": {
-        "name": "deploy",
-        "output": {
-          "type": "DeployResponse",
-          "contract_address": "0x3d124e4166a09fb92787d480d44d6c25e6f638f706f8ae4074ee2766b634293",
-          "transaction_hash": "0x1dda50af539b006d4e18df731c2df07e3d00dbd2a4fd09761c31d4cb4206130"
-        },
-        "status": "Success",
-        "timestamp": 1716975029,
-        "misc": null
-      },
       "089a513db100b3f445de2e70b74115cee616e0413580e421778d825b5c4a7d94": {
         "name": "deploy",
         "output": {
@@ -340,17 +329,6 @@
         "timestamp": 1716974826,
         "misc": null
       },
-      "a0c6d143f2f8ba10d8a5038653c8a128ad9a3a78d91cebc698d9b128ee8ac67f": {
-        "name": "declare",
-        "output": {
-          "type": "DeclareResponse",
-          "class_hash": "0x434f7be09f0bdcdc072ca7434f56682e5da6c35b26d40c5ff09635eef21f637",
-          "transaction_hash": "0x567066381126cb4a08b725af849dce6b279569f8ed379b8b8722781496f190b"
-        },
-        "status": "Success",
-        "timestamp": 1716893182,
-        "misc": null
-      },
       "189a73592c03c2eee41e593da13d971c369c2d2174c215178b21df22135f849f": {
         "name": "declare",
         "output": {
@@ -539,6 +517,28 @@
         },
         "status": "Success",
         "timestamp": 1716974849,
+        "misc": null
+      },
+      "a0c6d143f2f8ba10d8a5038653c8a128ad9a3a78d91cebc698d9b128ee8ac67f": {
+        "name": "declare",
+        "output": {
+          "type": "DeclareResponse",
+          "class_hash": "0x57de79aa98ec372b03eae8a68077e719926035da35ac6ab0d64822d41457019",
+          "transaction_hash": "0x3dceb1ba484e16144541d92deb6616bbf87fff4800154a88c9b63a41abba629"
+        },
+        "status": "Success",
+        "timestamp": 1718353096,
+        "misc": null
+      },
+      "44d2ecccfd9a1b0f51200358dedc6ee47c568d742ea98c017270c51f3d6c179b": {
+        "name": "deploy",
+        "output": {
+          "type": "DeployResponse",
+          "contract_address": "0x348d8f672ea7f8f57ae45682571177a4d480301f36af45931bb197c37f6007a",
+          "transaction_hash": "0x4e1c3c34400668ef7a3d6860697ed128ef79a55605dfb640eea3bc43397c45e"
+        },
+        "status": "Success",
+        "timestamp": 1718353170,
         "misc": null
       }
     }
