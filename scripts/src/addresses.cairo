@@ -160,7 +160,7 @@ pub mod sepolia {
     }
 
     pub fn frontend_data_provider() -> ContractAddress {
-        0x348d8f672ea7f8f57ae45682571177a4d480301f36af45931bb197c37f6007a.try_into().unwrap()
+        0x0348d8f672ea7f8f57ae45682571177a4d480301f36af45931bb197c37f6007a.try_into().unwrap()
     }
 
     pub fn pragma() -> ContractAddress {
