@@ -15,6 +15,11 @@ pub fn wbtc_addr() -> ContractAddress {
     0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
 }
 
+pub fn wsteth_addr() -> ContractAddress {
+    // only on mainnet
+    0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid wstETH address')
+}
+
 pub mod devnet {
     use starknet::ContractAddress;
 
@@ -185,5 +190,31 @@ pub mod sepolia {
 
     pub fn strk_gate() -> ContractAddress {
         0x05c6ec6e1748fbab3d65c2aa7897aeb7d7ec843331c1a469666e162da735fd5f.try_into().unwrap()
+    }
+}
+
+pub mod sepolia {
+    use starknet::ContractAddress;
+
+    // TODO
+    pub fn admin() -> ContractAddress {
+        0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
+    }
+
+    pub fn protocol_fee_recipient() -> ContractAddress {
+        0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
+    }
+
+    // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
+    pub fn pragma_spot_oracle() -> ContractAddress {
+        0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
+            .try_into()
+            .expect('invalid pragma spot address')
+    }
+
+    pub fn pragma_twap_oracle() -> ContractAddress {
+        0x49eefafae944d07744d07cc72a5bf14728a6fb463c3eae5bca13552f5d455fd
+            .try_into()
+            .expect('invalid pragma twap address')
     }
 }
