@@ -1,10 +1,8 @@
 use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
-use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
 use scripts::constants;
-use scripts::mock_utils;
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
 
