@@ -1,5 +1,7 @@
 use deployment::{core_deployment, mock_deployment, periphery_deployment, utils};
-use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_DECIMALS, WBTC_USD_PAIR_ID};
+use opus::constants::{
+    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, USDC_DECIMALS, WBTC_DECIMALS, WBTC_USD_PAIR_ID
+};
 use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
 use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
@@ -33,8 +35,16 @@ fn main() {
     let mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
+    let usdc: ContractAddress = mock_deployment::deploy_erc20_mintable(
+        erc20_mintable_class_hash, 'USD Coin', 'USDC', USDC_DECIMALS, constants::USDC_INITIAL_SUPPLY, admin
+    );
     let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
         erc20_mintable_class_hash, 'Wrapped BTC', 'WBTC', WBTC_DECIMALS, constants::WBTC_INITIAL_SUPPLY, admin
+    );
+
+    // Deploy transmuter
+    let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
+        admin, shrine, usdc, admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
     );
 
     // Deploy gates
@@ -73,6 +83,7 @@ fn main() {
     utils::grant_role(shrine, purger, shrine_roles::purger(), "SHR -> PU");
     utils::grant_role(shrine, seer, shrine_roles::seer(), "SHR -> SEER");
     utils::grant_role(shrine, sentinel, shrine_roles::sentinel(), "SHR -> SE");
+    utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH and STRK yangs
     println!("Setting up Shrine");
@@ -182,6 +193,27 @@ fn main() {
         admin, shrine, sentinel, abbot, purger
     );
 
+    // Transmute initial amount
+    let transmute_amt: u128 = 250000000000; // 250,000 (10**6)
+    let _approve_usdc = invoke(
+        usdc,
+        selector!("approve"),
+        array![usdc_transmuter_restricted.into(), transmute_amt.into(), 0],
+        Option::Some(constants::MAX_FEE),
+        Option::None,
+    )
+        .expect('approve USDC failed');
+    let _transmute = invoke(
+        usdc_transmuter_restricted,
+        selector!("transmute"),
+        array![transmute_amt.into()],
+        Option::Some(constants::MAX_FEE),
+        Option::None
+    )
+        .expect('transmute failed');
+
+    println!("Transmuted {} USDC for CASH", transmute_amt);
+
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
     println!("Deployed addresses");
@@ -204,5 +236,7 @@ fn main() {
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
     println!("Switchboard: {}", switchboard);
+    println!("Token[USDC]: {}", usdc);
     println!("Token[WBTC]: {}", wbtc);
+    println!("Transmuter[USDC] (Restricted): {}", usdc_transmuter_restricted);
 }
