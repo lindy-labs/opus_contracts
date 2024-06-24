@@ -221,18 +221,23 @@ pub mod shrine_roles {
 pub mod transmuter_roles {
     pub const ENABLE_RECLAIM: u128 = 1;
     pub const KILL: u128 = 2;
-    pub const SETTLE: u128 = 4;
-    pub const SET_CEILING: u128 = 8;
-    pub const SET_FEES: u128 = 16;
-    pub const SET_PERCENTAGE_CAP: u128 = 32;
-    pub const SET_RECEIVER: u128 = 64;
-    pub const SWEEP: u128 = 128;
-    pub const TOGGLE_REVERSIBILITY: u128 = 256;
+    // For restricted variant of transmuter
+    pub const REVERSE: u128 = 4;
+    pub const SETTLE: u128 = 8;
+    pub const SET_CEILING: u128 = 16;
+    pub const SET_FEES: u128 = 32;
+    pub const SET_PERCENTAGE_CAP: u128 = 64;
+    pub const SET_RECEIVER: u128 = 128;
+    pub const SWEEP: u128 = 256;
+    pub const TOGGLE_REVERSIBILITY: u128 = 512;
+    // For restricted variant of transmuter
+    pub const TRANSMUTE: u128 = 1024;
 
     #[inline(always)]
     pub fn default_admin_role() -> u128 {
         ENABLE_RECLAIM
             + KILL
+            + REVERSE
             + SETTLE
             + SET_CEILING
             + SET_FEES
@@ -240,6 +245,7 @@ pub mod transmuter_roles {
             + SET_RECEIVER
             + SWEEP
             + TOGGLE_REVERSIBILITY
+            + TRANSMUTE
     }
 }
 
