@@ -12,6 +12,15 @@ pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128
     println!("Role granted: {}", msg);
 }
 
+pub fn transfer_admin(target: ContractAddress, new_admin: ContractAddress, module_name: ByteArray) {
+    let _transfer_admin = invoke(
+        target, selector!("set_pending_admin"), array![new_admin.into()], Option::Some(MAX_FEE), Option::None
+    )
+        .expect('set pending admin failed');
+
+    println!("Set pending admin for: {}", module_name);
+}
+
 pub fn set_oracles_to_seer(seer: ContractAddress, mut oracles: Span<ContractAddress>) {
     let mut calldata: Array<felt252> = Default::default();
     calldata.append(oracles.len().into());

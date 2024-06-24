@@ -193,15 +193,15 @@ pub mod sepolia {
     }
 }
 
-pub mod sepolia {
+pub mod mainnet {
     use starknet::ContractAddress;
 
-    // TODO
     pub fn admin() -> ContractAddress {
-        0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
+        0x05ef3d22382af4291903e019c3a947e1ad808d8772303a7a7e564dc8376d466a.try_into().expect('invalid admin address')
     }
 
-    pub fn protocol_fee_recipient() -> ContractAddress {
+    // TODO
+    pub fn multisig() -> ContractAddress {
         0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
     }
 

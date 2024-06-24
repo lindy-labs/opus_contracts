@@ -173,6 +173,19 @@ fn main() {
         admin, shrine, sentinel, abbot, purger
     );
 
+    // Transfer admin role to multisig
+    let multisig: ContractAddress = addresses::mainnet::multisig();
+    utils::transfer_admin(absorber, multisig, "Absorber");
+    utils::transfer_admin(allocator, multisig, "Allocator");
+    utils::transfer_admin(caretaker, multisig, "Caretaker");
+    utils::transfer_admin(controller, multisig, "Controller");
+    utils::transfer_admin(equalizer, multisig, "Equalizer");
+    utils::transfer_admin(pragma, multisig, "Pragma");
+    utils::transfer_admin(purger, multisig, "Purger");
+    utils::transfer_admin(seer, multisig, "Seer");
+    utils::transfer_admin(sentinel, multisig, "Sentinel");
+    utils::transfer_admin(shrine, multisig, "Shrine");
+
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
     println!("Deployed addresses");
