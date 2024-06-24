@@ -492,8 +492,7 @@ pub mod transmuter_restricted {
         #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let yin_price_ge_peg: bool = true;
-            //shrine.get_yin_spot_price() >= WAD_ONE.into();
+            let yin_price_ge_peg: bool = shrine.get_yin_spot_price() >= WAD_ONE.into();
 
             let ceiling: Wad = self.ceiling.read();
             let minted: Wad = self.total_transmuted.read();
