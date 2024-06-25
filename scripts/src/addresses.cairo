@@ -200,9 +200,8 @@ pub mod mainnet {
         0x05ef3d22382af4291903e019c3a947e1ad808d8772303a7a7e564dc8376d466a.try_into().expect('invalid admin address')
     }
 
-    // TODO
     pub fn multisig() -> ContractAddress {
-        0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
+        0x00Ca40fCa4208A0c2a38fc81a66C171623aAC3B913A4365F7f0BC0EB3296573C.try_into().expect('invalid admin address')
     }
 
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
