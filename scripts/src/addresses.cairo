@@ -121,6 +121,10 @@ pub mod sepolia {
         0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
     }
 
+    pub fn usdc() -> ContractAddress {
+        0x053b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080.try_into().expect('invalid usdc address')
+    }
+
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
     pub fn pragma_spot_oracle() -> ContractAddress {
         0x36031daa264c24520b11d93af622c848b2499b66b41d611bac95e13cfca131a
@@ -193,5 +197,9 @@ pub mod sepolia {
 
     pub fn strk_gate() -> ContractAddress {
         0x05c6ec6e1748fbab3d65c2aa7897aeb7d7ec843331c1a469666e162da735fd5f.try_into().unwrap()
+    }
+
+    pub fn usdc_transmuter_restricted() -> ContractAddress {
+        0x3280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81.try_into().unwrap()
     }
 }

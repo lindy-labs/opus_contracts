@@ -26,6 +26,11 @@ fn main() {
     let caretaker: ContractAddress = core_deployment::deploy_caretaker(admin, shrine, abbot, sentinel, equalizer);
     let controller: ContractAddress = core_deployment::deploy_controller(admin, shrine);
 
+    // Deploy transmuter
+    let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
+        admin, shrine, addresses::sepolia::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+    );
+
     println!("Deploying gates");
     // there's no WBTC on Starknet Sepolia
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
@@ -59,6 +64,7 @@ fn main() {
     utils::grant_role(shrine, purger, roles::shrine_roles::purger(), "SHR -> PU");
     utils::grant_role(shrine, seer, roles::shrine_roles::seer(), "SHR -> SEER");
     utils::grant_role(shrine, sentinel, roles::shrine_roles::sentinel(), "SHR -> SE");
+    utils::grant_role(shrine, usdc_transmuter_restricted, roles::shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH and STRK yangs
     println!("Setting up Shrine");
@@ -139,4 +145,5 @@ fn main() {
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
+    println!("Transmuter[USDC] (Restricted): {}", usdc_transmuter_restricted);
 }
