@@ -12,7 +12,19 @@ pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128
     println!("Role granted: {}", msg);
 }
 
-pub fn transfer_admin(target: ContractAddress, new_admin: ContractAddress, module_name: ByteArray) {
+pub fn transfer_admin_and_role(
+    target: ContractAddress, new_admin: ContractAddress, role: u128, module_name: ByteArray
+) {
+    let _grant_admin_role = invoke(
+        target, selector!("grant_role"), array![role.into(), new_admin.into()], Option::Some(MAX_FEE), Option::None
+    )
+        .expect('grant role to new admin failed');
+
+    let _renounce_admin_role = invoke(
+        target, selector!("renounce_role"), array![role.into()], Option::Some(MAX_FEE), Option::None
+    )
+        .expect('renounce role failed');
+
     let _transfer_admin = invoke(
         target, selector!("set_pending_admin"), array![new_admin.into()], Option::Some(MAX_FEE), Option::None
     )

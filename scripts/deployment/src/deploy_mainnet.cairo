@@ -1,10 +1,15 @@
 use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
-use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
+use opus::core::roles::{
+    absorber_roles, allocator_roles, caretaker_roles, controller_roles, equalizer_roles, purger_roles, seer_roles,
+    sentinel_roles, shrine_roles
+};
+use opus::external::roles::pragma_roles;
 use scripts::addresses;
 use scripts::constants;
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
+use wadray::RAY_PERCENT;
 
 
 fn main() {
@@ -152,11 +157,11 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, wsteth, WSTETH_USD_PAIR_ID);
 
     // Set initial allocation
-    let fifty_pct: u128 = 50 * RAY_PERCENT;
+    let fifty_pct: felt252 = (50 * RAY_PERCENT).into();
     let _set_allocation = invoke(
         allocator,
         selector!("set_allocation"),
-        array![2, addresses::mainnet::protocol_fee_recipient().into(), absorber.into(), 2, fifty_pct, fifty_pct],
+        array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, fifty_pct, fifty_pct],
         Option::Some(constants::MAX_FEE),
         Option::None
     )
@@ -165,7 +170,10 @@ fn main() {
 
     // Update prices
     println!("Updating prices");
-    seer.execute_task();
+    let _update_prices = invoke(
+        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+    )
+        .expect('update prices failed');
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
@@ -175,16 +183,16 @@ fn main() {
 
     // Transfer admin role to multisig
     let multisig: ContractAddress = addresses::mainnet::multisig();
-    utils::transfer_admin(absorber, multisig, "Absorber");
-    utils::transfer_admin(allocator, multisig, "Allocator");
-    utils::transfer_admin(caretaker, multisig, "Caretaker");
-    utils::transfer_admin(controller, multisig, "Controller");
-    utils::transfer_admin(equalizer, multisig, "Equalizer");
-    utils::transfer_admin(pragma, multisig, "Pragma");
-    utils::transfer_admin(purger, multisig, "Purger");
-    utils::transfer_admin(seer, multisig, "Seer");
-    utils::transfer_admin(sentinel, multisig, "Sentinel");
-    utils::transfer_admin(shrine, multisig, "Shrine");
+    utils::transfer_admin_and_role(absorber, multisig, absorber_roles::default_admin_role(), "Absorber");
+    utils::transfer_admin_and_role(allocator, multisig, allocator_roles::default_admin_role(), "Allocator");
+    utils::transfer_admin_and_role(caretaker, multisig, caretaker_roles::default_admin_role(), "Caretaker");
+    utils::transfer_admin_and_role(controller, multisig, controller_roles::default_admin_role(), "Controller");
+    utils::transfer_admin_and_role(equalizer, multisig, equalizer_roles::default_admin_role(), "Equalizer");
+    utils::transfer_admin_and_role(pragma, multisig, pragma_roles::default_admin_role(), "Pragma");
+    utils::transfer_admin_and_role(purger, multisig, purger_roles::default_admin_role(), "Purger");
+    utils::transfer_admin_and_role(seer, multisig, seer_roles::default_admin_role(), "Seer");
+    utils::transfer_admin_and_role(sentinel, multisig, sentinel_roles::default_admin_role(), "Sentinel");
+    utils::transfer_admin_and_role(shrine, multisig, shrine_roles::default_admin_role(), "Shrine");
 
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
