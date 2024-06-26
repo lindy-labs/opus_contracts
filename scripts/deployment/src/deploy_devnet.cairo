@@ -145,7 +145,7 @@ fn main() {
         Option::Some(constants::MAX_FEE),
         Option::None
     )
-        .expect('set debt ceiling failed');
+        .expect('set minimum trove value failed');
 
     println!("Minimum trove value set: {}", minimum_trove_value);
 
