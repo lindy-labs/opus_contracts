@@ -29,6 +29,9 @@ inherits = "dev"
 [profile.devnet-user3]
 inherits = "dev"
 
+[profile.mainnet]
+inherits = "release"
+
 [profile.sepolia]
 inherits = "release"
 
