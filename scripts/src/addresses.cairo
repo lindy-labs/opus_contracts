@@ -207,14 +207,14 @@ pub mod mainnet {
     }
 
     pub fn multisig() -> ContractAddress {
-        0x00Ca40fCa4208A0c2a38fc81a66C171623aAC3B913A4365F7f0BC0EB3296573C.try_into().expect('invalid admin address')
+        0x00Ca40fCa4208A0c2a38fc81a66C171623aAC3B913A4365F7f0BC0EB3296573C.try_into().expect('invalid multisig address')
     }
 
     // Tokens
 
     // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
     pub fn usdc() -> ContractAddress {
-        0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8.try_into().expect('invalid usdc address')
+        0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8.try_into().expect('invalid USDC address')
     }
 
     // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
@@ -224,7 +224,7 @@ pub mod mainnet {
 
     // https://research.lido.fi/t/wsteth-deployment-on-starknet/6335
     pub fn wsteth() -> ContractAddress {
-        0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid wstETH address')
+        0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid WSTETH address')
     }
 
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
