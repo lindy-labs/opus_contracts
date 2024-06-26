@@ -540,6 +540,38 @@
         "status": "Success",
         "timestamp": 1718353170,
         "misc": null
+      },
+      "c7bc29b7b77d05ce101d1846fabe2eea9d2a542d0f336b14cb6990733eccb42e": {
+        "name": "declare",
+        "output": {
+          "type": "DeclareResponse",
+          "class_hash": "0x72f44954987927357ab3be26d9b2c21eb04076860f8eef0c7f674c62a1ac4b1",
+          "transaction_hash": "0x230760cad6efd638a13f8c8585754643f626eee8f7c97459b7b0b7d4e5aaf65"
+        },
+        "status": "Success",
+        "timestamp": 1719322102,
+        "misc": null
+      },
+      "5c00b2f67694c6fa3d3df41193f67a18e567e6a590968a19ec1e8cbe24866dee": {
+        "name": "deploy",
+        "output": {
+          "type": "DeployResponse",
+          "contract_address": "0x3280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81",
+          "transaction_hash": "0x2529534b54873218b7aff3e50ad23b2be9ca2c49b8503704a8169a126db2fd4"
+        },
+        "status": "Success",
+        "timestamp": 1719324306,
+        "misc": null
+      },
+      "ce3d894e994bb6800f561e5e7a59238d62fa995e49870910fc58c882d76e037f": {
+        "name": "invoke",
+        "output": {
+          "type": "InvokeResponse",
+          "transaction_hash": "0x7c0a8fa215f11f22a78cce6d8e13aa118e2cd5221cf128a5a14c8c7562ffefe"
+        },
+        "status": "Success",
+        "timestamp": 1719324312,
+        "misc": null
       }
     }
   }

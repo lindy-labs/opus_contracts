@@ -29,6 +29,7 @@ build-external-contracts = [
     "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",
+    "opus::core::transmuter_restricted::transmuter_restricted",
     "opus::external::pragma::pragma",
     "opus::external::switchboard::switchboard",
     "opus::mock::erc20_mintable::erc20_mintable",
