@@ -10,16 +10,6 @@ pub fn strk_addr() -> ContractAddress {
     0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d.try_into().expect('invalid STRK address')
 }
 
-pub fn wbtc_addr() -> ContractAddress {
-    // only on mainnet
-    0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
-}
-
-pub fn wsteth_addr() -> ContractAddress {
-    // only on mainnet
-    0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid wstETH address')
-}
-
 pub mod devnet {
     use starknet::ContractAddress;
 
@@ -218,6 +208,23 @@ pub mod mainnet {
 
     pub fn multisig() -> ContractAddress {
         0x00Ca40fCa4208A0c2a38fc81a66C171623aAC3B913A4365F7f0BC0EB3296573C.try_into().expect('invalid admin address')
+    }
+
+    // Tokens
+
+    // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+    pub fn usdc() -> ContractAddress {
+        0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8.try_into().expect('invalid usdc address')
+    }
+
+    // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+    pub fn wbtc() -> ContractAddress {
+        0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
+    }
+
+    // https://research.lido.fi/t/wsteth-deployment-on-starknet/6335
+    pub fn wsteth() -> ContractAddress {
+        0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid wstETH address')
     }
 
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses

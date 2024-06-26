@@ -2,7 +2,7 @@ use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
 use opus::core::roles::{
     absorber_roles, allocator_roles, caretaker_roles, controller_roles, equalizer_roles, purger_roles, seer_roles,
-    sentinel_roles, shrine_roles
+    sentinel_roles, shrine_roles, transmuter_roles
 };
 use opus::external::roles::pragma_roles;
 use scripts::addresses;
@@ -30,13 +30,18 @@ fn main() {
     let caretaker: ContractAddress = core_deployment::deploy_caretaker(admin, shrine, abbot, sentinel, equalizer);
     let controller: ContractAddress = core_deployment::deploy_controller(admin, shrine);
 
+    // Deploy transmuter
+    let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
+        admin, shrine, addresses::mainnet::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+    );
+
     // Deploy gates
     println!("Deploying Gates");
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
     let eth: ContractAddress = addresses::eth_addr();
     let strk: ContractAddress = addresses::strk_addr();
-    let wbtc: ContractAddress = addresses::wbtc_addr();
-    let wsteth: ContractAddress = addresses::wsteth_addr();
+    let wbtc: ContractAddress = addresses::mainnet::wbtc();
+    let wsteth: ContractAddress = addresses::mainnet::wsteth();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
@@ -72,6 +77,7 @@ fn main() {
     utils::grant_role(shrine, purger, shrine_roles::purger(), "SHR -> PU");
     utils::grant_role(shrine, seer, shrine_roles::seer(), "SHR -> SEER");
     utils::grant_role(shrine, sentinel, shrine_roles::sentinel(), "SHR -> SE");
+    utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH, STRK, WBTC and WSTETH yangs
     println!("Setting up Shrine");
@@ -193,6 +199,9 @@ fn main() {
     utils::transfer_admin_and_role(seer, multisig, seer_roles::default_admin_role(), "Seer");
     utils::transfer_admin_and_role(sentinel, multisig, sentinel_roles::default_admin_role(), "Sentinel");
     utils::transfer_admin_and_role(shrine, multisig, shrine_roles::default_admin_role(), "Shrine");
+    utils::transfer_admin_and_role(
+        usdc_transmuter_restricted, multisig, transmuter_roles::default_admin_role(), "Transmuter[USDC] (R)"
+    );
 
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
@@ -214,4 +223,5 @@ fn main() {
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
+    println!("Transmuter[USDC] (Restricted): {}", usdc_transmuter_restricted);
 }
