@@ -1,4 +1,5 @@
 // Constants for tokens
+pub const USDC_DECIMALS: u8 = 6;
 pub const WBTC_DECIMALS: u8 = 8;
 
 // Constants for oracles

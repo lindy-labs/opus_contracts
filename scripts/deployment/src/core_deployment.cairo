@@ -239,3 +239,18 @@ pub fn deploy_switchboard(admin: ContractAddress, oracle: ContractAddress) -> Co
 
     deploy_switchboard.contract_address
 }
+
+pub fn deploy_transmuter_restricted(
+    admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress, receiver: ContractAddress, ceiling: u128
+) -> ContractAddress {
+    let declare_transmuter_restricted = declare("transmuter_restricted", Option::Some(MAX_FEE), Option::None)
+        .expect('failed transmuter(r) declare');
+    let calldata: Array<felt252> = array![admin.into(), shrine.into(), asset.into(), receiver.into(), ceiling.into()];
+
+    let deploy_transmuter_restricted = deploy(
+        declare_transmuter_restricted.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed transmuter(r) deploy');
+
+    deploy_transmuter_restricted.contract_address
+}
