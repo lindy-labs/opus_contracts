@@ -20,7 +20,7 @@ pub mod core {
     pub mod transmuter_restricted;
 }
 
-mod external {
+pub mod external {
     pub mod interfaces;
     pub mod pragma;
     pub mod roles;

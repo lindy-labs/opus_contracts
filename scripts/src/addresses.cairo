@@ -10,11 +10,6 @@ pub fn strk_addr() -> ContractAddress {
     0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d.try_into().expect('invalid STRK address')
 }
 
-pub fn wbtc_addr() -> ContractAddress {
-    // only on mainnet
-    0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
-}
-
 pub mod devnet {
     use starknet::ContractAddress;
 
@@ -201,5 +196,47 @@ pub mod sepolia {
 
     pub fn usdc_transmuter_restricted() -> ContractAddress {
         0x3280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81.try_into().unwrap()
+    }
+}
+
+pub mod mainnet {
+    use starknet::ContractAddress;
+
+    pub fn admin() -> ContractAddress {
+        0x05ef3d22382af4291903e019c3a947e1ad808d8772303a7a7e564dc8376d466a.try_into().expect('invalid admin address')
+    }
+
+    pub fn multisig() -> ContractAddress {
+        0x00Ca40fCa4208A0c2a38fc81a66C171623aAC3B913A4365F7f0BC0EB3296573C.try_into().expect('invalid multisig address')
+    }
+
+    // Tokens
+
+    // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+    pub fn usdc() -> ContractAddress {
+        0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8.try_into().expect('invalid USDC address')
+    }
+
+    // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+    pub fn wbtc() -> ContractAddress {
+        0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
+    }
+
+    // https://research.lido.fi/t/wsteth-deployment-on-starknet/6335
+    pub fn wsteth() -> ContractAddress {
+        0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid WSTETH address')
+    }
+
+    // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
+    pub fn pragma_spot_oracle() -> ContractAddress {
+        0x2a85bd616f912537c50a49a4076db02c00b29b2cdc8a197ce92ed1837fa875b
+            .try_into()
+            .expect('invalid pragma spot address')
+    }
+
+    pub fn pragma_twap_oracle() -> ContractAddress {
+        0x49eefafae944d07744d07cc72a5bf14728a6fb463c3eae5bca13552f5d455fd
+            .try_into()
+            .expect('invalid pragma twap address')
     }
 }

@@ -1,14 +1,15 @@
-use deployment::{core_deployment, mock_deployment, periphery_deployment, utils};
-use opus::constants::{
-    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, USDC_DECIMALS, WBTC_DECIMALS, WBTC_USD_PAIR_ID
+use deployment::{core_deployment, periphery_deployment, utils};
+use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
+use opus::core::roles::{
+    absorber_roles, allocator_roles, caretaker_roles, controller_roles, equalizer_roles, purger_roles, seer_roles,
+    sentinel_roles, shrine_roles, transmuter_roles
 };
-use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
-use opus::utils::math::wad_to_fixed_point;
+use opus::external::roles::pragma_roles;
 use scripts::addresses;
 use scripts::constants;
-use scripts::mock_utils;
 use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
 use starknet::{ClassHash, ContractAddress};
+use wadray::RAY_PERCENT;
 
 
 fn main() {
@@ -29,22 +30,9 @@ fn main() {
     let caretaker: ContractAddress = core_deployment::deploy_caretaker(admin, shrine, abbot, sentinel, equalizer);
     let controller: ContractAddress = core_deployment::deploy_controller(admin, shrine);
 
-    // Deploy mocks
-    println!("Deploying mocks");
-    let mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
-    let mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
-
-    let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
-    let usdc: ContractAddress = mock_deployment::deploy_erc20_mintable(
-        erc20_mintable_class_hash, 'USD Coin', 'USDC', USDC_DECIMALS, constants::USDC_INITIAL_SUPPLY, admin
-    );
-    let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
-        erc20_mintable_class_hash, 'Wrapped BTC', 'WBTC', WBTC_DECIMALS, constants::WBTC_INITIAL_SUPPLY, admin
-    );
-
     // Deploy transmuter
     let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
-        admin, shrine, usdc, admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+        admin, shrine, addresses::mainnet::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
     );
 
     // Deploy gates
@@ -52,19 +40,25 @@ fn main() {
     let gate_class_hash: ClassHash = core_deployment::declare_gate();
     let eth: ContractAddress = addresses::eth_addr();
     let strk: ContractAddress = addresses::strk_addr();
+    let wbtc: ContractAddress = addresses::mainnet::wbtc();
+    let wsteth: ContractAddress = addresses::mainnet::wsteth();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
-    let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
+    let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
+    let wsteth_gate: ContractAddress = core_deployment::deploy_gate(
+        gate_class_hash, shrine, wsteth, sentinel, "WSTETH"
+    );
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
-        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD
+        admin,
+        addresses::mainnet::pragma_spot_oracle(),
+        addresses::mainnet::pragma_twap_oracle(),
+        constants::PRAGMA_FRESHNESS_THRESHOLD,
+        constants::PRAGMA_SOURCES_THRESHOLD
     );
-
-    let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard);
-
-    utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
+    utils::set_oracles_to_seer(seer, array![pragma].span());
 
     // Grant roles
     println!("Setting up roles");
@@ -85,7 +79,7 @@ fn main() {
     utils::grant_role(shrine, sentinel, shrine_roles::sentinel(), "SHR -> SE");
     utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
-    // Adding ETH and STRK yangs
+    // Adding ETH, STRK, WBTC and WSTETH yangs
     println!("Setting up Shrine");
 
     utils::add_yang_to_sentinel(
@@ -102,6 +96,18 @@ fn main() {
 
     utils::add_yang_to_sentinel(
         sentinel,
+        strk,
+        strk_gate,
+        "STRK",
+        constants::INITIAL_STRK_AMT,
+        constants::INITIAL_STRK_ASSET_MAX,
+        constants::INITIAL_STRK_THRESHOLD,
+        constants::INITIAL_STRK_PRICE,
+        constants::INITIAL_STRK_BASE_RATE,
+    );
+
+    utils::add_yang_to_sentinel(
+        sentinel,
         wbtc,
         wbtc_gate,
         "WBTC",
@@ -114,14 +120,14 @@ fn main() {
 
     utils::add_yang_to_sentinel(
         sentinel,
-        strk,
-        strk_gate,
-        "STRK",
-        constants::INITIAL_STRK_AMT,
-        constants::INITIAL_STRK_ASSET_MAX,
-        constants::INITIAL_STRK_THRESHOLD,
-        constants::INITIAL_STRK_PRICE,
-        constants::INITIAL_STRK_BASE_RATE,
+        wsteth,
+        wsteth_gate,
+        "WSTETH",
+        constants::INITIAL_WSTETH_AMT,
+        constants::INITIAL_WSTETH_ASSET_MAX,
+        constants::INITIAL_WSTETH_THRESHOLD,
+        constants::INITIAL_WSTETH_PRICE,
+        constants::INITIAL_WSTETH_BASE_RATE,
     );
 
     // Set up debt ceiling and minimum trove value in Shrine
@@ -149,43 +155,31 @@ fn main() {
 
     println!("Minimum trove value set: {}", minimum_trove_value);
 
-    // Set up mock oracles
-    println!("Setting up mock oracles");
-    let eth_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_ETH_PRICE.into(), PRAGMA_DECIMALS);
-    let strk_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_WBTC_PRICE.into(), PRAGMA_DECIMALS);
-    let wbtc_pragma_price: u128 = wad_to_fixed_point(constants::INITIAL_STRK_PRICE.into(), PRAGMA_DECIMALS);
-
-    mock_utils::set_mock_pragma_prices(
-        mock_pragma,
-        array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
-        array![
-            (eth_pragma_price, eth_pragma_price),
-            (strk_pragma_price, strk_pragma_price),
-            (wbtc_pragma_price, wbtc_pragma_price),
-        ]
-            .span()
-    );
-
-    mock_utils::set_mock_switchboard_prices(
-        mock_switchboard,
-        array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
-        array![
-            constants::INITIAL_ETH_PRICE.into(),
-            constants::INITIAL_STRK_PRICE.into(),
-            constants::INITIAL_WBTC_PRICE.into(),
-        ]
-            .span()
-    );
-
     // Set up oracles
     println!("Setting up oracles");
     utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
+    utils::set_yang_pair_id_for_oracle(pragma, wsteth, WSTETH_USD_PAIR_ID);
 
-    utils::set_yang_pair_id_for_oracle(switchboard, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
+    // Set initial allocation
+    let fifty_pct: felt252 = (50 * RAY_PERCENT).into();
+    let _set_allocation = invoke(
+        allocator,
+        selector!("set_allocation"),
+        array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, fifty_pct, fifty_pct],
+        Option::Some(constants::MAX_FEE),
+        Option::None
+    )
+        .expect('set allocation failed');
+    println!("Allocation updated");
+
+    // Update prices
+    println!("Updating prices");
+    let _update_prices = invoke(
+        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+    )
+        .expect('update prices failed');
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
@@ -193,26 +187,21 @@ fn main() {
         admin, shrine, sentinel, abbot, purger
     );
 
-    // Transmute initial amount
-    let transmute_amt: u128 = 250000000000; // 250,000 (10**6)
-    let _approve_usdc = invoke(
-        usdc,
-        selector!("approve"),
-        array![usdc_transmuter_restricted.into(), transmute_amt.into(), 0],
-        Option::Some(constants::MAX_FEE),
-        Option::None,
-    )
-        .expect('approve USDC failed');
-    let _transmute = invoke(
-        usdc_transmuter_restricted,
-        selector!("transmute"),
-        array![transmute_amt.into()],
-        Option::Some(constants::MAX_FEE),
-        Option::None
-    )
-        .expect('transmute failed');
-
-    println!("Transmuted {} USDC for CASH", transmute_amt);
+    // Transfer admin role to multisig
+    let multisig: ContractAddress = addresses::mainnet::multisig();
+    utils::transfer_admin_and_role(absorber, multisig, absorber_roles::default_admin_role(), "Absorber");
+    utils::transfer_admin_and_role(allocator, multisig, allocator_roles::default_admin_role(), "Allocator");
+    utils::transfer_admin_and_role(caretaker, multisig, caretaker_roles::default_admin_role(), "Caretaker");
+    utils::transfer_admin_and_role(controller, multisig, controller_roles::default_admin_role(), "Controller");
+    utils::transfer_admin_and_role(equalizer, multisig, equalizer_roles::default_admin_role(), "Equalizer");
+    utils::transfer_admin_and_role(pragma, multisig, pragma_roles::default_admin_role(), "Pragma");
+    utils::transfer_admin_and_role(purger, multisig, purger_roles::default_admin_role(), "Purger");
+    utils::transfer_admin_and_role(seer, multisig, seer_roles::default_admin_role(), "Seer");
+    utils::transfer_admin_and_role(sentinel, multisig, sentinel_roles::default_admin_role(), "Sentinel");
+    utils::transfer_admin_and_role(shrine, multisig, shrine_roles::default_admin_role(), "Shrine");
+    utils::transfer_admin_and_role(
+        usdc_transmuter_restricted, multisig, transmuter_roles::default_admin_role(), "Transmuter[USDC] (R)"
+    );
 
     // Print summary table of deployed contracts
     println!("-------------------------------------------------\n");
@@ -228,15 +217,11 @@ fn main() {
     println!("Gate[ETH]: {}", eth_gate);
     println!("Gate[STRK]: {}", strk_gate);
     println!("Gate[WBTC]: {}", wbtc_gate);
-    println!("Mock Pragma: {}", mock_pragma);
-    println!("Mock Switchboard: {}", mock_switchboard);
+    println!("Gate[WSTETH]: {}", wsteth_gate);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
-    println!("Switchboard: {}", switchboard);
-    println!("Token[USDC]: {}", usdc);
-    println!("Token[WBTC]: {}", wbtc);
     println!("Transmuter[USDC] (Restricted): {}", usdc_transmuter_restricted);
 }

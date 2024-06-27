@@ -201,10 +201,13 @@ pub fn deploy_gate(
     token_name: ByteArray
 ) -> ContractAddress {
     let gate_calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into()];
-    let deploy_gate = deploy(gate_class_hash, gate_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
-        .expect('failed ETH gate deploy');
-
-    deploy_gate.contract_address
+    let deploy_gate_result = deploy(
+        gate_class_hash, gate_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    );
+    if deploy_gate_result.is_err() {
+        panic!("failed {} gate deploy", token_name);
+    }
+    deploy_gate_result.unwrap().contract_address
 }
 
 pub fn deploy_pragma(

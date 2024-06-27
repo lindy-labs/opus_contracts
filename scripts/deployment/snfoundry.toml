@@ -3,6 +3,11 @@ account = "devnet_admin"
 accounts-file = "../devnet_accounts.json"
 url = "http://127.0.0.1:5050"
 
+[sncast.mainnet]
+account = "../mainnet_admin.json"
+keystore = "../mainnet_admin_keystore.json"
+url = ""
+
 [sncast.sepolia]
 account = "../sepolia_admin.json"
 keystore = "../sepolia_admin_keystore.json"
