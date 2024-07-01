@@ -4,7 +4,7 @@ pub const MAX_FEE: felt252 = 9999999999999999;
 
 // Constants for Shrine
 pub const INITIAL_DEBT_CEILING: u128 = 1000000000000000000000000; // 1_000_000 (Wad)
-pub const MINIMUM_TROVE_VALUE: u128 = 50000000000000000000; // 50 (Wad)
+pub const MINIMUM_TROVE_VALUE: u128 = 100000000000000000000; // 100 (Wad)
 
 // Constants for Pragma spot
 pub const PRAGMA_FRESHNESS_THRESHOLD: u64 = 3600; // 1 hour
