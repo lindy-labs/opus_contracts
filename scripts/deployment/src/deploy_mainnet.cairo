@@ -13,7 +13,7 @@ use wadray::RAY_PERCENT;
 
 
 fn main() {
-    let admin: ContractAddress = addresses::devnet::admin();
+    let admin: ContractAddress = addresses::mainnet::admin();
 
     println!("Deploying contracts");
 
