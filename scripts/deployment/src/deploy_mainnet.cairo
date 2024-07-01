@@ -163,11 +163,12 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, wsteth, WSTETH_USD_PAIR_ID);
 
     // Set initial allocation
-    let fifty_pct: felt252 = (50 * RAY_PERCENT).into();
+    let twenty_pct: felt252 = (20 * RAY_PERCENT).into();
+    let eighty_pct: felt252 = (80 * RAY_PERCENT).into();
     let _set_allocation = invoke(
         allocator,
         selector!("set_allocation"),
-        array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, fifty_pct, fifty_pct],
+        array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, twenty_pct, eighty_pct],
         Option::Some(constants::MAX_FEE),
         Option::None
     )
