@@ -195,7 +195,7 @@ pub mod sepolia {
     }
 
     pub fn usdc_transmuter_restricted() -> ContractAddress {
-        0x3280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81.try_into().unwrap()
+        0x03280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81.try_into().unwrap()
     }
 }
 
