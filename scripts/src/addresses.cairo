@@ -203,7 +203,7 @@ pub mod mainnet {
     use starknet::ContractAddress;
 
     pub fn admin() -> ContractAddress {
-        0x05ef3d22382af4291903e019c3a947e1ad808d8772303a7a7e564dc8376d466a.try_into().expect('invalid admin address')
+        0x0684f8b5dd37cad41327891262cb17397fdb3daf54e861ec90f781c004972b15.try_into().expect('invalid admin address')
     }
 
     pub fn multisig() -> ContractAddress {
