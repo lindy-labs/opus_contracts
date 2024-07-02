@@ -12,13 +12,13 @@ There are two ways to liquidate an unhealthy trove:
 
 1.  `liquidate`: the caller pays down the unhealthy trove's debt using its own `yin` and gets the corresponding collateral value plus a liquidation penalty as reward.
 
-    <figure><img src="../.gitbook/assets/image (10).png" alt=""><figcaption></figcaption></figure>
+    <figure><img src="../../.gitbook/assets/image (10).png" alt=""><figcaption></figcaption></figure>
 2.  `absorb`: an absorption where some or all of the Absorber's `yin` balance is used to pay down the unhealthy trove's debt and the Absorber receives the corresponding collateral value plus a liquidation penalty, and the caller receives a compensation.&#x20;
 
     * If the Absorber's `yin` balance is insufficient to cover the amount to be paid down, then the remainder debt is redistributed.&#x20;
     * If the Absorber has no `yin` or if the Absorber is not operational, then the entire amount of debt to be paid down is redistributed. The caller will still receive compensation.
 
-    <figure><img src="../.gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
+    <figure><img src="../../.gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
 
 Both functions should revert (via the call to `shrine.melt`) if the Shrine is not live.
 

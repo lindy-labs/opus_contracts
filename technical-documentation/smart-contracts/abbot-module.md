@@ -30,13 +30,13 @@ Opening a trove reserves a trove ID and makes the caller address the owner of th
 
 ## Depositing collateral
 
-<figure><img src="../.gitbook/assets/image (8).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (8).png" alt=""><figcaption></figcaption></figure>
 
 When a user deposits collateral into a trove, the underlying tokens are transferred to the Gate for that collateral, and the trove is incremented with the corresponding amount of that `yang` in Shrine.
 
 ## Withdrawing collateral
 
-<figure><img src="../.gitbook/assets/image (9).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (9).png" alt=""><figcaption></figcaption></figure>
 
 When a user withdraws collateral from a trove, the underlying tokens are transferred from the Gate for that collateral to the user, and the corresponding amount of that `yang` is decremented from the trove in Shrine.
 
@@ -48,7 +48,7 @@ Note that there are a couple of restrictions when it comes to withdrawing collat
 
 ## Forging synthetic
 
-<figure><img src="../.gitbook/assets/image (6).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (6).png" alt=""><figcaption></figcaption></figure>
 
 When a user forges synthetic for a trove, the synthetic is minted by the Shrine directly to the user. The amount forged is then added to the trove's debt and starts to accrue interest.
 
@@ -60,7 +60,7 @@ Note that there are a couple of restrictions when it comes to forging synthetic 
 
 ## Melting synthetic
 
-<figure><img src="../.gitbook/assets/image (7).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (7).png" alt=""><figcaption></figcaption></figure>
 
 When a user melts synthetic for a trove, the synthetic is directly burnt from the user. The amount melted is then decremented from the trove's debt.
 

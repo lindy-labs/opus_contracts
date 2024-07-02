@@ -26,7 +26,7 @@ To prevent confusion with "deposit" and "withdrawal" of `yang` for trove users, 
 
 ## Providing liquidity
 
-<figure><img src="../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
 
 When a user provides `yin` to the Absorber, the user is issued a number of shares in an epoch for internal accounting purposes. The epoch starts from index 1, and is incremented when either (1) the Absorber's `yin` balance falls below the minimum amount; or (2) the amount of `yin` per share falls below a certain threshold.
 
@@ -74,7 +74,7 @@ Note that this requirement is distinct from, and in addition to, the initial sha
 
 ## Removing liquidity
 
-<figure><img src="../.gitbook/assets/image (13).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (13).png" alt=""><figcaption></figcaption></figure>
 
 A provider who has provided `yin` can subsequently elect to remove such remaining amount. If the Absorber's `yin` has been fully used for a provider's epoch, then the provider may not have any remaining `yin`  entitlement to be withdrawn.
 
@@ -96,7 +96,7 @@ Regardless of whether the provider has any remaining `yin` entitlement to be wit
 
 ## Withdrawing absorbed assets and rewards
 
-<figure><img src="../.gitbook/assets/image (14).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (14).png" alt=""><figcaption></figcaption></figure>
 
 A provider may also opt to withdraw absorbed assets and rewards only by calling `reap`. This action is not subject to any preconditions.
 

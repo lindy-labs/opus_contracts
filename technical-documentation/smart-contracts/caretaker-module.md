@@ -14,7 +14,7 @@ The Caretaker module is responsible for deprecating the entire protocol, and par
 
 ## Shutdown
 
-<figure><img src="../.gitbook/assets/image (15).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (15).png" alt=""><figcaption></figcaption></figure>
 
 Once `shut` is executed, all troves' debt cannot be repaid, and all collateral that is needed to back the value of the total amount of debt forged by troves is transferred from the Shrine to the Caretaker. Anyone may then subsequently burn `yin` to claim a proportional percentage of this collateral, up to the total amount of the troves' debt that the Caretaker is supposed to back. The total troves' debt at the time of shutdown is stored in the Caretaker, and is gradually decremented as users call `reclaim`.
 
@@ -28,13 +28,13 @@ In addition, the protocol owned `yang` amounts are rebased to zero to the benefi
 
 ## Redeeming \`yin\` for assets
 
-<figure><img src="../.gitbook/assets/image (17).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (17).png" alt=""><figcaption></figcaption></figure>
 
 After `shut`, `yin` holders may exchange their `yin` for a percentage of the collateral assets in the Caretaker. The amount of assets a `yin` holder is entitled to is proportional to the remaining amount of `yin` that is reclaimable. Users may rely on `preview_reclaim` to determine the amount of assets they are entitled to for a given `yin` amount.
 
 ## Withdrawing remaining collateral from troves
 
-<figure><img src="../.gitbook/assets/image (16).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/image (16).png" alt=""><figcaption></figcaption></figure>
 
 After `shut`, trove holders may withdraw all remaining collateral in their troves. Due to the system-wide redistribution during `shut`, the amount of collateral remaining for withdrawal will likely be a fraction of what was deposited in the trove prior to `shut`. Trove owners may rely on `preview_release` to determine the amount of assets they are entitled to withdraw from their trove.
 

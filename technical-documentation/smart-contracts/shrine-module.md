@@ -87,7 +87,7 @@ Note that whenever any base rate needs to be updated, all other base rates will 
 
 Within an era, there are also multiple variations for calculating the average price of a `yang`, depending on the available price history, which in turn determines the value of a trove and the weighted interest rate:
 
-<figure><img src="../.gitbook/assets/Average price determination.png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/Average price determination.png" alt=""><figcaption></figcaption></figure>
 
 Within the interval, it is possible that interest rates for the current block may be charged based on a different price and/or multiplier value for different users depending on when the price oracle and/or multiplier value is updated. However, this does not affect the integrity of the Shrine’s bookkeeping for accrued interest because it is determined only at the point of charging. Once the interval has passed, the latest price and multiplier value will be taken as the canonical value for all calculations moving forward.
 
