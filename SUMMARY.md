@@ -32,3 +32,4 @@
   * [Onboarding collateral](technical-documentation/governance/onboarding-collateral.md)
   * [Monitoring collateral](technical-documentation/governance/monitoring-collateral.md)
   * [Onboarding a reward to the Absorber](technical-documentation/governance/onboarding-a-reward-to-the-absorber.md)
+* [Deployed Contracts](technical-documentation/deployed-contracts.md)
