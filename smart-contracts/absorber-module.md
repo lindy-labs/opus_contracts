@@ -26,7 +26,7 @@ To prevent confusion with "deposit" and "withdrawal" of `yang` for trove users, 
 
 ## Providing liquidity
 
-<figure><img src="../../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (12).png" alt=""><figcaption></figcaption></figure>
 
 When a user provides `yin` to the Absorber, the user is issued a number of shares in an epoch for internal accounting purposes. The epoch starts from index 1, and is incremented when either (1) the Absorber's `yin` balance falls below the minimum amount; or (2) the amount of `yin` per share falls below a certain threshold.
 
@@ -74,7 +74,7 @@ Note that this requirement is distinct from, and in addition to, the initial sha
 
 ## Removing liquidity
 
-<figure><img src="../../.gitbook/assets/image (13).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (13).png" alt=""><figcaption></figcaption></figure>
 
 A provider who has provided `yin` can subsequently elect to remove such remaining amount. If the Absorber's `yin` has been fully used for a provider's epoch, then the provider may not have any remaining `yin`  entitlement to be withdrawn.
 
@@ -87,7 +87,7 @@ Once a provider has submitted a `request`, the timelock (initial value of 1 minu
 
 The purpose of imposing these restrictions are to:
 
-1. ensure there is sufficient liquidity to absorb any prospective liquidations when the risk of liquidations across the high in recovery mode;
+1. ensure there is sufficient liquidity to absorb any prospective liquidations when there is a high risk of liquidations across the protocol;
 2. prevent risk-free yield-farming tactics where a provider earns yield in the form of interest and reward tokens, if any, but frontruns liquidations by removing liquidity just before the liquidation happens.
 
 Consequently, if a provider provides liquidity after submitting a request, the request would be invalidated by the provision, and the provider will need to submit a new request.
@@ -96,7 +96,7 @@ Regardless of whether the provider has any remaining `yin` entitlement to be wit
 
 ## Withdrawing absorbed assets and rewards
 
-<figure><img src="../../.gitbook/assets/image (14).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (14).png" alt=""><figcaption></figcaption></figure>
 
 A provider may also opt to withdraw absorbed assets and rewards only by calling `reap`. This action is not subject to any preconditions.
 
