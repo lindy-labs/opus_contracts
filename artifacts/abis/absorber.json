@@ -1,0 +1,934 @@
+[
+  {
+    "type": "impl",
+    "name": "IAbsorberImpl",
+    "interface_name": "opus::interfaces::IAbsorber::IAbsorber"
+  },
+  {
+    "type": "struct",
+    "name": "opus::interfaces::IAbsorber::IBlesserDispatcher",
+    "members": [
+      {
+        "name": "contract_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::Reward",
+    "members": [
+      {
+        "name": "asset",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "blesser",
+        "type": "opus::interfaces::IAbsorber::IBlesserDispatcher"
+      },
+      {
+        "name": "is_active",
+        "type": "core::bool"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<opus::types::Reward>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<opus::types::Reward>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "wadray::wadray::Wad",
+    "members": [
+      {
+        "name": "val",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::Provision",
+    "members": [
+      {
+        "name": "epoch",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "shares",
+        "type": "wadray::wadray::Wad"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::Request",
+    "members": [
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "timelock",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "is_valid",
+        "type": "core::bool"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::DistributionInfo",
+    "members": [
+      {
+        "name": "asset_amt_per_share",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "error",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::AssetBalance",
+    "members": [
+      {
+        "name": "address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<opus::types::AssetBalance>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<opus::types::AssetBalance>"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::IAbsorber::IAbsorber",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_rewards_count",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u8"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_rewards",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Span::<opus::types::Reward>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_current_epoch",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_absorptions_count",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_absorption_epoch",
+        "inputs": [
+          {
+            "name": "absorption_id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_total_shares_for_current_epoch",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "wadray::wadray::Wad"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_provision",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "opus::types::Provision"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_provider_last_absorption",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_provider_request",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "opus::types::Request"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_asset_absorption",
+        "inputs": [
+          {
+            "name": "asset",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "absorption_id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_cumulative_reward_amt_by_epoch",
+        "inputs": [
+          {
+            "name": "asset",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "opus::types::DistributionInfo"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_provider_last_reward_cumulative",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "asset",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_live",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "is_operational",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "preview_remove",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "wadray::wadray::Wad"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "preview_reap",
+        "inputs": [
+          {
+            "name": "provider",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "(core::array::Span::<opus::types::AssetBalance>, core::array::Span::<opus::types::AssetBalance>)"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "set_reward",
+        "inputs": [
+          {
+            "name": "asset",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "blesser",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "is_active",
+            "type": "core::bool"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "provide",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "wadray::wadray::Wad"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "request",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "remove",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "wadray::wadray::Wad"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "reap",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "update",
+        "inputs": [
+          {
+            "name": "asset_balances",
+            "type": "core::array::Span::<opus::types::AssetBalance>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "kill",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlPublic",
+    "interface_name": "access_control::access_control::IAccessControl"
+  },
+  {
+    "type": "interface",
+    "name": "access_control::access_control::IAccessControl",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_roles",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "has_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pending_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grant_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revoke_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounce_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_pending_admin",
+        "inputs": [
+          {
+            "name": "new_admin",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_admin",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "shrine",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "sentinel",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::AdminChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::NewPendingAdmin",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleGranted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_granted",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleRevoked",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_revoked",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AdminChanged",
+        "type": "access_control::access_control::access_control_component::AdminChanged",
+        "kind": "nested"
+      },
+      {
+        "name": "NewPendingAdmin",
+        "type": "access_control::access_control::access_control_component::NewPendingAdmin",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleGranted",
+        "type": "access_control::access_control::access_control_component::RoleGranted",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleRevoked",
+        "type": "access_control::access_control::access_control_component::RoleRevoked",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::RewardSet",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "asset",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "blesser",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "is_active",
+        "type": "core::bool",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::EpochChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "new_epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Provide",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "provider",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "yin",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::RequestSubmitted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "provider",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "timestamp",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "timelock",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Remove",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "provider",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "yin",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Reap",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "provider",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "absorbed_assets",
+        "type": "core::array::Span::<opus::types::AssetBalance>",
+        "kind": "data"
+      },
+      {
+        "name": "reward_assets",
+        "type": "core::array::Span::<opus::types::AssetBalance>",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Gain",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "assets",
+        "type": "core::array::Span::<opus::types::AssetBalance>",
+        "kind": "data"
+      },
+      {
+        "name": "total_recipient_shares",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      },
+      {
+        "name": "absorption_id",
+        "type": "core::integer::u32",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Bestow",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "assets",
+        "type": "core::array::Span::<opus::types::AssetBalance>",
+        "kind": "data"
+      },
+      {
+        "name": "total_recipient_shares",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u32",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Killed",
+    "kind": "struct",
+    "members": []
+  },
+  {
+    "type": "event",
+    "name": "opus::core::absorber::absorber::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AccessControlEvent",
+        "type": "access_control::access_control::access_control_component::Event",
+        "kind": "nested"
+      },
+      {
+        "name": "RewardSet",
+        "type": "opus::core::absorber::absorber::RewardSet",
+        "kind": "nested"
+      },
+      {
+        "name": "EpochChanged",
+        "type": "opus::core::absorber::absorber::EpochChanged",
+        "kind": "nested"
+      },
+      {
+        "name": "Provide",
+        "type": "opus::core::absorber::absorber::Provide",
+        "kind": "nested"
+      },
+      {
+        "name": "RequestSubmitted",
+        "type": "opus::core::absorber::absorber::RequestSubmitted",
+        "kind": "nested"
+      },
+      {
+        "name": "Remove",
+        "type": "opus::core::absorber::absorber::Remove",
+        "kind": "nested"
+      },
+      {
+        "name": "Reap",
+        "type": "opus::core::absorber::absorber::Reap",
+        "kind": "nested"
+      },
+      {
+        "name": "Gain",
+        "type": "opus::core::absorber::absorber::Gain",
+        "kind": "nested"
+      },
+      {
+        "name": "Bestow",
+        "type": "opus::core::absorber::absorber::Bestow",
+        "kind": "nested"
+      },
+      {
+        "name": "Killed",
+        "type": "opus::core::absorber::absorber::Killed",
+        "kind": "nested"
+      }
+    ]
+  }
+]
