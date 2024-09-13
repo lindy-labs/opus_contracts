@@ -10,6 +10,8 @@ Note that the predetermined asset that has been deposited in exchange for yin ca
 
 Each Transmuter will be tied to a specific asset. Hence, there may be multiple transmuters for different assets, or even multiple transmuters for the same asset.
 
+For the purposes of bootstrapping the protocol, a restricted variant of the Transmuter has been deployed at launch that allows only the admin multisig to mint up to 250,000 CASH with USDC.
+
 ## Description of key functions
 
 1. `transmute`: mint an amount of yin by depositing an equivalent amount of the predetermined asset, subject to fees if any
