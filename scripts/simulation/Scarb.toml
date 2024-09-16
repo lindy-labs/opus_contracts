@@ -16,6 +16,14 @@ setup_trove = """
 rm open_trove_alpha-sepolia_state.json 2> /dev/null; 
 sncast --account devnet_user1 --accounts-file ../devnet_accounts.json --url http://localhost:5050 script run open_trove --package simulation"""
 
+setup_liquidation = """
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run open_trove --package simulation; 
+rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run open_trove --package simulation;
+rm open_trove_max_forge_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user3 script run open_trove_max_forge --package simulation;
+curl -X POST http://localhost:5050/increase_time -H "Content-Type: application/json" -d '{ "time": 1800  }';
+rm crash_prices_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run crash_prices --package simulation;"""
+
+
 setup_absorption = """
 rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user1 script run open_trove --package simulation; 
 rm open_trove_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet-user2 script run open_trove --package simulation;
