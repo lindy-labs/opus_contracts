@@ -8,7 +8,7 @@ use starknet::ContractAddress;
 use wadray::Ray;
 
 fn main() {
-    let pct_initial_price: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
+    let pct_initial_price: Ray = 900000000000000000000000000_u128.into(); // 90% (Ray)
 
     let eth_pragma_price: u128 = wad_to_fixed_point(
         wadray::rmul_wr(constants::INITIAL_ETH_PRICE.into(), pct_initial_price), PRAGMA_DECIMALS

@@ -14,7 +14,7 @@ fn main() {
         2,
         // eth
         addresses::eth_addr().into(),
-        // 1 eth (Wad)
+        // 10 eth (Wad)
         10000000000000000000.into(),
         // strk
         addresses::strk_addr().into(),

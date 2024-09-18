@@ -14,8 +14,8 @@ fn main() {
         2,
         // eth
         addresses::eth_addr().into(),
-        // 0.5 eth (Wad)
-        5000000000000000000.into(),
+        // 5 eth (Wad)
+        (5 * WAD_ONE).into(),
         // strk
         addresses::strk_addr().into(),
         (50 * WAD_ONE).into(),
