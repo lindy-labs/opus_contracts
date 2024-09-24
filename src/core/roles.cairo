@@ -68,6 +68,17 @@ pub mod purger_roles {
     }
 }
 
+pub mod receptor_roles {
+    pub const SET_ORACLE_EXTENSION: u128 = 1;
+    pub const SET_QUOTE_TOKENS: u128 = 2;
+    pub const SET_TWAP_DURATION: u128 = 4;
+
+    #[inline(always)]
+    pub fn default_admin_role() -> u128 {
+        SET_ORACLE_EXTENSION + SET_QUOTE_TOKENS + SET_TWAP_DURATION
+    }
+}
+
 pub mod seer_roles {
     pub const SET_ORACLES: u128 = 1;
     pub const SET_UPDATE_FREQUENCY: u128 = 2;

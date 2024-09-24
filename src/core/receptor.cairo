@@ -2,11 +2,12 @@
 pub mod receptor {
     use access_control::access_control_component;
     use core::num::traits::Zero;
+    use opus::core::roles::receptor_roles;
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::math::x128_to_wad;
+    use opus::utils::math::pow;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -25,6 +26,7 @@ pub mod receptor {
     //
 
     pub const NUM_QUOTE_TOKENS: u32 = 3;
+    const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
 
     //
     // Storage
@@ -51,6 +53,7 @@ pub mod receptor {
         AccessControlEvent: access_control_component::Event,
         QuoteTokensUpdated: QuoteTokensUpdated,
         Record: Record,
+        TwapDurationUpdated: TwapDurationUpdated,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -63,6 +66,11 @@ pub mod receptor {
         quotes: Span<Wad>
     }
 
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct TwapDurationUpdated {
+        twap_duration: u64
+    }
+
     //
     // Constructor
     //
@@ -70,13 +78,18 @@ pub mod receptor {
     #[constructor]
     fn constructor(
         ref self: ContractState,
+        admin: ContractAddress,
         shrine: ContractAddress,
         oracle_extension: ContractAddress,
+        twap_duration: u64,
         quote_tokens: Span<QuoteTokenInfo>
     ) {
+        self.access_control.initializer(admin, Option::Some(receptor_roles::default_admin_role()));
+
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
 
         self.set_oracle_extension_helper(oracle_extension);
+        self.set_twap_duration_helper(twap_duration);
         self.set_quote_tokens_helper(quote_tokens);
     }
 
@@ -102,14 +115,6 @@ pub mod receptor {
             }
         }
 
-        fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
-            self.set_oracle_extension_helper(oracle_extension);
-        }
-
-        fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<QuoteTokenInfo>) {
-            self.set_quote_tokens_helper(quote_tokens);
-        }
-
         fn get_quotes(self: @ContractState) -> Span<Wad> {
             let oracle_extension = self.oracle_extension.read();
             let ts = get_block_timestamp();
@@ -128,7 +133,7 @@ pub mod receptor {
                 let quote: u256 = oracle_extension
                     .get_price_x128_over_period(cash, quote_token_info.address, start_time, ts);
 
-                let scaled_quote: Wad = x128_to_wad(quote, quote_token_info.decimals);
+                let scaled_quote: Wad = scale_x128_to_wad(quote, quote_token_info.decimals);
 
                 assert(scaled_quote.is_non_zero(), 'REC: Quote is zero');
 
@@ -137,9 +142,31 @@ pub mod receptor {
             }
         }
 
+        fn get_twap_duration(self: @ContractState) -> u64 {
+            self.twap_duration.read()
+        }
+
         fn get_yin_price(self: @ContractState) -> Wad {
             let quotes = self.get_quotes();
             get_median_quote(quotes)
+        }
+
+        fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
+            self.access_control.assert_has_role(receptor_roles::SET_ORACLE_EXTENSION);
+
+            self.set_oracle_extension_helper(oracle_extension);
+        }
+
+        fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<QuoteTokenInfo>) {
+            self.access_control.assert_has_role(receptor_roles::SET_QUOTE_TOKENS);
+
+            self.set_quote_tokens_helper(quote_tokens);
+        }
+
+        fn set_twap_duration(ref self: ContractState, twap_duration: u64) {
+            self.access_control.assert_has_role(receptor_roles::SET_TWAP_DURATION);
+
+            self.set_twap_duration_helper(twap_duration);
         }
 
         fn update_yin_price(ref self: ContractState) {
@@ -181,6 +208,14 @@ pub mod receptor {
 
             self.emit(QuoteTokensUpdated { quote_tokens });
         }
+
+        fn set_twap_duration_helper(ref self: ContractState, twap_duration: u64) {
+            assert(twap_duration.is_non_zero(), 'REC: TWAP duration is 0');
+
+            self.twap_duration.write(twap_duration);
+
+            self.emit(TwapDurationUpdated { twap_duration });
+        }
     }
 
     // Returns the median of three Wad values
@@ -196,5 +231,13 @@ pub mod receptor {
         } else {
             c
         }
+    }
+
+    // If the quote token has less than 18 decimal precision, then the
+    // x128 value needs to be scaled up by the quote token's decimals
+    pub fn scale_x128_to_wad(n: u256, decimals: u8) -> Wad {
+        let sqrt: u256 = n / TWO_POW_128;
+        let unscaled: u128 = (sqrt * sqrt).try_into().unwrap();
+        pow(unscaled, decimals).into()
     }
 }

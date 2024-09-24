@@ -2,8 +2,6 @@ use core::integer::u256_sqrt;
 use core::num::traits::One;
 use wadray::{Ray, u128_rdiv, u128_rmul, Wad, WAD_DECIMALS};
 
-const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
-
 
 pub fn sqrt(x: Ray) -> Ray {
     let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();
@@ -44,8 +42,3 @@ pub fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
     u128_rdiv(lhs, rhs.val)
 }
 
-pub fn x128_to_wad(n: u256, decimals: u8) -> Wad {
-    let sqrt: u256 = n / TWO_POW_128;
-    let unscaled: u128 = (sqrt * sqrt).try_into().unwrap();
-    pow(unscaled, WAD_DECIMALS - decimals).into()
-}
