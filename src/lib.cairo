@@ -11,6 +11,7 @@ pub mod core {
     pub mod flash_mint;
     pub mod gate;
     pub mod purger;
+    pub mod receptor;
     pub mod roles;
     pub mod seer;
     pub mod sentinel;
@@ -41,6 +42,7 @@ mod interfaces {
     pub mod IOracle;
     pub mod IPragma;
     pub mod IPurger;
+    pub mod IReceptor;
     pub mod ISRC5;
     pub mod ISeer;
     pub mod ISentinel;
