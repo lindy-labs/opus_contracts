@@ -7,7 +7,7 @@ pub mod receptor {
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::math::pow;
+    use opus::utils::math::{pow, scale_x128_to_wad};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -26,7 +26,6 @@ pub mod receptor {
     //
 
     pub const NUM_QUOTE_TOKENS: u32 = 3;
-    const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
 
     //
     // Storage
@@ -231,13 +230,5 @@ pub mod receptor {
         } else {
             c
         }
-    }
-
-    // If the quote token has less than 18 decimal precision, then the
-    // x128 value needs to be scaled up by the quote token's decimals
-    pub fn scale_x128_to_wad(n: u256, decimals: u8) -> Wad {
-        let sqrt: u256 = n / TWO_POW_128;
-        let unscaled: u128 = (sqrt * sqrt).try_into().unwrap();
-        pow(unscaled, decimals).into()
     }
 }
