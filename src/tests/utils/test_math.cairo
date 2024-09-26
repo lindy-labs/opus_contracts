@@ -2,7 +2,7 @@ mod test_math {
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::tests::common::assert_equalish;
-    use opus::utils::math::{pow, scale_x128_to_wad, sqrt};
+    use opus::utils::math::{median_of_three, pow, scale_x128_to_wad, sqrt};
     use wadray::{Ray, RAY_ONE, Wad};
 
     #[test]
@@ -113,5 +113,17 @@ mod test_math {
         let actual: Wad = scale_x128_to_wad(x128_val, 6);
         let expected: Wad = 1005667353683370322_u128.into();
         assert_equalish(actual, expected, error_margin, 'wrong x128 to wad #4');
+    }
+
+    #[test]
+    fn test_median_of_three() {
+        let values: Span<u128> = array![1, 2, 3].span();
+        assert_eq!(median_of_three(values), 2, "wrong median #1");
+
+        let values: Span<u128> = array![2, 2, 3].span();
+        assert_eq!(median_of_three(values), 2, "wrong median #1");
+
+        let values: Span<u128> = array![2, 2, 2].span();
+        assert_eq!(median_of_three(values), 2, "wrong median #1");
     }
 }

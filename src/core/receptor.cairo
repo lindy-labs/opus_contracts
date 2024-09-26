@@ -7,7 +7,7 @@ pub mod receptor {
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::math::{pow, scale_x128_to_wad};
+    use opus::utils::math::{median_of_three, pow, scale_x128_to_wad};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -147,7 +147,7 @@ pub mod receptor {
 
         fn get_yin_price(self: @ContractState) -> Wad {
             let quotes = self.get_quotes();
-            get_median_quote(quotes)
+            median_of_three(quotes)
         }
 
         fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
@@ -170,7 +170,7 @@ pub mod receptor {
 
         fn update_yin_price(ref self: ContractState) {
             let quotes = self.get_quotes();
-            let yin_price: Wad = get_median_quote(quotes);
+            let yin_price: Wad = median_of_three(quotes);
             self.shrine.read().update_yin_spot_price(yin_price);
 
             self.emit(Record { quotes });
@@ -214,21 +214,6 @@ pub mod receptor {
             self.twap_duration.write(twap_duration);
 
             self.emit(TwapDurationUpdated { twap_duration });
-        }
-    }
-
-    // Returns the median of three Wad values
-    fn get_median_quote(quotes: Span<Wad>) -> Wad {
-        let a = *quotes[0];
-        let b = *quotes[1];
-        let c = *quotes[2];
-
-        if (a <= b && b <= c) || (c <= b && b <= a) {
-            b
-        } else if (b <= a && a <= c) || (c <= a && a <= b) {
-            a
-        } else {
-            c
         }
     }
 }

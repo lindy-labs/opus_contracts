@@ -67,3 +67,20 @@ pub fn scale_x128_to_wad(n: u256, decimals: u8) -> Wad {
     let val: u256 = val.try_into().unwrap();
     val.try_into().unwrap()
 }
+
+
+pub fn median_of_three<T, impl TPartialOrd: PartialOrd<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(
+    values: Span<T>
+) -> T {
+    let a = *values[0];
+    let b = *values[1];
+    let c = *values[2];
+
+    if (a <= b && b <= c) || (c <= b && b <= a) {
+        b
+    } else if (b <= a && a <= c) || (c <= a && a <= b) {
+        a
+    } else {
+        c
+    }
+}
