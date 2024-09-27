@@ -3,6 +3,7 @@ pub mod receptor {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::receptor_roles;
+    use opus::external::interfaces::ITask;
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -25,7 +26,10 @@ pub mod receptor {
     // Constants
     //
 
+    const LOOP_START: u32 = 1;
     pub const NUM_QUOTE_TOKENS: u32 = 3;
+    pub const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
+    pub const UPPER_UPDATE_FREQUENCY_BOUND: u64 = 4 * 60 * 60; // 4 hours * 60 minutes * 60 seconds
 
     //
     // Storage
@@ -36,10 +40,21 @@ pub mod receptor {
         // components
         #[substorage(v0)]
         access_control: access_control_component::Storage,
+        // Shrine associated with this module
         shrine: IShrineDispatcher,
+        // Ekubo oracle extension for reading TWAP
         oracle_extension: IEkuboOracleExtensionDispatcher,
+        // Collection of quote tokens, in no particular order
+        // Starts from 1
+        // (idx) -> (token to be quoted per CASH)
         quote_tokens: LegacyMap<u32, QuoteTokenInfo>,
+        // The duration in seconds for reading TWAP from Ekubo
         twap_duration: u64,
+        // Block timestamp of the last `update_yin_price_internal` execution
+        last_update_yin_price_call_timestamp: u64,
+        // The minimal time difference in seconds of how often we
+        // want to update yin spot price,
+        update_frequency: u64,
     }
 
     //
@@ -50,9 +65,21 @@ pub mod receptor {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
+        InvalidQuotes: InvalidQuotes,
         QuoteTokensUpdated: QuoteTokensUpdated,
-        Record: Record,
+        ValidQuotes: ValidQuotes,
         TwapDurationUpdated: TwapDurationUpdated,
+        UpdateFrequencyUpdated: UpdateFrequencyUpdated,
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct InvalidQuotes {
+        quotes: Span<Wad>
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct ValidQuotes {
+        quotes: Span<Wad>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -61,13 +88,14 @@ pub mod receptor {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct Record {
-        quotes: Span<Wad>
+    pub struct TwapDurationUpdated {
+        twap_duration: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct TwapDurationUpdated {
-        twap_duration: u64
+    pub struct UpdateFrequencyUpdated {
+        pub old_frequency: u64,
+        pub new_frequency: u64
     }
 
     //
@@ -104,9 +132,10 @@ pub mod receptor {
 
         fn get_quote_tokens(self: @ContractState) -> Span<QuoteTokenInfo> {
             let mut quote_tokens: Array<QuoteTokenInfo> = Default::default();
-            let mut index: u32 = 0;
+            let mut index: u32 = LOOP_START;
+            let end_index = LOOP_START + NUM_QUOTE_TOKENS;
             loop {
-                if index == NUM_QUOTE_TOKENS {
+                if index == end_index {
                     break quote_tokens.span();
                 }
                 quote_tokens.append(self.quote_tokens.read(index));
@@ -121,20 +150,17 @@ pub mod receptor {
             let cash = self.shrine.read().contract_address;
 
             let mut quotes: Array<Wad> = Default::default();
-            let mut index: u32 = 0;
+            let mut index: u32 = LOOP_START;
+            let end_index = LOOP_START + NUM_QUOTE_TOKENS;
             loop {
-                if index == NUM_QUOTE_TOKENS {
+                if index == end_index {
                     break quotes.span();
                 }
 
                 let quote_token_info: QuoteTokenInfo = self.quote_tokens.read(index);
-
                 let quote: u256 = oracle_extension
                     .get_price_x128_over_period(cash, quote_token_info.address, start_time, ts);
-
                 let scaled_quote: Wad = scale_x128_to_wad(quote, quote_token_info.decimals);
-
-                assert(scaled_quote.is_non_zero(), 'REC: Quote is zero');
 
                 quotes.append(scaled_quote);
                 index += 1;
@@ -143,6 +169,10 @@ pub mod receptor {
 
         fn get_twap_duration(self: @ContractState) -> u64 {
             self.twap_duration.read()
+        }
+
+        fn get_update_frequency(self: @ContractState) -> u64 {
+            self.update_frequency.read()
         }
 
         fn get_yin_price(self: @ContractState) -> Wad {
@@ -162,6 +192,18 @@ pub mod receptor {
             self.set_quote_tokens_helper(quote_tokens);
         }
 
+        fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
+            self.access_control.assert_has_role(receptor_roles::SET_UPDATE_FREQUENCY);
+            assert(
+                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
+                'REC: Frequency out of bounds'
+            );
+
+            let old_frequency: u64 = self.update_frequency.read();
+            self.update_frequency.write(new_frequency);
+            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
+        }
+
         fn set_twap_duration(ref self: ContractState, twap_duration: u64) {
             self.access_control.assert_has_role(receptor_roles::SET_TWAP_DURATION);
 
@@ -169,11 +211,22 @@ pub mod receptor {
         }
 
         fn update_yin_price(ref self: ContractState) {
-            let quotes = self.get_quotes();
-            let yin_price: Wad = median_of_three(quotes);
-            self.shrine.read().update_yin_spot_price(yin_price);
+            self.access_control.assert_has_role(receptor_roles::UPDATE_YIN_PRICE);
+            self.update_yin_price_internal();
+        }
+    }
 
-            self.emit(Record { quotes });
+    #[abi(embed_v0)]
+    impl ITaskImpl of ITask<ContractState> {
+        fn probe_task(self: @ContractState) -> bool {
+            let seconds_since_last_update: u64 = get_block_timestamp()
+                - self.last_update_yin_price_call_timestamp.read();
+            self.update_frequency.read() <= seconds_since_last_update
+        }
+
+        fn execute_task(ref self: ContractState) {
+            assert(self.probe_task(), 'REC: Too soon to update price');
+            self.update_yin_price_internal();
         }
     }
 
@@ -191,13 +244,14 @@ pub mod receptor {
 
         // Note that this function does not check for duplicate tokens.
         fn set_quote_tokens_helper(ref self: ContractState, quote_tokens: Span<QuoteTokenInfo>) {
-            let mut index = 0;
+            let mut index = LOOP_START;
+            let end_index = LOOP_START + NUM_QUOTE_TOKENS;
             let num_quote_tokens = quote_tokens.len();
             assert(num_quote_tokens == NUM_QUOTE_TOKENS, 'REC: Not 3 quote tokens');
 
             let mut quote_tokens_copy = quote_tokens;
             loop {
-                if index == num_quote_tokens {
+                if index == end_index {
                     break;
                 }
                 let quote_token_info: QuoteTokenInfo = *quote_tokens_copy.pop_front().unwrap();
@@ -214,6 +268,26 @@ pub mod receptor {
             self.twap_duration.write(twap_duration);
 
             self.emit(TwapDurationUpdated { twap_duration });
+        }
+
+        fn update_yin_price_internal(ref self: ContractState) {
+            let quotes = self.get_quotes();
+
+            let mut quotes_copy = quotes;
+            loop {
+                match quotes_copy.pop_front() {
+                    Option::Some(quote) => { if quote.is_zero() {
+                        self.emit(InvalidQuotes { quotes });
+                        break;
+                    } },
+                    Option::None => {
+                        let yin_price: Wad = median_of_three(quotes);
+                        self.shrine.read().update_yin_spot_price(yin_price);
+                        self.emit(ValidQuotes { quotes });
+                        break;
+                    }
+                };
+            };
         }
     }
 }
