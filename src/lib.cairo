@@ -73,6 +73,7 @@ pub mod mock {
     pub mod erc20_mintable;
     pub mod flash_borrower;
     pub mod flash_liquidator;
+    pub mod mock_ekubo_oracle_extension;
     pub mod mock_pragma;
     pub mod mock_switchboard;
 }
