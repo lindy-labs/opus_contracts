@@ -74,22 +74,23 @@ pub mod receptor {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct InvalidQuotes {
-        quotes: Span<Wad>
+        pub quotes: Span<Wad>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ValidQuotes {
-        quotes: Span<Wad>
+        pub quotes: Span<Wad>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct QuoteTokensUpdated {
-        quote_tokens: Span<QuoteTokenInfo>
+        pub quote_tokens: Span<QuoteTokenInfo>
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TwapDurationUpdated {
-        twap_duration: u64
+        pub old_duration: u64,
+        pub new_duration: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -108,6 +109,7 @@ pub mod receptor {
         admin: ContractAddress,
         shrine: ContractAddress,
         oracle_extension: ContractAddress,
+        update_frequency: u64,
         twap_duration: u64,
         quote_tokens: Span<QuoteTokenInfo>
     ) {
@@ -118,6 +120,7 @@ pub mod receptor {
         self.set_oracle_extension_helper(oracle_extension);
         self.set_twap_duration_helper(twap_duration);
         self.set_quote_tokens_helper(quote_tokens);
+        self.set_update_frequency_helper(update_frequency);
     }
 
     //
@@ -199,9 +202,7 @@ pub mod receptor {
                 'REC: Frequency out of bounds'
             );
 
-            let old_frequency: u64 = self.update_frequency.read();
-            self.update_frequency.write(new_frequency);
-            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
+            self.set_update_frequency_helper(new_frequency);
         }
 
         fn set_twap_duration(ref self: ContractState, twap_duration: u64) {
@@ -265,9 +266,16 @@ pub mod receptor {
         fn set_twap_duration_helper(ref self: ContractState, twap_duration: u64) {
             assert(twap_duration.is_non_zero(), 'REC: TWAP duration is 0');
 
+            let old_duration: u64 = self.twap_duration.read();
             self.twap_duration.write(twap_duration);
 
-            self.emit(TwapDurationUpdated { twap_duration });
+            self.emit(TwapDurationUpdated { old_duration, new_duration: twap_duration });
+        }
+
+        fn set_update_frequency_helper(ref self: ContractState, new_frequency: u64) {
+            let old_frequency: u64 = self.update_frequency.read();
+            self.update_frequency.write(new_frequency);
+            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
         }
 
         fn update_yin_price_internal(ref self: ContractState) {
@@ -283,6 +291,9 @@ pub mod receptor {
                     Option::None => {
                         let yin_price: Wad = median_of_three(quotes);
                         self.shrine.read().update_yin_spot_price(yin_price);
+
+                        self.last_update_yin_price_call_timestamp.write(get_block_timestamp());
+
                         self.emit(ValidQuotes { quotes });
                         break;
                     }
