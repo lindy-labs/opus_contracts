@@ -1,5 +1,6 @@
 // Constants for tokens
 pub const DAI_DECIMALS: u8 = 18;
+pub const LUSD_DECIMALS: u8 = 18;
 pub const USDC_DECIMALS: u8 = 6;
 pub const USDT_DECIMALS: u8 = 6;
 pub const WBTC_DECIMALS: u8 = 8;

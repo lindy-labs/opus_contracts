@@ -1,5 +1,6 @@
 mod test_receptor {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::constants;
     use opus::core::receptor::receptor as receptor_contract;
     use opus::core::roles::receptor_roles;
     use opus::core::shrine::shrine as shrine_contract;
@@ -49,6 +50,44 @@ mod test_receptor {
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
         receptor.set_oracle_extension(receptor_utils::mock_oracle_extension());
+    }
+
+    #[test]
+    fn test_set_quote_tokens() {
+        let (_, receptor, _) = receptor_utils::receptor_deploy(Option::None);
+        let mut spy = spy_events(SpyOn::One(receptor.contract_address));
+
+        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
+
+        let new_quote_tokens: Span<QuoteTokenInfo> = array![
+            QuoteTokenInfo { address: receptor_utils::mock_dai(), decimals: constants::DAI_DECIMALS },
+            QuoteTokenInfo { address: receptor_utils::mock_usdc(), decimals: constants::USDC_DECIMALS },
+            QuoteTokenInfo { address: receptor_utils::mock_lusd(), decimals: constants::LUSD_DECIMALS },
+        ]
+            .span();
+        receptor.set_quote_tokens(new_quote_tokens);
+
+        assert_eq!(receptor.get_quote_tokens(), new_quote_tokens, "wrong quote tokens");
+
+        let expected_events = array![
+            (
+                receptor.contract_address,
+                receptor_contract::Event::QuoteTokensUpdated(
+                    receptor_contract::QuoteTokensUpdated { quote_tokens: new_quote_tokens }
+                )
+            )
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_quote_tokens_unauthorized() {
+        let (_, receptor, _) = receptor_utils::receptor_deploy(Option::None);
+
+        start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
+        receptor.set_quote_tokens(receptor_utils::quote_tokens());
     }
 
     #[test]

@@ -34,6 +34,10 @@ pub mod receptor_utils {
         'mock DAI'.try_into().unwrap()
     }
 
+    pub fn mock_lusd() -> ContractAddress {
+        'mock LUSD'.try_into().unwrap()
+    }
+
     pub fn mock_oracle_extension() -> ContractAddress {
         'mock oracle extension'.try_into().unwrap()
     }
