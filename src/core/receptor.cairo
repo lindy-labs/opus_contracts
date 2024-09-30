@@ -178,11 +178,6 @@ pub mod receptor {
             self.update_frequency.read()
         }
 
-        fn get_yin_price(self: @ContractState) -> Wad {
-            let quotes = self.get_quotes();
-            median_of_three(quotes)
-        }
-
         fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
             self.access_control.assert_has_role(receptor_roles::SET_ORACLE_EXTENSION);
 

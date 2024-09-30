@@ -9,7 +9,6 @@ pub trait IReceptor<TContractState> {
     fn get_quote_tokens(self: @TContractState) -> Span<QuoteTokenInfo>;
     fn get_quotes(self: @TContractState) -> Span<Wad>;
     fn get_twap_duration(self: @TContractState) -> u64;
-    fn get_yin_price(self: @TContractState) -> Wad;
     fn get_update_frequency(self: @TContractState) -> u64;
     // setters
     fn set_oracle_extension(ref self: TContractState, oracle_extension: ContractAddress);
