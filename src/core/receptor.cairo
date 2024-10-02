@@ -243,26 +243,25 @@ pub mod receptor {
 
         // Note that this function does not check for duplicate tokens.
         fn set_quote_tokens_helper(ref self: ContractState, quote_tokens: Span<ContractAddress>) {
-            let mut index = LOOP_START;
-            let end_index = LOOP_START + NUM_QUOTE_TOKENS;
-            let num_quote_tokens = quote_tokens.len();
-            assert(num_quote_tokens == NUM_QUOTE_TOKENS, 'REC: Not 3 quote tokens');
+            assert(quote_tokens.len() == NUM_QUOTE_TOKENS, 'REC: Not 3 quote tokens');
 
+            let mut index = LOOP_START;
             let mut quote_tokens_copy = quote_tokens;
             let mut quote_tokens_info: Array<QuoteTokenInfo> = Default::default();
             loop {
-                if index == end_index {
-                    break;
-                }
-                let token_addr: ContractAddress = *quote_tokens_copy.pop_front().unwrap();
-                let token = IERC20Dispatcher { contract_address: token_addr };
-                let decimals: u8 = token.decimals();
-                assert(decimals <= WAD_DECIMALS, 'REC: Too many decimals');
+                match quote_tokens_copy.pop_front() {
+                    Option::Some(quote_token) => {
+                        let token = IERC20Dispatcher { contract_address: *quote_token };
+                        let decimals: u8 = token.decimals();
+                        assert(decimals <= WAD_DECIMALS, 'REC: Too many decimals');
 
-                let quote_token_info = QuoteTokenInfo { address: token_addr, decimals };
-                self.quote_tokens.write(index, quote_token_info);
-                quote_tokens_info.append(quote_token_info);
-                index += 1;
+                        let quote_token_info = QuoteTokenInfo { address: *quote_token, decimals };
+                        self.quote_tokens.write(index, quote_token_info);
+                        quote_tokens_info.append(quote_token_info);
+                        index += 1;
+                    },
+                    Option::None => { break; }
+                }
             };
 
             self.emit(QuoteTokensUpdated { quote_tokens: quote_tokens_info.span() });
