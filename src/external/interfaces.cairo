@@ -5,8 +5,8 @@ use starknet::ContractAddress;
 pub trait IEkuboOracleExtension<TContractState> {
     // Returns the geomean average price of a token as a 128.128 between the given start and end
     // time
-    fn get_price_x128_over_period(
-        self: @TContractState, base_token: ContractAddress, quote_token: ContractAddress, start_time: u64, end_time: u64
+    fn get_price_x128_over_last(
+        self: @TContractState, base_token: ContractAddress, quote_token: ContractAddress, period: u64
     ) -> u256;
 }
 

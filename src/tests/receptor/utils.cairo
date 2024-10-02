@@ -140,7 +140,7 @@ pub mod receptor_utils {
             match quote_tokens.pop_front() {
                 Option::Some(quote_token) => {
                     mock_ekubo_oracle_extension_setter
-                        .next_get_price_x128_over_period(shrine_addr, *quote_token, *prices.pop_front().unwrap(),);
+                        .next_get_price_x128_over_lastd(shrine_addr, *quote_token, *prices.pop_front().unwrap(),);
                 },
                 Option::None => { break; }
             };

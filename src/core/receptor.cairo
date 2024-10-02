@@ -149,8 +149,7 @@ pub mod receptor {
 
         fn get_quotes(self: @ContractState) -> Span<Wad> {
             let oracle_extension = self.oracle_extension.read();
-            let ts = get_block_timestamp();
-            let start_time = ts - self.twap_duration.read();
+            let twap_duration = self.twap_duration.read();
             let cash = self.shrine.read().contract_address;
 
             let mut quotes: Array<Wad> = Default::default();
@@ -163,7 +162,7 @@ pub mod receptor {
 
                 let quote_token_info: QuoteTokenInfo = self.quote_tokens.read(index);
                 let quote: u256 = oracle_extension
-                    .get_price_x128_over_period(cash, quote_token_info.address, start_time, ts);
+                    .get_price_x128_over_last(cash, quote_token_info.address, twap_duration);
                 let scaled_quote: Wad = scale_x128_to_wad(quote, quote_token_info.decimals);
 
                 quotes.append(scaled_quote);
