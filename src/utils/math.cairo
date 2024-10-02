@@ -55,7 +55,7 @@ pub fn scale_x128_to_wad(n: u256, decimals: u8) -> Wad {
 
     // Scale value up to Wad precision first to avoid precision loss during division
     let wad_scale: u256 = WAD_SCALE.into();
-    let scaled: u256 = n * wad_scale.into() * pow(10, decimals_diff).into();
+    let scaled: u256 = n * wad_scale * pow(10, decimals_diff).into();
     let sqrt: u256 = scaled / TWO_POW_128.into();
 
     // `sqrt` is of Wad precision here so the result will be of 10 ** 36 precision
