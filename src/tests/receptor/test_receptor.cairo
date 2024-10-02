@@ -145,13 +145,13 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('REC: TWAP duration is 0',))]
+    #[should_panic(expected: ('REC: TWAP duration too low',))]
     fn test_set_twap_duration_zero_fail() {
         let token_class = declare("erc20_mintable").unwrap();
         let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
 
         start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin().into());
-        receptor.set_twap_duration(0);
+        receptor.set_twap_duration(receptor_contract::MIN_TWAP_DURATION - 1);
     }
 
     #[test]

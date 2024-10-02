@@ -29,6 +29,9 @@ pub mod receptor {
 
     const LOOP_START: u32 = 1;
     pub const NUM_QUOTE_TOKENS: u32 = 3;
+
+    pub const MIN_TWAP_DURATION: u64 = 60; // seconds; acts as a sanity check
+
     pub const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
     pub const UPPER_UPDATE_FREQUENCY_BOUND: u64 = 4 * 60 * 60; // 4 hours * 60 minutes * 60 seconds
 
@@ -266,7 +269,7 @@ pub mod receptor {
         }
 
         fn set_twap_duration_helper(ref self: ContractState, twap_duration: u64) {
-            assert(twap_duration.is_non_zero(), 'REC: TWAP duration is 0');
+            assert(twap_duration >= MIN_TWAP_DURATION, 'REC: TWAP duration too low');
 
             let old_duration: u64 = self.twap_duration.read();
             self.twap_duration.write(twap_duration);
