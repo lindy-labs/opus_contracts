@@ -5,12 +5,13 @@ pub mod receptor {
     use opus::core::roles::receptor_roles;
     use opus::external::interfaces::ITask;
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
     use opus::utils::math::{median_of_three, pow, scale_x128_to_wad};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::Wad;
+    use wadray::{Wad, WAD_DECIMALS};
 
     //
     // Components
@@ -111,7 +112,7 @@ pub mod receptor {
         oracle_extension: ContractAddress,
         update_frequency: u64,
         twap_duration: u64,
-        quote_tokens: Span<QuoteTokenInfo>
+        quote_tokens: Span<ContractAddress>
     ) {
         self.access_control.initializer(admin, Option::Some(receptor_roles::default_admin_role()));
 
@@ -184,7 +185,7 @@ pub mod receptor {
             self.set_oracle_extension_helper(oracle_extension);
         }
 
-        fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<QuoteTokenInfo>) {
+        fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<ContractAddress>) {
             self.access_control.assert_has_role(receptor_roles::SET_QUOTE_TOKENS);
 
             self.set_quote_tokens_helper(quote_tokens);
@@ -239,23 +240,30 @@ pub mod receptor {
         }
 
         // Note that this function does not check for duplicate tokens.
-        fn set_quote_tokens_helper(ref self: ContractState, quote_tokens: Span<QuoteTokenInfo>) {
+        fn set_quote_tokens_helper(ref self: ContractState, quote_tokens: Span<ContractAddress>) {
             let mut index = LOOP_START;
             let end_index = LOOP_START + NUM_QUOTE_TOKENS;
             let num_quote_tokens = quote_tokens.len();
             assert(num_quote_tokens == NUM_QUOTE_TOKENS, 'REC: Not 3 quote tokens');
 
             let mut quote_tokens_copy = quote_tokens;
+            let mut quote_tokens_info: Array<QuoteTokenInfo> = Default::default();
             loop {
                 if index == end_index {
                     break;
                 }
-                let quote_token_info: QuoteTokenInfo = *quote_tokens_copy.pop_front().unwrap();
+                let token_addr: ContractAddress = *quote_tokens_copy.pop_front().unwrap();
+                let token = IERC20Dispatcher { contract_address: token_addr };
+                let decimals: u8 = token.decimals();
+                assert(decimals <= WAD_DECIMALS, 'REC: Too many decimals');
+
+                let quote_token_info = QuoteTokenInfo { address: token_addr, decimals };
                 self.quote_tokens.write(index, quote_token_info);
+                quote_tokens_info.append(quote_token_info);
                 index += 1;
             };
 
-            self.emit(QuoteTokensUpdated { quote_tokens });
+            self.emit(QuoteTokensUpdated { quote_tokens: quote_tokens_info.span() });
         }
 
         fn set_twap_duration_helper(ref self: ContractState, twap_duration: u64) {

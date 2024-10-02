@@ -1,6 +1,6 @@
 pub mod receptor_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::constants::{DAI_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
+    use opus::constants::{DAI_DECIMALS, LUSD_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
     use opus::core::receptor::receptor as receptor_contract;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
@@ -8,11 +8,12 @@ pub mod receptor_utils {
     use opus::mock::mock_ekubo_oracle_extension::{
         IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait
     };
+    use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::ContractAddress;
-    use wadray::Wad;
+    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
 
     //
@@ -22,33 +23,42 @@ pub mod receptor_utils {
     pub const INITIAL_TWAP_DURATION: u64 = 10800; // 3 hrs
     pub const INITIAL_UPDATE_FREQUENCY: u64 = 1800; // 30 mins
 
-    pub fn mock_usdc() -> ContractAddress {
-        'mock USDC'.try_into().unwrap()
+    pub fn mock_usdc(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token(
+            'USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+        )
     }
 
-    pub fn mock_usdt() -> ContractAddress {
-        'mock USDT'.try_into().unwrap()
+    pub fn mock_usdt(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token(
+            'Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+        )
     }
 
-    pub fn mock_dai() -> ContractAddress {
-        'mock DAI'.try_into().unwrap()
+    pub fn mock_dai(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token(
+            'Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+        )
     }
 
-    pub fn mock_lusd() -> ContractAddress {
-        'mock LUSD'.try_into().unwrap()
+    pub fn mock_lusd(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token(
+            'LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+        )
+    }
+
+    pub fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
+        common::deploy_token(
+            'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+        )
     }
 
     pub fn mock_oracle_extension() -> ContractAddress {
         'mock oracle extension'.try_into().unwrap()
     }
 
-    pub fn quote_tokens() -> Span<QuoteTokenInfo> {
-        array![
-            QuoteTokenInfo { address: mock_dai(), decimals: DAI_DECIMALS },
-            QuoteTokenInfo { address: mock_usdc(), decimals: USDC_DECIMALS },
-            QuoteTokenInfo { address: mock_usdt(), decimals: USDT_DECIMALS },
-        ]
-            .span()
+    pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
+        array![mock_dai(token_class), mock_usdc(token_class), mock_usdt(token_class),].span()
     }
 
     //
@@ -73,11 +83,11 @@ pub mod receptor_utils {
     }
 
     pub fn receptor_deploy(
-        receptor_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, IReceptorDispatcher, ContractAddress) {
+        receptor_class: Option<ContractClass>, token_class: Option<ContractClass>
+    ) -> (IShrineDispatcher, IReceptorDispatcher, ContractAddress, Span<ContractAddress>) {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let mut quote_tokens = quote_tokens();
+        let quote_tokens = quote_tokens(token_class);
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
         let mock_ekubo_oracle_extension_addr: ContractAddress = mock_ekubo_oracle_extension_deploy(Option::None);
@@ -88,17 +98,11 @@ pub mod receptor_utils {
             mock_ekubo_oracle_extension_addr.into(),
             INITIAL_UPDATE_FREQUENCY.into(),
             INITIAL_TWAP_DURATION.into(),
-            quote_tokens.len().into()
+            quote_tokens.len().into(),
+            (*quote_tokens[0]).into(),
+            (*quote_tokens[1]).into(),
+            (*quote_tokens[2]).into(),
         ];
-        loop {
-            match quote_tokens.pop_front() {
-                Option::Some(quote_token) => {
-                    calldata.append((*quote_token.address).into());
-                    calldata.append((*quote_token.decimals).into());
-                },
-                Option::None => { break; }
-            };
-        };
 
         let receptor_class = match receptor_class {
             Option::Some(class) => class,
@@ -112,13 +116,18 @@ pub mod receptor_utils {
         shrine_accesscontrol.grant_role(shrine_roles::receptor(), receptor_addr);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        (shrine, IReceptorDispatcher { contract_address: receptor_addr }, mock_ekubo_oracle_extension_addr)
+        (
+            shrine,
+            IReceptorDispatcher { contract_address: receptor_addr },
+            mock_ekubo_oracle_extension_addr,
+            quote_tokens
+        )
     }
 
     pub fn set_next_prices(
         shrine_addr: ContractAddress,
         mock_ekubo_oracle_extension_addr: ContractAddress,
-        mut quote_tokens: Span<QuoteTokenInfo>,
+        mut quote_tokens: Span<ContractAddress>,
         mut prices: Span<u256>
     ) {
         let mock_ekubo_oracle_extension_setter = IMockEkuboOracleExtensionDispatcher {
@@ -131,9 +140,7 @@ pub mod receptor_utils {
             match quote_tokens.pop_front() {
                 Option::Some(quote_token) => {
                     mock_ekubo_oracle_extension_setter
-                        .next_get_price_x128_over_period(
-                            shrine_addr, *quote_token.address, *prices.pop_front().unwrap(),
-                        );
+                        .next_get_price_x128_over_period(shrine_addr, *quote_token, *prices.pop_front().unwrap(),);
                 },
                 Option::None => { break; }
             };
