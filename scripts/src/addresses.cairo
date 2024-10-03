@@ -302,6 +302,10 @@ pub mod mainnet {
         0x0149c1539f39945ce1f63917ff6076845888ab40e9327640cb78dcaebfed42e4.try_into().unwrap()
     }
 
+    pub fn receptor() -> ContractAddress {
+        0x11ded1ba51cd7fd7dff2ad5e92ed6c1bc7b5c905b7d5961a803f069a195341a.try_into().unwrap()
+    }
+
     pub fn seer() -> ContractAddress {
         0x07b4d65be7415812cea9edcfce5cf169217f4a53fce84e693fe8efb5be9f0437.try_into().unwrap()
     }

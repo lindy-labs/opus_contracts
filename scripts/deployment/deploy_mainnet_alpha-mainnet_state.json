@@ -1004,6 +1004,28 @@
         "status": "Success",
         "timestamp": 1719851246,
         "misc": null
+      },
+      "9fd28df144c99f124f3073ec264f4dfc262383fd0d7dc7cceb146566b7332a8a": {
+        "name": "declare",
+        "output": {
+          "type": "DeclareResponse",
+          "class_hash": "0x57bd7a6dbd72ec03094ac473b62c97e24f7244d7e622a42a3ec7d86ef2cd0b5",
+          "transaction_hash": "0x175f42b42cf1bafb788415944b768ca17970b759588f0d2eca0ede75b759379"
+        },
+        "status": "Success",
+        "timestamp": 1727965110,
+        "misc": null
+      },
+      "8452980510542669c3c0d25b7a2f58058f2bc0eedf6e76aa627b64885e909371": {
+        "name": "deploy",
+        "output": {
+          "type": "DeployResponse",
+          "contract_address": "0x11ded1ba51cd7fd7dff2ad5e92ed6c1bc7b5c905b7d5961a803f069a195341a",
+          "transaction_hash": "0x77d94ce478d41aac063bab7b5809c8098840295522ce615def5cc8365f8276e"
+        },
+        "status": "Success",
+        "timestamp": 1727965117,
+        "misc": null
       }
     }
   }
