@@ -1,6 +1,4 @@
-use core::integer::u256_sqrt;
-
-use core::integer::{u256_wide_mul, u512, u512_safe_div_rem_by_u256};
+use core::integer::{u256_sqrt, u256_wide_mul, u512, u512_safe_div_rem_by_u256};
 use core::num::traits::One;
 use core::traits::DivRem;
 use wadray::{Ray, u128_rdiv, u128_rmul, Wad, WAD_DECIMALS, WAD_SCALE};

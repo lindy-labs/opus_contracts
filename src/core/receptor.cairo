@@ -9,7 +9,7 @@ pub mod receptor {
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::math::{median_of_three, pow, scale_x128_to_wad};
+    use opus::utils::math::{median_of_three, scale_x128_to_wad};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Wad, WAD_DECIMALS};
 
