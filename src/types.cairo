@@ -181,6 +181,16 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
 }
 
 //
+// Receptor
+//
+
+#[derive(Copy, Debug, Drop, PartialEq, Serde, starknet::Store)]
+pub struct QuoteTokenInfo {
+    pub address: ContractAddress,
+    pub decimals: u8,
+}
+
+//
 // Pragma
 //
 
