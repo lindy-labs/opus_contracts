@@ -241,7 +241,7 @@ pub mod mainnet {
     pub fn ekubo_oracle_extension() -> ContractAddress {
         0x005e470ff654d834983a46b8f29dfa99963d5044b993cb7b9c92243a69dab38f
             .try_into()
-            .expect('invalid ekubo oracle addr');
+            .expect('invalid ekubo oracle addr')
     }
 
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses

@@ -224,6 +224,7 @@ fn main() {
     println!("Gate[WSTETH]: {}", wsteth_gate);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
+    println!("Receptor: {}", receptor);
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
