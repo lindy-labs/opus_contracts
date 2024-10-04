@@ -211,20 +211,37 @@ pub mod mainnet {
     }
 
     // Tokens
-
+    //
+    // Unless otherwise stated, token's address is available at:
     // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+
+    pub fn dai() -> ContractAddress {
+        0x05574eb6b8789a91466f902c380d978e472db68170ff82a5b650b95a58ddf4ad.try_into().expect('invalid DAI address')
+    }
+
     pub fn usdc() -> ContractAddress {
         0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8.try_into().expect('invalid USDC address')
     }
 
-    // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/mainnet.json
+    pub fn usdt() -> ContractAddress {
+        0x068f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8.try_into().expect('invalid USDC address')
+    }
+
     pub fn wbtc() -> ContractAddress {
         0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac.try_into().expect('invalid WBTC address')
     }
 
-    // https://research.lido.fi/t/wsteth-deployment-on-starknet/6335
     pub fn wsteth() -> ContractAddress {
         0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid WSTETH address')
+    }
+
+    // External
+
+    // https://docs.ekubo.org/integration-guides/reference/contract-addresses
+    pub fn ekubo_oracle_extension() -> ContractAddress {
+        0x005e470ff654d834983a46b8f29dfa99963d5044b993cb7b9c92243a69dab38f
+            .try_into()
+            .expect('invalid ekubo oracle addr')
     }
 
     // https://github.com/Astraly-Labs/pragma-oracle?tab=readme-ov-file#deployment-addresses
@@ -283,6 +300,10 @@ pub mod mainnet {
 
     pub fn purger() -> ContractAddress {
         0x0149c1539f39945ce1f63917ff6076845888ab40e9327640cb78dcaebfed42e4.try_into().unwrap()
+    }
+
+    pub fn receptor() -> ContractAddress {
+        0x11ded1ba51cd7fd7dff2ad5e92ed6c1bc7b5c905b7d5961a803f069a195341a.try_into().unwrap()
     }
 
     pub fn seer() -> ContractAddress {

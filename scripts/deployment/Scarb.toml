@@ -26,6 +26,7 @@ build-external-contracts = [
     "opus::core::flash_mint::flash_mint",
     "opus::core::gate::gate",
     "opus::core::purger::purger",
+    "opus::core::receptor::receptor",
     "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",

@@ -17,7 +17,7 @@ fn main() {
 
     println!("Deploying contracts");
 
-    // Deploy core contracts
+    // Deploy core contracts for launch
     let shrine: ContractAddress = core_deployment::deploy_shrine(admin);
     let flash_mint: ContractAddress = core_deployment::deploy_flash_mint(shrine);
     let sentinel: ContractAddress = core_deployment::deploy_sentinel(admin, shrine);
@@ -29,6 +29,9 @@ fn main() {
     let equalizer: ContractAddress = core_deployment::deploy_equalizer(admin, shrine, allocator);
     let caretaker: ContractAddress = core_deployment::deploy_caretaker(admin, shrine, abbot, sentinel, equalizer);
     let controller: ContractAddress = core_deployment::deploy_controller(admin, shrine);
+
+    // Deploy core contracts after launch
+    let receptor: ContractAddress = core_deployment::deploy_receptor(addresses::mainnet::multisig(), shrine);
 
     // Deploy transmuter
     let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
@@ -221,6 +224,7 @@ fn main() {
     println!("Gate[WSTETH]: {}", wsteth_gate);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
+    println!("Receptor: {}", receptor);
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);

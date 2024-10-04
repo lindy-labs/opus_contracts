@@ -1,3 +1,4 @@
+use scripts::addresses;
 use scripts::constants::MAX_FEE;
 use sncast_std::{
     declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
@@ -13,6 +14,10 @@ const ALPHA_P: u8 = 3;
 const BETA_P: u8 = 8;
 const ALPHA_I: u8 = 1;
 const BETA_I: u8 = 2;
+
+// Constants for Receptor
+const RECEPTOR_UPDATE_FREQUENCY: u64 = 1000;
+const RECEPTOR_TWAP_DURATION: u64 = 10800; // 3 hours
 
 // Constants for Seer
 const SEER_UPDATE_FREQUENCY: u64 = 1000;
@@ -187,6 +192,29 @@ pub fn deploy_controller(admin: ContractAddress, shrine: ContractAddress) -> Con
         .expect('failed controller deploy');
 
     deploy_controller.contract_address
+}
+
+pub fn deploy_receptor(admin: ContractAddress, shrine: ContractAddress) -> ContractAddress {
+    let declare_receptor = declare("receptor", Option::Some(MAX_FEE), Option::None).expect('failed receptor declare');
+
+    let num_quote_tokens: felt252 = 3;
+    let receptor_calldata: Array<felt252> = array![
+        admin.into(),
+        shrine.into(),
+        addresses::mainnet::ekubo_oracle_extension().into(),
+        RECEPTOR_UPDATE_FREQUENCY.into(),
+        RECEPTOR_TWAP_DURATION.into(),
+        num_quote_tokens,
+        addresses::mainnet::dai().into(),
+        addresses::mainnet::usdc().into(),
+        addresses::mainnet::usdt().into(),
+    ];
+    let deploy_receptor = deploy(
+        declare_receptor.class_hash, receptor_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed receptor deploy');
+
+    deploy_receptor.contract_address
 }
 
 pub fn declare_gate() -> ClassHash {

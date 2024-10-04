@@ -6,7 +6,7 @@ url = "http://127.0.0.1:5050"
 [sncast.mainnet]
 account = "../mainnet_admin.json"
 keystore = "../mainnet_admin_keystore.json"
-url = ""
+url = "https://free-rpc.nethermind.io/mainnet-juno"
 
 [sncast.sepolia]
 account = "../sepolia_admin.json"
