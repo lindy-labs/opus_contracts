@@ -22,6 +22,7 @@
   * [Controller Module](technical-documentation/smart-contracts/controller-module.md)
   * [Equalizer Module](technical-documentation/smart-contracts/equalizer-module.md)
   * [Seer Module](technical-documentation/smart-contracts/seer-module.md)
+  * [Receptor Module](technical-documentation/smart-contracts/receptor-module.md)
   * [Flash Mint Module](technical-documentation/smart-contracts/flash-mint-module.md)
   * [Caretaker Module](technical-documentation/smart-contracts/caretaker-module.md)
   * [Transmuter Module](technical-documentation/smart-contracts/transmuter-module.md)
