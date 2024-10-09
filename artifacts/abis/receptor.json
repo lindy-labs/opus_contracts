@@ -1,0 +1,579 @@
+[
+  {
+    "type": "impl",
+    "name": "IReceptorImpl",
+    "interface_name": "opus::interfaces::IReceptor::IReceptor"
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::QuoteTokenInfo",
+    "members": [
+      {
+        "name": "address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "decimals",
+        "type": "core::integer::u8"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<opus::types::QuoteTokenInfo>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<opus::types::QuoteTokenInfo>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "wadray::wadray::Wad",
+    "members": [
+      {
+        "name": "val",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<wadray::wadray::Wad>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<wadray::wadray::Wad>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<core::starknet::contract_address::ContractAddress>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<core::starknet::contract_address::ContractAddress>"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::IReceptor::IReceptor",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_oracle_extension",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_quote_tokens",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Span::<opus::types::QuoteTokenInfo>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_quotes",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Span::<wadray::wadray::Wad>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_twap_duration",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u64"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_update_frequency",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u64"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "set_oracle_extension",
+        "inputs": [
+          {
+            "name": "oracle_extension",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_quote_tokens",
+        "inputs": [
+          {
+            "name": "quote_tokens",
+            "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_twap_duration",
+        "inputs": [
+          {
+            "name": "twap_duration",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_update_frequency",
+        "inputs": [
+          {
+            "name": "new_frequency",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "update_yin_price",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "ITaskImpl",
+    "interface_name": "opus::external::interfaces::ITask"
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::external::interfaces::ITask",
+    "items": [
+      {
+        "type": "function",
+        "name": "probe_task",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "execute_task",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlPublic",
+    "interface_name": "access_control::access_control::IAccessControl"
+  },
+  {
+    "type": "interface",
+    "name": "access_control::access_control::IAccessControl",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_roles",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "has_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pending_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grant_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revoke_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounce_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_pending_admin",
+        "inputs": [
+          {
+            "name": "new_admin",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_admin",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "shrine",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "oracle_extension",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "update_frequency",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "twap_duration",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "quote_tokens",
+        "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::AdminChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::NewPendingAdmin",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleGranted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_granted",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleRevoked",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_revoked",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AdminChanged",
+        "type": "access_control::access_control::access_control_component::AdminChanged",
+        "kind": "nested"
+      },
+      {
+        "name": "NewPendingAdmin",
+        "type": "access_control::access_control::access_control_component::NewPendingAdmin",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleGranted",
+        "type": "access_control::access_control::access_control_component::RoleGranted",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleRevoked",
+        "type": "access_control::access_control::access_control_component::RoleRevoked",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::InvalidQuotes",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "quotes",
+        "type": "core::array::Span::<wadray::wadray::Wad>",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::QuoteTokensUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "quote_tokens",
+        "type": "core::array::Span::<opus::types::QuoteTokenInfo>",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::ValidQuotes",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "quotes",
+        "type": "core::array::Span::<wadray::wadray::Wad>",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::TwapDurationUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_duration",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "new_duration",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::UpdateFrequencyUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_frequency",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "new_frequency",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::receptor::receptor::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AccessControlEvent",
+        "type": "access_control::access_control::access_control_component::Event",
+        "kind": "nested"
+      },
+      {
+        "name": "InvalidQuotes",
+        "type": "opus::core::receptor::receptor::InvalidQuotes",
+        "kind": "nested"
+      },
+      {
+        "name": "QuoteTokensUpdated",
+        "type": "opus::core::receptor::receptor::QuoteTokensUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "ValidQuotes",
+        "type": "opus::core::receptor::receptor::ValidQuotes",
+        "kind": "nested"
+      },
+      {
+        "name": "TwapDurationUpdated",
+        "type": "opus::core::receptor::receptor::TwapDurationUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "UpdateFrequencyUpdated",
+        "type": "opus::core::receptor::receptor::UpdateFrequencyUpdated",
+        "kind": "nested"
+      }
+    ]
+  }
+]
