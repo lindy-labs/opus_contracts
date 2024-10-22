@@ -2,6 +2,7 @@
 
 * [Introduction](README.md)
 * [Starknet DeFi Spring](starknet-defi-spring.md)
+* [Use Cases](use-cases.md)
 * [Borrowing](borrowing.md)
 * [Liquidations and the Absorber](liquidations-and-the-absorber.md)
 * [Price Stability](price-stability.md)
