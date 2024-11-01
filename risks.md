@@ -1,7 +1,5 @@
 # Risks
 
-## Is Opus decentralized?
-
 At launch, Opus relies on a superuser admin that is able to grant and revoke all roles. This is necessary to allow the protocol to respond in a timely manner in case of any unforeseeable events, as well as to iterate at a faster pace. A compromised or malicious admin can cause catastrophic damage across the entire protocol. Using Opus therefore requires you to trust that the admin is honest.
 
 Eventually, this admin functionality will be handed over to governance, and the Opus protocol will also ossify as parameters either become autonomous or unadjustable.&#x20;
