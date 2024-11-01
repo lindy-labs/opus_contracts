@@ -1,4 +1,4 @@
-# Introduction
+# Meet Opus and CASH
 
 Opus is a cross margin autonomous autonomous Decentralized Digital Bank (DDB)—our ode to personal sovereignty—the rejection of centralization of power, of the byzantine fiat system.
 
@@ -12,8 +12,8 @@ Our first digital asset is CASH, an algorithmic overcollateralized stablecoin pe
 
 Opus introduces novel mechanisms that provide stronger stability guarantees to ensure that CASH is pegged to the value of USD.
 
-1. A global [multiplier](price-stability.md#how-does-the-multiplier-work) is applied to increase or decrease interest rates across the board, depending on whether the spot market price of CASH is below or above peg.
-2. A [forge fee](price-stability.md#how-do-forge-fees-work) is charged on minting of new debt when the spot market price of CASH is below peg.
+1. A global [multiplier](ensuring-peg-stability.md#how-does-the-multiplier-work) is applied to increase or decrease interest rates across the board, depending on whether the spot market price of CASH is below or above peg.
+2. A [forge fee](ensuring-peg-stability.md#how-do-forge-fees-work) is charged on minting of new debt when the spot market price of CASH is below peg.
 3. … and a lot more for those with eyes to see!
 
 ## What can I do with CASH?

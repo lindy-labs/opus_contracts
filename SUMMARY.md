@@ -1,10 +1,10 @@
 # Table of contents
 
-* [Introduction](README.md)
+* [Meet Opus and CASH](README.md)
 * [Starknet DeFi Spring](starknet-defi-spring.md)
 * [Borrowing](borrowing.md)
 * [Liquidations and the Absorber](liquidations-and-the-absorber.md)
-* [Price Stability](price-stability.md)
+* [Ensuring Peg Stability](ensuring-peg-stability.md)
 * [Recovery Mode](recovery-mode.md)
 * [Global Shutdown](global-shutdown.md)
 * [Risks](risks.md)
