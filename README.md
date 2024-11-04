@@ -53,7 +53,7 @@ There are currently two ways to acquire CASH:
 
 > Should I buy, or should I open a credit line on Opus?
 
-<figure><img src=".gitbook/assets/decision_tree (3).png" alt=""><figcaption></figcaption></figure>
+<figure><picture><source srcset=".gitbook/assets/decision_tree (1).png" media="(prefers-color-scheme: dark)"><img src=".gitbook/assets/decision_tree.png" alt=""></picture><figcaption></figcaption></figure>
 
 {% hint style="info" %}
 To interact with Opus or use CASH, you need a Starknet-compatible wallet (e.g. ArgentX, Braavos).
@@ -61,8 +61,6 @@ To interact with Opus or use CASH, you need a Starknet-compatible wallet (e.g. A
 
 Interested in borrowing?
 
-{% content-ref url="borrowing.md" %}
-[borrowing.md](borrowing.md)
-{% endcontent-ref %}
+<table data-view="cards"><thead><tr><th></th><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th><th data-hidden data-card-cover data-type="files"></th></tr></thead><tbody><tr><td>Borrowing CASH →</td><td></td><td></td><td><a href="borrowing.md">borrowing.md</a></td><td><a href=".gitbook/assets/covertest.png">covertest.png</a></td></tr></tbody></table>
 
 Otherwise, read about how you can earn STRK rewards by borrowing on Opus!
