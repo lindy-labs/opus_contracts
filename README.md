@@ -1,6 +1,6 @@
 # Meet Opus and CASH
 
-Opus is a cross margin autonomous autonomous Decentralized Digital Bank (DDB)—our ode to personal sovereignty—the rejection of centralization of power, of the byzantine fiat system.
+Opus is a cross margin autonomous Decentralized Digital Bank (DDB)—our ode to personal sovereignty—the rejection of centralization of power, of the byzantine fiat system.
 
 Opus doesn’t provide Forward Guidance only to pivot at the last second leaving debt owners holding the bag. Its monetary policy is not dictated behind closed doors by bureaucrats in DC or DAO politicians. Not even by me or you. It’s fully autonomous.
 
