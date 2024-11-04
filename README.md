@@ -53,7 +53,7 @@ There are currently two ways to acquire CASH:
 
 > Should I buy, or should I open a credit line on Opus?
 
-<figure><img src=".gitbook/assets/decision_tree (2).png" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/decision_tree (3).png" alt=""><figcaption></figcaption></figure>
 
 {% hint style="info" %}
 To interact with Opus or use CASH, you need a Starknet-compatible wallet (e.g. ArgentX, Braavos).
