@@ -12,16 +12,18 @@ Starting from 17 October 2024, users who borrow CASH will receive STRK rewards a
 
 The Starknet Foundation determines the amount of incentives on a daily basis in their discretion.
 
-Users who borrow CASH will earn a share of each day's incentives as a proportion of the total CASH borrowed across all Troves for the day. The amount of CASH borrowed will be aggregated for each address i.e. if one address opens two Troves, the amount of CASH borrowed will be summed up for that address. These will be calculated based on a snapshot taken at the end of each day.\
-\
-For example, if User A is borrowing 100 CASH across all of his Troves on a given day, there is a total debt of 1000 CASH for that day, and the incentives are 500 STRK for that day, then User A will be entitled to `(100 / 1000) * 500 = 50` STRK for that day.
+Users who borrow CASH will earn a share of each day's incentives as a proportion of the total CASH borrowed across all Troves for the day. The amount of CASH borrowed will be aggregated for each address i.e. if one address opens two Troves, the amount of CASH borrowed will be summed up for that address. These will be calculated based on a snapshot taken at the end of each day.
 
-For the avoidance of doubt, the [protocol seeded TVL](technical-documentation/smart-contracts/transmuter-module.md) has been excluded from this initiative.
+{% hint style="info" %}
+**Example:** _on a given day,_ if User A borrows 100 CASH, there is a total debt of 1000 CASH across all troves, and the incentives are 500 STRK, then User A will be entitled to $$\frac{100}{1000} \cdot 500 = 50 \text{ STRK}$$ on that day.
+{% endhint %}
+
+The [protocol seeded TVL](technical-documentation/smart-contracts/transmuter-module.md) has been excluded from this initiative.
 
 ## Participation
 
-Users will automatically be part of this initiative if they are actively borrowing CASH. No further action is required.
+Users will automatically be part of this initiative if they are actively borrowing CASH. No further actions required.
 
 ## Claiming
 
-The claim page will be updated soon.&#x20;
+Visit the [rewards page here.](https://app.opus.money/rewards)
