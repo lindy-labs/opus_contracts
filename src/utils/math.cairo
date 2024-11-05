@@ -49,20 +49,9 @@ pub fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
 // x128 value needs to be scaled up by the quote token's decimals
 // https://docs.ekubo.org/integration-guides/reference/reading-pool-price
 pub fn scale_x128_to_wad(n: u256, decimals: u8) -> Wad {
-    let decimals_diff: u8 = WAD_DECIMALS - decimals;
-
-    // Scale value up to Wad precision first to avoid precision loss during division
-    let wad_scale: u256 = WAD_SCALE.into();
-    let scaled: u256 = n * wad_scale * pow(10, decimals_diff).into();
-    let sqrt: u256 = scaled / TWO_POW_128.into();
-
-    // `sqrt` is of Wad precision here so the result will be of 10 ** 36 precision
-    let sq: u512 = u256_wide_mul(sqrt, sqrt);
-
-    // Scale the value back to Wad precision
-    let (val, _) = u512_safe_div_rem_by_u256(sq, wad_scale.try_into().unwrap());
-
-    let val: u256 = val.try_into().unwrap();
+    // we multiply by WAD_SCALE to get it into Wad precision and then mul again
+    // by the appropriate precision, all before dividing to prevent precision loss
+    let val: u256 = n * WAD_SCALE.into() * pow(10, WAD_DECIMALS - decimals).into() / TWO_POW_128.into();
     val.try_into().unwrap()
 }
 

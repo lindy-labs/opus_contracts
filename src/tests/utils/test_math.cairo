@@ -95,23 +95,23 @@ mod test_math {
         // 18 decimals
         let x128_val: u256 = 340351451218700252552422283729072753607;
         let actual: Wad = scale_x128_to_wad(x128_val, 18);
-        let expected: Wad = 1000406082226072611_u128.into();
+        let expected: Wad = 1000203020504373800_u128.into();
         assert_equalish(actual, expected, error_margin, 'wrong x128 to wad #1');
 
         let x128_val: u256 = 339351451218700252552422283729072753607;
         let actual: Wad = scale_x128_to_wad(x128_val, 18);
-        let expected: Wad = 994536053393236430_u128.into();
+        let expected: Wad = 997264284627318000_u128.into();
         assert_equalish(actual, expected, error_margin, 'wrong x128 to wad #2');
 
         // 6 decimals
         let x128_val: u256 = 340245254854570020996364378;
         let actual: Wad = scale_x128_to_wad(x128_val, 6);
-        let expected: Wad = 999781886772824962_u128.into();
+        let expected: Wad = 999890937439091300_u128.into();
         assert_equalish(actual, expected, error_margin, 'wrong x128 to wad #3');
 
         let x128_val: u256 = 341245254854570020996364378;
         let actual: Wad = scale_x128_to_wad(x128_val, 6);
-        let expected: Wad = 1005667353683370322_u128.into();
+        let expected: Wad = 1002829673316147100_u128.into();
         assert_equalish(actual, expected, error_margin, 'wrong x128 to wad #4');
     }
 
