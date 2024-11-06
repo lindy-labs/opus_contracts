@@ -303,7 +303,7 @@ pub mod mainnet {
     }
 
     pub fn receptor() -> ContractAddress {
-        0x11ded1ba51cd7fd7dff2ad5e92ed6c1bc7b5c905b7d5961a803f069a195341a.try_into().unwrap()
+        0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678.try_into().unwrap()
     }
 
     pub fn seer() -> ContractAddress {
