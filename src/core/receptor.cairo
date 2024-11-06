@@ -9,7 +9,7 @@ pub mod receptor {
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::math::{median_of_three, scale_x128_to_wad};
+    use opus::utils::math::{median_of_three, ekubo_oracle_price_to_wad};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Wad, WAD_DECIMALS};
 
@@ -62,7 +62,7 @@ pub mod receptor {
     }
 
     //
-    // Events 
+    // Events
     //
 
     #[event]
@@ -166,7 +166,7 @@ pub mod receptor {
                 let quote_token_info: QuoteTokenInfo = self.quote_tokens.read(index);
                 let quote: u256 = oracle_extension
                     .get_price_x128_over_last(cash, quote_token_info.address, twap_duration);
-                let scaled_quote: Wad = scale_x128_to_wad(quote, quote_token_info.decimals);
+                let scaled_quote: Wad = ekubo_oracle_price_to_wad(quote, quote_token_info.decimals);
 
                 quotes.append(scaled_quote);
                 index += 1;

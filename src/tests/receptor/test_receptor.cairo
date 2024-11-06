@@ -236,9 +236,9 @@ mod test_receptor {
         // actual mainnet values from 1727418625 start time to 1727429425 end time
         // converted in python
         let prices: Span<u256> = array![
-            340309250276362099785975626643777172060, // 1.000158012403645039602034587 DAI / CASH
-            340527434977254803682969657, // 1.001440899252887204535902704 USDC / CASH
-            340328625112763872478829777, // 1.000271899695698999556601210 USDT / CASH
+            340309250276362099785975626643777172060, // 1.000079003081079 DAI / CASH
+            340527434977254803682969657, // 1.0007201902894171 USDC / CASH
+            340328625112763872478829777, // 1.000135940607925 USDT / CASH
         ]
             .span();
         receptor_utils::set_next_prices(
@@ -251,9 +251,9 @@ mod test_receptor {
         let quotes: Span<Wad> = receptor.get_quotes();
         let expected_yin_spot_price: Wad = *quotes[2];
         let mut expected_prices: Span<Wad> = array![
-            1000158012403645039_u128.into(), // DAI
-            1001440899252887204_u128.into(), // USDC
-            1000271899695698999_u128.into(), // USDT
+            1000079003081079000_u128.into(), // DAI
+            1000720190289417000_u128.into(), // USDC
+            1000135940607925000_u128.into(), // USDT
         ]
             .span();
         let error_margin: Wad = 200_u128.into();
