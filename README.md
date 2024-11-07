@@ -36,7 +36,7 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[WSTETH] | `0x02d1e95661e7726022071c06a95cdae092595954096c373cde24a34bb3984cbf` |
 | Pragma      | `0x0734abeebd842926c860f3f82d23a7d2e0a24c8756d7f6b88a7456dc95a7e0fd` |
 | Purger      | `0x0149c1539f39945ce1f63917ff6076845888ab40e9327640cb78dcaebfed42e4` |
-| Receptor    | `0x11ded1ba51cd7fd7dff2ad5e92ed6c1bc7b5c905b7d5961a803f069a195341a`  |
+| Receptor    | `0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678` |
 | Seer        | `0x07b4d65be7415812cea9edcfce5cf169217f4a53fce84e693fe8efb5be9f0437` |
 | Sentinel    | `0x06428ec3221f369792df13e7d59580902f1bfabd56a81d30224f4f282ba380cd` |
 | Shrine      | `0x0498edfaf50ca5855666a700c25dd629d577eb9afccdf3b5977aec79aee55ada` |
