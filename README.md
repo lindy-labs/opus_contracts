@@ -6,7 +6,7 @@ Opus doesn’t provide Forward Guidance only to pivot at the last second leaving
 
 It lets you borrow against a portfolio of carefully curated collateral including yield-bearing assets. With minimal human intervention, the interest rates, maximum loan-to-value ratios and liquidation thresholds are dynamically determined by each user's collateral profile.
 
-Our first digital asset is CASH, an algorithmic overcollateralized stablecoin pegged 1:1 to the US dollar.
+Our first digital asset is CASH, an algorithmic overcollateralized stablecoin soft pegged to the US dollar.
 
 ## How is CASH different from other stablecoins?
 
@@ -30,7 +30,7 @@ Simply open a credit line against your portfolio and swap CASH for any token usi
 
 * **Leveraged exposure to any supported token**
 
-By borrowing against your portfolio it is possible to construct a multicall that adds collateral, flash mints CASH, swaps it for an Opus supported token like STRK, and adds it as collateral. Your maximum leveraged is limited by the LTV threshold of your trove—and as you know, these are unique to you. You can calculate it with the formula $$\frac{1}{1 - \text{LTV Threshold}}$$.
+By borrowing against your portfolio it is possible to construct a multicall that adds collateral, flash mints CASH, swaps it for an Opus supported token like STRK, and adds it as collateral. Your maximum leverage is limited by the LTV threshold of your trove—and as you know, these are unique to you. You can calculate it with the formula $$\frac{1}{1 - \text{LTV Threshold}}$$.
 
 * **Offramp to cover real life expenses**
 
