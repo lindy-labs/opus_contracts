@@ -10,9 +10,16 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 
 ## What collateral is accepted?
 
-We currently accept WBTC, ETH, wstETH and STRK. New collateral types will be added in the future.
+We currently accept the following assets:
 
-A collateral's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md).
+| Asset  | Base Rate | Base LTV Threshold |
+| ------ | --------- | ------------------ |
+| ETH    | 3%        | 85%                |
+| wBTC   | 4%        | 78%                |
+| wstETH | 4.75%     | 79%                |
+| STRK   | 7%        | 63%                |
+
+A collateral's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md). New collateral types will be added in the future.
 
 A collateral that is accepted may subsequently be temporarily suspended, depending on various factors such as the market conditions for that collateral asset. Suspended collateral will have their thresholds gradually decrease linearly over a 6-month period towards zero.
 
@@ -35,13 +42,18 @@ There are two charges associated with borrowing CASH:
 
 ## How is the interest rate calculated?
 
-The interest rate of a Trove is obtained by multiplying (1) the weighted average of the base rate of each collateral deposited by the Trove, as a percentage of the total Trove's value; with (2) the global multiplier value.
+The interest rate of a Trove is obtained by multiplying:
+
+1. the weighted average of the base rate of each collateral deposited by the Trove, as a percentage of the total Trove's value; with
+2. the global multiplier value.
 
 The base rate for a collateral is set by the admin, and will eventually be handed over to governance.
 
-For example, if a Trove's value comprises 60% WBTC and 40% ETH, and WBTC and ETH have a base rate of 2% and 3% respectively, then the weighted average base rate of the Trove is 60% \* 2% + 40% \* 3% = 2.6%.
+For example, if a Trove's value comprises 60% WBTC and 40% ETH, and WBTC and ETH have a base rate of 2% and 3% respectively, then the weighted average base rate of the Trove is $$60\% \cdot 2\% + 40\% \cdot 3\% = 2.6\%$$.
 
-Note that if a Trove only deposits one type of collateral, then the weighted average base rate is simply that collateral's base rate.
+{% hint style="info" %}
+If a Trove only deposits one type of collateral, then the weighted average base rate is simply that collateral's base rate.
+{% endhint %}
 
 ## What is the multiplier?
 
