@@ -21,11 +21,11 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 New collateral types will be added in short order.
 {% endhint %}
 
-A collateral's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md).
+An asset's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md).
 
-A collateral that is accepted may subsequently be temporarily suspended, depending on various factors such as the market conditions for that collateral asset. Suspended collateral will have their thresholds gradually decrease linearly over a 6-month period towards zero.
+Collateral that is accepted may subsequently be temporarily suspended, depending on various factors such as the market conditions for that collateral asset. Suspended assets will have their thresholds gradually decrease linearly over a 6-month period towards zero.
 
-If a collateral is suspended for longer than 6 months, it will be permanently delisted. At that point, the suspended collateral will be treated as having zero value.
+If an asset is suspended for longer than 6 months, it will be permanently delisted. At that point, the suspended asset will be treated as having zero value.
 
 ## What is a Trove?
 
