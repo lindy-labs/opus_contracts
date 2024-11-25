@@ -12,8 +12,8 @@ Our first digital asset is CASH, an algorithmic overcollateralized stablecoin so
 
 Opus introduces novel mechanisms that provide stronger stability guarantees to ensure that CASH is pegged to the value of USD.
 
-1. A global [multiplier](ensuring-peg-stability.md#how-does-the-multiplier-work) is applied to increase or decrease interest rates across the board, depending on whether the spot market price of CASH is below or above peg.
-2. A [forge fee](ensuring-peg-stability.md#how-do-forge-fees-work) is charged on minting of new debt when the spot market price of CASH is below peg.
+1. A global [multiplier](peg-stability.md#how-does-the-multiplier-work) is applied to increase or decrease interest rates across the board, depending on whether the spot market price of CASH is below or above peg.
+2. A [forge fee](peg-stability.md#how-do-forge-fees-work) is charged on minting of new debt when the spot market price of CASH is below peg.
 3. … and a lot more for those with eyes to see!
 
 ## What can I do with CASH?
@@ -41,8 +41,8 @@ As demand for CASH grows, the DAO will move to establish direct CASH↔USD ramps
 ## What can I do on Opus?
 
 1. [Borrow](borrowing.md) CASH against a set of whitelisted collateral by opening a Trove
-2. [Provide](liquidations-and-the-absorber.md#why-should-i-deposit-cash-to-the-absorber) CASH to the Absorber to participate in liquidations and receive liquidated assets and a share of the protocol's income from accrued interest and fees
-3. Secure Opus by [liquidating](liquidations-and-the-absorber.md#what-are-the-incentives-to-perform-a-searcher-liquidation) unhealthy Troves yourself or by using the Absorber's liquidity and be compensated
+2. [Provide](liquidations.md#why-should-i-deposit-cash-to-the-absorber) CASH to the Absorber to participate in liquidations and receive liquidated assets and a share of the protocol's income from accrued interest and fees
+3. Secure Opus by [liquidating](liquidations.md#what-are-the-incentives-to-perform-a-searcher-liquidation) unhealthy Troves yourself or by using the Absorber's liquidity and be compensated
 
 ## How to get CASH?
 

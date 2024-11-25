@@ -1,8 +1,8 @@
 ---
-description: Incentives for borrowers
+description: Incentives for borrowers.
 ---
 
-# Starknet DeFi Spring
+# Rewards
 
 ## Introduction
 
