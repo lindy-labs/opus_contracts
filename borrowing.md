@@ -10,8 +10,6 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 
 ## What collateral is accepted?
 
-We currently accept the following assets:
-
 | Asset  | Base Rate | Base LTV Threshold |
 | ------ | --------- | ------------------ |
 | ETH    | 3%        | 85%                |
@@ -19,7 +17,11 @@ We currently accept the following assets:
 | wstETH | 4.75%     | 79%                |
 | STRK   | 7%        | 63%                |
 
-A collateral's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md). New collateral types will be added in the future.
+{% hint style="info" %}
+New collateral types will be added in short order.
+{% endhint %}
+
+A collateral's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md).
 
 A collateral that is accepted may subsequently be temporarily suspended, depending on various factors such as the market conditions for that collateral asset. Suspended collateral will have their thresholds gradually decrease linearly over a 6-month period towards zero.
 
