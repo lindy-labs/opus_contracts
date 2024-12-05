@@ -235,6 +235,14 @@ pub mod mainnet {
         0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid WSTETH address')
     }
 
+    pub fn xstrk() -> ContractAddress {
+        0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a.try_into().expect('invalid xSTRK address')
+    }
+
+    pub fn sstrk() -> ContractAddress {
+        0x0356f304b154d29d2a8fe22f1cb9107a9b564a733cf6b4cc47fd121ac1af90c9.try_into().expect('invalid sSTRK address')
+    }
+
     // External
 
     // https://docs.ekubo.org/integration-guides/reference/contract-addresses
@@ -318,6 +326,10 @@ pub mod mainnet {
         0x0498edfaf50ca5855666a700c25dd629d577eb9afccdf3b5977aec79aee55ada.try_into().unwrap()
     }
 
+    pub fn sstrk_gate() -> ContractAddress {
+        0x03b709f3ab9bc072a195b907fb2c27688723b6e4abb812a8941def819f929bd8.try_into().unwrap()
+    }
+
     pub fn strk_gate() -> ContractAddress {
         0x031a96fe18fe3fdab28822c82c81471f1802800723c8f3e209f1d9da53bc637d.try_into().unwrap()
     }
@@ -332,5 +344,9 @@ pub mod mainnet {
 
     pub fn wsteth_gate() -> ContractAddress {
         0x02d1e95661e7726022071c06a95cdae092595954096c373cde24a34bb3984cbf.try_into().unwrap()
+    }
+
+    pub fn xstrk_gate() -> ContractAddress {
+        0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a.try_into().unwrap()
     }
 }

@@ -45,6 +45,8 @@ fn main() {
     let strk: ContractAddress = addresses::strk_addr();
     let wbtc: ContractAddress = addresses::mainnet::wbtc();
     let wsteth: ContractAddress = addresses::mainnet::wsteth();
+    let xstrk: ContractAddress = addresses::mainnet::xstrk();
+    let sstrk: ContractAddress = addresses::mainnet::sstrk();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
@@ -52,6 +54,8 @@ fn main() {
     let wsteth_gate: ContractAddress = core_deployment::deploy_gate(
         gate_class_hash, shrine, wsteth, sentinel, "WSTETH"
     );
+    let xstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, xstrk, sentinel, "xSTRK");
+    let sstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, sstrk, sentinel, "sSTRK");
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
@@ -83,6 +87,8 @@ fn main() {
     utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH, STRK, WBTC and WSTETH yangs
+    // The admin role has been transferred to the multisig so any new collateral needs to 
+    // be added with the multisig.
     println!("Setting up Shrine");
 
     utils::add_yang_to_sentinel(
@@ -165,6 +171,9 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, wsteth, WSTETH_USD_PAIR_ID);
 
+    // The admin role has been transferred to the multisig so any new pair IDs 
+    // need to be added with the multisig.
+
     // Set initial allocation
     let twenty_pct: felt252 = (20 * RAY_PERCENT).into();
     let eighty_pct: felt252 = (80 * RAY_PERCENT).into();
@@ -222,6 +231,8 @@ fn main() {
     println!("Gate[STRK]: {}", strk_gate);
     println!("Gate[WBTC]: {}", wbtc_gate);
     println!("Gate[WSTETH]: {}", wsteth_gate);
+    println!("Gate[xSTRK]: {}", xstrk_gate);
+    println!("Gate[sSTRK]: {}", sstrk_gate);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
     println!("Receptor: {}", receptor);
