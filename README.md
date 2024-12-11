@@ -34,6 +34,8 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[STRK]  | `0x031a96fe18fe3fdab28822c82c81471f1802800723c8f3e209f1d9da53bc637d` |
 | Gate[WBTC]  | `0x05bc1c8a78667fac3bf9617903dbf2c1bfe3937e1d37ada3d8b86bf70fb7926e` |
 | Gate[WSTETH] | `0x02d1e95661e7726022071c06a95cdae092595954096c373cde24a34bb3984cbf` |
+| Gate[xSTRK] | `0x04a3e7dffd8e74a706be9abe6474e07fbbcf41e1be71387514c4977d54dbc428` |
+| Gate[sSTRK] | `0x03b709f3ab9bc072a195b907fb2c27688723b6e4abb812a8941def819f929bd8` |
 | Pragma      | `0x0734abeebd842926c860f3f82d23a7d2e0a24c8756d7f6b88a7456dc95a7e0fd` |
 | Purger      | `0x0149c1539f39945ce1f63917ff6076845888ab40e9327640cb78dcaebfed42e4` |
 | Receptor    | `0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678` |
