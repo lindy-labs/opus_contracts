@@ -311,7 +311,7 @@ mod test_seer {
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
@@ -486,7 +486,7 @@ mod test_seer {
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),

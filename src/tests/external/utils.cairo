@@ -16,7 +16,7 @@ pub mod pragma_utils {
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::pragma::PragmaPricesResponse;
+    use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
     use opus::utils::math::pow;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{ContractAddress, get_block_timestamp,};
@@ -97,8 +97,10 @@ pub mod pragma_utils {
         // Add yangs to Pragma
         start_prank(CheatTarget::One(pragma), admin());
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
-        pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
-        pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
+        let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
+        let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
+        pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
+        pragma_dispatcher.set_yang_pair_settings(wbtc_yang, wbtc_pair_settings);
         stop_prank(CheatTarget::One(pragma));
     }
 
@@ -140,7 +142,7 @@ pub mod pragma_utils {
             expiration_timestamp: Option::None,
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
-        mock_pragma.next_get_data_median(pair_id, response);
+        mock_pragma.next_get_data(pair_id, response);
         mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
     }
 }
