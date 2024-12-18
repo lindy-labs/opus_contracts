@@ -20,7 +20,7 @@ mod test_pragma {
     use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::pow;
     use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::{ContractAddress, get_block_timestamp};
@@ -168,7 +168,7 @@ mod test_pragma {
     }
 
     #[test]
-    fn test_set_yang_pair_id_pass() {
+    fn test_set_yang_pair_settings_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
@@ -179,18 +179,20 @@ mod test_pragma {
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
-        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
+        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_settings` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
+
+        let pair_settings = PairSettings { pair_id: pepe_token_pair_id, aggregation_mode: AggregationMode::Median };
 
         start_warp(CheatTarget::All, TS);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
+        pragma.set_yang_pair_settings(pepe_token, pair_settings);
         stop_prank(CheatTarget::One(pragma.contract_address));
         let expected_events = array![
             (
                 pragma.contract_address,
-                pragma_contract::Event::YangPairIdSet(
-                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
+                pragma_contract::Event::YangPairSettingsUpdated(
+                    pragma_contract::YangPairSettingsUpdated { address: pepe_token, pair_settings },
                 )
             ),
         ];
@@ -199,7 +201,7 @@ mod test_pragma {
     }
 
     #[test]
-    fn test_set_yang_pair_id_overwrite_pass() {
+    fn test_set_yang_pair_settings_overwrite_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
         start_warp(CheatTarget::All, TS);
@@ -209,16 +211,22 @@ mod test_pragma {
             'Pepe', 'PEPE', 18, 0.into(), common::non_zero_address(), Option::None
         );
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
+        let pair_settings = PairSettings { pair_id: pepe_token_pair_id, aggregation_mode: AggregationMode::Median };
+
         let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
         let current_ts: u64 = get_block_timestamp();
-        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_id` passes
+        // Seed first price update for PEPE token so that `Pragma.set_yang_pair_settings` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
 
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id);
+        pragma.set_yang_pair_settings(pepe_token, pair_settings);
 
-        // fake data for a second set_yang_pair_id, so its distinct from the first call
+        // fake data for a second set_yang_pair_settings, so its distinct from the first call
         let pepe_token_pair_id_2: felt252 = 'WILDPEPE/USD';
+        let new_pair_settings = PairSettings {
+            pair_id: pepe_token_pair_id_2, aggregation_mode: AggregationMode::Median
+        };
+
         let response = PragmaPricesResponse {
             price: price,
             decimals: PRAGMA_DECIMALS.into(),
@@ -226,22 +234,22 @@ mod test_pragma {
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
-        mock_pragma.next_get_data_median(pepe_token_pair_id_2, response);
+        mock_pragma.next_get_data(pepe_token_pair_id_2, response);
         let twap_response: (u128, u32) = (price, PRAGMA_DECIMALS.into());
         mock_pragma.next_calculate_twap(pepe_token_pair_id_2, twap_response);
 
-        pragma.set_yang_pair_id(pepe_token, pepe_token_pair_id_2);
+        pragma.set_yang_pair_settings(pepe_token, new_pair_settings);
         let expected_events = array![
             (
                 pragma.contract_address,
-                pragma_contract::Event::YangPairIdSet(
-                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id },
+                pragma_contract::Event::YangPairSettingsUpdated(
+                    pragma_contract::YangPairSettingsUpdated { address: pepe_token, pair_settings },
                 )
             ),
             (
                 pragma.contract_address,
-                pragma_contract::Event::YangPairIdSet(
-                    pragma_contract::YangPairIdSet { address: pepe_token, pair_id: pepe_token_pair_id_2 },
+                pragma_contract::Event::YangPairSettingsUpdated(
+                    pragma_contract::YangPairSettingsUpdated { address: pepe_token, pair_settings: new_pair_settings },
                 )
             ),
         ];
@@ -251,41 +259,47 @@ mod test_pragma {
 
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
-    fn test_set_yang_pair_id_unauthorized_fail() {
+    fn test_set_yang_pair_settings_unauthorized_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         start_prank(CheatTarget::One(pragma.contract_address), common::badguy());
-        pragma.set_yang_pair_id(mock_eth_token_addr(), ETH_USD_PAIR_ID);
+        pragma.set_yang_pair_settings(mock_eth_token_addr(), pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: Invalid pair ID',))]
-    fn test_set_yang_pair_id_invalid_pair_id_fail() {
+    fn test_set_yang_pair_settings_invalid_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         let invalid_pair_id = 0;
-        pragma.set_yang_pair_id(mock_eth_token_addr(), invalid_pair_id);
+        let pair_settings = PairSettings { pair_id: invalid_pair_id, aggregation_mode: AggregationMode::Median };
+        pragma.set_yang_pair_settings(mock_eth_token_addr(), pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: Invalid yang address',))]
-    fn test_set_yang_pair_id_invalid_yang_address_fail() {
+    fn test_set_yang_pair_settings_invalid_yang_address_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         let invalid_yang_addr = Zero::zero();
-        pragma.set_yang_pair_id(invalid_yang_addr, ETH_USD_PAIR_ID);
+        let pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
+        pragma.set_yang_pair_settings(invalid_yang_addr, pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: Spot unknown pair ID',))]
-    fn test_set_yang_pair_id_unknown_spot_pair_id_fail() {
+    fn test_set_yang_pair_settings_unknown_spot_pair_id_fail() {
         let (pragma, _) = pragma_utils::pragma_deploy(Option::None, Option::None);
+        let pair_settings = PairSettings {
+            pair_id: pragma_utils::PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median
+        };
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_settings(pepe_token_addr(), pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: TWAP unknown pair ID',))]
-    fn test_set_yang_pair_id_unknown_twap_pair_id_fail() {
+    fn test_set_yang_pair_settings_unknown_twap_pair_id_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pepe_spot_response = PragmaPricesResponse {
             price: 1000,
@@ -294,15 +308,20 @@ mod test_pragma {
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None
         };
-        mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_spot_response);
+        mock_pragma.next_get_data(pragma_utils::PEPE_USD_PAIR_ID, pepe_spot_response);
+
+        let pair_settings = PairSettings {
+            pair_id: pragma_utils::PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median
+        };
+
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         start_warp(CheatTarget::All, TS);
-        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_settings(pepe_token_addr(), pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: Spot too many decimals',))]
-    fn test_set_yang_pair_id_spot_too_many_decimals_fail() {
+    fn test_set_yang_pair_settings_spot_too_many_decimals_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
@@ -316,15 +335,19 @@ mod test_pragma {
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
-        mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_response);
+        mock_pragma.next_get_data(pragma_utils::PEPE_USD_PAIR_ID, pepe_response);
+
+        let pair_settings = PairSettings {
+            pair_id: pragma_utils::PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median
+        };
 
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
-        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_settings(pepe_token_addr(), pair_settings);
     }
 
     #[test]
     #[should_panic(expected: ('PGM: TWAP too many decimals',))]
-    fn test_set_yang_pair_id_twap_too_many_decimals_fail() {
+    fn test_set_yang_pair_settings_twap_too_many_decimals_fail() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
@@ -337,14 +360,18 @@ mod test_pragma {
             num_sources_aggregated: pragma_utils::DEFAULT_NUM_SOURCES,
             expiration_timestamp: Option::None,
         };
-        mock_pragma.next_get_data_median(pragma_utils::PEPE_USD_PAIR_ID, pepe_spot_response);
+        mock_pragma.next_get_data(pragma_utils::PEPE_USD_PAIR_ID, pepe_spot_response);
 
         let pepe_twap_response: (u128, u32) = (pepe_price, 20);
         mock_pragma.next_calculate_twap(pragma_utils::PEPE_USD_PAIR_ID, pepe_twap_response);
 
+        let pair_settings = PairSettings {
+            pair_id: pragma_utils::PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median
+        };
+
         start_prank(CheatTarget::One(pragma.contract_address), pragma_utils::admin());
         start_warp(CheatTarget::All, TS);
-        pragma.set_yang_pair_id(pepe_token_addr(), pragma_utils::PEPE_USD_PAIR_ID);
+        pragma.set_yang_pair_settings(pepe_token_addr(), pair_settings);
     }
 
 
@@ -407,7 +434,7 @@ mod test_pragma {
         let spot_eth_price: u128 = 1500 * WAD_SCALE;
         let twap_eth_price: u128 = 1650 * WAD_SCALE;
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 ETH_USD_PAIR_ID,
                 PragmaPricesResponse {
                     price: spot_eth_price,
@@ -441,7 +468,7 @@ mod test_pragma {
         let spot_eth_price: u128 = 1700 * WAD_SCALE;
         let twap_eth_price: u128 = 1650 * WAD_SCALE;
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 ETH_USD_PAIR_ID,
                 PragmaPricesResponse {
                     price: spot_eth_price,
@@ -497,6 +524,7 @@ mod test_pragma {
                 pragma_contract::Event::InvalidSpotPriceUpdate(
                     pragma_contract::InvalidSpotPriceUpdate {
                         pair_id: ETH_USD_PAIR_ID,
+                        aggregation_mode: AggregationMode::Median,
                         price: eth_price,
                         pragma_last_updated_ts: now,
                         pragma_num_sources: pragma_utils::DEFAULT_NUM_SOURCES,
@@ -527,7 +555,7 @@ mod test_pragma {
         // that it has less than the required number of sources
         let num_sources: u32 = pragma_utils::SOURCES_THRESHOLD - 1;
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
@@ -550,6 +578,7 @@ mod test_pragma {
                 pragma_contract::Event::InvalidSpotPriceUpdate(
                     pragma_contract::InvalidSpotPriceUpdate {
                         pair_id: ETH_USD_PAIR_ID,
+                        aggregation_mode: AggregationMode::Median,
                         price: eth_price,
                         pragma_last_updated_ts: now,
                         pragma_num_sources: num_sources

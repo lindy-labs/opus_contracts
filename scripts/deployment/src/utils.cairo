@@ -1,4 +1,5 @@
 use core::array::ArrayTrait;
+use opus::types::pragma::PairSettings;
 use scripts::constants::MAX_FEE;
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
 use starknet::ContractAddress;
@@ -82,6 +83,7 @@ pub fn add_yang_to_sentinel(
     println!("Yang successfully added: {}", asset_name)
 }
 
+// Used for Pragma v1
 pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_id: felt252) {
     let _set_yang_pair_id = invoke(
         oracle, selector!("set_yang_pair_id"), array![yang.into(), pair_id], Option::Some(MAX_FEE), Option::None,
@@ -89,3 +91,12 @@ pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddres
         .expect('set yang pair id failed');
 }
 
+// Used for Pragma v2
+pub fn set_yang_pair_settings_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_settings: PairSettings) {
+    let mut calldata = array![yang.into(), pair_settings.pair_id];
+    pair_settings.aggregation_mode.serialize(ref calldata);
+    let _set_yang_pair_settings = invoke(
+        oracle, selector!("set_yang_pair_settings"), calldata, Option::Some(MAX_FEE), Option::None,
+    )
+        .expect('set yang pair settings failed');
+}
