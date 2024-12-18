@@ -203,17 +203,6 @@ pub mod pragma {
         Error
     }
 
-    pub impl AggregationModeIntoFelt252 of Into<AggregationMode, felt252> {
-        fn into(self: AggregationMode) -> felt252 {
-            match self {
-                AggregationMode::Median => 0,
-                AggregationMode::Mean => 1,
-                AggregationMode::ConversionRate => 2,
-                _ => 3,
-            }
-        }
-    }
-
     #[derive(Copy, Drop, Serde)]
     pub enum DataType {
         SpotEntry: felt252,
