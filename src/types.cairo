@@ -197,6 +197,7 @@ pub struct QuoteTokenInfo {
 pub mod pragma {
     #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     pub enum AggregationMode {
+        #[default]
         Median,
         Mean,
         ConversionRate,
