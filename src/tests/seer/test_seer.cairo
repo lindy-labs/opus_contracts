@@ -151,8 +151,8 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
-        // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+        // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let mut eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let mut wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
 
@@ -301,7 +301,7 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
         // mock an ETH price update of spot Pragma that will fail due to too few sources,
@@ -369,8 +369,8 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
-        // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+        // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -444,7 +444,7 @@ mod test_seer {
         );
         let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
         let yangs = array![eth_yang, eth_yang].span();
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
@@ -473,7 +473,7 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
         // mock a price update of Pragma spot eth that
@@ -538,7 +538,7 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };
         assert(task.probe_task(), 'should be ready 1');

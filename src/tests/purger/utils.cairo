@@ -351,7 +351,7 @@ pub mod purger_utils {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, classes.pragma, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();

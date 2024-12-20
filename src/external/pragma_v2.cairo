@@ -6,7 +6,7 @@
 //       order to get ASSET/SYN
 
 #[starknet::contract]
-pub mod pragma {
+pub mod pragma_v2 {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::num::traits::Zero;
@@ -16,8 +16,8 @@ pub mod pragma {
     };
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
-    use opus::interfaces::IPragma::IPragma;
-    use opus::types::pragma::{AggregationMode, DataType, PragmaPricesResponse, PriceValidityThresholds};
+    use opus::interfaces::IPragma::IPragmaV2;
+    use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
@@ -67,10 +67,9 @@ pub mod pragma {
         // `sources` is the minimum number of data publishers used to aggregate the
         // price value
         price_validity_thresholds: PriceValidityThresholds,
-        // A mapping between a token's address and the ID Pragma uses
-        // to identify the price feed
-        // (yang address) -> (Pragma pair ID)
-        yang_pair_ids: LegacyMap::<ContractAddress, felt252>
+        // A mapping between a token's address and its pair settings in Pragma
+        // (yang address) -> (PairSettings struct)
+        yang_pair_settings: LegacyMap::<ContractAddress, PairSettings>,
     }
 
     //
@@ -83,13 +82,14 @@ pub mod pragma {
         AccessControlEvent: access_control_component::Event,
         InvalidSpotPriceUpdate: InvalidSpotPriceUpdate,
         PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
-        YangPairIdSet: YangPairIdSet,
+        YangPairSettingsUpdated: YangPairSettingsUpdated,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct InvalidSpotPriceUpdate {
         #[key]
         pub pair_id: felt252,
+        pub aggregation_mode: AggregationMode,
         pub price: Wad,
         pub pragma_last_updated_ts: u64,
         pub pragma_num_sources: u32,
@@ -102,9 +102,9 @@ pub mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct YangPairIdSet {
+    pub struct YangPairSettingsUpdated {
         pub address: ContractAddress,
-        pub pair_id: felt252
+        pub pair_settings: PairSettings
     }
 
     //
@@ -141,16 +141,19 @@ pub mod pragma {
     //
 
     #[abi(embed_v0)]
-    impl IPragmaImpl of IPragma<ContractState> {
-        fn set_yang_pair_id(ref self: ContractState, yang: ContractAddress, pair_id: felt252) {
+    impl IPragmaV2Impl of IPragmaV2<ContractState> {
+        fn set_yang_pair_settings(ref self: ContractState, yang: ContractAddress, pair_settings: PairSettings) {
             self.access_control.assert_has_role(pragma_roles::ADD_YANG);
-            assert(pair_id != 0, 'PGM: Invalid pair ID');
+            assert(pair_settings.pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
 
             // doing a sanity check if Pragma actually offers a price feed
             // of the requested asset and if it's suitable for our needs
 
-            let response: PragmaPricesResponse = self.spot_oracle.read().get_data_median(DataType::SpotEntry(pair_id));
+            let response: PragmaPricesResponse = self
+                .spot_oracle
+                .read()
+                .get_data(DataType::SpotEntry(pair_settings.pair_id), pair_settings.aggregation_mode);
             // Pragma returns 0 decimals for an unknown pair ID
             assert(response.decimals.is_non_zero(), 'PGM: Spot unknown pair ID');
             assert(response.decimals <= 18, 'PGM: Spot too many decimals');
@@ -159,13 +162,18 @@ pub mod pragma {
             let (_, decimals) = self
                 .twap_oracle
                 .read()
-                .calculate_twap(DataType::SpotEntry(pair_id), AggregationMode::Median, TWAP_DURATION, start_time);
+                .calculate_twap(
+                    DataType::SpotEntry(pair_settings.pair_id),
+                    pair_settings.aggregation_mode,
+                    TWAP_DURATION,
+                    start_time
+                );
             assert(decimals.is_non_zero(), 'PGM: TWAP unknown pair ID');
             assert(decimals <= 18, 'PGM: TWAP too many decimals');
 
-            self.yang_pair_ids.write(yang, pair_id);
+            self.yang_pair_settings.write(yang, pair_settings);
 
-            self.emit(YangPairIdSet { address: yang, pair_id });
+            self.emit(YangPairSettingsUpdated { address: yang, pair_settings });
         }
 
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u32) {
@@ -198,11 +206,11 @@ pub mod pragma {
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
-            let pair_id: felt252 = self.yang_pair_ids.read(yang);
-            assert(pair_id.is_non_zero(), 'PGM: Unknown yang');
+            let pair_settings: PairSettings = self.yang_pair_settings.read(yang);
+            assert(pair_settings.pair_id.is_non_zero(), 'PGM: Unknown yang');
 
-            let spot_price: Wad = self.fetch_spot_price(pair_id)?; // propagate Err if any
-            let twap_price: Wad = self.fetch_twap_price(pair_id);
+            let spot_price: Wad = self.fetch_spot_price(pair_settings)?; // propagate Err if any
+            let twap_price: Wad = self.fetch_twap_price(pair_settings);
             let pessimistic_price: Wad = min(spot_price, twap_price);
             Result::Ok(pessimistic_price)
         }
@@ -214,8 +222,11 @@ pub mod pragma {
 
     #[generate_trait]
     impl PragmaInternalFunctions of PragmaInternalFunctionsTrait {
-        fn fetch_spot_price(ref self: ContractState, pair_id: felt252) -> Result<Wad, felt252> {
-            let response: PragmaPricesResponse = self.spot_oracle.read().get_data_median(DataType::SpotEntry(pair_id));
+        fn fetch_spot_price(ref self: ContractState, pair_settings: PairSettings) -> Result<Wad, felt252> {
+            let response: PragmaPricesResponse = self
+                .spot_oracle
+                .read()
+                .get_data(DataType::SpotEntry(pair_settings.pair_id), pair_settings.aggregation_mode);
 
             // convert price value to Wad
             let price: Wad = fixed_point_to_wad(response.price, response.decimals.try_into().unwrap());
@@ -228,7 +239,8 @@ pub mod pragma {
                 self
                     .emit(
                         InvalidSpotPriceUpdate {
-                            pair_id,
+                            pair_id: pair_settings.pair_id,
+                            aggregation_mode: pair_settings.aggregation_mode,
                             price,
                             pragma_last_updated_ts: response.last_updated_timestamp,
                             pragma_num_sources: response.num_sources_aggregated,
@@ -238,12 +250,17 @@ pub mod pragma {
             }
         }
 
-        fn fetch_twap_price(ref self: ContractState, pair_id: felt252) -> Wad {
+        fn fetch_twap_price(ref self: ContractState, pair_settings: PairSettings) -> Wad {
             let start_time: u64 = get_block_timestamp() - TWAP_DURATION;
             let (twap, decimals) = self
                 .twap_oracle
                 .read()
-                .calculate_twap(DataType::SpotEntry(pair_id), AggregationMode::Median, TWAP_DURATION, start_time);
+                .calculate_twap(
+                    DataType::SpotEntry(pair_settings.pair_id),
+                    pair_settings.aggregation_mode,
+                    TWAP_DURATION,
+                    start_time
+                );
             fixed_point_to_wad(twap, decimals.try_into().unwrap())
         }
 

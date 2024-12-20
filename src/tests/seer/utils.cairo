@@ -4,7 +4,7 @@ pub mod seer_utils {
     use opus::core::roles::shrine_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
+    use opus::interfaces::IPragma::{IPragmaV2Dispatcher, IPragmaV2DispatcherTrait};
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
@@ -101,7 +101,7 @@ pub mod seer_utils {
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_deploy(pragma_class, mock_pragma_class);
+        let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
 
         let (switchboard, _) = switchboard_utils::switchboard_deploy(switchboard_class, mock_switchboard_class);
