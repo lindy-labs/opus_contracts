@@ -85,7 +85,7 @@ pub mod pragma_utils {
     }
 
     pub fn pragma_v2_deploy(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
+        pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
     ) -> (IPragmaV2Dispatcher, IMockPragmaDispatcher) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
@@ -96,16 +96,16 @@ pub mod pragma_utils {
             SOURCES_THRESHOLD.into(),
         ];
 
-        let pragma_class = match pragma_class {
+        let pragma_v2_class = match pragma_v2_class {
             Option::Some(class) => class,
             Option::None => declare("pragma_v2").unwrap(),
         };
 
-        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma v2 deploy failed');
+        let (pragma_v2_addr, _) = pragma_v2_class.deploy(@calldata).expect('pragma v2 deploy failed');
 
-        let pragma = IPragmaV2Dispatcher { contract_address: pragma_addr };
+        let pragma_v2 = IPragmaV2Dispatcher { contract_address: pragma_v2_addr };
 
-        (pragma, mock_pragma)
+        (pragma_v2, mock_pragma)
     }
 
     pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {

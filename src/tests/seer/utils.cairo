@@ -94,14 +94,14 @@ pub mod seer_utils {
 
     pub fn add_oracles(
         seer: ISeerDispatcher,
-        pragma_class: Option<ContractClass>,
+        pragma_v2_class: Option<ContractClass>,
         mock_pragma_class: Option<ContractClass>,
         switchboard_class: Option<ContractClass>,
         mock_switchboard_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_class, mock_pragma_class);
+        let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_v2_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
 
         let (switchboard, _) = switchboard_utils::switchboard_deploy(switchboard_class, mock_switchboard_class);
