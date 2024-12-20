@@ -24,6 +24,7 @@ pub mod core {
 pub mod external {
     pub mod interfaces;
     pub mod pragma;
+    pub mod pragma_v2;
     pub mod roles;
     pub mod switchboard;
 }
@@ -105,6 +106,7 @@ mod tests {
     }
     mod external {
         mod test_pragma;
+        mod test_pragma_v2;
         mod test_switchboard;
         pub mod utils;
     }

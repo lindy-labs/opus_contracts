@@ -50,7 +50,7 @@ pub mod purger_utils {
         absorber: Option<ContractClass>,
         blesser: ContractClass,
         purger: ContractClass,
-        pragma: Option<ContractClass>,
+        pragma_v2: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
         switchboard: Option<ContractClass>,
         mock_switchboard: Option<ContractClass>,
@@ -349,9 +349,9 @@ pub mod purger_utils {
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, classes.pragma, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
+            seer, classes.pragma_v2, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
@@ -702,7 +702,7 @@ pub mod purger_utils {
             absorber: Option::Some(declare("absorber").unwrap()),
             blesser: declare("blesser").unwrap(),
             purger: declare("purger").unwrap(),
-            pragma: Option::Some(declare("pragma").unwrap()),
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
             mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
             switchboard: Option::Some(declare("switchboard").unwrap()),
             mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),

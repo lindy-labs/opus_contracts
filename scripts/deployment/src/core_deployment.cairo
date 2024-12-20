@@ -238,6 +238,7 @@ pub fn deploy_gate(
     deploy_gate_result.unwrap().contract_address
 }
 
+// This can be used for both Pragma v1 and Pragma v2
 pub fn deploy_pragma(
     admin: ContractAddress,
     spot_oracle: ContractAddress,
