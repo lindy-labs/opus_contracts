@@ -14,6 +14,7 @@ pub mod core {
     pub mod receptor;
     pub mod roles;
     pub mod seer;
+    pub mod seer_v2;
     pub mod sentinel;
     pub mod shrine;
     pub mod transmuter;
@@ -35,6 +36,7 @@ mod interfaces {
     pub mod ICaretaker;
     pub mod IController;
     pub mod IERC20;
+    pub mod IERC4626;
     pub mod IEqualizer;
     pub mod IFlashBorrower;
     pub mod IFlashMint;
