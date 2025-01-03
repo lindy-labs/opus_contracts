@@ -16,10 +16,6 @@ pub mod ekubo {
     // Constants
     //
 
-    //
-    // Constants
-    //
-
     const LOOP_START: u32 = 1;
     pub const NUM_QUOTE_TOKENS: u32 = 3;
 
