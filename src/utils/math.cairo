@@ -45,6 +45,9 @@ pub fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
     u128_rdiv(lhs, rhs.val)
 }
 
+// NOTE: This has been deprecated in favour of `convert_ekubo_oracle_price_to_wad`.
+//       It should be used only if the quote token is guaranteed to be equal to or 
+//       smaller than the base token's decimals.
 // If the quote token has less than 18 decimal precision, then the
 // x128 value needs to be scaled up by the quote token's decimals
 // See https://docs.ekubo.org/integration-guides/reference/reading-pool-price
@@ -54,6 +57,19 @@ pub fn ekubo_oracle_price_to_wad(n: u256, decimals: u8) -> Wad {
     // we multiply by WAD_SCALE to get it into Wad precision and then mul again
     // by the appropriate precision, all before dividing to prevent precision loss
     let val: u256 = n * WAD_SCALE.into() * pow(10, WAD_DECIMALS - decimals).into() / TWO_POW_128.into();
+    val.try_into().unwrap()
+}
+
+pub fn convert_ekubo_oracle_price_to_wad(n: u256, base_decimals: u8, quote_decimals: u8) -> Wad {
+    // Adjust the scale based on the difference in precision between the base asset 
+    // and the quote asset
+    let adjusted_scale: u256 = if quote_decimals <= base_decimals {
+        WAD_SCALE.into() * pow(10_u256, (base_decimals - quote_decimals).into())
+    } else {
+        WAD_SCALE.into() / pow(10_u256, (quote_decimals - base_decimals).into())
+    };
+
+    let val = n * adjusted_scale / TWO_POW_128;
     val.try_into().unwrap()
 }
 

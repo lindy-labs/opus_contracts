@@ -22,6 +22,7 @@ pub mod core {
 }
 
 pub mod external {
+    pub mod ekubo;
     pub mod interfaces;
     pub mod pragma;
     pub mod roles;
@@ -35,6 +36,7 @@ mod interfaces {
     pub mod ICaretaker;
     pub mod IController;
     pub mod IERC20;
+    pub mod IEkubo;
     pub mod IEqualizer;
     pub mod IFlashBorrower;
     pub mod IFlashMint;
