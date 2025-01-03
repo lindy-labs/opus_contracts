@@ -229,3 +229,24 @@ pub mod pragma {
         pub sources: u32,
     }
 }
+
+//
+// Seer v2
+//
+
+#[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
+pub struct ConversionRateInfo {
+    pub asset: ContractAddress,
+    // Scale that must be multiplied with the conversion rate to assets
+    // to get wad precision. 
+    pub conversion_rate_scale: u128
+}
+
+#[derive(Copy, Default, Drop, PartialEq, Serde, starknet::Store)]
+pub enum PriceConversion {
+    #[default]
+    None,
+    // For ERC-4626 assets, the contract address here is that of the
+    // underlying asset.
+    Vault: ConversionRateInfo
+}
