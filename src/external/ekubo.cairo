@@ -9,7 +9,7 @@ pub mod ekubo {
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;
     use opus::utils::math::{median_of_three, convert_ekubo_oracle_price_to_wad};
-    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS};
 
     //
