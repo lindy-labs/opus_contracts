@@ -226,22 +226,15 @@ pub mod ekubo {
         fn fetch_median_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
             let quotes = self.get_quotes(yang);
 
-            // if we receive what we consider a valid price from the oracle,
-            // return it back, otherwise emit an event about the update being invalid
-            let mut quotes_copy = quotes;
-            loop {
-                match quotes_copy.pop_front() {
-                    Option::Some(quote) => {
-                        if quote.is_zero() {
-                            self.emit(InvalidPriceUpdate { yang, quotes });
-                            break Result::Err('EKB: Invalid price update');
-                        }
-                    },
-                    Option::None => {
-                        let price: Wad = median_of_three(quotes);
-                        break Result::Ok(price);
-                    }
-                };
+            // As long as the median price is non-zero (i.e. at least two prices are non-zero), 
+            // it is treated as valid because liveness is prioritized for Ekubo's on-chain oracle.
+            // Otherwise, emit an event about the update being invalid.
+            let price: Wad = median_of_three(quotes);
+            if price.is_zero() {
+                self.emit(InvalidPriceUpdate { yang, quotes });
+                Result::Err('EKB: Invalid price update')
+            } else {
+                Result::Ok(price)
             }
         }
     }
