@@ -74,6 +74,7 @@ pub mod mock {
     pub mod blesser;
     pub mod erc20;
     pub mod erc20_mintable;
+    pub mod erc4626_mintable;
     pub mod flash_borrower;
     pub mod flash_liquidator;
     pub mod mock_ekubo_oracle_extension;
