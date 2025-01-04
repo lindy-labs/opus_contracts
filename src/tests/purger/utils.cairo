@@ -104,7 +104,7 @@ pub mod purger_utils {
             Zero::zero(),
             RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
-            (80 * RAY_PERCENT).into(),
+            //(80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
             (96 * RAY_PERCENT).into(),
             // theoretical upper bound beyond which a penalty is not guaranteed

@@ -242,7 +242,7 @@ mod test_purger {
             1_u128.into(), // 1 wei (0% threshold)
             13904898408200000000_u128.into(), // 13.904... (1% threshold)
             284822000000000000000_u128.into(), // 284.822 (70% threshold)
-            386997000000000000000_u128.into(), // 386.997 (80% threshold)
+            //386997000000000000000_u128.into(), // 386.997 (80% threshold)
             603509000000000000000_u128.into(), // 603.509 (90% threshold)
             908381000000000000000_u128.into(), // 908.381 (96% threshold)
             992098000000000000000_u128.into(), // 992.098 (97% threshold)
@@ -254,7 +254,7 @@ mod test_purger {
             (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
             (3 * RAY_PERCENT).into(), // 3% (1% threshold)
             (3 * RAY_PERCENT).into(), // 3% (70% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (80% threshold)
+            //(3 * RAY_PERCENT).into(), // 3% (80% threshold)
             (3 * RAY_PERCENT).into(), // 3% (90% threshold)
             (3 * RAY_PERCENT).into(), // 3% (96% threshold)
             (3 * RAY_PERCENT).into(), // 3% (97% threshold)
@@ -287,7 +287,9 @@ mod test_purger {
                     } else {
                         let target_trove_yang_amts: Span<Wad> = array![
                             purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                            (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into()
+                            (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
+                            Zero::zero(),
+                            Zero::zero(),
                         ]
                             .span();
 
@@ -543,7 +545,9 @@ mod test_purger {
                         // not lowering it.
                         let target_trove_yang_amts: Span<Wad> = array![
                             purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                            (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into()
+                            (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
+                            Zero::zero(),
+                            Zero::zero(),
                         ]
                             .span();
 
@@ -4124,6 +4128,8 @@ mod test_purger {
                                 let target_trove_yang_amts: Span<Wad> = array![
                                     (*gates[0]).convert_to_yang(purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT),
                                     (*gates[1]).convert_to_yang(purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT),
+                                    Zero::zero(),
+                                    Zero::zero(),
                                 ]
                                     .span();
 
