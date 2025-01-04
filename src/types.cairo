@@ -195,10 +195,12 @@ pub struct QuoteTokenInfo {
 //
 
 pub mod pragma {
-    #[derive(Copy, Drop, Serde)]
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     pub enum AggregationMode {
+        #[default]
         Median,
         Mean,
+        ConversionRate,
         Error
     }
 
@@ -227,6 +229,12 @@ pub mod pragma {
         // the minimum number of data publishers used to aggregate the
         // price value
         pub sources: u32,
+    }
+
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
+    pub struct PairSettings {
+        pub pair_id: felt252,
+        pub aggregation_mode: AggregationMode,
     }
 }
 

@@ -12,3 +12,5 @@ pub const WBTC_USD_PAIR_ID: felt252 = 'WBTC/USD';
 pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
 pub const STRK_USD_PAIR_ID: felt252 = 'STRK/USD';
 pub const WSTETH_USD_PAIR_ID: felt252 = 'WSTETH/USD';
+pub const XSTRK_USD_PAIR_ID: felt252 = 'XSTRK/USD';
+pub const SSTRK_USD_PAIR_ID: felt252 = 'SSTRK/USD';
