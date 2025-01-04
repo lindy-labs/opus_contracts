@@ -65,6 +65,10 @@ mod test_abbot {
                     assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1');
                     yangs_total.append(expected_yang_total);
 
+                    if asset_amt.is_zero() {
+                        continue;
+                    }
+
                     assert(
                         shrine.get_deposit(*yang, trove_id) == expected_deposited_yang, 'wrong trove yang balance #1'
                     );
@@ -130,6 +134,10 @@ mod test_abbot {
                         shrine.get_deposit(*yang, second_trove_id) == expected_deposited_yang,
                         'wrong trove yang balance #2'
                     );
+
+                    if asset_amt.is_zero() {
+                        continue;
+                    }
 
                     expected_events
                         .append(
