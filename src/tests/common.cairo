@@ -172,12 +172,12 @@ pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
     deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
 }
 
-pub fn eth_lst_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
-    deploy_vault('Ether LST', 'stETH', 18, ETH_TOTAL.into(), eth_hoarder(), eth, vault_class)
+pub fn eth_vault_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
+    deploy_vault('Ether Vault', 'vETH', 18, ETH_TOTAL.into(), eth_hoarder(), eth, vault_class)
 }
 
-pub fn wbtc_lst_deploy(vault_class: Option<ContractClass>, wbtc: ContractAddress) -> ContractAddress {
-    deploy_vault('Bitcoin LST', 'stWBTC', 18, WBTC_TOTAL.into(), wbtc_hoarder(), wbtc, vault_class)
+pub fn wbtc_vault_deploy(vault_class: Option<ContractClass>, wbtc: ContractAddress) -> ContractAddress {
+    deploy_vault('Bitcoin Vault', 'vWBTC', 18, WBTC_TOTAL.into(), wbtc_hoarder(), wbtc, vault_class)
 }
 
 

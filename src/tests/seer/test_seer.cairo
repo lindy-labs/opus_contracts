@@ -10,10 +10,12 @@ mod test_seer {
     use opus::core::shrine::shrine as shrine_contract;
     use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
+    use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
@@ -157,8 +159,12 @@ mod test_seer {
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
+        let eth_vault_addr: ContractAddress = *yangs.at(2);
+        let wbtc_vault_addr: ContractAddress = *yangs.at(3);
         let eth_gate: IGateDispatcher = *gates.at(0);
         let wbtc_gate: IGateDispatcher = *gates.at(1);
+        let eth_vault_gate: IGateDispatcher = *gates.at(2);
+        let wbtc_vault_gate: IGateDispatcher = *gates.at(3);
         let pragma: ContractAddress = *(oracles[0]);
         let switchboard: ContractAddress = *(oracles[1]);
 
@@ -167,8 +173,13 @@ mod test_seer {
 
         let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
+        let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
+        let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
         assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
         assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
+        // Vault prices should be identical at 1 : 1 conversion rate
+        assert(shrine_eth_vault_price == eth_price, 'wrong eth(v) price in shrine 1');
+        assert(shrine_wbtc_vault_price == wbtc_price, 'wrong wbtc(v) price in shrine 1');
 
         let expected_events_seer = array![
             (
@@ -181,6 +192,18 @@ mod test_seer {
                 seer.contract_address,
                 seer_contract::Event::PriceUpdate(
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_vault_addr, price: wbtc_price }
                 )
             ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
@@ -199,6 +222,14 @@ mod test_seer {
             ),
             (
                 seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[2] })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[3] })
+            ),
+            (
+                seer.contract_address,
                 seer_contract::Event::PriceUpdate(
                     seer_contract::PriceUpdate { oracle: switchboard, yang: eth_addr, price: eth_price }
                 )
@@ -209,14 +240,43 @@ mod test_seer {
                     seer_contract::PriceUpdate { oracle: switchboard, yang: wbtc_addr, price: wbtc_price }
                 )
             ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: wbtc_vault_addr, price: wbtc_price }
+                )
+            ),
         ];
         spy.assert_not_emitted(@expected_missing_seer);
 
+        // For ETH and WBTC, double the amount of assets in the gate for a price increase of 2x
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
 
         IMintableDispatcher { contract_address: eth_addr }.mint(eth_gate.contract_address, gate_eth_bal.into());
         IMintableDispatcher { contract_address: wbtc_addr }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
+
+        // For the vaults of ETH and WBTC, double the amount of assets in the gate + increase the conversion to 1 : 1.5
+        // for a price increase of 3x (1.5x * 2x from inflation in gate)
+        let gate_eth_vault_bal: u128 = eth_vault_gate.get_total_assets();
+        let gate_wbtc_vault_bal: u128 = wbtc_vault_gate.get_total_assets();
+        IERC4626Dispatcher { contract_address: eth_vault_addr }
+            .mint(gate_eth_vault_bal.into(), eth_vault_gate.contract_address);
+        IERC4626Dispatcher { contract_address: wbtc_vault_addr }
+            .mint(gate_wbtc_vault_bal.into(), wbtc_vault_gate.contract_address);
+
+        let new_eth_vault_conversion_rate: u256 = (WAD_SCALE + WAD_SCALE / 2).into(); // 150%
+        IMockERC4626Dispatcher { contract_address: eth_vault_addr }
+            .set_convert_to_assets_per_wad_scale(new_eth_vault_conversion_rate);
+        let new_wbtc_vault_conversion_rate: u256 = (common::WBTC_SCALE + common::WBTC_SCALE / 2).into(); // 150%
+        IMockERC4626Dispatcher { contract_address: wbtc_vault_addr }
+            .set_convert_to_assets_per_wad_scale(new_wbtc_vault_conversion_rate);
 
         let mut next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
         start_warp(CheatTarget::All, next_ts);
@@ -231,9 +291,15 @@ mod test_seer {
 
         let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
+        let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
+        let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
         // shrine's price is rebased by 2
-        assert(shrine_eth_price == eth_price + eth_price, 'wrong eth price in shrine 2');
-        assert(shrine_wbtc_price == wbtc_price + wbtc_price, 'wrong wbtc price in shrine 2');
+        let multiplier: Wad = (2 * WAD_SCALE).into();
+        assert(shrine_eth_price == eth_price * multiplier, 'wrong eth price in shrine 2');
+        assert(shrine_wbtc_price == wbtc_price * multiplier, 'wrong wbtc price in shrine 2');
+        let vault_multiplier: Wad = (3 * WAD_SCALE).into();
+        assert(shrine_eth_vault_price == eth_price * vault_multiplier, 'wrong eth(v) price in shrine 2');
+        assert(shrine_wbtc_vault_price == wbtc_price * vault_multiplier, 'wrong wbtc(v) price in shrine 2');
 
         // Check that delisted yangs are skipped by suspending ETH
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
