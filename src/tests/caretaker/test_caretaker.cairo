@@ -78,11 +78,17 @@ mod test_caretaker {
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
+        let y2 = IERC20Dispatcher { contract_address: *yangs[2] };
+        let y3 = IERC20Dispatcher { contract_address: *yangs[3] };
 
         let g0_before_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
         let g1_before_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
+        let g2_before_balance: Wad = y2.balance_of(*gates.at(2).contract_address).try_into().unwrap();
+        let g3_before_balance: Wad = y3.balance_of(*gates.at(3).contract_address).try_into().unwrap();
         let y0_backing: Wad = ray_to_wad(wadray::wmul_wr(g0_before_balance, backing));
         let y1_backing: Wad = ray_to_wad(wadray::wmul_wr(g1_before_balance, backing));
+        let y2_backing: Wad = ray_to_wad(wadray::wmul_wr(g2_before_balance, backing));
+        let y3_backing: Wad = ray_to_wad(wadray::wmul_wr(g3_before_balance, backing));
 
         let mut yangs_copy = yangs;
         let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
@@ -105,19 +111,29 @@ mod test_caretaker {
         // expecting the gates to have their original balance reduced by the amount needed to cover yin
         let g0_expected_balance: Wad = g0_before_balance - y0_backing;
         let g1_expected_balance: Wad = g1_before_balance - y1_backing;
+        let g2_expected_balance: Wad = g2_before_balance - y2_backing;
+        let g3_expected_balance: Wad = g3_before_balance - y3_backing;
         let tolerance: Wad = 10_u128.into();
 
         // assert gates have their balance reduced
         let g0_after_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
         let g1_after_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
+        let g2_after_balance: Wad = y2.balance_of(*gates.at(2).contract_address).try_into().unwrap();
+        let g3_after_balance: Wad = y3.balance_of(*gates.at(3).contract_address).try_into().unwrap();
         common::assert_equalish(g0_after_balance, g0_expected_balance, tolerance, 'gate 0 balance after shut');
         common::assert_equalish(g1_after_balance, g1_expected_balance, tolerance, 'gate 1 balance after shut');
+        common::assert_equalish(g2_after_balance, g2_expected_balance, tolerance, 'gate 2 balance after shut');
+        common::assert_equalish(g3_after_balance, g3_expected_balance, tolerance, 'gate 3 balance after shut');
 
         // assert the balance diff is now in the hands of the Caretaker
         let caretaker_y0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
         let caretaker_y1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
+        let caretaker_y2_balance: Wad = y2.balance_of(caretaker.contract_address).try_into().unwrap();
+        let caretaker_y3_balance: Wad = y3.balance_of(caretaker.contract_address).try_into().unwrap();
         common::assert_equalish(caretaker_y0_balance, y0_backing, tolerance, 'caretaker yang0 balance');
         common::assert_equalish(caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance');
+        common::assert_equalish(caretaker_y2_balance, y2_backing, tolerance, 'caretaker yang2 balance');
+        common::assert_equalish(caretaker_y3_balance, y3_backing, tolerance, 'caretaker yang3 balance');
 
         // assert that protocol owned yangs have been rebased
         let mut yangs_copy = yangs;
@@ -137,9 +153,13 @@ mod test_caretaker {
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[0], amount: (g0_before_balance - g0_after_balance).val, });
+            .append(AssetBalance { address: *yangs[0], amount: (g0_before_balance - g0_after_balance).val });
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[1], amount: (g1_before_balance - g1_after_balance).val, });
+            .append(AssetBalance { address: *yangs[1], amount: (g1_before_balance - g1_after_balance).val });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[2], amount: (g2_before_balance - g2_after_balance).val });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[3], amount: (g3_before_balance - g3_after_balance).val });
         let expected_events = array![
             (
                 caretaker.contract_address,
@@ -265,7 +285,10 @@ mod test_caretaker {
         );
         // Transform caretaker balance to a single array
         let caretaker_balances_flattened: Span<u128> = array![
-            *caretaker_balances.at(0)[0], *caretaker_balances.at(1)[0],
+            *caretaker_balances.at(0)[0],
+            *caretaker_balances.at(1)[0],
+            *caretaker_balances.at(2)[0],
+            *caretaker_balances.at(3)[0],
         ]
             .span();
         let expected_reclaimable_assets: Span<AssetBalance> = common::combine_assets_and_amts(
@@ -428,9 +451,13 @@ mod test_caretaker {
 
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
+        let y2 = IERC20Dispatcher { contract_address: *yangs[2] };
+        let y3 = IERC20Dispatcher { contract_address: *yangs[3] };
 
         let gate0_before_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
         let gate1_before_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
+        let gate2_before_balance: Wad = y2.balance_of(*gates.at(2).contract_address).try_into().unwrap();
+        let gate3_before_balance: Wad = y3.balance_of(*gates.at(3).contract_address).try_into().unwrap();
 
         // manipulate prices to be waaaay below start price to force
         // all yang deposits to be used to back yin
@@ -451,13 +478,21 @@ mod test_caretaker {
         // assert nothing's left in the gates and everything is now owned by Caretaker
         let gate0_after_balance: Wad = y0.balance_of(*gates.at(0).contract_address).try_into().unwrap();
         let gate1_after_balance: Wad = y1.balance_of(*gates.at(1).contract_address).try_into().unwrap();
+        let gate2_after_balance: Wad = y2.balance_of(*gates.at(2).contract_address).try_into().unwrap();
+        let gate3_after_balance: Wad = y3.balance_of(*gates.at(3).contract_address).try_into().unwrap();
         let ct_yang0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
         let ct_yang1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
+        let ct_yang2_balance: Wad = y2.balance_of(caretaker.contract_address).try_into().unwrap();
+        let ct_yang3_balance: Wad = y3.balance_of(caretaker.contract_address).try_into().unwrap();
 
         common::assert_equalish(gate0_after_balance, Zero::zero(), tolerance, 'gate0 after balance');
         common::assert_equalish(gate1_after_balance, Zero::zero(), tolerance, 'gate1 after balance');
+        common::assert_equalish(gate2_after_balance, Zero::zero(), tolerance, 'gate2 after balance');
+        common::assert_equalish(gate3_after_balance, Zero::zero(), tolerance, 'gate3 after balance');
         common::assert_equalish(ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance');
         common::assert_equalish(ct_yang1_balance, gate1_before_balance, tolerance, 'caretaker yang1 after balance');
+        common::assert_equalish(ct_yang2_balance, gate2_before_balance, tolerance, 'caretaker yang2 after balance');
+        common::assert_equalish(ct_yang3_balance, gate3_before_balance, tolerance, 'caretaker yang3 after balance');
 
         // calling release still works, but nothing gets released
         start_prank(CheatTarget::One(caretaker.contract_address), user1);
@@ -466,12 +501,18 @@ mod test_caretaker {
         // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
         assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2');
+        assert((*released_assets.at(2).amount).is_zero(), 'incorrect armageddon release 3');
+        assert((*released_assets.at(3).amount).is_zero(), 'incorrect armageddon release 4');
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[0], amount: (gate0_before_balance - gate0_after_balance).val, });
+            .append(AssetBalance { address: *yangs[0], amount: (gate0_before_balance - gate0_after_balance).val });
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[1], amount: (gate1_before_balance - gate1_after_balance).val, });
+            .append(AssetBalance { address: *yangs[1], amount: (gate1_before_balance - gate1_after_balance).val });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[2], amount: (gate2_before_balance - gate2_after_balance).val });
+        expected_ringfenced_assets
+            .append(AssetBalance { address: *yangs[3], amount: (gate3_before_balance - gate3_after_balance).val });
 
         let expected_events = array![
             (

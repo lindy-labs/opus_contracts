@@ -2218,26 +2218,15 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
     fn test_remove_request_expired_fail() {
-        let (
-            abbot_class,
-            sentinel_class,
-            token_class,
-            gate_class,
-            vault_class,
-            shrine_class,
-            absorber_class,
-            blesser_class
-        ) =
-            absorber_utils::declare_contracts();
         let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class,
-            sentinel_class,
-            token_class,
-            vault_class,
-            gate_class,
-            shrine_class,
-            absorber_class,
-            blesser_class
+            Option::None,
+            Option::None,
+            Option::None,
+            Option::None,
+            Option::None,
+            Option::None,
+            Option::None,
+            Option::None
         );
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);

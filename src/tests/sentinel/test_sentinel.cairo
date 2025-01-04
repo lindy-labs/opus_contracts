@@ -30,32 +30,47 @@ mod test_sentinel {
 
         let eth_gate = *gates.at(0);
         let wbtc_gate = *gates.at(1);
+        let eth_vault_gate = *gates.at(2);
+        let wbtc_vault_gate = *gates.at(3);
 
         let eth = *assets.at(0);
         let wbtc = *assets.at(1);
+        let eth_vault = *assets.at(2);
+        let wbtc_vault = *assets.at(3);
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
         assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
         assert(sentinel.get_gate_address(*assets.at(1)) == wbtc_gate.contract_address, 'Wrong gate address #2');
+        assert(sentinel.get_gate_address(*assets.at(2)) == eth_vault_gate.contract_address, 'Wrong gate address #3');
+        assert(sentinel.get_gate_address(*assets.at(3)) == wbtc_vault_gate.contract_address, 'Wrong gate address #4');
 
         assert(sentinel.get_gate_live(*assets.at(0)), 'Gate not live #1');
         assert(sentinel.get_gate_live(*assets.at(1)), 'Gate not live #2');
+        assert(sentinel.get_gate_live(*assets.at(2)), 'Gate not live #3');
+        assert(sentinel.get_gate_live(*assets.at(3)), 'Gate not live #4');
 
         let given_yang_addresses = sentinel.get_yang_addresses();
         assert(
-            *given_yang_addresses.at(0) == *assets.at(0) && *given_yang_addresses.at(1) == *assets.at(1),
+            *given_yang_addresses.at(0) == *assets.at(0)
+                && *given_yang_addresses.at(1) == *assets.at(1)
+                && *given_yang_addresses.at(2) == *assets.at(2)
+                && *given_yang_addresses.at(3) == *assets.at(3),
             'Wrong yang addresses'
         );
 
         assert(sentinel.get_yang(0) == Zero::zero(), 'Should be zero address');
         assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
         assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
+        assert(sentinel.get_yang(3) == *assets.at(2), 'Wrong yang #3');
+        assert(sentinel.get_yang(4) == *assets.at(3), 'Wrong yang #4');
 
         assert(sentinel.get_yang_asset_max(eth) == sentinel_utils::ETH_ASSET_MAX, 'Wrong asset max #1');
         assert(sentinel.get_yang_asset_max(wbtc) == sentinel_utils::WBTC_ASSET_MAX, 'Wrong asset max #2');
+        assert(sentinel.get_yang_asset_max(eth_vault) == sentinel_utils::ETH_ASSET_MAX, 'Wrong asset max #3');
+        assert(sentinel.get_yang_asset_max(wbtc_vault) == sentinel_utils::WBTC_ASSET_MAX, 'Wrong asset max #4');
 
-        assert(sentinel.get_yang_addresses_count() == 2, 'Wrong yang addresses count');
+        assert(sentinel.get_yang_addresses_count() == 4, 'Wrong yang addresses count');
 
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         assert(sentinel_ac.get_admin() == sentinel_utils::admin(), 'Wrong admin');
@@ -68,6 +83,8 @@ mod test_sentinel {
 
         assert((eth_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #1');
         assert((wbtc_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #2');
+        assert((eth_vault_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #3');
+        assert((wbtc_vault_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #4');
 
         // Checking that shrine was set up correctly
 
@@ -99,13 +116,25 @@ mod test_sentinel {
             (
                 sentinel.contract_address,
                 sentinel_contract::Event::YangAdded(
-                    sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address, }
+                    sentinel_contract::YangAdded { yang: eth, gate: eth_gate.contract_address }
                 )
             ),
             (
                 sentinel.contract_address,
                 sentinel_contract::Event::YangAdded(
-                    sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address, }
+                    sentinel_contract::YangAdded { yang: wbtc, gate: wbtc_gate.contract_address }
+                )
+            ),
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAdded(
+                    sentinel_contract::YangAdded { yang: eth_vault, gate: eth_vault_gate.contract_address }
+                )
+            ),
+            (
+                sentinel.contract_address,
+                sentinel_contract::Event::YangAdded(
+                    sentinel_contract::YangAdded { yang: wbtc_vault, gate: wbtc_vault_gate.contract_address }
                 )
             ),
         ];

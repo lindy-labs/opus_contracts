@@ -35,28 +35,23 @@ pub mod absorber_utils {
 
     #[inline(always)]
     pub fn provider_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
+        array![20 * WAD_ONE, // 20 (Wad) - ETH
          100000000, // 1 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+         0, 0,].span()
     }
 
     #[inline(always)]
     pub fn first_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            1230000000000000000, // 1.23 (Wad) - ETH
-             23700000, // 0.237 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+        array![1230000000000000000, // 1.23 (Wad) - ETH
+         23700000, // 0.237 (10 ** 8) - BTC
+         0, 0,].span()
     }
 
     #[inline(always)]
     pub fn second_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            572000000000000000, // 0.572 (Wad) - ETH
-             65400000, // 0.654 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+        array![572000000000000000, // 0.572 (Wad) - ETH
+         65400000, // 0.654 (10 ** 8) - BTC
+         0, 0,].span()
     }
 
     //
@@ -396,8 +391,10 @@ pub mod absorber_utils {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let yang_asset_amt: u256 = (*yang_asset_amts_copy.pop_front().unwrap()).into();
-                    let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
-                    yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
+                    if yang_asset_amt.is_non_zero() {
+                        let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
+                        yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
+                    }
                 },
                 Option::None => { break; },
             };

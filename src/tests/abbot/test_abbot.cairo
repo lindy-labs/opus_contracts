@@ -263,21 +263,23 @@ mod test_abbot {
                         .unwrap();
                     let before_trove_owner_asset_bal: u128 = *before_trove_owner_asset_bal_arr.pop_front().unwrap();
 
-                    expected_events
-                        .append(
-                            (
-                                abbot.contract_address,
-                                abbot_contract::Event::Withdraw(
-                                    abbot_contract::Withdraw {
-                                        user: trove_owner,
-                                        trove_id,
-                                        yang: *yang,
-                                        yang_amt: (*trove_yang_deposits.pop_front().unwrap()).amount,
-                                        asset_amt: after_trove_owner_asset_bal - before_trove_owner_asset_bal
-                                    }
+                    if before_trove_owner_asset_bal != after_trove_owner_asset_bal {
+                        expected_events
+                            .append(
+                                (
+                                    abbot.contract_address,
+                                    abbot_contract::Event::Withdraw(
+                                        abbot_contract::Withdraw {
+                                            user: trove_owner,
+                                            trove_id,
+                                            yang: *yang,
+                                            yang_amt: (*trove_yang_deposits.pop_front().unwrap()).amount,
+                                            asset_amt: after_trove_owner_asset_bal - before_trove_owner_asset_bal
+                                        }
+                                    )
                                 )
-                            )
-                        );
+                            );
+                    }
                 },
                 Option::None => { break; },
             };
@@ -494,7 +496,7 @@ mod test_abbot {
 
         let deposit_eth_amt: u128 = sentinel_utils::ETH_ASSET_MAX - eth_gate_balance;
         let deposit_wbtc_amt: u128 = sentinel_utils::WBTC_ASSET_MAX - wbtc_gate_balance;
-        let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt].span();
+        let deposit_amts: Span<u128> = array![deposit_eth_amt, deposit_wbtc_amt, 0, 0].span();
 
         common::fund_user(trove_owner, yangs, deposit_amts);
         let forge_amt = 1_u128.into();

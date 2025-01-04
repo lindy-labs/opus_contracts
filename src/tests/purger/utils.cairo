@@ -89,14 +89,14 @@ pub mod purger_utils {
     #[inline(always)]
     pub fn recipient_trove_yang_asset_amts() -> Span<u128> {
         array![30 * WAD_ONE, // 30 (Wad) - ETH
-         500000000 // 5 (10 ** 8) - BTC
-        ].span()
+         500000000, // 5 (10 ** 8) - BTC
+         0, 0,].span()
     }
 
     pub fn whale_trove_yang_asset_amts() -> Span<u128> {
         array![700 * WAD_ONE, // 700 (Wad) - ETH
-         70000000000 // 700 (10 ** 8) - BTC
-        ].span()
+         70000000000, // 700 (10 ** 8) - BTC
+         0, 0,].span()
     }
 
     pub fn interesting_thresholds_for_liquidation() -> Span<Ray> {
@@ -716,7 +716,7 @@ pub mod purger_utils {
             mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
             switchboard: Option::Some(declare("switchboard").unwrap()),
             mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),
-            seer: Option::Some(declare("seer").unwrap()),
+            seer: Option::Some(declare("seer_v2").unwrap()),
         }
     }
 
