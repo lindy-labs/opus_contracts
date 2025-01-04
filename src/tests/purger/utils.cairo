@@ -255,14 +255,14 @@ pub mod purger_utils {
             recipient_trove_yang_asset_amts(),
             // recipient trove has dust amount of the first yang
             // 100 wei (Wad) ETH, 20 (10 ** 8) WBTC
-            array![100_u128, 2000000000_u128].span(),
+            array![100_u128, 2000000000_u128, 0_u128, 0_u128].span(),
             // recipient trove has dust amount of a yang that is not the first yang
             // 50 (Wad) ETH, 0.00001 (10 ** 8) WBTC
-            array![50 * WAD_ONE, 100_u128].span(),
+            array![50 * WAD_ONE, 100_u128, 0_u128, 0_u128].span(),
             // exceptional redistribution because recipient trove does not have
             // WBTC yang but redistributed trove has WBTC yang
             // 50 (Wad) ETH, 0 WBTC
-            array![50 * WAD_ONE, 0_u128].span()
+            array![50 * WAD_ONE, 0_u128, 0_u128, 0_u128].span()
         ]
             .span()
     }
@@ -270,7 +270,8 @@ pub mod purger_utils {
     pub fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
         array![target_trove_yang_asset_amts(), // Dust yang case
          // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
-        array![20 * WAD_ONE, 100_u128].span()].span()
+        array![20 * WAD_ONE, 100_u128, 0_u128, 0_u128].span()]
+            .span()
     }
 
     pub fn inoperational_absorber_yin_cases() -> Span<Wad> {

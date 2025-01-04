@@ -398,7 +398,9 @@ mod test_purger {
             penalty,
             Option::None
         );
-        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, expected_freed_amts);
+        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, expected_freed_amts, true
+        );
 
         // Check that searcher has received collateral
         purger_utils::assert_received_assets(
@@ -1041,7 +1043,7 @@ mod test_purger {
             target_trove_yang_asset_amts, target_trove_updated_start_health.value, expected_compensation_value
         );
         let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, expected_compensation_amts
+            yangs, expected_compensation_amts, false
         );
         purger_utils::assert_received_assets(
             before_caller_asset_bals,
@@ -1072,7 +1074,7 @@ mod test_purger {
         );
 
         let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, expected_freed_asset_amts,
+            yangs, expected_freed_asset_amts, true
         );
         purger_utils::assert_received_assets(
             before_absorber_asset_bals,
@@ -1304,7 +1306,7 @@ mod test_purger {
                                                             );
                                                             let expected_compensation: Span<AssetBalance> =
                                                                 common::combine_assets_and_amts(
-                                                                yangs, expected_compensation_amts
+                                                                yangs, expected_compensation_amts, false
                                                             );
                                                             purger_utils::assert_received_assets(
                                                                 before_caller_asset_bals,
@@ -1341,7 +1343,7 @@ mod test_purger {
 
                                                             let expected_freed_assets: Span<AssetBalance> =
                                                                 common::combine_assets_and_amts(
-                                                                yangs, expected_freed_asset_amts
+                                                                yangs, expected_freed_asset_amts, true
                                                             );
                                                             purger_utils::assert_received_assets(
                                                                 before_absorber_asset_bals,
@@ -1736,7 +1738,7 @@ mod test_purger {
                         expected_compensation_value
                     );
                     let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_compensation_amts
+                        yangs, expected_compensation_amts, false
                     );
                     purger_utils::assert_received_assets(
                         before_caller_asset_bals,
@@ -1763,7 +1765,7 @@ mod test_purger {
                         Option::Some(expected_compensation_value),
                     );
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_amts
+                        yangs, expected_freed_amts, true
                     );
                     purger_utils::assert_received_assets(
                         before_absorber_asset_bals,
@@ -2909,7 +2911,7 @@ mod test_purger {
                                                     );
                                                     let expected_compensation: Span<AssetBalance> =
                                                         common::combine_assets_and_amts(
-                                                        yangs, expected_compensation_amts
+                                                        yangs, expected_compensation_amts, false
                                                     );
                                                     purger_utils::assert_received_assets(
                                                         before_caller_asset_bals,
@@ -3175,7 +3177,7 @@ mod test_purger {
                         Option::Some(expected_compensation_value)
                     );
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_amts
+                        yangs, expected_freed_amts, true
                     );
 
                     purger_spy.fetch_events();
@@ -3445,7 +3447,7 @@ mod test_purger {
                     );
 
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_asset_amts,
+                        yangs, expected_freed_asset_amts, true
                     );
 
                     purger_spy.fetch_events();

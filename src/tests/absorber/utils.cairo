@@ -37,21 +37,21 @@ pub mod absorber_utils {
     pub fn provider_asset_amts() -> Span<u128> {
         array![20 * WAD_ONE, // 20 (Wad) - ETH
          100000000, // 1 (10 ** 8) - BTC
-         0, 0,].span()
+         0, 0].span()
     }
 
     #[inline(always)]
     pub fn first_update_assets() -> Span<u128> {
         array![1230000000000000000, // 1.23 (Wad) - ETH
          23700000, // 0.237 (10 ** 8) - BTC
-         0, 0,].span()
+         0, 0].span()
     }
 
     #[inline(always)]
     pub fn second_update_assets() -> Span<u128> {
         array![572000000000000000, // 0.572 (Wad) - ETH
          65400000, // 0.654 (10 ** 8) - BTC
-         0, 0,].span()
+         0, 0].span()
     }
 
     //
@@ -400,7 +400,7 @@ pub mod absorber_utils {
             };
         };
 
-        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts, false);
 
         start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
         absorber.update(absorbed_assets);

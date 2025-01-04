@@ -292,7 +292,7 @@ mod test_caretaker {
         ]
             .span();
         let expected_reclaimable_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, caretaker_balances_flattened
+            yangs, caretaker_balances_flattened, false
         );
         assert(reclaimable_assets == expected_reclaimable_assets, 'wrong reclaimable assets');
         assert(reclaimed_yin == trove1_forge_amt, 'wrong reclaimed yin');
