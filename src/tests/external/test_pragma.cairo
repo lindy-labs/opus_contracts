@@ -356,7 +356,7 @@ mod test_pragma {
     fn test_fetch_price_pass() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         pragma_utils::add_yangs(pragma.contract_address, yangs);
 
@@ -398,7 +398,7 @@ mod test_pragma {
     fn test_fetch_price_return_min_spot() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         pragma_utils::add_yangs(pragma.contract_address, yangs);
 
@@ -432,7 +432,7 @@ mod test_pragma {
     fn test_fetch_price_return_min_twap() {
         let (pragma, mock_pragma) = pragma_utils::pragma_deploy(Option::None, Option::None);
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         pragma_utils::add_yangs(pragma.contract_address, yangs);
 
@@ -469,7 +469,7 @@ mod test_pragma {
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         pragma_utils::add_yangs(pragma.contract_address, yangs);
 
@@ -513,7 +513,7 @@ mod test_pragma {
         let mut spy = spy_events(SpyOn::One(pragma.contract_address));
 
         let (_sentinel, _shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         pragma_utils::add_yangs(pragma.contract_address, yangs);
 

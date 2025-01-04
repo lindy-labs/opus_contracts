@@ -4,9 +4,11 @@ use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
+use opus::utils::math::pow;
 use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, Event, start_prank, start_warp, stop_prank};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
@@ -170,6 +172,14 @@ pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
     deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
 }
 
+pub fn eth_lst_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
+    deploy_vault('Ether LST', 'stETH', 18, ETH_TOTAL.into(), eth_hoarder(), eth, vault_class)
+}
+
+pub fn wbtc_lst_deploy(vault_class: Option<ContractClass>, wbtc: ContractAddress) -> ContractAddress {
+    deploy_vault('Bitcoin LST', 'stWBTC', 18, WBTC_TOTAL.into(), wbtc_hoarder(), wbtc, vault_class)
+}
+
 
 // Helper function to deploy a token
 pub fn deploy_token(
@@ -196,6 +206,40 @@ pub fn deploy_token(
 
     let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
     token_addr
+}
+
+// Helper function to deploy a ERC-4626 vault
+pub fn deploy_vault(
+    name: felt252,
+    symbol: felt252,
+    decimals: felt252,
+    initial_supply: u256,
+    recipient: ContractAddress,
+    asset: ContractAddress,
+    vault_class: Option<ContractClass>,
+) -> ContractAddress {
+    let calldata: Array<felt252> = array![
+        name,
+        symbol,
+        decimals,
+        initial_supply.low.into(), // u256.low
+        initial_supply.high.into(), // u256.high
+        recipient.into(),
+        asset.into(),
+    ];
+
+    let vault_class = match vault_class {
+        Option::Some(class) => class,
+        Option::None => declare("erc4626_mintable").unwrap(),
+    };
+
+    let (vault_addr, _) = vault_class.deploy(@calldata).expect('erc4626 deploy failed');
+
+    // Mock initial conversion rate of 1 : 1
+    IMockERC4626Dispatcher { contract_address: vault_addr }
+        .set_convert_to_assets_per_wad_scale(pow(10, IERC20Dispatcher { contract_address: asset }.decimals()));
+
+    vault_addr
 }
 
 // Helper function to fund a user account with yang assets

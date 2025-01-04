@@ -45,6 +45,7 @@ pub mod purger_utils {
         abbot: Option<ContractClass>,
         sentinel: Option<ContractClass>,
         token: Option<ContractClass>,
+        vault: Option<ContractClass>,
         gate: Option<ContractClass>,
         shrine: Option<ContractClass>,
         absorber: Option<ContractClass>,
@@ -339,7 +340,13 @@ pub mod purger_utils {
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
+            classes.abbot,
+            classes.sentinel,
+            classes.token,
+            classes.vault,
+            classes.gate,
+            classes.shrine,
+            classes.absorber,
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
@@ -347,7 +354,9 @@ pub mod purger_utils {
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
-        let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
+        let seer = seer_utils::deploy_seer_using(
+            classes.seer, shrine.contract_address, sentinel.contract_address, yangs
+        );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, classes.pragma_v2, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
         );
@@ -697,6 +706,7 @@ pub mod purger_utils {
             abbot: Option::Some(declare("abbot").unwrap()),
             sentinel: Option::Some(declare("sentinel").unwrap()),
             token: Option::Some(declare("erc20_mintable").unwrap()),
+            vault: Option::Some(declare("erc4626_mintable").unwrap()),
             gate: Option::Some(declare("gate").unwrap()),
             shrine: Option::Some(declare("shrine").unwrap()),
             absorber: Option::Some(declare("absorber").unwrap()),

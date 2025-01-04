@@ -139,11 +139,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_successful() {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
-
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
@@ -291,11 +290,11 @@ mod test_seer {
     #[test]
     fn test_update_prices_from_fallback_oracle_successful() {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
@@ -358,10 +357,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_via_execute_task_successful() {
         let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
@@ -418,11 +417,11 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         seer_utils::add_oracles(seer, Option::None, Option::None, Option::None, Option::None);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -433,11 +432,11 @@ mod test_seer {
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
         let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, token_class, Option::None, Option::None,
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, token_class, Option::None, Option::None, Option::None
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
@@ -462,10 +461,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_missed_updates() {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
@@ -530,10 +529,10 @@ mod test_seer {
     #[test]
     fn test_probe_task() {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
         let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
-            Option::None, shrine.contract_address, sentinel.contract_address
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None

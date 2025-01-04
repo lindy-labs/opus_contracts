@@ -87,6 +87,7 @@ pub mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
+        vault_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
         absorber_class: Option<ContractClass>,
@@ -99,7 +100,7 @@ pub mod absorber_utils {
         Span<IGateDispatcher>
     ) {
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class
+            abbot_class, sentinel_class, token_class, vault_class, gate_class, shrine_class
         );
 
         let admin: ContractAddress = admin();
@@ -218,6 +219,7 @@ pub mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
+        vault_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
         absorber_class: Option<ContractClass>,
@@ -232,7 +234,7 @@ pub mod absorber_utils {
         Wad, // provided amount
     ) {
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
+            abbot_class, sentinel_class, token_class, vault_class, gate_class, shrine_class, absorber_class
         );
 
         let provider = provider_1();
@@ -247,6 +249,7 @@ pub mod absorber_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
+        vault_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
         absorber_class: Option<ContractClass>,
@@ -277,7 +280,7 @@ pub mod absorber_utils {
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
+            abbot_class, sentinel_class, token_class, vault_class, gate_class, shrine_class, absorber_class
         );
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(token_class);
@@ -694,12 +697,14 @@ pub mod absorber_utils {
         Option<ContractClass>,
         Option<ContractClass>,
         Option<ContractClass>,
+        Option<ContractClass>,
         Option<ContractClass>
     ) {
         (
             Option::Some(declare("abbot").unwrap()),
             Option::Some(declare("sentinel").unwrap()),
             Option::Some(declare("erc20_mintable").unwrap()),
+            Option::Some(declare("erc4626_mintable").unwrap()),
             Option::Some(declare("gate").unwrap()),
             Option::Some(declare("shrine").unwrap()),
             Option::Some(declare("absorber").unwrap()),

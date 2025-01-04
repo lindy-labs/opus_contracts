@@ -23,7 +23,7 @@ mod test_sentinel {
         let mut spy = spy_events(SpyOn::All);
 
         let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
         // Checking that sentinel was set up correctly
@@ -331,7 +331,7 @@ mod test_sentinel {
     #[test]
     fn test_wbtc_enter_exit() {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
         let wbtc: ContractAddress = *yangs[1];

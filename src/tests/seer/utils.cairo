@@ -5,7 +5,9 @@ pub mod seer_utils {
     use opus::core::seer::seer as seer_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaV2Dispatcher, IPragmaV2DispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
+    use opus::interfaces::ISeer::{
+        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateDispatcher, ISeerConversionRateDispatcherTrait
+    };
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -51,7 +53,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer").unwrap()
+            Option::None => declare("seer_v2").unwrap()
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -70,7 +72,10 @@ pub mod seer_utils {
     }
 
     pub fn deploy_seer_using(
-        seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress
+        seer_class: Option<ContractClass>,
+        shrine: ContractAddress,
+        sentinel: ContractAddress,
+        yangs: Span<ContractAddress>
     ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into()
@@ -78,7 +83,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer").unwrap()
+            Option::None => declare("seer_v2").unwrap()
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -88,6 +93,9 @@ pub mod seer_utils {
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_prank(CheatTarget::One(shrine));
+
+        let vaults = array![*yangs.at(2), *yangs.at(3)].span();
+        toggle_price_conversion_for_vaults(seer_addr, vaults);
 
         ISeerDispatcher { contract_address: seer_addr }
     }
@@ -122,5 +130,18 @@ pub mod seer_utils {
         let pragma = IOracleDispatcher { contract_address: *oracles.at(0) };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         pragma_utils::mock_valid_price_update(mock_pragma, yang, price, current_ts);
+    }
+
+    pub fn toggle_price_conversion_for_vaults(seer_addr: ContractAddress, mut vaults: Span<ContractAddress>) {
+        let seer_conversion_rate_toggle = ISeerConversionRateDispatcher { contract_address: seer_addr };
+
+        start_prank(CheatTarget::One(seer_addr), admin());
+        loop {
+            match vaults.pop_front() {
+                Option::Some(vault) => { seer_conversion_rate_toggle.toggle_yang_price_conversion(*vault); },
+                Option::None => { break; }
+            };
+        };
+        stop_prank(CheatTarget::One(seer_addr));
     }
 }
