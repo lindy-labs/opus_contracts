@@ -83,7 +83,7 @@ pub mod purger_utils {
     //
 
     pub fn target_trove_yang_asset_amts() -> Span<u128> {
-        array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT].span()
+        array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT, 0, 0].span()
     }
 
     #[inline(always)]

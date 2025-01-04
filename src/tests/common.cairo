@@ -247,7 +247,10 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
-                IMintableDispatcher { contract_address: *yang }.mint(user, (*asset_amts.pop_front().unwrap()).into());
+                let amt = *asset_amts.pop_front().unwrap();
+                if amt.is_non_zero() {
+                    IMintableDispatcher { contract_address: *yang }.mint(user, amt.into());
+                }
             },
             Option::None => { break; }
         };
