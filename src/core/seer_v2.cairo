@@ -7,7 +7,7 @@ pub mod seer_v2 {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::ISeerV2;
+    use opus::interfaces::ISeer::{ISeer, ISeerConversionRate};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ConversionRateInfo, PriceConversion, YangSuspensionStatus};
@@ -126,7 +126,7 @@ pub mod seer_v2 {
     //
 
     #[abi(embed_v0)]
-    impl ISeerV2Impl of ISeerV2<ContractState> {
+    impl ISeerImpl of ISeer<ContractState> {
         fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
             let mut oracles: Array<ContractAddress> = Default::default();
             let mut index = LOOP_START;
@@ -142,10 +142,6 @@ pub mod seer_v2 {
 
         fn get_update_frequency(self: @ContractState) -> u64 {
             self.update_frequency.read()
-        }
-
-        fn get_yang_price_conversion(self: @ContractState, yang: ContractAddress) -> PriceConversion {
-            self.price_conversions.read(yang)
         }
 
         fn set_oracles(ref self: ContractState, mut oracles: Span<ContractAddress>) {
@@ -179,6 +175,18 @@ pub mod seer_v2 {
             self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
         }
 
+        fn update_prices(ref self: ContractState) {
+            self.access_control.assert_has_role(seer_roles::UPDATE_PRICES);
+            self.update_prices_internal();
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl ISeerConversionRateImpl of ISeerConversionRate<ContractState> {
+        fn get_yang_price_conversion(self: @ContractState, yang: ContractAddress) -> PriceConversion {
+            self.price_conversions.read(yang)
+        }
+
         fn toggle_yang_price_conversion(ref self: ContractState, yang: ContractAddress) {
             self.access_control.assert_has_role(seer_roles::TOGGLE_YANG_PRICE_CONVERSION);
 
@@ -204,11 +212,6 @@ pub mod seer_v2 {
             self.price_conversions.write(yang, new_price_conversion);
 
             self.emit(YangPriceConversionToggled { yang, price_conversion: new_price_conversion });
-        }
-
-        fn update_prices(ref self: ContractState) {
-            self.access_control.assert_has_role(seer_roles::UPDATE_PRICES);
-            self.update_prices_internal();
         }
     }
 
