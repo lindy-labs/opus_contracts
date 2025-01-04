@@ -401,7 +401,10 @@ pub fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span
     loop {
         match assets.pop_front() {
             Option::Some(asset) => {
-                asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
+                let amount = *amts.pop_front().unwrap();
+                if amount.is_non_zero() {
+                    asset_balances.append(AssetBalance { address: *asset, amount });
+                }
             },
             Option::None => { break; },
         };
