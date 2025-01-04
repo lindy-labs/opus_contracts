@@ -4264,7 +4264,9 @@ mod test_purger {
                                     yangs,
                                     array![
                                         (*gates[0]).convert_to_yang(actual_eth_comp.amount),
-                                        (*gates[1]).convert_to_yang(actual_wbtc_comp.amount)
+                                        (*gates[1]).convert_to_yang(actual_wbtc_comp.amount),
+                                        Zero::zero(),
+                                        Zero::zero(),
                                     ]
                                         .span()
                                 );
