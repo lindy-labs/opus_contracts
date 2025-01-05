@@ -345,8 +345,6 @@ pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, im
 pub fn assert_asset_balances_equalish(
     mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
 ) {
-    println!("a len: {}", a.len());
-    println!("b len: {}", b.len());
     assert(a.len() == b.len(), message);
 
     loop {
@@ -354,8 +352,6 @@ pub fn assert_asset_balances_equalish(
             Option::Some(a) => {
                 let b: AssetBalance = *b.pop_front().unwrap();
                 assert(*a.address == b.address, 'wrong asset address');
-                println!("a: {}", *a.amount);
-                println!("b: {}", b.amount);
                 assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None => { break; }

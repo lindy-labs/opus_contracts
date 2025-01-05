@@ -883,8 +883,7 @@ mod test_purger {
     // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
     // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
     // `lower_prices_to_raise_trove_ltv` may not put the trove in the exact LTV as the threshold.
-    #[test]
-    fn test_preview_absorb_below_trove_debt_parametrized() {
+    fn test_preview_absorb_below_trove_debt(is_recovery_mode: bool) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
         let mut interesting_thresholds = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
@@ -932,96 +931,81 @@ mod test_purger {
                 Option::Some(threshold) => {
                     let mut target_ltv_arr = *target_ltvs.pop_front().unwrap();
                     let target_ltv = *target_ltv_arr.pop_front().unwrap();
-                    let mut is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
 
                     let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
                     let expected_rm_max_close_amt_lower_bound = *expected_rm_max_close_amts_lower_bound
                         .pop_front()
                         .unwrap();
 
-                    loop {
-                        match is_recovery_mode_fuzz.pop_front() {
-                            Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(
-                                    classes
-                                );
+                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
 
-                                let target_trove: u64 = purger_utils::funded_healthy_trove(
-                                    abbot, yangs, gates, trove_debt
-                                );
+                    let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
-                                if !(*is_recovery_mode) {
-                                    purger_utils::create_whale_trove(abbot, yangs, gates);
-                                }
+                    if !is_recovery_mode {
+                        purger_utils::create_whale_trove(abbot, yangs, gates);
+                    }
 
-                                purger_utils::funded_absorber(
-                                    shrine, abbot, absorber, yangs, gates, (trove_debt.val * 2).into()
-                                );
-                                purger_utils::set_thresholds(shrine, yangs, *threshold);
+                    purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, (trove_debt.val * 2).into());
+                    purger_utils::set_thresholds(shrine, yangs, *threshold);
 
-                                // Make the target trove absorbable
-                                let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
-                                purger_utils::lower_prices_to_raise_trove_ltv(
-                                    shrine,
-                                    seer,
-                                    yangs,
-                                    target_trove_start_health.value,
-                                    target_trove_start_health.debt,
-                                    target_ltv
-                                );
+                    // Make the target trove absorbable
+                    let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+                    purger_utils::lower_prices_to_raise_trove_ltv(
+                        shrine, seer, yangs, target_trove_start_health.value, target_trove_start_health.debt, target_ltv
+                    );
 
-                                if (*is_recovery_mode) {
-                                    purger_utils::trigger_recovery_mode(
-                                        shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
-                                    );
-                                } else {
-                                    // sanity check
-                                    assert(!shrine.is_recovery_mode(), 'in recovery mode');
-                                }
+                    if is_recovery_mode {
+                        purger_utils::trigger_recovery_mode(
+                            shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer
+                        );
+                    } else {
+                        // sanity check
+                        assert(!shrine.is_recovery_mode(), 'in recovery mode');
+                    }
 
-                                let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-                                purger_utils::assert_trove_is_absorbable(
-                                    shrine, purger, target_trove, target_trove_updated_start_health
-                                );
+                    let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+                    purger_utils::assert_trove_is_absorbable(
+                        shrine, purger, target_trove, target_trove_updated_start_health
+                    );
 
-                                let (penalty, max_close_amt, _) = purger
-                                    .preview_absorb(target_trove)
-                                    .expect('Should be absorbable');
-                                if *is_recovery_mode {
-                                    let expected_rm_threshold_upper_bound: Ray = *expected_rm_thresholds_upper_bound
-                                        .pop_front()
-                                        .unwrap();
-                                    assert(
-                                        target_trove_updated_start_health.threshold < expected_rm_threshold_upper_bound
-                                            - (RAY_PERCENT / 100).into(),
-                                        'wrong rm threshold'
-                                    );
+                    let (penalty, max_close_amt, _) = purger
+                        .preview_absorb(target_trove)
+                        .expect('Should be absorbable');
+                    if is_recovery_mode {
+                        let expected_rm_threshold_upper_bound: Ray = *expected_rm_thresholds_upper_bound
+                            .pop_front()
+                            .unwrap();
+                        assert(
+                            target_trove_updated_start_health.threshold < expected_rm_threshold_upper_bound
+                                - (RAY_PERCENT / 100).into(),
+                            'wrong rm threshold'
+                        );
 
-                                    assert(penalty < expected_penalty, 'rm penalty not lower');
-                                    assert(
-                                        max_close_amt > expected_rm_max_close_amt_lower_bound,
-                                        'rm max close amt too low'
-                                    );
-                                } else {
-                                    common::assert_equalish(
-                                        penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
-                                         'wrong penalty'
-                                    );
-                                    common::assert_equalish(
-                                        max_close_amt,
-                                        expected_max_close_amt,
-                                        (WAD_ONE / 10).into(),
-                                        'wrong max close amt'
-                                    );
-                                }
-                            },
-                            Option::None => { break; },
-                        };
-                    };
+                        assert(penalty < expected_penalty, 'rm penalty not lower');
+                        assert(max_close_amt > expected_rm_max_close_amt_lower_bound, 'rm max close amt too low');
+                    } else {
+                        common::assert_equalish(
+                            penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
+                             'wrong penalty'
+                        );
+                        common::assert_equalish(
+                            max_close_amt, expected_max_close_amt, (WAD_ONE / 10).into(), 'wrong max close amt'
+                        );
+                    }
                 },
                 Option::None => { break; },
             };
         };
+    }
+
+    #[test]
+    fn test_preview_absorb_below_trove_debt_parametrized_1() {
+        test_preview_absorb_below_trove_debt(true);
+    }
+
+    #[test]
+    fn test_preview_absorb_below_trove_debt_parametrized_2() {
+        test_preview_absorb_below_trove_debt(false);
     }
 
     #[test]
