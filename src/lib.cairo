@@ -62,7 +62,7 @@ pub mod utils {
     pub mod upgradeable;
 }
 
-mod periphery {
+pub mod periphery {
     pub mod frontend_data_provider;
     pub mod interfaces;
     pub mod roles;
