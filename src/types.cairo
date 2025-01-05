@@ -242,8 +242,11 @@ pub mod pragma {
 // Seer v2
 //
 
+// Used for ERC-4626 vault assets with an underlying asset and a conversion
+// rate
 #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
 pub struct ConversionRateInfo {
+    // Address of the underlying asset
     pub asset: ContractAddress,
     // Scale that must be multiplied with the conversion rate to assets
     // to get wad precision. 
@@ -254,7 +257,5 @@ pub struct ConversionRateInfo {
 pub enum PriceConversion {
     #[default]
     None,
-    // For ERC-4626 assets, the contract address here is that of the
-    // underlying asset.
     Vault: ConversionRateInfo
 }
