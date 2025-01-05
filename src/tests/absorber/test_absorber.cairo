@@ -268,9 +268,7 @@ mod test_absorber {
             'should be zero #2'
         );
 
-        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, first_update_assets, false
-        );
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, first_update_assets);
         let expected_events = array![
             (
                 absorber.contract_address,
@@ -446,10 +444,10 @@ mod test_absorber {
                     );
 
                     let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, first_update_assets, false
+                        yangs, first_update_assets
                     );
                     let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        reward_tokens, reward_amts_per_blessing, false
+                        reward_tokens, reward_amts_per_blessing
                     );
                     let expected_recipient_shares = before_total_shares - absorber_contract::INITIAL_SHARES.into();
                     let mut expected_events = array![
@@ -677,7 +675,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
         let first_update_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, absorber_utils::first_update_assets(), false
+            yangs, absorber_utils::first_update_assets()
         );
         absorber.update(first_update_assets);
     }
@@ -792,7 +790,7 @@ mod test_absorber {
         absorber_utils::assert_provider_reward_cumulatives_updated(absorber, provider, reward_tokens);
 
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            reward_tokens, reward_amts_per_blessing, false
+            reward_tokens, reward_amts_per_blessing
         );
         let expected_recipient_shares = before_total_shares - absorber_contract::INITIAL_SHARES.into();
         let expected_events = array![
@@ -952,11 +950,9 @@ mod test_absorber {
         assert(!absorber.is_operational(), 'should not be operational');
 
         let expected_absorption_id = 2;
-        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, second_update_assets, false
-        );
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, second_update_assets);
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            reward_tokens, reward_amts_per_blessing, false
+            reward_tokens, reward_amts_per_blessing
         );
         let expected_events = array![
             (
@@ -1193,11 +1189,9 @@ mod test_absorber {
             absorber, absorber_contract::FIRST_EPOCH, reward_tokens
         );
 
-        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, first_update_assets, false
-        );
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, first_update_assets);
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            reward_tokens, reward_amts_per_blessing, false
+            reward_tokens, reward_amts_per_blessing
         );
         let first_epoch_recipient_shares = first_epoch_total_shares - absorber_contract::INITIAL_SHARES.into();
         let expected_events = array![

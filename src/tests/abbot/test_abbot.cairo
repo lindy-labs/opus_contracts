@@ -213,7 +213,7 @@ mod test_abbot {
         let max_forge_fee_pct: Wad = Zero::zero();
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span(), true);
+        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span());
         abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
     }
 
@@ -230,7 +230,7 @@ mod test_abbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = Zero::zero();
 
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span(), true);
+        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span());
         abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
     }
 

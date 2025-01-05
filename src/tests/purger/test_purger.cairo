@@ -398,9 +398,7 @@ mod test_purger {
             penalty,
             Option::None
         );
-        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, expected_freed_amts, true
-        );
+        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, expected_freed_amts);
 
         // Check that searcher has received collateral
         purger_utils::assert_received_assets(
@@ -1043,7 +1041,7 @@ mod test_purger {
             target_trove_yang_asset_amts, target_trove_updated_start_health.value, expected_compensation_value
         );
         let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, expected_compensation_amts, false
+            yangs, expected_compensation_amts
         );
         purger_utils::assert_received_assets(
             before_caller_asset_bals,
@@ -1074,7 +1072,7 @@ mod test_purger {
         );
 
         let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, expected_freed_asset_amts, true
+            yangs, expected_freed_asset_amts
         );
         purger_utils::assert_received_assets(
             before_absorber_asset_bals,
@@ -1089,8 +1087,9 @@ mod test_purger {
         let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
         let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
+        let expected_freed_assets_for_event = array![*expected_freed_assets.at(0), *expected_freed_assets.at(1)].span();
         common::assert_asset_balances_equalish(
-            purged_event.freed_assets, expected_freed_assets, 10_u128, 'wrong freed assets for event'
+            purged_event.freed_assets, expected_freed_assets_for_event, 10_u128, 'wrong freed assets for event'
         );
         assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
         assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
@@ -1306,7 +1305,7 @@ mod test_purger {
                                                             );
                                                             let expected_compensation: Span<AssetBalance> =
                                                                 common::combine_assets_and_amts(
-                                                                yangs, expected_compensation_amts, false
+                                                                yangs, expected_compensation_amts
                                                             );
                                                             purger_utils::assert_received_assets(
                                                                 before_caller_asset_bals,
@@ -1343,7 +1342,7 @@ mod test_purger {
 
                                                             let expected_freed_assets: Span<AssetBalance> =
                                                                 common::combine_assets_and_amts(
-                                                                yangs, expected_freed_asset_amts, true
+                                                                yangs, expected_freed_asset_amts
                                                             );
                                                             purger_utils::assert_received_assets(
                                                                 before_absorber_asset_bals,
@@ -1422,9 +1421,14 @@ mod test_purger {
                                                                 raw_purged_event
                                                             );
 
+                                                            let expected_freed_assets_for_event = array![
+                                                                *expected_freed_assets.at(0),
+                                                                *expected_freed_assets.at(1)
+                                                            ]
+                                                                .span();
                                                             common::assert_asset_balances_equalish(
                                                                 purged_event.freed_assets,
-                                                                expected_freed_assets,
+                                                                expected_freed_assets_for_event,
                                                                 1_u128,
                                                                 'wrong freed assets for event'
                                                             );
@@ -1738,7 +1742,7 @@ mod test_purger {
                         expected_compensation_value
                     );
                     let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_compensation_amts, false
+                        yangs, expected_compensation_amts
                     );
                     purger_utils::assert_received_assets(
                         before_caller_asset_bals,
@@ -1765,7 +1769,7 @@ mod test_purger {
                         Option::Some(expected_compensation_value),
                     );
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_amts, true
+                        yangs, expected_freed_amts
                     );
                     purger_utils::assert_received_assets(
                         before_absorber_asset_bals,
@@ -1860,8 +1864,17 @@ mod test_purger {
                     let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
+                    // Manually construct the expected freed assets because we expect two yangs, but the amount
+                    // of the yang asset may be zero due to loss of precision.
+                    let expected_freed_assets_for_event = array![
+                        *expected_freed_assets.at(0), *expected_freed_assets.at(1)
+                    ]
+                        .span();
                     common::assert_asset_balances_equalish(
-                        purged_event.freed_assets, expected_freed_assets, 1000_u128, 'wrong freed assets for event'
+                        purged_event.freed_assets,
+                        expected_freed_assets_for_event,
+                        1000_u128,
+                        'wrong freed assets for event'
                     );
                     assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
                     assert(purged_event.purge_amt == close_amt, 'wrong Purged amt');
@@ -2911,7 +2924,7 @@ mod test_purger {
                                                     );
                                                     let expected_compensation: Span<AssetBalance> =
                                                         common::combine_assets_and_amts(
-                                                        yangs, expected_compensation_amts, false
+                                                        yangs, expected_compensation_amts
                                                     );
                                                     purger_utils::assert_received_assets(
                                                         before_caller_asset_bals,
@@ -3177,7 +3190,7 @@ mod test_purger {
                         Option::Some(expected_compensation_value)
                     );
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_amts, true
+                        yangs, expected_freed_amts
                     );
 
                     purger_spy.fetch_events();
@@ -3185,8 +3198,15 @@ mod test_purger {
                     let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
+                    let expected_freed_assets_for_event = array![
+                        *expected_freed_assets.at(0), *expected_freed_assets.at(1)
+                    ]
+                        .span();
                     common::assert_asset_balances_equalish(
-                        purged_event.freed_assets, expected_freed_assets, 1000_u128, 'wrong freed assets for event'
+                        purged_event.freed_assets,
+                        expected_freed_assets_for_event,
+                        1000_u128,
+                        'wrong freed assets for event'
                     );
                     assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
                     assert(purged_event.purge_amt == max_close_amt, 'wrong Purged amt');
@@ -3447,7 +3467,7 @@ mod test_purger {
                     );
 
                     let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_freed_asset_amts, true
+                        yangs, expected_freed_asset_amts
                     );
 
                     purger_spy.fetch_events();
@@ -3460,8 +3480,16 @@ mod test_purger {
                     assert(purged_event.percentage_freed == RAY_ONE.into(), 'wrong Purged freed pct');
                     assert(purged_event.funder == absorber.contract_address, 'wrong Purged funder');
                     assert(purged_event.recipient == absorber.contract_address, 'wrong Purged recipient');
+
+                    let expected_freed_assets_for_event = array![
+                        *expected_freed_assets.at(0), *expected_freed_assets.at(1)
+                    ]
+                        .span();
                     common::assert_asset_balances_equalish(
-                        purged_event.freed_assets, expected_freed_assets, 100000_u128, 'wrong freed assets for event'
+                        purged_event.freed_assets,
+                        expected_freed_assets_for_event,
+                        100000_u128,
+                        'wrong freed assets for event'
                     );
 
                     let expected_events = array![

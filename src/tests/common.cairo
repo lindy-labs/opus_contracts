@@ -280,7 +280,7 @@ pub fn open_trove_helper(
     };
 
     start_prank(CheatTarget::One(abbot.contract_address), user);
-    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts, true);
+    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, 1_u128.into());
     stop_prank(CheatTarget::One(abbot.contract_address));
 
@@ -344,6 +344,8 @@ pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, im
 pub fn assert_asset_balances_equalish(
     mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
 ) {
+    println!("a len: {}", a.len());
+    println!("b len: {}", b.len());
     assert(a.len() == b.len(), message);
 
     loop {
@@ -351,6 +353,8 @@ pub fn assert_asset_balances_equalish(
             Option::Some(a) => {
                 let b: AssetBalance = *b.pop_front().unwrap();
                 assert(*a.address == b.address, 'wrong asset address');
+                println!("a: {}", *a.amount);
+                println!("b: {}", b.amount);
                 assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None => { break; }
@@ -395,19 +399,13 @@ pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, E
 // Helpers - Array functions
 //
 
-pub fn combine_assets_and_amts(
-    mut assets: Span<ContractAddress>, mut amts: Span<u128>, skip_zero_amount: bool
-) -> Span<AssetBalance> {
+pub fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
     loop {
         match assets.pop_front() {
             Option::Some(asset) => {
-                let amount = *amts.pop_front().unwrap();
-                if skip_zero_amount && amount.is_zero() {
-                    continue;
-                }
-                asset_balances.append(AssetBalance { address: *asset, amount });
+                asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap() });
             },
             Option::None => { break; },
         };

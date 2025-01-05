@@ -400,7 +400,7 @@ pub mod absorber_utils {
             };
         };
 
-        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts, false);
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
 
         start_prank(CheatTarget::One(absorber.contract_address), mock_purger());
         absorber.update(absorbed_assets);
