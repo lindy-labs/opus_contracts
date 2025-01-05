@@ -70,10 +70,7 @@ pub mod seer_utils {
     }
 
     pub fn deploy_seer_using(
-        seer_class: Option<ContractClass>,
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
-        yangs: Span<ContractAddress>
+        seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress,
     ) -> ISeerV2Dispatcher {
         let mut calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into()
@@ -92,14 +89,18 @@ pub mod seer_utils {
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_prank(CheatTarget::One(shrine));
 
-        let seer = ISeerV2Dispatcher { contract_address: seer_addr };
+        ISeerV2Dispatcher { contract_address: seer_addr }
+    }
 
-        start_prank(CheatTarget::One(seer_addr), admin());
-        seer.toggle_yang_price_conversion(*yangs.at(2));
-        seer.toggle_yang_price_conversion(*yangs.at(3));
-        stop_prank(CheatTarget::One(seer_addr));
-
-        seer
+    pub fn toggle_vaults_in_seer(seer: ISeerV2Dispatcher, mut vaults: Span<ContractAddress>) {
+        start_prank(CheatTarget::One(seer.contract_address), admin());
+        loop {
+            match vaults.pop_front() {
+                Option::Some(vault) => { seer.toggle_yang_price_conversion(*vault); },
+                Option::None => { break; },
+            };
+        };
+        stop_prank(CheatTarget::One(seer.contract_address));
     }
 
     pub fn add_oracles(
