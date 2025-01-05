@@ -188,8 +188,12 @@ pub mod seer_v2 {
             let new_price_conversion = match old_price_conversion {
                 // toggling to vault type
                 PriceConversion::None => {
+                    assert(
+                        IERC20Dispatcher { contract_address: yang }.decimals() == WAD_DECIMALS, 'SEER: Not wad scale'
+                    );
+
                     let vault = IERC4626Dispatcher { contract_address: yang };
-                    // This will throw if the yang is not a vault asset
+                    // This will throw if the yang is not a vault
                     let asset: ContractAddress = vault.asset();
                     let conversion_rate: u256 = vault.convert_to_assets(WAD_ONE.into());
                     assert(conversion_rate.is_non_zero(), 'SEER: Zero conversion rate');
