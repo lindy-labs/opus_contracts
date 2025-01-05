@@ -6,14 +6,17 @@ mod test_seer {
     use core::num::traits::Zero;
     use opus::constants::PRAGMA_DECIMALS;
     use opus::core::roles::seer_roles;
-    use opus::core::seer::seer as seer_contract;
+    use opus::core::seer_v2::seer_v2 as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
     use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
+    use opus::interfaces::ISeer::{
+        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateToggleDispatcher,
+        ISeerConversionRateToggleDispatcherTrait
+    };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -23,8 +26,8 @@ mod test_seer {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::YangSuspensionStatus;
     use opus::types::pragma::PragmaPricesResponse;
+    use opus::types::{ConversionRateInfo, PriceConversion, YangSuspensionStatus};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
@@ -137,6 +140,147 @@ mod test_seer {
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.set_update_frequency(new_frequency);
     }
+
+    #[test]
+    fn test_toggle_yang_price_conversion() {
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::None, Option::None, Option::None
+        );
+        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+            Option::None, shrine.contract_address, sentinel.contract_address, yangs
+        );
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
+            seer, Option::None, Option::None, Option::None, Option::None
+        );
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+
+        let eth = *yangs.at(0);
+        let eth_vault = *yangs.at(2);
+        let conversion_rate_info = ConversionRateInfo { asset: eth, conversion_rate_scale: 1_u128 };
+
+        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
+        assert(
+            seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
+            'wrong price conversion 1'
+        );
+
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer_toggle.toggle_yang_price_conversion(eth_vault);
+        assert(seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::None, 'wrong price conversion 2');
+
+        seer_toggle.toggle_yang_price_conversion(eth_vault);
+        assert(
+            seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
+            'wrong price conversion 3'
+        );
+
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::YangPriceConversionToggled(
+                    seer_contract::YangPriceConversionToggled {
+                        yang: eth_vault, price_conversion: PriceConversion::None
+                    }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::YangPriceConversionToggled(
+                    seer_contract::YangPriceConversionToggled {
+                        yang: eth_vault, price_conversion: PriceConversion::Vault(conversion_rate_info)
+                    }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_toggle_yang_price_unauthorized() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
+
+        start_prank(CheatTarget::One(seer.contract_address), common::badguy());
+        seer_toggle.toggle_yang_price_conversion(seer_utils::dummy_eth());
+    }
+
+    // This is commented out because we are unable to catch the exception of an entry point selector that 
+    // cannot be found.
+    // #[test]
+    // #[should_panic]
+    // fn test_toggle_yang_not_vault_asset() {
+    //     let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+    //         Option::None, Option::None, Option::None, Option::None, Option::None
+    //     );
+    //     let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+    //         Option::None, shrine.contract_address, sentinel.contract_address, yangs
+    //     );
+    //     let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
+
+    //     let eth = *yangs.at(0);
+
+    //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+    //     seer_toggle.toggle_yang_price_conversion(eth);
+    // }
+
+    #[test]
+    #[should_panic(expected: ('SEER: Zero conversion rate',))]
+    fn test_toggle_yang_zero_conversion_rate() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
+
+        let eth = common::eth_token_deploy(Option::None);
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), eth, Option::None
+        );
+
+        IMockERC4626Dispatcher { contract_address: irregular_vault }.set_convert_to_assets_per_wad_scale(Zero::zero());
+
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer_toggle.toggle_yang_price_conversion(irregular_vault);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SEER: Too many decimals',))]
+    fn test_toggle_yang_asset_too_many_decimals() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
+
+        let irregular_token = common::deploy_token(
+            'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), Option::None
+        );
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), irregular_token, Option::None
+        );
+
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer_toggle.toggle_yang_price_conversion(irregular_vault);
+    }
+
+    // #[test]
+    // #[should_panic(expected: ('SEER: Frequency out of bounds',))]
+    // fn test_set_update_frequency_oob_lower() {
+    //     let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+    //     let new_frequency: u64 = seer_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
+    //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+    //     seer.set_update_frequency(new_frequency);
+    // }
+
+    // #[test]
+    // #[should_panic(expected: ('SEER: Frequency out of bounds',))]
+    // fn test_set_update_frequency_oob_higher() {
+    //     let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+    //     let new_frequency: u64 = seer_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
+    //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+    //     seer.set_update_frequency(new_frequency);
+    // }
 
     #[test]
     fn test_update_prices_successful() {

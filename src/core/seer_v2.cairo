@@ -7,7 +7,7 @@ pub mod seer_v2 {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeer, ISeerConversionRate};
+    use opus::interfaces::ISeer::{ISeer, ISeerConversionRateToggle};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ConversionRateInfo, PriceConversion, YangSuspensionStatus};
@@ -98,6 +98,7 @@ pub mod seer_v2 {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct YangPriceConversionToggled {
+        #[key]
         pub yang: ContractAddress,
         pub price_conversion: PriceConversion
     }
@@ -182,7 +183,7 @@ pub mod seer_v2 {
     }
 
     #[abi(embed_v0)]
-    impl ISeerConversionRateImpl of ISeerConversionRate<ContractState> {
+    impl ISeerConversionRateToggleImpl of ISeerConversionRateToggle<ContractState> {
         fn get_yang_price_conversion(self: @ContractState, yang: ContractAddress) -> PriceConversion {
             self.price_conversions.read(yang)
         }
@@ -192,9 +193,10 @@ pub mod seer_v2 {
 
             let old_price_conversion = self.price_conversions.read(yang);
             let new_price_conversion = match old_price_conversion {
-                // toggling to conversion rate
+                // toggling to vault type
                 PriceConversion::None => {
                     let vault = IERC4626Dispatcher { contract_address: yang };
+                    // This will throw if the yang is not a vault asset
                     let asset: ContractAddress = vault.asset();
                     let conversion_rate: u256 = vault.convert_to_assets(WAD_ONE.into());
                     assert(conversion_rate.is_non_zero(), 'SEER: Zero conversion rate');

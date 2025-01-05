@@ -11,7 +11,7 @@ pub trait ISeer<TContractState> {
 }
 
 #[starknet::interface]
-pub trait ISeerConversionRate<TContractState> {
+pub trait ISeerConversionRateToggle<TContractState> {
     fn get_yang_price_conversion(self: @TContractState, yang: ContractAddress) -> PriceConversion;
     fn toggle_yang_price_conversion(ref self: TContractState, yang: ContractAddress);
 }

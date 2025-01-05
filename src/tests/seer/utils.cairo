@@ -6,7 +6,8 @@ pub mod seer_utils {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaV2Dispatcher, IPragmaV2DispatcherTrait};
     use opus::interfaces::ISeer::{
-        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateDispatcher, ISeerConversionRateDispatcherTrait
+        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateToggleDispatcher,
+        ISeerConversionRateToggleDispatcherTrait
     };
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
@@ -133,7 +134,7 @@ pub mod seer_utils {
     }
 
     pub fn toggle_price_conversion_for_vaults(seer_addr: ContractAddress, mut vaults: Span<ContractAddress>) {
-        let seer_conversion_rate_toggle = ISeerConversionRateDispatcher { contract_address: seer_addr };
+        let seer_conversion_rate_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer_addr };
 
         start_prank(CheatTarget::One(seer_addr), admin());
         loop {
