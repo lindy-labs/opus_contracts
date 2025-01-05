@@ -184,8 +184,7 @@ pub mod seer_v2 {
         fn toggle_yang_price_conversion(ref self: ContractState, yang: ContractAddress) {
             self.access_control.assert_has_role(seer_roles::TOGGLE_YANG_PRICE_CONVERSION);
 
-            let old_price_conversion = self.price_conversions.read(yang);
-            let new_price_conversion = match old_price_conversion {
+            let new_price_conversion = match self.price_conversions.read(yang) {
                 // toggling to vault type
                 PriceConversion::None => {
                     assert(
@@ -256,7 +255,7 @@ pub mod seer_v2 {
                         }
 
                         let price_conversion = self.price_conversions.read(*yang);
-                        let target_asset = match price_conversion {
+                        let asset = match price_conversion {
                             PriceConversion::None => *yang,
                             PriceConversion::Vault(info) => info.asset,
                         };
@@ -275,7 +274,7 @@ pub mod seer_v2 {
                             //       in a try-catch block so that an exception does not
                             //       prevent all other price updates
 
-                            match oracle.fetch_price(target_asset) {
+                            match oracle.fetch_price(asset) {
                                 Result::Ok(oracle_price) => {
                                     let asset_price: Wad = match price_conversion {
                                         PriceConversion::None => oracle_price,
