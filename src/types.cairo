@@ -244,7 +244,7 @@ pub mod pragma {
 
 // Used for ERC-4626 vault assets with an underlying asset and a conversion
 // rate
-#[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
+#[derive(Copy, Drop, Debug, PartialEq, Serde, starknet::Store)]
 pub struct ConversionRateInfo {
     // Address of the underlying asset
     pub asset: ContractAddress,
@@ -253,7 +253,7 @@ pub struct ConversionRateInfo {
     pub conversion_rate_scale: u128
 }
 
-#[derive(Copy, Default, Drop, PartialEq, Serde, starknet::Store)]
+#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
 pub enum PriceConversion {
     #[default]
     None,
