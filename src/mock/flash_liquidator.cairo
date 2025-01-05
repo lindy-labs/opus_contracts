@@ -134,7 +134,7 @@ pub mod flash_liquidator {
     fn provider_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
          100000000, // 1 (10 ** 8) - BTC
-        ];
+         0, 0];
         asset_amts.span()
     }
 }

@@ -229,107 +229,162 @@ mod test_purger {
     //
     // For low thresholds (arbitraily defined as 2% or less), the trove's debt is set based on the
     // value instead. See inline comments for more details.
-    #[test]
-    fn test_preview_liquidate_parametrized() {
-        let classes = Option::Some(purger_utils::declare_contracts());
-
-        let mut thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-
-        let default_trove_debt: Wad = (WAD_ONE * 1000).into();
-
-        // non-recovery mode
-        let mut expected_max_close_amts: Span<Wad> = array![
+    fn preview_liquidate_expected_max_close_amts() -> Span<Wad> {
+        array![
             1_u128.into(), // 1 wei (0% threshold)
             13904898408200000000_u128.into(), // 13.904... (1% threshold)
             284822000000000000000_u128.into(), // 284.822 (70% threshold)
-            //386997000000000000000_u128.into(), // 386.997 (80% threshold)
+            386997000000000000000_u128.into(), // 386.997 (80% threshold)
             603509000000000000000_u128.into(), // 603.509 (90% threshold)
             908381000000000000000_u128.into(), // 908.381 (96% threshold)
             992098000000000000000_u128.into(), // 992.098 (97% threshold)
-            default_trove_debt, // (99% threshold)
+            (WAD_ONE * 1000).into(), // (99% threshold)
         ]
-            .span();
+            .span()
+    }
 
-        let mut expected_penalty: Span<Ray> = array![
+    fn preview_liquidate_expected_penalties() -> Span<Ray> {
+        array![
             (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
             (3 * RAY_PERCENT).into(), // 3% (1% threshold)
             (3 * RAY_PERCENT).into(), // 3% (70% threshold)
-            //(3 * RAY_PERCENT).into(), // 3% (80% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (80% threshold)
             (3 * RAY_PERCENT).into(), // 3% (90% threshold)
             (3 * RAY_PERCENT).into(), // 3% (96% threshold)
             (3 * RAY_PERCENT).into(), // 3% (97% threshold)
             10101000000000000000000000_u128.into(), // 1.0101% (99% threshold)
         ]
-            .span();
+            .span()
+    }
 
-        loop {
-            match thresholds.pop_front() {
-                Option::Some(threshold) => {
-                    let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+    fn test_preview_liquidate(threshold: Ray, expected_max_close_amt: Wad, expected_penalty: Ray,) {
+        let classes = Option::Some(purger_utils::declare_contracts());
+        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(classes);
 
-                    purger_utils::create_whale_trove(abbot, yangs, gates);
+        let default_trove_debt: Wad = (WAD_ONE * 1000).into();
 
-                    // If the threshold is below 2%, we set the trove's debt such that
-                    // we get the desired ltv for the trove from the get-go in order to
-                    // avoid overflow issues in `lower_prices_to_raise_trove_ltv`.
-                    //
-                    // This is because `lower_prices_to_raise_trove_ltv` is designed for
-                    // raising the trove's LTV to the given *higher* LTV,
-                    // not lowering it.
-                    //
-                    // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
-                    // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
-                    // If more low thresholds were added that were above 2% but below the
-                    // starting LTV of the trove, then this cutoff would need to be adjusted.
-                    let target_threshold_above_cutoff = *threshold > (RAY_PERCENT * 2).into();
-                    let trove_debt = if target_threshold_above_cutoff {
-                        default_trove_debt
-                    } else {
-                        let target_trove_yang_amts: Span<Wad> = array![
-                            purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                            (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
-                            Zero::zero(),
-                            Zero::zero(),
-                        ]
-                            .span();
+        purger_utils::create_whale_trove(abbot, yangs, gates);
 
-                        let trove_value: Wad = purger_utils::get_sum_of_value(shrine, yangs, target_trove_yang_amts);
+        // If the threshold is below 2%, we set the trove's debt such that
+        // we get the desired ltv for the trove from the get-go in order to
+        // avoid overflow issues in `lower_prices_to_raise_trove_ltv`.
+        //
+        // This is because `lower_prices_to_raise_trove_ltv` is designed for
+        // raising the trove's LTV to the given *higher* LTV,
+        // not lowering it.
+        //
+        // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
+        // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
+        // If more low thresholds were added that were above 2% but below the
+        // starting LTV of the trove, then this cutoff would need to be adjusted.
+        let target_threshold_above_cutoff = threshold > (RAY_PERCENT * 2).into();
+        let trove_debt = if target_threshold_above_cutoff {
+            default_trove_debt
+        } else {
+            let target_trove_yang_amts: Span<Wad> = array![
+                purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
+                (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
+                Zero::zero(),
+                Zero::zero(),
+            ]
+                .span();
 
-                        wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()
-                    };
+            let trove_value: Wad = purger_utils::get_sum_of_value(shrine, yangs, target_trove_yang_amts);
 
-                    let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
-
-                    purger_utils::set_thresholds(shrine, yangs, *threshold);
-
-                    let target_trove_health: Health = shrine.get_trove_health(target_trove);
-
-                    if target_threshold_above_cutoff {
-                        purger_utils::lower_prices_to_raise_trove_ltv(
-                            shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, *threshold
-                        );
-                    }
-
-                    let target_trove_updated_health: Health = shrine.get_trove_health(target_trove);
-                    purger_utils::assert_trove_is_liquidatable(
-                        shrine, purger, target_trove, target_trove_updated_health
-                    );
-
-                    let (penalty, max_close_amt) = purger
-                        .preview_liquidate(target_trove)
-                        .expect('Should be liquidatable');
-
-                    let expected_penalty = *expected_penalty.pop_front().unwrap();
-                    common::assert_equalish(penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty');
-
-                    let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
-                    common::assert_equalish(
-                        max_close_amt, expected_max_close_amt, (WAD_ONE * 2).into(), 'wrong max close amt'
-                    );
-                },
-                Option::None => { break; },
-            };
+            wadray::rmul_wr(trove_value, threshold) + 1_u128.into()
         };
+
+        let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
+
+        purger_utils::set_thresholds(shrine, yangs, threshold);
+
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
+
+        if target_threshold_above_cutoff {
+            purger_utils::lower_prices_to_raise_trove_ltv(
+                shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, threshold
+            );
+        }
+
+        let target_trove_updated_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_health);
+
+        let (penalty, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
+
+        common::assert_equalish(penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty');
+        common::assert_equalish(max_close_amt, expected_max_close_amt, (WAD_ONE * 2).into(), 'wrong max close amt');
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_1() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(0);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(0);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(0);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_2() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(1);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(1);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(1);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_3() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(2);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(2);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(2);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_4() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(3);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(3);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(3);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_5() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(4);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(4);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(4);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_6() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(5);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(5);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(5);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_7() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(6);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(6);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(6);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
+    }
+
+    #[test]
+    fn test_preview_liquidate_parametrized_8() {
+        let threshold = *purger_utils::interesting_thresholds_for_liquidation().at(7);
+        let expected_max_close_amt = *preview_liquidate_expected_max_close_amts().at(7);
+        let expected_penalty = *preview_liquidate_expected_penalties().at(7);
+
+        test_preview_liquidate(threshold, expected_max_close_amt, expected_penalty);
     }
 
     #[test]
@@ -599,7 +654,7 @@ mod test_purger {
                     let searcher: ContractAddress = purger_utils::searcher();
                     start_prank(CheatTarget::One(purger.contract_address), searcher);
                     let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, BoundedInt::max(), searcher);
-
+                    println!("after liquidate");
                     // Check that LTV is close to safety margin
                     let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
 

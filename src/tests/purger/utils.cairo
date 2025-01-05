@@ -104,7 +104,7 @@ pub mod purger_utils {
             Zero::zero(),
             RAY_PERCENT.into(),
             (70 * RAY_PERCENT).into(),
-            //(80 * RAY_PERCENT).into(),
+            (80 * RAY_PERCENT).into(),
             (90 * RAY_PERCENT).into(),
             (96 * RAY_PERCENT).into(),
             // theoretical upper bound beyond which a penalty is not guaranteed
@@ -694,8 +694,12 @@ pub mod purger_utils {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
+                    let amount = *amounts.pop_front().unwrap();
+                    if amount.is_zero() {
+                        continue;
+                    };
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    sum = sum + yang_price * *amounts.pop_front().unwrap();
+                    sum = sum + yang_price * amount;
                 },
                 Option::None => { break sum; }
             }
