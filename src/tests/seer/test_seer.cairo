@@ -499,6 +499,8 @@ mod test_seer {
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
             shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
         );
+        let eth_vault_addr: ContractAddress = *vaults[0];
+        let wbtc_vault_addr: ContractAddress = *vaults[1];
 
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
@@ -555,6 +557,20 @@ mod test_seer {
                     }
                 )
             ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: eth_vault_addr, price: expected_eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate {
+                        oracle: pragma, yang: wbtc_vault_addr, price: seer_utils::WBTC_INIT_PRICE.into()
+                    }
+                )
+            ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
         spy.assert_emitted(@expected_events_seer);
@@ -572,6 +588,8 @@ mod test_seer {
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
             shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
         );
+        let eth_vault_addr: ContractAddress = *vaults[0];
+        let wbtc_vault_addr: ContractAddress = *vaults[1];
 
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
@@ -587,8 +605,6 @@ mod test_seer {
         // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
         let pragma: ContractAddress = *(oracles[0]);
 
         ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
@@ -609,6 +625,18 @@ mod test_seer {
                 seer.contract_address,
                 seer_contract::Event::PriceUpdate(
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_vault_addr, price: wbtc_price }
                 )
             ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
