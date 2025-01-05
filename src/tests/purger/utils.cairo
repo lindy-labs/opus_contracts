@@ -11,7 +11,7 @@ pub mod purger_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -45,7 +45,6 @@ pub mod purger_utils {
         abbot: Option<ContractClass>,
         sentinel: Option<ContractClass>,
         token: Option<ContractClass>,
-        vault: Option<ContractClass>,
         gate: Option<ContractClass>,
         shrine: Option<ContractClass>,
         absorber: Option<ContractClass>,
@@ -83,20 +82,20 @@ pub mod purger_utils {
     //
 
     pub fn target_trove_yang_asset_amts() -> Span<u128> {
-        array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT, 0, 0].span()
+        array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT].span()
     }
 
     #[inline(always)]
     pub fn recipient_trove_yang_asset_amts() -> Span<u128> {
         array![30 * WAD_ONE, // 30 (Wad) - ETH
-         500000000, // 5 (10 ** 8) - BTC
-         0, 0,].span()
+         500000000 // 5 (10 ** 8) - BTC
+        ].span()
     }
 
     pub fn whale_trove_yang_asset_amts() -> Span<u128> {
         array![700 * WAD_ONE, // 700 (Wad) - ETH
-         70000000000, // 700 (10 ** 8) - BTC
-         0, 0,].span()
+         70000000000 // 700 (10 ** 8) - BTC
+        ].span()
     }
 
     pub fn interesting_thresholds_for_liquidation() -> Span<Ray> {
@@ -255,14 +254,14 @@ pub mod purger_utils {
             recipient_trove_yang_asset_amts(),
             // recipient trove has dust amount of the first yang
             // 100 wei (Wad) ETH, 20 (10 ** 8) WBTC
-            array![100_u128, 2000000000_u128, 0_u128, 0_u128].span(),
+            array![100_u128, 2000000000_u128].span(),
             // recipient trove has dust amount of a yang that is not the first yang
             // 50 (Wad) ETH, 0.00001 (10 ** 8) WBTC
-            array![50 * WAD_ONE, 100_u128, 0_u128, 0_u128].span(),
+            array![50 * WAD_ONE, 100_u128].span(),
             // exceptional redistribution because recipient trove does not have
             // WBTC yang but redistributed trove has WBTC yang
             // 50 (Wad) ETH, 0 WBTC
-            array![50 * WAD_ONE, 0_u128, 0_u128, 0_u128].span()
+            array![50 * WAD_ONE, 0_u128].span()
         ]
             .span()
     }
@@ -270,8 +269,7 @@ pub mod purger_utils {
     pub fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
         array![target_trove_yang_asset_amts(), // Dust yang case
          // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
-        array![20 * WAD_ONE, 100_u128, 0_u128, 0_u128].span()]
-            .span()
+        array![20 * WAD_ONE, 100_u128].span()].span()
     }
 
     pub fn inoperational_absorber_yin_cases() -> Span<Wad> {
@@ -329,7 +327,7 @@ pub mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        ISeerV2Dispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -341,13 +339,7 @@ pub mod purger_utils {
         };
 
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            classes.abbot,
-            classes.sentinel,
-            classes.token,
-            classes.vault,
-            classes.gate,
-            classes.shrine,
-            classes.absorber,
+            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
@@ -355,9 +347,7 @@ pub mod purger_utils {
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
 
-        let seer = seer_utils::deploy_seer_using(
-            classes.seer, shrine.contract_address, sentinel.contract_address, yangs
-        );
+        let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, classes.pragma_v2, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
         );
@@ -415,7 +405,7 @@ pub mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        ISeerV2Dispatcher,
+        ISeerDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -503,7 +493,7 @@ pub mod purger_utils {
 
     // Helper function to decrease yang prices by the given percentage
     pub fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, seer: ISeerV2Dispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
+        shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
@@ -524,7 +514,7 @@ pub mod purger_utils {
     // yang prices
     pub fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
-        seer: ISeerV2Dispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
         value: Wad,
         debt: Wad,
@@ -538,7 +528,7 @@ pub mod purger_utils {
 
     pub fn trigger_recovery_mode(
         shrine: IShrineDispatcher,
-        seer: ISeerV2Dispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
         rm_setup_type: common::RecoveryModeSetupType
     ) {
@@ -694,12 +684,8 @@ pub mod purger_utils {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let amount = *amounts.pop_front().unwrap();
-                    if amount.is_zero() {
-                        continue;
-                    };
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    sum = sum + yang_price * amount;
+                    sum = sum + yang_price * *amounts.pop_front().unwrap();
                 },
                 Option::None => { break sum; }
             }
@@ -711,7 +697,6 @@ pub mod purger_utils {
             abbot: Option::Some(declare("abbot").unwrap()),
             sentinel: Option::Some(declare("sentinel").unwrap()),
             token: Option::Some(declare("erc20_mintable").unwrap()),
-            vault: Option::Some(declare("erc4626_mintable").unwrap()),
             gate: Option::Some(declare("gate").unwrap()),
             shrine: Option::Some(declare("shrine").unwrap()),
             absorber: Option::Some(declare("absorber").unwrap()),
@@ -721,7 +706,7 @@ pub mod purger_utils {
             mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
             switchboard: Option::Some(declare("switchboard").unwrap()),
             mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),
-            seer: Option::Some(declare("seer_v2").unwrap()),
+            seer: Option::Some(declare("seer").unwrap()),
         }
     }
 

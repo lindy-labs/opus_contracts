@@ -30,17 +30,17 @@ pub mod abbot_utils {
     //
 
     pub fn initial_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10, 0, 0];
+        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10,];
         asset_amts.span()
     }
 
     pub fn open_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT, 0, 0];
+        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
     pub fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT, 0, 0];
+        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
@@ -52,12 +52,11 @@ pub mod abbot_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        vault_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
     ) -> (IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            sentinel_class, token_class, vault_class, gate_class, shrine_class
+            sentinel_class, token_class, gate_class, shrine_class
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
@@ -91,7 +90,6 @@ pub mod abbot_utils {
         abbot_class: Option<ContractClass>,
         sentinel_class: Option<ContractClass>,
         token_class: Option<ContractClass>,
-        vault_class: Option<ContractClass>,
         gate_class: Option<ContractClass>,
         shrine_class: Option<ContractClass>,
     ) -> (
@@ -106,7 +104,7 @@ pub mod abbot_utils {
         Wad, // forge amount
     ) {
         let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(
-            abbot_class, sentinel_class, token_class, vault_class, gate_class, shrine_class
+            abbot_class, sentinel_class, token_class, gate_class, shrine_class
         );
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
