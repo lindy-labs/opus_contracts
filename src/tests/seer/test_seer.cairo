@@ -214,8 +214,22 @@ mod test_seer {
     }
 
     #[test]
+    #[should_panic(expected: ('SEER: Not wad scale',))]
+    fn test_toggle_yang_vault_not_wad_decimals() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+        let eth = common::eth_token_deploy(Option::None);
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 8, Zero::zero(), seer_utils::admin(), eth, Option::None
+        );
+
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.toggle_yang_price_conversion(irregular_vault);
+    }
+
+    #[test]
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
-    fn test_toggle_yang_zero_conversion_rate() {
+    fn test_toggle_yang_vault_zero_conversion_rate() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
         let eth = common::eth_token_deploy(Option::None);
@@ -231,7 +245,7 @@ mod test_seer {
 
     #[test]
     #[should_panic(expected: ('SEER: Too many decimals',))]
-    fn test_toggle_yang_asset_too_many_decimals() {
+    fn test_toggle_yang_vault_asset_too_many_decimals() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
         let irregular_token = common::deploy_token(
@@ -244,26 +258,6 @@ mod test_seer {
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.toggle_yang_price_conversion(irregular_vault);
     }
-
-    // #[test]
-    // #[should_panic(expected: ('SEER: Frequency out of bounds',))]
-    // fn test_set_update_frequency_oob_lower() {
-    //     let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-
-    //     let new_frequency: u64 = seer_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
-    //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-    //     seer.set_update_frequency(new_frequency);
-    // }
-
-    // #[test]
-    // #[should_panic(expected: ('SEER: Frequency out of bounds',))]
-    // fn test_set_update_frequency_oob_higher() {
-    //     let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-
-    //     let new_frequency: u64 = seer_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
-    //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-    //     seer.set_update_frequency(new_frequency);
-    // }
 
     #[test]
     fn test_update_prices_successful() {
