@@ -11,7 +11,7 @@ pub mod purger_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -329,7 +329,7 @@ pub mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        ISeerDispatcher,
+        ISeerV2Dispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -415,7 +415,7 @@ pub mod purger_utils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
-        ISeerDispatcher,
+        ISeerV2Dispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -503,7 +503,7 @@ pub mod purger_utils {
 
     // Helper function to decrease yang prices by the given percentage
     pub fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
+        shrine: IShrineDispatcher, seer: ISeerV2Dispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         loop {
@@ -524,7 +524,7 @@ pub mod purger_utils {
     // yang prices
     pub fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
-        seer: ISeerDispatcher,
+        seer: ISeerV2Dispatcher,
         yangs: Span<ContractAddress>,
         value: Wad,
         debt: Wad,
@@ -538,7 +538,7 @@ pub mod purger_utils {
 
     pub fn trigger_recovery_mode(
         shrine: IShrineDispatcher,
-        seer: ISeerDispatcher,
+        seer: ISeerV2Dispatcher,
         yangs: Span<ContractAddress>,
         rm_setup_type: common::RecoveryModeSetupType
     ) {

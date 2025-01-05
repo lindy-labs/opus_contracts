@@ -5,10 +5,7 @@ pub mod seer_utils {
     use opus::core::seer::seer as seer_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{IPragmaV2Dispatcher, IPragmaV2DispatcherTrait};
-    use opus::interfaces::ISeer::{
-        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateToggleDispatcher,
-        ISeerConversionRateToggleDispatcherTrait
-    };
+    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -46,7 +43,7 @@ pub mod seer_utils {
 
     pub fn deploy_seer(
         seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
-    ) -> (ISeerDispatcher, ISentinelDispatcher, IShrineDispatcher) {
+    ) -> (ISeerV2Dispatcher, ISentinelDispatcher, IShrineDispatcher) {
         let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
         let calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into()
@@ -66,7 +63,7 @@ pub mod seer_utils {
         stop_prank(CheatTarget::One(shrine));
 
         (
-            ISeerDispatcher { contract_address: seer_addr },
+            ISeerV2Dispatcher { contract_address: seer_addr },
             sentinel_dispatcher,
             IShrineDispatcher { contract_address: shrine }
         )
@@ -77,7 +74,7 @@ pub mod seer_utils {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         yangs: Span<ContractAddress>
-    ) -> ISeerDispatcher {
+    ) -> ISeerV2Dispatcher {
         let mut calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into()
         ];
@@ -95,14 +92,18 @@ pub mod seer_utils {
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_prank(CheatTarget::One(shrine));
 
-        let vaults = array![*yangs.at(2), *yangs.at(3)].span();
-        toggle_price_conversion_for_vaults(seer_addr, vaults);
+        let seer = ISeerV2Dispatcher { contract_address: seer_addr };
 
-        ISeerDispatcher { contract_address: seer_addr }
+        start_prank(CheatTarget::One(seer_addr), admin());
+        seer.toggle_yang_price_conversion(*yangs.at(2));
+        seer.toggle_yang_price_conversion(*yangs.at(3));
+        stop_prank(CheatTarget::One(seer_addr));
+
+        seer
     }
 
     pub fn add_oracles(
-        seer: ISeerDispatcher,
+        seer: ISeerV2Dispatcher,
         pragma_v2_class: Option<ContractClass>,
         mock_pragma_class: Option<ContractClass>,
         switchboard_class: Option<ContractClass>,
@@ -123,7 +124,7 @@ pub mod seer_utils {
         oracles.span()
     }
 
-    pub fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
+    pub fn mock_valid_price_update(seer: ISeerV2Dispatcher, yang: ContractAddress, price: Wad) {
         let current_ts: u64 = get_block_timestamp();
         let oracles: Span<ContractAddress> = seer.get_oracles();
 
@@ -131,18 +132,5 @@ pub mod seer_utils {
         let pragma = IOracleDispatcher { contract_address: *oracles.at(0) };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         pragma_utils::mock_valid_price_update(mock_pragma, yang, price, current_ts);
-    }
-
-    pub fn toggle_price_conversion_for_vaults(seer_addr: ContractAddress, mut vaults: Span<ContractAddress>) {
-        let seer_conversion_rate_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer_addr };
-
-        start_prank(CheatTarget::One(seer_addr), admin());
-        loop {
-            match vaults.pop_front() {
-                Option::Some(vault) => { seer_conversion_rate_toggle.toggle_yang_price_conversion(*vault); },
-                Option::None => { break; }
-            };
-        };
-        stop_prank(CheatTarget::One(seer_addr));
     }
 }

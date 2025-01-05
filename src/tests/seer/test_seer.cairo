@@ -13,10 +13,7 @@ mod test_seer {
     use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::{
-        ISeerDispatcher, ISeerDispatcherTrait, ISeerConversionRateToggleDispatcher,
-        ISeerConversionRateToggleDispatcherTrait
-    };
+    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait,};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
@@ -146,7 +143,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
@@ -161,19 +158,18 @@ mod test_seer {
         let eth_vault = *yangs.at(2);
         let conversion_rate_info = ConversionRateInfo { asset: eth, conversion_rate_scale: 1_u128 };
 
-        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
         assert(
-            seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
+            seer.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
             'wrong price conversion 1'
         );
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer_toggle.toggle_yang_price_conversion(eth_vault);
-        assert(seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::None, 'wrong price conversion 2');
+        seer.toggle_yang_price_conversion(eth_vault);
+        assert(seer.get_yang_price_conversion(eth_vault) == PriceConversion::None, 'wrong price conversion 2');
 
-        seer_toggle.toggle_yang_price_conversion(eth_vault);
+        seer.toggle_yang_price_conversion(eth_vault);
         assert(
-            seer_toggle.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
+            seer.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
             'wrong price conversion 3'
         );
 
@@ -203,10 +199,9 @@ mod test_seer {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_toggle_yang_price_unauthorized() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
 
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
-        seer_toggle.toggle_yang_price_conversion(seer_utils::dummy_eth());
+        seer.toggle_yang_price_conversion(seer_utils::dummy_eth());
     }
 
     // This is commented out because we are unable to catch the exception of an entry point selector that 
@@ -217,22 +212,20 @@ mod test_seer {
     //     let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
     //         Option::None, Option::None, Option::None, Option::None, Option::None
     //     );
-    //     let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+    //     let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
     //         Option::None, shrine.contract_address, sentinel.contract_address, yangs
     //     );
-    //     let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
 
     //     let eth = *yangs.at(0);
 
     //     start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-    //     seer_toggle.toggle_yang_price_conversion(eth);
+    //     seer.toggle_yang_price_conversion(eth);
     // }
 
     #[test]
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
     fn test_toggle_yang_zero_conversion_rate() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
 
         let eth = common::eth_token_deploy(Option::None);
         let irregular_vault = common::deploy_vault(
@@ -242,14 +235,13 @@ mod test_seer {
         IMockERC4626Dispatcher { contract_address: irregular_vault }.set_convert_to_assets_per_wad_scale(Zero::zero());
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer_toggle.toggle_yang_price_conversion(irregular_vault);
+        seer.toggle_yang_price_conversion(irregular_vault);
     }
 
     #[test]
     #[should_panic(expected: ('SEER: Too many decimals',))]
     fn test_toggle_yang_asset_too_many_decimals() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
-        let seer_toggle = ISeerConversionRateToggleDispatcher { contract_address: seer.contract_address };
 
         let irregular_token = common::deploy_token(
             'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), Option::None
@@ -259,7 +251,7 @@ mod test_seer {
         );
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer_toggle.toggle_yang_price_conversion(irregular_vault);
+        seer.toggle_yang_price_conversion(irregular_vault);
     }
 
     // #[test]
@@ -287,7 +279,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
@@ -503,7 +495,7 @@ mod test_seer {
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
 
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
@@ -569,7 +561,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
@@ -630,7 +622,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         seer_utils::add_oracles(seer, Option::None, Option::None, Option::None, Option::None);
@@ -645,7 +637,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, token_class, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
@@ -673,7 +665,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
 
@@ -741,7 +733,7 @@ mod test_seer {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address, yangs
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
