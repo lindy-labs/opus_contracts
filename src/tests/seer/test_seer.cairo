@@ -24,7 +24,7 @@ mod test_seer {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PragmaPricesResponse;
-    use opus::types::{ConversionRateInfo, PriceConversion, YangSuspensionStatus};
+    use opus::types::{ConversionRateInfo, PriceType, YangSuspensionStatus};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
@@ -139,7 +139,7 @@ mod test_seer {
     }
 
     #[test]
-    fn test_toggle_yang_price_conversion() {
+    fn test_set_yang_price_type() {
         let gate_class = declare("gate").unwrap();
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
             Option::None, Option::None, Option::Some(gate_class), Option::None
@@ -154,7 +154,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::toggle_vaults_in_seer(seer, vaults);
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
@@ -163,40 +163,31 @@ mod test_seer {
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
-        let eth = *yangs.at(0);
         let eth_vault = *vaults.at(0);
-        let conversion_rate_info = ConversionRateInfo { asset: eth, conversion_rate_scale: 1_u128 };
 
-        assert(
-            seer.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
-            'wrong price conversion 1'
-        );
+        let price_type = PriceType::Vault;
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 1");
 
+        let price_type = PriceType::Direct;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer.toggle_yang_price_conversion(eth_vault);
-        assert(seer.get_yang_price_conversion(eth_vault) == PriceConversion::None, 'wrong price conversion 2');
+        seer.set_yang_price_type(eth_vault, price_type);
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 2");
 
-        seer.toggle_yang_price_conversion(eth_vault);
-        assert(
-            seer.get_yang_price_conversion(eth_vault) == PriceConversion::Vault(conversion_rate_info),
-            'wrong price conversion 3'
-        );
+        let price_type = PriceType::Vault;
+        seer.set_yang_price_type(eth_vault, price_type);
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 3");
 
         let expected_events = array![
             (
                 seer.contract_address,
-                seer_contract::Event::YangPriceConversionToggled(
-                    seer_contract::YangPriceConversionToggled {
-                        yang: eth_vault, price_conversion: PriceConversion::None
-                    }
+                seer_contract::Event::YangPriceTypeUpdated(
+                    seer_contract::YangPriceTypeUpdated { yang: eth_vault, price_type: PriceType::Direct }
                 )
             ),
             (
                 seer.contract_address,
-                seer_contract::Event::YangPriceConversionToggled(
-                    seer_contract::YangPriceConversionToggled {
-                        yang: eth_vault, price_conversion: PriceConversion::Vault(conversion_rate_info)
-                    }
+                seer_contract::Event::YangPriceTypeUpdated(
+                    seer_contract::YangPriceTypeUpdated { yang: eth_vault, price_type: PriceType::Vault }
                 )
             ),
         ];
@@ -206,16 +197,17 @@ mod test_seer {
 
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
-    fn test_toggle_yang_price_unauthorized() {
+    fn test_set_yang_price_type_unauthorized() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
+        let price_type = PriceType::Direct;
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
-        seer.toggle_yang_price_conversion(seer_utils::dummy_eth());
+        seer.set_yang_price_type(seer_utils::dummy_eth(), price_type);
     }
 
     #[test]
     #[should_panic(expected: ('SEER: Not wad scale',))]
-    fn test_toggle_yang_vault_not_wad_decimals() {
+    fn test_set_yang_price_type_to_vault_not_wad_decimals() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
         let eth = common::eth_token_deploy(Option::None);
@@ -223,13 +215,14 @@ mod test_seer {
             'Irregular Vault', 'iVAULT', 8, Zero::zero(), seer_utils::admin(), eth, Option::None
         );
 
+        let price_type = PriceType::Vault;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer.toggle_yang_price_conversion(irregular_vault);
+        seer.set_yang_price_type(irregular_vault, price_type);
     }
 
     #[test]
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
-    fn test_toggle_yang_vault_zero_conversion_rate() {
+    fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
         let eth = common::eth_token_deploy(Option::None);
@@ -239,13 +232,14 @@ mod test_seer {
 
         IMockERC4626Dispatcher { contract_address: irregular_vault }.set_convert_to_assets_per_wad_scale(Zero::zero());
 
+        let price_type = PriceType::Vault;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer.toggle_yang_price_conversion(irregular_vault);
+        seer.set_yang_price_type(irregular_vault, price_type);
     }
 
     #[test]
     #[should_panic(expected: ('SEER: Too many decimals',))]
-    fn test_toggle_yang_vault_asset_too_many_decimals() {
+    fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
         let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
 
         let irregular_token = common::deploy_token(
@@ -255,8 +249,9 @@ mod test_seer {
             'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), irregular_token, Option::None
         );
 
+        let price_type = PriceType::Vault;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
-        seer.toggle_yang_price_conversion(irregular_vault);
+        seer.set_yang_price_type(irregular_vault, price_type);
     }
 
     #[test]
@@ -275,7 +270,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::toggle_vaults_in_seer(seer, vaults);
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
@@ -499,7 +494,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::toggle_vaults_in_seer(seer, vaults);
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
@@ -588,7 +583,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::toggle_vaults_in_seer(seer, vaults);
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
@@ -779,7 +774,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::toggle_vaults_in_seer(seer, vaults);
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None

@@ -10,7 +10,7 @@ pub mod seer_v2 {
     use opus::interfaces::ISeer::ISeerV2;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{ConversionRateInfo, PriceConversion, YangSuspensionStatus};
+    use opus::types::{ConversionRateInfo, InternalPriceType, PriceType, YangSuspensionStatus};
     use opus::utils::math::pow;
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
@@ -46,9 +46,8 @@ pub mod seer_v2 {
         shrine: IShrineDispatcher,
         // Sentinel associated with the Shrine and this module
         sentinel: ISentinelDispatcher,
-        // Mapping of a yang to its price conversion logic
-        price_conversions: LegacyMap<ContractAddress, PriceConversion>,
-        // Mapping of a yang to its ERC-4626 address for conversion rate
+        // Mapping of a yang to its price type
+        yang_price_types: LegacyMap<ContractAddress, InternalPriceType>,
         // Collection of oracles, ordered by priority,
         // starting from 1 as the key.
         // (key) -> (oracle)
@@ -72,7 +71,7 @@ pub mod seer_v2 {
         PriceUpdateMissed: PriceUpdateMissed,
         UpdateFrequencyUpdated: UpdateFrequencyUpdated,
         UpdatePricesDone: UpdatePricesDone,
-        YangPriceConversionToggled: YangPriceConversionToggled
+        YangPriceTypeUpdated: YangPriceTypeUpdated
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -97,10 +96,10 @@ pub mod seer_v2 {
     pub struct UpdatePricesDone {}
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct YangPriceConversionToggled {
+    pub struct YangPriceTypeUpdated {
         #[key]
         pub yang: ContractAddress,
-        pub price_conversion: PriceConversion
+        pub price_type: PriceType
     }
 
     //
@@ -146,8 +145,11 @@ pub mod seer_v2 {
         }
 
 
-        fn get_yang_price_conversion(self: @ContractState, yang: ContractAddress) -> PriceConversion {
-            self.price_conversions.read(yang)
+        fn get_yang_price_type(self: @ContractState, yang: ContractAddress) -> PriceType {
+            match self.yang_price_types.read(yang) {
+                InternalPriceType::Direct => PriceType::Direct,
+                InternalPriceType::Vault(_) => PriceType::Vault
+            }
         }
 
         fn set_oracles(ref self: ContractState, mut oracles: Span<ContractAddress>) {
@@ -181,12 +183,13 @@ pub mod seer_v2 {
             self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
         }
 
-        fn toggle_yang_price_conversion(ref self: ContractState, yang: ContractAddress) {
-            self.access_control.assert_has_role(seer_roles::TOGGLE_YANG_PRICE_CONVERSION);
+        fn set_yang_price_type(ref self: ContractState, yang: ContractAddress, price_type: PriceType) {
+            self.access_control.assert_has_role(seer_roles::SET_YANG_PRICE_TYPE);
 
-            let new_price_conversion = match self.price_conversions.read(yang) {
+            let internal_price_type = match price_type {
                 // toggling to vault type
-                PriceConversion::None => {
+                PriceType::Direct => { InternalPriceType::Direct },
+                PriceType::Vault => {
                     assert(
                         IERC20Dispatcher { contract_address: yang }.decimals() == WAD_DECIMALS, 'SEER: Not wad scale'
                     );
@@ -201,15 +204,13 @@ pub mod seer_v2 {
                     assert(asset_decimals <= WAD_DECIMALS, 'SEER: Too many decimals');
                     let conversion_rate_scale: u128 = pow(10_u128, (WAD_DECIMALS - asset_decimals).into());
 
-                    PriceConversion::Vault(ConversionRateInfo { asset, conversion_rate_scale })
+                    InternalPriceType::Vault(ConversionRateInfo { asset, conversion_rate_scale })
                 },
-                // toggling to none
-                PriceConversion::Vault(_) => { PriceConversion::None },
             };
 
-            self.price_conversions.write(yang, new_price_conversion);
+            self.yang_price_types.write(yang, internal_price_type);
 
-            self.emit(YangPriceConversionToggled { yang, price_conversion: new_price_conversion });
+            self.emit(YangPriceTypeUpdated { yang, price_type });
         }
 
         fn update_prices(ref self: ContractState) {
@@ -254,10 +255,10 @@ pub mod seer_v2 {
                             continue;
                         }
 
-                        let price_conversion = self.price_conversions.read(*yang);
-                        let asset = match price_conversion {
-                            PriceConversion::None => *yang,
-                            PriceConversion::Vault(info) => info.asset,
+                        let price_type = self.yang_price_types.read(*yang);
+                        let asset = match price_type {
+                            InternalPriceType::Direct => *yang,
+                            InternalPriceType::Vault(info) => info.asset,
                         };
 
                         let mut oracle_index: u32 = LOOP_START;
@@ -276,9 +277,9 @@ pub mod seer_v2 {
 
                             match oracle.fetch_price(asset) {
                                 Result::Ok(oracle_price) => {
-                                    let asset_price: Wad = match price_conversion {
-                                        PriceConversion::None => oracle_price,
-                                        PriceConversion::Vault(info) => {
+                                    let asset_price: Wad = match price_type {
+                                        InternalPriceType::Direct => oracle_price,
+                                        InternalPriceType::Vault(info) => {
                                             let unscaled_conversion_rate: u128 = IERC4626Dispatcher {
                                                 contract_address: *yang
                                             }

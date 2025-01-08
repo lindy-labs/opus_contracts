@@ -242,6 +242,21 @@ pub mod pragma {
 // Seer v2
 //
 
+#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
+pub enum PriceType {
+    #[default]
+    Direct,
+    Vault
+}
+
+#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
+pub enum InternalPriceType {
+    #[default]
+    Direct,
+    Vault: ConversionRateInfo
+}
+
+
 // Used for ERC-4626 vault assets with an underlying asset and a conversion
 // rate
 #[derive(Copy, Drop, Debug, PartialEq, Serde, starknet::Store)]
@@ -253,9 +268,3 @@ pub struct ConversionRateInfo {
     pub conversion_rate_scale: u128
 }
 
-#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
-pub enum PriceConversion {
-    #[default]
-    None,
-    Vault: ConversionRateInfo
-}

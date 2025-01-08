@@ -12,6 +12,7 @@ pub mod seer_utils {
     use opus::tests::external::utils::{pragma_utils, switchboard_utils};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
+    use opus::types::PriceType;
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::{get_block_timestamp, ContractAddress};
     use wadray::Wad;
@@ -92,11 +93,11 @@ pub mod seer_utils {
         ISeerV2Dispatcher { contract_address: seer_addr }
     }
 
-    pub fn toggle_vaults_in_seer(seer: ISeerV2Dispatcher, mut vaults: Span<ContractAddress>) {
+    pub fn set_price_types_to_vault(seer: ISeerV2Dispatcher, mut vaults: Span<ContractAddress>) {
         start_prank(CheatTarget::One(seer.contract_address), admin());
         loop {
             match vaults.pop_front() {
-                Option::Some(vault) => { seer.toggle_yang_price_conversion(*vault); },
+                Option::Some(vault) => { seer.set_yang_price_type(*vault, PriceType::Vault); },
                 Option::None => { break; },
             };
         };
