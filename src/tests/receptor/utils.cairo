@@ -23,30 +23,6 @@ pub mod receptor_utils {
     pub const INITIAL_TWAP_DURATION: u64 = 10800; // 3 hrs
     pub const INITIAL_UPDATE_FREQUENCY: u64 = 1800; // 30 mins
 
-    pub fn mock_usdc(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token(
-            'USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
-        )
-    }
-
-    pub fn mock_usdt(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token(
-            'Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
-        )
-    }
-
-    pub fn mock_dai(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token(
-            'Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
-        )
-    }
-
-    pub fn mock_lusd(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token(
-            'LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), shrine_utils::admin(), token_class
-        )
-    }
-
     pub fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token(
             'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class
@@ -55,10 +31,6 @@ pub mod receptor_utils {
 
     pub fn mock_oracle_extension() -> ContractAddress {
         'mock oracle extension'.try_into().unwrap()
-    }
-
-    pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
-        array![mock_dai(token_class), mock_usdc(token_class), mock_usdt(token_class),].span()
     }
 
     //
@@ -87,7 +59,7 @@ pub mod receptor_utils {
     ) -> (IShrineDispatcher, IReceptorDispatcher, ContractAddress, Span<ContractAddress>) {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let quote_tokens = quote_tokens(token_class);
+        let quote_tokens = common::quote_tokens(token_class);
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
         let mock_ekubo_oracle_extension_addr: ContractAddress = mock_ekubo_oracle_extension_deploy(Option::None);

@@ -1,4 +1,5 @@
 use core::num::traits::Zero;
+use opus::constants::{DAI_DECIMALS, LUSD_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
@@ -10,7 +11,7 @@ use opus::types::{AssetBalance, Reward, YangBalance};
 use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, Event, start_prank, start_warp, stop_prank};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
-use wadray::{Ray, Wad};
+use wadray::{Ray, Wad, WAD_ONE};
 
 //
 // Types
@@ -70,6 +71,10 @@ pub fn eth_hoarder() -> ContractAddress {
 
 pub fn wbtc_hoarder() -> ContractAddress {
     'wbtc hoarder'.try_into().unwrap()
+}
+
+pub fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
 }
 
 
@@ -162,6 +167,8 @@ pub fn advance_intervals(intervals: u64) {
 }
 
 
+// Mock tokens
+
 pub fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
     deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
 }
@@ -170,6 +177,25 @@ pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
     deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
 }
 
+pub fn usdc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn usdt_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn dai_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
+    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class),].span()
+}
 
 // Helper function to deploy a token
 pub fn deploy_token(

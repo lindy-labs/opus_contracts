@@ -74,7 +74,7 @@ mod test_receptor {
 
         start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
 
-        let lusd: ContractAddress = receptor_utils::mock_lusd(Option::Some(token_class));
+        let lusd: ContractAddress = common::lusd_token_deploy(Option::Some(token_class));
         let new_quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1], lusd].span();
         receptor.set_quote_tokens(new_quote_tokens);
 
