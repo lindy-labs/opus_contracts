@@ -78,7 +78,7 @@ pub mod ekubo {
     }
 
     //
-    // External Ekubo oracle config functions
+    // External Ekubo oracle adapter functions
     //
 
     #[abi(embed_v0)]
@@ -145,7 +145,7 @@ pub mod ekubo {
     }
 
     //
-    // Internal functions
+    // External functions
     //
 
     #[abi(embed_v0)]
