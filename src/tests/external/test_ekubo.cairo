@@ -95,13 +95,35 @@ mod test_ekubo {
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS
         );
         let result: Result<Wad, felt252> = ekubo.fetch_price(eth);
-        assert(result.is_ok(), 'fetch price failed');
+        assert(result.is_ok(), 'fetch price failed #1');
         let actual_price: Wad = result.unwrap();
-        assert_eq!(actual_price, exact_price, "wrong price");
+        assert_eq!(actual_price, exact_price, "wrong price #1");
 
         let expected_price: Wad = 3335573392107353791360_u128.into();
         let error_margin: Wad = 1_u128.into();
-        common::assert_equalish(actual_price, expected_price, error_margin, 'wrong converted price');
+        common::assert_equalish(actual_price, expected_price, error_margin, 'wrong converted price #1');
+
+        let wbtc = common::wbtc_token_deploy(Option::Some(token_class));
+
+        // Use real values to ensure correctness
+        let wbtc_dai_x128_price: u256 = 318614252893849538883488508055166997992904971664081878;
+        let wbtc_usdc_x128_price: u256 = 318205074905452844409073501798802864775508;
+        let wbtc_usdt_x128_price: u256 = 317746236343423991390061019847542458957558;
+        let prices = array![wbtc_dai_x128_price, wbtc_usdc_x128_price, wbtc_usdt_x128_price].span();
+
+        set_next_ekubo_prices(mock_ekubo.contract_address, wbtc, quote_tokens, prices);
+
+        let exact_price: Wad = convert_ekubo_oracle_price_to_wad(
+            wbtc_usdc_x128_price, constants::WBTC_DECIMALS, constants::USDC_DECIMALS
+        );
+        let result: Result<Wad, felt252> = ekubo.fetch_price(wbtc);
+        assert(result.is_ok(), 'fetch price failed #2');
+        let actual_price: Wad = result.unwrap();
+        assert_eq!(actual_price, exact_price, "wrong price #2");
+
+        let expected_price: Wad = 93512066988585665215326_u128.into();
+        let error_margin: Wad = 1_u128.into();
+        common::assert_equalish(actual_price, expected_price, error_margin, 'wrong converted price #2');
     }
 
     #[test]
