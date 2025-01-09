@@ -6,6 +6,7 @@ use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintabl
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
+use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
@@ -283,6 +284,25 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
             Option::None => { break; }
         };
     };
+}
+
+// Mock Ekubo deployment helper
+
+pub fn mock_ekubo_oracle_extension_deploy(
+    mock_ekubo_oracle_extension_class: Option<ContractClass>
+) -> IMockEkuboOracleExtensionDispatcher {
+    let mut calldata: Array<felt252> = ArrayTrait::new();
+
+    let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
+        Option::Some(class) => class,
+        Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
+    };
+
+    let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
+        .deploy(@calldata)
+        .expect('mock ekubo deploy failed');
+
+    IMockEkuboOracleExtensionDispatcher { contract_address: mock_ekubo_oracle_extension_addr }
 }
 
 // Helper function to approve Gates to transfer tokens from user, and to open a trove

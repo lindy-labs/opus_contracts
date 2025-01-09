@@ -2,7 +2,7 @@ use opus::types::QuoteTokenInfo;
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait IEkuboOracleConfig<TContractState> {
+pub trait IEkuboOracleAdapter<TContractState> {
     // getters
     fn get_oracle_extension(self: @TContractState) -> ContractAddress;
     fn get_quote_tokens(self: @TContractState) -> Span<QuoteTokenInfo>;
@@ -14,14 +14,15 @@ pub trait IEkuboOracleConfig<TContractState> {
 }
 
 #[starknet::component]
-pub mod ekubo_oracle_config_component {
+pub mod ekubo_oracle_adapter_component {
     use core::num::traits::Zero;
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::types::QuoteTokenInfo;
+    use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use starknet::ContractAddress;
-    use super::IEkuboOracleConfig;
-    use wadray::WAD_DECIMALS;
+    use super::IEkuboOracleAdapter;
+    use wadray::{Wad, WAD_DECIMALS};
 
     //
     // Constants
@@ -75,9 +76,9 @@ pub mod ekubo_oracle_config_component {
     //
 
     #[generate_trait]
-    pub impl EkuboOracleConfigHelpers<
+    pub impl EkuboOracleAdapterHelpers<
         TContractState, +HasComponent<TContractState>
-    > of EkuboOracleConfigHelpersTrait<TContractState> {
+    > of EkuboOracleAdapterHelpersTrait<TContractState> {
         fn get_oracle_extension(self: @ComponentState<TContractState>) -> IEkuboOracleExtensionDispatcher {
             self.oracle_extension.read()
         }
@@ -97,6 +98,27 @@ pub mod ekubo_oracle_config_component {
 
         fn get_twap_duration(self: @ComponentState<TContractState>) -> u64 {
             self.twap_duration.read()
+        }
+
+        fn get_quotes(self: @ComponentState<TContractState>, asset: ContractAddress) -> Span<Wad> {
+            let oracle_extension = self.oracle_extension.read();
+            let twap_duration = self.twap_duration.read();
+            let base_decimals: u8 = IERC20Dispatcher { contract_address: asset }.decimals();
+
+            let mut quotes: Array<Wad> = Default::default();
+            let mut quote_tokens = self.get_quote_tokens();
+
+            loop {
+                match quote_tokens.pop_front() {
+                    Option::Some(info) => {
+                        let quote: u256 = oracle_extension
+                            .get_price_x128_over_last(asset, *info.address, twap_duration);
+                        let scaled_quote: Wad = convert_ekubo_oracle_price_to_wad(quote, base_decimals, *info.decimals);
+                        quotes.append(scaled_quote);
+                    },
+                    Option::None => { break quotes.span(); }
+                };
+            }
         }
 
         fn set_oracle_extension(ref self: ComponentState<TContractState>, oracle_extension: ContractAddress) {

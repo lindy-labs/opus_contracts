@@ -25,7 +25,7 @@ mod test_seer {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PragmaPricesResponse;
     use opus::types::{ConversionRateInfo, PriceType, YangSuspensionStatus};
-    use opus::utils::ekubo_oracle_config::{IEkuboOracleConfigDispatcher, IEkuboOracleConfigDispatcherTrait};
+    use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait};
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
@@ -495,7 +495,8 @@ mod test_seer {
             );
 
         let ekubo = IOracleDispatcher { contract_address: *oracles[1] };
-        let quote_tokens = IEkuboOracleConfigDispatcher { contract_address: ekubo.contract_address }.get_quote_tokens();
+        let quote_tokens = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address }
+            .get_quote_tokens();
         let eth_dai_x128_price: u256 = 1136300885434234067297094194169939045041922;
         let eth_usdc_x128_price: u256 = 1135036808904793908619842566045;
         let eth_usdt_x128_price: u256 = 1134582885198987280493503591381;
@@ -724,7 +725,8 @@ mod test_seer {
 
         // mock a price update that fails Ekubo validation too
         let ekubo = IOracleDispatcher { contract_address: *oracles[1] };
-        let quote_tokens = IEkuboOracleConfigDispatcher { contract_address: ekubo.contract_address }.get_quote_tokens();
+        let quote_tokens = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address }
+            .get_quote_tokens();
         set_next_ekubo_prices(
             *ekubo.get_oracles().at(0),
             eth_addr,

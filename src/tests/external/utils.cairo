@@ -282,6 +282,7 @@ pub mod ekubo_utils {
     use opus::external::ekubo::ekubo as ekubo_contract;
     use opus::external::roles::ekubo_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -318,29 +319,13 @@ pub mod ekubo_utils {
     // Test setup helpers
     //
 
-    pub fn mock_ekubo_oracle_extension_deploy(
-        mock_ekubo_oracle_extension_class: Option<ContractClass>
-    ) -> IMockEkuboOracleExtensionDispatcher {
-        let mut calldata: Array<felt252> = ArrayTrait::new();
-
-        let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
-            Option::Some(class) => class,
-            Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
-        };
-
-        let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
-            .deploy(@calldata)
-            .expect('mock ekubo deploy failed');
-
-        IMockEkuboOracleExtensionDispatcher { contract_address: mock_ekubo_oracle_extension_addr }
-    }
-
     pub fn ekubo_deploy(
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
         token_class: Option<ContractClass>
-    ) -> (IOracleDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
-        let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher = mock_ekubo_oracle_extension_deploy(
+    ) -> (IEkuboDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
+        let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher =
+            common::mock_ekubo_oracle_extension_deploy(
             mock_ekubo_oracle_extension_class
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
@@ -359,7 +344,7 @@ pub mod ekubo_utils {
             Option::None => declare("ekubo").unwrap(),
         };
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
-        let ekubo = IOracleDispatcher { contract_address: ekubo_addr };
+        let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
 
         (ekubo, mock_ekubo_oracle_extension, quote_tokens)
     }
