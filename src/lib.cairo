@@ -55,6 +55,7 @@ mod interfaces {
 
 pub mod utils {
     pub mod address_registry;
+    pub mod ekubo_oracle_config;
     pub mod exp;
     pub mod math;
     pub mod reentrancy_guard;
@@ -106,6 +107,7 @@ mod tests {
         pub mod utils;
     }
     mod external {
+        mod test_ekubo;
         mod test_pragma;
         mod test_switchboard;
         pub mod utils;
@@ -147,8 +149,10 @@ mod tests {
     }
     mod utils {
         mod mock_address_registry;
+        mod mock_ekubo_oracle_config;
         mod mock_reentrancy_guard;
         mod test_address_registry;
+        mod test_ekubo_oracle_config;
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;

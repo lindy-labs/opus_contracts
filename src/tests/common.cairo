@@ -194,7 +194,7 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 }
 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
-    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class),].span()
+    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class)].span()
 }
 
 // Helper function to deploy a token

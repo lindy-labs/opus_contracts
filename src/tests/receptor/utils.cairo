@@ -1,6 +1,5 @@
 pub mod receptor_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::constants::{DAI_DECIMALS, LUSD_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
     use opus::core::receptor::receptor as receptor_contract;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
