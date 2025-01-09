@@ -161,12 +161,12 @@ pub mod ekubo {
             // As long as the median price is non-zero (i.e. at least two prices are non-zero), 
             // it is treated as valid because liveness is prioritized for Ekubo's on-chain oracle.
             // Otherwise, emit an event about the update being invalid.
-            let price: Wad = median_of_three(quotes);
-            if price.is_zero() {
+            let median_price: Wad = median_of_three(quotes);
+            if median_price.is_zero() {
                 self.emit(InvalidPriceUpdate { yang, quotes });
                 Result::Err('EKB: Invalid price update')
             } else {
-                Result::Ok(price)
+                Result::Ok(median_price)
             }
         }
     }
