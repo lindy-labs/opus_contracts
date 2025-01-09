@@ -2,7 +2,7 @@ mod test_ekubo_oracle_config {
     use opus::constants;
     use opus::tests::common;
     use opus::tests::utils::mock_ekubo_oracle_config::mock_ekubo_oracle_config;
-    use opus::utils::ekubo_oracle_config::ekubo_oracle_config_component::{EkuboOracleConfigPublic, MIN_TWAP_DURATION};
+    use opus::utils::ekubo_oracle_config::ekubo_oracle_config_component::{EkuboOracleConfigHelpers, MIN_TWAP_DURATION};
     use snforge_std::{declare, ContractClass, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher, test_address};
     use starknet::ContractAddress;
     use wadray::{WAD_DECIMALS, WAD_ONE};
@@ -24,7 +24,7 @@ mod test_ekubo_oracle_config {
 
         let mut spy = spy_events(SpyOn::One(test_address()));
 
-        state.set_quote_tokens(quote_tokens);
+        state.ekubo_oracle_config.set_quote_tokens(quote_tokens);
 
         spy.fetch_events();
 
@@ -49,7 +49,7 @@ mod test_ekubo_oracle_config {
         let token_class = declare("erc20_mintable").unwrap();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         let quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1]].span();
-        state.set_quote_tokens(quote_tokens);
+        state.ekubo_oracle_config.set_quote_tokens(quote_tokens);
     }
 
     #[test]
@@ -64,7 +64,7 @@ mod test_ekubo_oracle_config {
             *quote_tokens[0], *quote_tokens[1], *quote_tokens[2], invalid_token
         ]
             .span();
-        state.set_quote_tokens(quote_tokens);
+        state.ekubo_oracle_config.set_quote_tokens(quote_tokens);
     }
 
     #[test]
@@ -77,7 +77,7 @@ mod test_ekubo_oracle_config {
 
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
         let quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1], invalid_token].span();
-        state.set_quote_tokens(quote_tokens);
+        state.ekubo_oracle_config.set_quote_tokens(quote_tokens);
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod test_ekubo_oracle_config {
         let mut spy = spy_events(SpyOn::One(test_address()));
 
         let twap_duration: u64 = 5 * 60;
-        state.set_twap_duration(twap_duration);
+        state.ekubo_oracle_config.set_twap_duration(twap_duration);
 
         spy.fetch_events();
 
@@ -104,6 +104,6 @@ mod test_ekubo_oracle_config {
     fn test_set_twap_duration_zero_fail() {
         let mut state = state();
 
-        state.set_twap_duration(MIN_TWAP_DURATION - 1);
+        state.ekubo_oracle_config.set_twap_duration(MIN_TWAP_DURATION - 1);
     }
 }

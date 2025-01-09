@@ -56,10 +56,10 @@ pub mod ekubo_oracle_config_component {
         pub new_duration: u64
     }
 
-    #[embeddable_as(EkuboOracleConfig)]
-    pub impl EkuboOracleConfigPublic<
+    #[generate_trait]
+    pub impl EkuboOracleConfigHelpers<
         TContractState, +HasComponent<TContractState>
-    > of super::IEkuboOracleConfig<ComponentState<TContractState>> {
+    > of EkuboOracleConfigHelpersTrait<TContractState> {
         fn get_quote_tokens(self: @ComponentState<TContractState>) -> Span<QuoteTokenInfo> {
             let mut quote_tokens: Array<QuoteTokenInfo> = Default::default();
             let mut index: u32 = LOOP_START;

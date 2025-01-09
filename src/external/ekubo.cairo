@@ -8,7 +8,7 @@ pub mod ekubo {
     use opus::interfaces::IEkubo::IEkubo;
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;
-    use opus::utils::ekubo_oracle_config::ekubo_oracle_config_component;
+    use opus::utils::ekubo_oracle_config::{ekubo_oracle_config_component, IEkuboOracleConfig};
     use opus::utils::math::{median_of_three, convert_ekubo_oracle_price_to_wad};
     use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS};
@@ -25,8 +25,7 @@ pub mod ekubo {
 
     component!(path: ekubo_oracle_config_component, storage: ekubo_oracle_config, event: EkuboOracleConfigEvent);
 
-    #[abi(embed_v0)]
-    impl EkuboOracleConfigPublic = ekubo_oracle_config_component::EkuboOracleConfig<ContractState>;
+    impl EkuboOracleConfigHelpers = ekubo_oracle_config_component::EkuboOracleConfigHelpers<ContractState>;
 
     //
     // Storage
@@ -79,6 +78,33 @@ pub mod ekubo {
 
         self.ekubo_oracle_config.set_twap_duration(twap_duration);
         self.ekubo_oracle_config.set_quote_tokens(quote_tokens);
+    }
+
+    //
+    // External Ekubo oracle config functions
+    //
+
+    #[abi(embed_v0)]
+    impl IEkuboOracleConfigImpl of IEkuboOracleConfig<ContractState> {
+        fn get_quote_tokens(self: @ContractState) -> Span<QuoteTokenInfo> {
+            self.ekubo_oracle_config.get_quote_tokens()
+        }
+
+        fn get_twap_duration(self: @ContractState) -> u64 {
+            self.ekubo_oracle_config.get_twap_duration()
+        }
+
+        fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<ContractAddress>) {
+            self.access_control.assert_has_role(ekubo_roles::SET_QUOTE_TOKENS);
+
+            self.ekubo_oracle_config.set_quote_tokens(quote_tokens);
+        }
+
+        fn set_twap_duration(ref self: ContractState, twap_duration: u64) {
+            self.access_control.assert_has_role(ekubo_roles::SET_TWAP_DURATION);
+
+            self.ekubo_oracle_config.set_twap_duration(twap_duration);
+        }
     }
 
     //

@@ -4,8 +4,7 @@ pub mod mock_ekubo_oracle_config {
 
     component!(path: ekubo_oracle_config_component, storage: ekubo_oracle_config, event: EkuboOracleConfigEvent);
 
-    #[abi(embed_v0)]
-    impl EkuboOracleConfigPublic = ekubo_oracle_config_component::EkuboOracleConfig<ContractState>;
+    impl EkuboOracleConfigHelpers = ekubo_oracle_config_component::EkuboOracleConfigHelpers<ContractState>;
 
     #[storage]
     struct Storage {

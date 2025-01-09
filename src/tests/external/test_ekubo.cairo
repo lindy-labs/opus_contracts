@@ -20,6 +20,9 @@ mod test_ekubo {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::QuoteTokenInfo;
+    use opus::utils::ekubo_oracle_config::{
+        ekubo_oracle_config_component, IEkuboOracleConfigDispatcher, IEkuboOracleConfigDispatcherTrait
+    };
     use opus::utils::math::{convert_ekubo_oracle_price_to_wad, pow};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
@@ -49,6 +52,32 @@ mod test_ekubo {
         assert(oracle.get_name() == 'Ekubo', 'wrong name');
         let oracles: Span<ContractAddress> = array![mock_ekubo.contract_address].span();
         assert(oracle.get_oracles() == oracles, 'wrong oracle addresses');
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_quote_tokens_unauthorized() {
+        let token_class = declare("erc20_mintable").unwrap();
+        let (ekubo, _mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+            Option::None, Option::None, Option::Some(token_class)
+        );
+        let ekubo_oracle_config = IEkuboOracleConfigDispatcher { contract_address: ekubo.contract_address };
+
+        start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());
+        ekubo_oracle_config.set_quote_tokens(quote_tokens);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_twap_duration_unauthorized() {
+        let token_class = declare("erc20_mintable").unwrap();
+        let (ekubo, _mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
+            Option::None, Option::None, Option::Some(token_class)
+        );
+        let ekubo_oracle_config = IEkuboOracleConfigDispatcher { contract_address: ekubo.contract_address };
+
+        start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());
+        ekubo_oracle_config.set_twap_duration(ekubo_oracle_config_component::MIN_TWAP_DURATION + 1);
     }
 
     //
