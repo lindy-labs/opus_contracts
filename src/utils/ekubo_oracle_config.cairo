@@ -28,6 +28,10 @@ pub mod ekubo_oracle_config_component {
 
     pub const MIN_TWAP_DURATION: u64 = 60; // seconds; acts as a sanity check
 
+    //
+    // Storage
+    //
+
     #[storage]
     struct Storage {
         // Collection of quote tokens, in no particular order
@@ -37,6 +41,10 @@ pub mod ekubo_oracle_config_component {
         // The duration in seconds for reading TWAP from Ekubo
         twap_duration: u64
     }
+
+    //
+    // Events
+    //
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -55,6 +63,10 @@ pub mod ekubo_oracle_config_component {
         pub old_duration: u64,
         pub new_duration: u64
     }
+
+    //
+    // Internal functions
+    //
 
     #[generate_trait]
     pub impl EkuboOracleConfigHelpers<
