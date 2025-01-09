@@ -13,7 +13,7 @@ mod test_ekubo {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_prices
+        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
     };
     use opus::tests::common;
     use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr};
@@ -100,14 +100,21 @@ mod test_ekubo {
         let eth_usdt_x128_price: u256 = 1134582885198987280493503591381;
         let prices = array![eth_dai_x128_price, eth_usdc_x128_price, eth_usdt_x128_price].span();
 
-        set_next_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
 
-        let expected_price: Wad = convert_ekubo_oracle_price_to_wad(
+        let exact_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS
         );
         let result: Result<Wad, felt252> = oracle.fetch_price(eth);
         assert(result.is_ok(), 'fetch price failed');
-        assert_eq!(result.unwrap(), expected_price, "wrong price");
+        let actual_price: Wad = result.unwrap();
+        assert_eq!(actual_price, exact_price, "wrong price");
+
+        let expected_price: Wad = 3335573392107353791360_u128.into();
+        let error_margin: Wad = 1000_u128.into();
+        println!("actual price: {}", actual_price);
+        println!("expected_price: {}", expected_price);
+        common::assert_equalish(actual_price, expected_price, error_margin, 'wrong converted price');
     }
 
     #[test]
@@ -128,7 +135,7 @@ mod test_ekubo {
         let eth_usdt_x128_price: u256 = 0;
         let prices = array![eth_dai_x128_price, eth_usdc_x128_price, eth_usdt_x128_price].span();
 
-        set_next_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
 
         let expected_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS

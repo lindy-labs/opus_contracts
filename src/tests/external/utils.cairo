@@ -364,39 +364,4 @@ pub mod ekubo_utils {
 
         (ekubo, mock_ekubo_oracle_extension, quote_tokens)
     }
-//
-// Helpers
-//
-
-// pub fn convert_price_to_pragma_scale(price: Wad) -> u128 {
-//     let scale: u128 = pow(10_u128, WAD_DECIMALS - PRAGMA_DECIMALS);
-//     price.val / scale
-// }
-
-// Helper function to add a valid price update to the mock Pragma oracle
-// using default values for decimals and number of sources.
-// pub fn mock_valid_price_update(
-//     mock_ekubo: IMockEkuboOracleExtensionDispatcher, yang: ContractAddress, mut quote_tokens: Span<QuoteTokenInfo>, price: Wad
-// ) {
-//     loop {
-//         match quote_tokens.pop_front() {
-//             Option::Some(quote_token) => {
-//                 let x128_price = convert_price_to_x128(price);
-//                 mock_ekubo.next_get_price_x128_over_last(
-//             },
-//             Option::None => { break },
-//         };
-//     };
-//     let price = convert_price_to_pragma_scale(price);
-//     let response = PragmaPricesResponse {
-//         price,
-//         decimals: PRAGMA_DECIMALS.into(),
-//         last_updated_timestamp: timestamp,
-//         num_sources_aggregated: DEFAULT_NUM_SOURCES,
-//         expiration_timestamp: Option::None,
-//     };
-//     let pair_id: felt252 = get_pair_id_for_yang(yang);
-//     mock_pragma.next_get_data_median(pair_id, response);
-//     mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
-// }
 }

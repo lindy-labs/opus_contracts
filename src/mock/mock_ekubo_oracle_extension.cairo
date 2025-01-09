@@ -40,7 +40,7 @@ pub mod mock_ekubo_oracle_extension {
 }
 
 
-pub fn set_next_prices(
+pub fn set_next_ekubo_prices(
     mock_ekubo_oracle_extension_addr: ContractAddress,
     base_token: ContractAddress,
     mut quote_tokens: Span<ContractAddress>,
