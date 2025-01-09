@@ -1,6 +1,8 @@
 pub mod core_deployment;
 mod deploy_devnet;
 mod deploy_mainnet;
+mod deploy_pragma_v2_mainnet;
+mod deploy_seer_v2_mainnet;
 mod deploy_sepolia;
 pub mod mock_deployment;
 pub mod periphery_deployment;

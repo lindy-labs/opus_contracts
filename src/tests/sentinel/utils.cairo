@@ -103,6 +103,112 @@ pub mod sentinel_utils {
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
     }
 
+    pub fn add_eth_vault_yang(
+        sentinel: ISentinelDispatcher,
+        shrine_addr: ContractAddress,
+        vault_class: Option<ContractClass>,
+        gate_class: ContractClass,
+        eth: ContractAddress,
+    ) -> (ContractAddress, IGateDispatcher) {
+        let eth_vault: ContractAddress = common::eth_vault_deploy(vault_class, eth);
+
+        let eth_vault_gate: ContractAddress = gate_utils::gate_deploy(
+            eth_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class)
+        );
+
+        let eth_vault_erc20 = IERC20Dispatcher { contract_address: eth_vault };
+        let initial_deposit_amt: u128 = get_initial_asset_amt(eth_vault);
+
+        // Transferring the initial deposit amounts to `admin()`
+        start_prank(CheatTarget::One(eth_vault), common::eth_hoarder());
+        eth_vault_erc20.transfer(admin(), initial_deposit_amt.into());
+        start_prank(CheatTarget::One(eth_vault), admin());
+        eth_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
+        stop_prank(CheatTarget::One(eth_vault));
+        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+
+        sentinel
+            .add_yang(
+                eth_vault,
+                // Re-use ETH parameters
+                ETH_ASSET_MAX,
+                shrine_utils::YANG1_THRESHOLD.into(),
+                shrine_utils::YANG1_START_PRICE.into(),
+                shrine_utils::YANG1_BASE_RATE.into(),
+                eth_vault_gate
+            );
+
+        stop_prank(CheatTarget::One(sentinel.contract_address));
+
+        (eth_vault, IGateDispatcher { contract_address: eth_vault_gate })
+    }
+
+    pub fn add_wbtc_vault_yang(
+        sentinel: ISentinelDispatcher,
+        shrine_addr: ContractAddress,
+        vault_class: Option<ContractClass>,
+        gate_class: ContractClass,
+        wbtc: ContractAddress,
+    ) -> (ContractAddress, IGateDispatcher) {
+        let wbtc_vault: ContractAddress = common::wbtc_vault_deploy(vault_class, wbtc);
+        let wbtc_vault_gate: ContractAddress = gate_utils::gate_deploy(
+            wbtc_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class)
+        );
+
+        let wbtc_vault_erc20 = IERC20Dispatcher { contract_address: wbtc_vault };
+        let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc_vault);
+
+        // Transferring the initial deposit amounts to `admin()`
+        start_prank(CheatTarget::One(wbtc_vault), common::wbtc_hoarder());
+        wbtc_vault_erc20.transfer(admin(), initial_deposit_amt.into());
+        start_prank(CheatTarget::One(wbtc_vault), admin());
+        wbtc_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
+        stop_prank(CheatTarget::One(wbtc_vault));
+
+        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+        sentinel
+            .add_yang(
+                wbtc_vault,
+                // Re-use WBTC parameters
+                WBTC_ASSET_MAX,
+                shrine_utils::YANG2_THRESHOLD.into(),
+                shrine_utils::YANG2_START_PRICE.into(),
+                shrine_utils::YANG2_BASE_RATE.into(),
+                wbtc_vault_gate
+            );
+        stop_prank(CheatTarget::Multiple(array![sentinel.contract_address, wbtc_vault]));
+
+        (wbtc_vault, IGateDispatcher { contract_address: wbtc_vault_gate })
+    }
+
+    pub fn add_vaults_to_sentinel(
+        shrine: IShrineDispatcher,
+        sentinel: ISentinelDispatcher,
+        gate_class: ContractClass,
+        vault_class: Option<ContractClass>,
+        eth: ContractAddress,
+        wbtc: ContractAddress
+    ) -> (Span<ContractAddress>, Span<IGateDispatcher>) {
+        let vault_class = Option::Some(
+            match vault_class {
+                Option::Some(class) => class,
+                Option::None => declare("erc4626_mintable").unwrap()
+            }
+        );
+
+        let (eth_vault, eth_vault_gate) = add_eth_vault_yang(
+            sentinel, shrine.contract_address, vault_class, gate_class, eth
+        );
+        let (wbtc_vault, wbtc_vault_gate) = add_wbtc_vault_yang(
+            sentinel, shrine.contract_address, vault_class, gate_class, wbtc
+        );
+
+        let vaults: Span<ContractAddress> = array![eth_vault, wbtc_vault].span();
+        let gates: Span<IGateDispatcher> = array![eth_vault_gate, wbtc_vault_gate].span();
+
+        (vaults, gates)
+    }
+
     pub fn deploy_sentinel_with_eth_gate(
         token_class: Option<ContractClass>
     ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {

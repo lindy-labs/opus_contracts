@@ -14,6 +14,7 @@ pub mod core {
     pub mod receptor;
     pub mod roles;
     pub mod seer;
+    pub mod seer_v2;
     pub mod sentinel;
     pub mod shrine;
     pub mod transmuter;
@@ -25,6 +26,7 @@ pub mod external {
     pub mod ekubo;
     pub mod interfaces;
     pub mod pragma;
+    pub mod pragma_v2;
     pub mod roles;
     pub mod switchboard;
 }
@@ -36,6 +38,7 @@ mod interfaces {
     pub mod ICaretaker;
     pub mod IController;
     pub mod IERC20;
+    pub mod IERC4626;
     pub mod IEkubo;
     pub mod IEqualizer;
     pub mod IFlashBorrower;
@@ -62,7 +65,7 @@ pub mod utils {
     pub mod upgradeable;
 }
 
-mod periphery {
+pub mod periphery {
     pub mod frontend_data_provider;
     pub mod interfaces;
     pub mod roles;
@@ -74,6 +77,7 @@ pub mod mock {
     pub mod blesser;
     pub mod erc20;
     pub mod erc20_mintable;
+    pub mod erc4626_mintable;
     pub mod flash_borrower;
     pub mod flash_liquidator;
     pub mod mock_ekubo_oracle_extension;
@@ -109,6 +113,7 @@ mod tests {
     mod external {
         mod test_ekubo;
         mod test_pragma;
+        mod test_pragma_v2;
         mod test_switchboard;
         pub mod utils;
     }

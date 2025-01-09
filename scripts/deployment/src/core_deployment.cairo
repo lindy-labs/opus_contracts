@@ -76,6 +76,20 @@ pub fn deploy_seer(admin: ContractAddress, shrine: ContractAddress, sentinel: Co
     deploy_seer.contract_address
 }
 
+pub fn deploy_seer_v2(admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
+    let declare_seer = declare("seer_v2", Option::Some(MAX_FEE), Option::None).expect('failed seer v2 declare');
+
+    let seer_calldata: Array<felt252> = array![
+        admin.into(), shrine.into(), sentinel.into(), SEER_UPDATE_FREQUENCY.into()
+    ];
+    let deploy_seer = deploy(
+        declare_seer.class_hash, seer_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed seer v2 deploy');
+
+    deploy_seer.contract_address
+}
+
 pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_abbot = declare("abbot", Option::Some(MAX_FEE), Option::None).expect('failed abbot declare');
 
@@ -238,6 +252,7 @@ pub fn deploy_gate(
     deploy_gate_result.unwrap().contract_address
 }
 
+// This can be used for both Pragma v1 and Pragma v2
 pub fn deploy_pragma(
     admin: ContractAddress,
     spot_oracle: ContractAddress,

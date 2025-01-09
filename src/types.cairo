@@ -195,10 +195,12 @@ pub struct QuoteTokenInfo {
 //
 
 pub mod pragma {
-    #[derive(Copy, Drop, Serde)]
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     pub enum AggregationMode {
+        #[default]
         Median,
         Mean,
+        ConversionRate,
         Error
     }
 
@@ -228,4 +230,41 @@ pub mod pragma {
         // price value
         pub sources: u32,
     }
+
+    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
+    pub struct PairSettings {
+        pub pair_id: felt252,
+        pub aggregation_mode: AggregationMode,
+    }
 }
+
+//
+// Seer v2
+//
+
+#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
+pub enum PriceType {
+    #[default]
+    Direct,
+    Vault
+}
+
+#[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
+pub enum InternalPriceType {
+    #[default]
+    Direct,
+    Vault: ConversionRateInfo
+}
+
+
+// Used for ERC-4626 vault assets with an underlying asset and a conversion
+// rate
+#[derive(Copy, Drop, Debug, PartialEq, Serde, starknet::Store)]
+pub struct ConversionRateInfo {
+    // Address of the underlying asset
+    pub asset: ContractAddress,
+    // Scale that must be multiplied with the conversion rate to assets
+    // to get wad precision. 
+    pub conversion_rate_scale: u128
+}
+

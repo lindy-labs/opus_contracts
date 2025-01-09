@@ -1,3 +1,8 @@
+use opus::constants::{
+    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID, XSTRK_USD_PAIR_ID,
+    SSTRK_USD_PAIR_ID
+};
+use opus::types::pragma::{AggregationMode, PairSettings};
 use starknet::ClassHash;
 
 pub const MAX_FEE: felt252 = 9999999999999999;
@@ -46,4 +51,28 @@ pub const WBTC_INITIAL_SUPPLY: u128 = 2099999997690000; // approx. 21_000_000 * 
 // Chain constants
 pub fn erc20_class_hash() -> ClassHash {
     0x046ded64ae2dead6448e247234bab192a9c483644395b66f2155f2614e5804b0.try_into().expect('invalid ERC20 class hash')
+}
+
+pub fn pragma_eth_pair_settings() -> PairSettings {
+    PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
+}
+
+pub fn pragma_strk_pair_settings() -> PairSettings {
+    PairSettings { pair_id: STRK_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
+}
+
+pub fn pragma_wbtc_pair_settings() -> PairSettings {
+    PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
+}
+
+pub fn pragma_wsteth_pair_settings() -> PairSettings {
+    PairSettings { pair_id: WSTETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
+}
+
+pub fn pragma_xstrk_pair_settings() -> PairSettings {
+    PairSettings { pair_id: XSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate }
+}
+
+pub fn pragma_sstrk_pair_settings() -> PairSettings {
+    PairSettings { pair_id: SSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate }
 }

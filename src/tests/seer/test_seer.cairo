@@ -6,14 +6,16 @@ mod test_seer {
     use core::num::traits::Zero;
     use opus::constants::PRAGMA_DECIMALS;
     use opus::core::roles::seer_roles;
-    use opus::core::seer::seer as seer_contract;
+    use opus::core::seer_v2::seer_v2 as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
+    use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait,};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
@@ -21,8 +23,8 @@ mod test_seer {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::YangSuspensionStatus;
     use opus::types::pragma::PragmaPricesResponse;
+    use opus::types::{ConversionRateInfo, PriceType, YangSuspensionStatus};
     use snforge_std::{
         declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
         ContractClassTrait
@@ -137,29 +139,155 @@ mod test_seer {
     }
 
     #[test]
-    fn test_update_prices_successful() {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+    fn test_set_yang_price_type() {
+        let gate_class = declare("gate").unwrap();
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::Some(gate_class), Option::None
+        );
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+
+        let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
+            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
         );
 
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
-        // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+
+        let eth_vault = *vaults.at(0);
+
+        let price_type = PriceType::Vault;
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 1");
+
+        let price_type = PriceType::Direct;
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.set_yang_price_type(eth_vault, price_type);
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 2");
+
+        let price_type = PriceType::Vault;
+        seer.set_yang_price_type(eth_vault, price_type);
+        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 3");
+
+        let expected_events = array![
+            (
+                seer.contract_address,
+                seer_contract::Event::YangPriceTypeUpdated(
+                    seer_contract::YangPriceTypeUpdated { yang: eth_vault, price_type: PriceType::Direct }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::YangPriceTypeUpdated(
+                    seer_contract::YangPriceTypeUpdated { yang: eth_vault, price_type: PriceType::Vault }
+                )
+            ),
+        ];
+
+        spy.assert_emitted(@expected_events);
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_set_yang_price_type_unauthorized() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+        let price_type = PriceType::Direct;
+        start_prank(CheatTarget::One(seer.contract_address), common::badguy());
+        seer.set_yang_price_type(seer_utils::dummy_eth(), price_type);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SEER: Not wad scale',))]
+    fn test_set_yang_price_type_to_vault_not_wad_decimals() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+        let eth = common::eth_token_deploy(Option::None);
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 8, Zero::zero(), seer_utils::admin(), eth, Option::None
+        );
+
+        let price_type = PriceType::Vault;
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.set_yang_price_type(irregular_vault, price_type);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SEER: Zero conversion rate',))]
+    fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+        let eth = common::eth_token_deploy(Option::None);
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), eth, Option::None
+        );
+
+        IMockERC4626Dispatcher { contract_address: irregular_vault }.set_convert_to_assets_per_wad_scale(Zero::zero());
+
+        let price_type = PriceType::Vault;
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.set_yang_price_type(irregular_vault, price_type);
+    }
+
+    #[test]
+    #[should_panic(expected: ('SEER: Too many decimals',))]
+    fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+
+        let irregular_token = common::deploy_token(
+            'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), Option::None
+        );
+        let irregular_vault = common::deploy_vault(
+            'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), irregular_token, Option::None
+        );
+
+        let price_type = PriceType::Vault;
+        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        seer.set_yang_price_type(irregular_vault, price_type);
+    }
+
+    #[test]
+    fn test_update_prices_successful() {
+        let gate_class = declare("gate").unwrap();
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
+            Option::None, Option::None, Option::Some(gate_class), Option::None
+        );
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+
+        let (vaults, vault_gates) = sentinel_utils::add_vaults_to_sentinel(
+            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+        );
+
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
+            Option::None, shrine.contract_address, sentinel.contract_address
+        );
+        seer_utils::set_price_types_to_vault(seer, vaults);
+
+        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
+            seer, Option::None, Option::None, Option::None, Option::None
+        );
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+        // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let mut eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let mut wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
 
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
+        let eth_vault_addr: ContractAddress = *vaults.at(0);
+        let wbtc_vault_addr: ContractAddress = *vaults.at(1);
         let eth_gate: IGateDispatcher = *gates.at(0);
         let wbtc_gate: IGateDispatcher = *gates.at(1);
+        let eth_vault_gate: IGateDispatcher = *vault_gates.at(0);
+        let wbtc_vault_gate: IGateDispatcher = *vault_gates.at(1);
         let pragma: ContractAddress = *(oracles[0]);
         let switchboard: ContractAddress = *(oracles[1]);
 
@@ -168,8 +296,13 @@ mod test_seer {
 
         let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
+        let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
+        let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
         assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
         assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
+        // Vault prices should be identical at 1 : 1 conversion rate
+        assert(shrine_eth_vault_price == eth_price, 'wrong eth(v) price in shrine 1');
+        assert(shrine_wbtc_vault_price == wbtc_price, 'wrong wbtc(v) price in shrine 1');
 
         let expected_events_seer = array![
             (
@@ -184,6 +317,18 @@ mod test_seer {
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
                 )
             ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_vault_addr, price: wbtc_price }
+                )
+            ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
 
@@ -192,11 +337,19 @@ mod test_seer {
         let expected_missing_seer = array![
             (
                 seer.contract_address,
-                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[0] })
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: eth_addr })
             ),
             (
                 seer.contract_address,
-                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: *yangs[1] })
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: wbtc_addr })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: eth_vault_addr })
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdateMissed(seer_contract::PriceUpdateMissed { yang: wbtc_vault_addr })
             ),
             (
                 seer.contract_address,
@@ -210,14 +363,43 @@ mod test_seer {
                     seer_contract::PriceUpdate { oracle: switchboard, yang: wbtc_addr, price: wbtc_price }
                 )
             ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: wbtc_vault_addr, price: wbtc_price }
+                )
+            ),
         ];
         spy.assert_not_emitted(@expected_missing_seer);
 
+        // For ETH and WBTC, double the amount of assets in the gate for a price increase of 2x
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
 
         IMintableDispatcher { contract_address: eth_addr }.mint(eth_gate.contract_address, gate_eth_bal.into());
         IMintableDispatcher { contract_address: wbtc_addr }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
+
+        // For the vaults of ETH and WBTC, double the amount of assets in the gate + increase the conversion to 1 : 1.5
+        // for a price increase of 3x (1.5x * 2x from inflation in gate)
+        let gate_eth_vault_bal: u128 = eth_vault_gate.get_total_assets();
+        let gate_wbtc_vault_bal: u128 = wbtc_vault_gate.get_total_assets();
+        IERC4626Dispatcher { contract_address: eth_vault_addr }
+            .mint(gate_eth_vault_bal.into(), eth_vault_gate.contract_address);
+        IERC4626Dispatcher { contract_address: wbtc_vault_addr }
+            .mint(gate_wbtc_vault_bal.into(), wbtc_vault_gate.contract_address);
+
+        let new_eth_vault_conversion_rate: u256 = (WAD_SCALE + WAD_SCALE / 2).into(); // 150%
+        IMockERC4626Dispatcher { contract_address: eth_vault_addr }
+            .set_convert_to_assets_per_wad_scale(new_eth_vault_conversion_rate);
+        let new_wbtc_vault_conversion_rate: u256 = (common::WBTC_SCALE + common::WBTC_SCALE / 2).into(); // 150%
+        IMockERC4626Dispatcher { contract_address: wbtc_vault_addr }
+            .set_convert_to_assets_per_wad_scale(new_wbtc_vault_conversion_rate);
 
         let mut next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
         start_warp(CheatTarget::All, next_ts);
@@ -232,9 +414,15 @@ mod test_seer {
 
         let (shrine_eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
+        let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
+        let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
         // shrine's price is rebased by 2
-        assert(shrine_eth_price == eth_price + eth_price, 'wrong eth price in shrine 2');
-        assert(shrine_wbtc_price == wbtc_price + wbtc_price, 'wrong wbtc price in shrine 2');
+        let multiplier: Wad = (2 * WAD_SCALE).into();
+        assert(shrine_eth_price == eth_price * multiplier, 'wrong eth price in shrine 2');
+        assert(shrine_wbtc_price == wbtc_price * multiplier, 'wrong wbtc price in shrine 2');
+        let vault_multiplier: Wad = (3 * WAD_SCALE).into();
+        assert(shrine_eth_vault_price == eth_price * vault_multiplier, 'wrong eth(v) price in shrine 2');
+        assert(shrine_wbtc_vault_price == wbtc_price * vault_multiplier, 'wrong wbtc(v) price in shrine 2');
 
         // Check that delisted yangs are skipped by suspending ETH
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -290,28 +478,37 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_from_fallback_oracle_successful() {
+        let gate_class = declare("gate").unwrap();
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::Some(gate_class), Option::None
         );
+        let eth_addr: ContractAddress = *yangs[0];
+        let wbtc_addr: ContractAddress = *yangs[1];
 
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
+            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+        );
+        let eth_vault_addr: ContractAddress = *vaults[0];
+        let wbtc_vault_addr: ContractAddress = *vaults[1];
+
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
         // mock an ETH price update of spot Pragma that will fail due to too few sources,
         // causing Seer to use Switchboard
-        let eth_addr: ContractAddress = *yangs[0];
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
@@ -332,7 +529,6 @@ mod test_seer {
 
         let pragma: ContractAddress = *oracles.at(0);
         let switchboard: ContractAddress = *oracles.at(1);
-        let wbtc_addr: ContractAddress = *yangs[1];
         // asserting that PriceUpdate event for ETH coming from Switchboard,
         // but for WBTC coming from Pragma
         let expected_events_seer = array![
@@ -350,6 +546,20 @@ mod test_seer {
                     }
                 )
             ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: switchboard, yang: eth_vault_addr, price: expected_eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate {
+                        oracle: pragma, yang: wbtc_vault_addr, price: seer_utils::WBTC_INIT_PRICE.into()
+                    }
+                )
+            ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
         ];
         spy.assert_emitted(@expected_events_seer);
@@ -357,24 +567,33 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_via_execute_task_successful() {
+        let gate_class = declare("gate").unwrap();
         let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
+            Option::None, Option::None, Option::Some(gate_class), Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+
+        let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
+            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+        );
+        let eth_vault_addr: ContractAddress = *vaults[0];
+        let wbtc_vault_addr: ContractAddress = *vaults[1];
+
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+        seer_utils::set_price_types_to_vault(seer, vaults);
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
-        // add_yangs uses ETH_INIT_PRICE and WBTC_INIT_PRICE
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+        // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
         let wbtc_price: Wad = seer_utils::WBTC_INIT_PRICE.into();
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
         let pragma: ContractAddress = *(oracles[0]);
 
         ITaskDispatcher { contract_address: seer.contract_address }.execute_task();
@@ -395,6 +614,18 @@ mod test_seer {
                 seer.contract_address,
                 seer_contract::Event::PriceUpdate(
                     seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_addr, price: wbtc_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: eth_vault_addr, price: eth_price }
+                )
+            ),
+            (
+                seer.contract_address,
+                seer_contract::Event::PriceUpdate(
+                    seer_contract::PriceUpdate { oracle: pragma, yang: wbtc_vault_addr, price: wbtc_price }
                 )
             ),
             (seer.contract_address, seer_contract::Event::UpdatePricesDone(seer_contract::UpdatePricesDone {}))
@@ -419,9 +650,9 @@ mod test_seer {
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
         let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
         seer_utils::add_oracles(seer, Option::None, Option::None, Option::None, Option::None);
@@ -434,9 +665,9 @@ mod test_seer {
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
         let token_class = Option::Some(declare("erc20_mintable").unwrap());
         let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, token_class, Option::None, Option::None,
+            Option::None, token_class, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
@@ -444,7 +675,7 @@ mod test_seer {
         );
         let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
         let yangs = array![eth_yang, eth_yang].span();
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
@@ -462,9 +693,9 @@ mod test_seer {
     #[test]
     fn test_update_prices_missed_updates() {
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::None, Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
 
@@ -473,7 +704,7 @@ mod test_seer {
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         switchboard_utils::add_yangs(*oracles.at(1), yangs);
 
         // mock a price update of Pragma spot eth that
@@ -486,7 +717,7 @@ mod test_seer {
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
         let mock_pragma = IMockPragmaDispatcher { contract_address: *pragma.get_oracles().at(0) };
         mock_pragma
-            .next_get_data_median(
+            .next_get_data(
                 pragma_utils::get_pair_id_for_yang(eth_addr),
                 PragmaPricesResponse {
                     price: pragma_utils::convert_price_to_pragma_scale(eth_price),
@@ -529,16 +760,26 @@ mod test_seer {
 
     #[test]
     fn test_probe_task() {
+        let gate_class = declare("gate").unwrap();
         let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None,
+            Option::None, Option::None, Option::Some(gate_class), Option::None
         );
-        let seer: ISeerDispatcher = seer_utils::deploy_seer_using(
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+
+        let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
+            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+        );
+
+        let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
+        seer_utils::set_price_types_to_vault(seer, vaults);
+
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
             seer, Option::None, Option::None, Option::None, Option::None
         );
-        pragma_utils::add_yangs(*oracles.at(0), yangs);
+        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };
         assert(task.probe_task(), 'should be ready 1');

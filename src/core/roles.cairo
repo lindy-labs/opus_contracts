@@ -84,11 +84,12 @@ pub mod receptor_roles {
 pub mod seer_roles {
     pub const SET_ORACLES: u128 = 1;
     pub const SET_UPDATE_FREQUENCY: u128 = 2;
-    pub const UPDATE_PRICES: u128 = 4;
+    pub const SET_YANG_PRICE_TYPE: u128 = 4;
+    pub const UPDATE_PRICES: u128 = 8;
 
     #[inline(always)]
     pub fn default_admin_role() -> u128 {
-        SET_ORACLES + SET_UPDATE_FREQUENCY + UPDATE_PRICES
+        SET_ORACLES + SET_UPDATE_FREQUENCY + SET_YANG_PRICE_TYPE + UPDATE_PRICES
     }
 
     #[inline(always)]
