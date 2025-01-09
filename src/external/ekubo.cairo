@@ -151,9 +151,7 @@ pub mod ekubo {
                 match quote_tokens.pop_front() {
                     Option::Some(info) => {
                         let quote: u256 = oracle_extension.get_price_x128_over_last(yang, *info.address, twap_duration);
-
                         let scaled_quote: Wad = convert_ekubo_oracle_price_to_wad(quote, base_decimals, *info.decimals);
-
                         quotes.append(scaled_quote);
                     },
                     Option::None => { break quotes.span(); }
