@@ -4,15 +4,19 @@ use starknet::ContractAddress;
 #[starknet::interface]
 pub trait IEkuboOracleConfig<TContractState> {
     // getters
+    fn get_oracle_extension(self: @TContractState) -> ContractAddress;
     fn get_quote_tokens(self: @TContractState) -> Span<QuoteTokenInfo>;
     fn get_twap_duration(self: @TContractState) -> u64;
     // setters
+    fn set_oracle_extension(ref self: TContractState, oracle_extension: ContractAddress);
     fn set_quote_tokens(ref self: TContractState, quote_tokens: Span<ContractAddress>);
     fn set_twap_duration(ref self: TContractState, twap_duration: u64);
 }
 
 #[starknet::component]
 pub mod ekubo_oracle_config_component {
+    use core::num::traits::Zero;
+    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::types::QuoteTokenInfo;
     use starknet::ContractAddress;
@@ -34,6 +38,8 @@ pub mod ekubo_oracle_config_component {
 
     #[storage]
     struct Storage {
+        // Ekubo oracle extension for reading TWAP
+        oracle_extension: IEkuboOracleExtensionDispatcher,
         // Collection of quote tokens, in no particular order
         // Starts from 1
         // (idx) -> (token to be quoted per yang)
@@ -72,6 +78,10 @@ pub mod ekubo_oracle_config_component {
     pub impl EkuboOracleConfigHelpers<
         TContractState, +HasComponent<TContractState>
     > of EkuboOracleConfigHelpersTrait<TContractState> {
+        fn get_oracle_extension(self: @ComponentState<TContractState>) -> IEkuboOracleExtensionDispatcher {
+            self.oracle_extension.read()
+        }
+
         fn get_quote_tokens(self: @ComponentState<TContractState>) -> Span<QuoteTokenInfo> {
             let mut quote_tokens: Array<QuoteTokenInfo> = Default::default();
             let mut index: u32 = LOOP_START;
@@ -87,6 +97,12 @@ pub mod ekubo_oracle_config_component {
 
         fn get_twap_duration(self: @ComponentState<TContractState>) -> u64 {
             self.twap_duration.read()
+        }
+
+        fn set_oracle_extension(ref self: ComponentState<TContractState>, oracle_extension: ContractAddress) {
+            assert(oracle_extension.is_non_zero(), 'EOC: Zero address for extension');
+
+            self.oracle_extension.write(IEkuboOracleExtensionDispatcher { contract_address: oracle_extension });
         }
 
         fn set_quote_tokens(ref self: ComponentState<TContractState>, quote_tokens: Span<ContractAddress>) {

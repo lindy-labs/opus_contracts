@@ -1,4 +1,5 @@
 mod test_ekubo_oracle_config {
+    use core::num::traits::Zero;
     use opus::constants;
     use opus::tests::common;
     use opus::tests::utils::mock_ekubo_oracle_config::mock_ekubo_oracle_config;
@@ -13,6 +14,30 @@ mod test_ekubo_oracle_config {
 
     fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token('Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), common::admin(), token_class)
+    }
+
+    fn mock_ekubo_oracle() -> ContractAddress {
+        'mock ekubo oracle'.try_into().unwrap()
+    }
+
+    #[test]
+    fn test_set_oracle_extension() {
+        let mut state = state();
+
+        let oracle_extension = mock_ekubo_oracle();
+        state.ekubo_oracle_config.set_oracle_extension(oracle_extension);
+
+        assert_eq!(
+            state.ekubo_oracle_config.get_oracle_extension().contract_address, oracle_extension, "wrong extension addr"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected: ('EOC: Zero address for extension',))]
+    fn test_set_oracle_extension_zero_address() {
+        let mut state = state();
+
+        state.ekubo_oracle_config.set_oracle_extension(Zero::zero());
     }
 
     #[test]

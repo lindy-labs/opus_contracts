@@ -37,8 +37,6 @@ pub mod ekubo {
         access_control: access_control_component::Storage,
         #[substorage(v0)]
         ekubo_oracle_config: ekubo_oracle_config_component::Storage,
-        // interface to the Ekubo oracle extension
-        oracle_extension: IEkuboOracleExtensionDispatcher,
     }
 
     //
@@ -73,8 +71,7 @@ pub mod ekubo {
     ) {
         self.access_control.initializer(admin, Option::Some(ekubo_roles::default_admin_role()));
 
-        self.oracle_extension.write(IEkuboOracleExtensionDispatcher { contract_address: oracle_extension });
-
+        self.ekubo_oracle_config.set_oracle_extension(oracle_extension);
         self.ekubo_oracle_config.set_twap_duration(twap_duration);
         self.ekubo_oracle_config.set_quote_tokens(quote_tokens);
     }
@@ -85,12 +82,22 @@ pub mod ekubo {
 
     #[abi(embed_v0)]
     impl IEkuboOracleConfigImpl of IEkuboOracleConfig<ContractState> {
+        fn get_oracle_extension(self: @ContractState) -> ContractAddress {
+            self.ekubo_oracle_config.get_oracle_extension().contract_address
+        }
+
         fn get_quote_tokens(self: @ContractState) -> Span<QuoteTokenInfo> {
             self.ekubo_oracle_config.get_quote_tokens()
         }
 
         fn get_twap_duration(self: @ContractState) -> u64 {
             self.ekubo_oracle_config.get_twap_duration()
+        }
+
+        fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
+            self.access_control.assert_has_role(ekubo_roles::SET_QUOTE_TOKENS);
+
+            self.ekubo_oracle_config.set_oracle_extension(oracle_extension);
         }
 
         fn set_quote_tokens(ref self: ContractState, quote_tokens: Span<ContractAddress>) {
@@ -117,7 +124,7 @@ pub mod ekubo {
         }
 
         fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
-            array![self.oracle_extension.read().contract_address].span()
+            array![self.ekubo_oracle_config.get_oracle_extension().contract_address].span()
         }
 
         fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
@@ -133,7 +140,7 @@ pub mod ekubo {
     #[generate_trait]
     impl EkuboHelpers of EkuboHelpersTrait {
         fn get_quotes(self: @ContractState, yang: ContractAddress) -> Span<Wad> {
-            let oracle_extension = self.oracle_extension.read();
+            let oracle_extension = self.ekubo_oracle_config.get_oracle_extension();
             let twap_duration = self.ekubo_oracle_config.get_twap_duration();
             let base_decimals: u8 = IERC20Dispatcher { contract_address: yang }.decimals();
 
