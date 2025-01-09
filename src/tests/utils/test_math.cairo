@@ -2,7 +2,7 @@ mod test_math {
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::tests::common::assert_equalish;
-    use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three, pow, ekubo_oracle_price_to_wad, sqrt};
+    use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three, pow, sqrt};
     use wadray::{Ray, RAY_ONE, Wad};
 
     #[test]
