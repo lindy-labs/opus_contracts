@@ -5,7 +5,7 @@ pub mod ekubo_roles {
 
     #[inline(always)]
     pub fn default_admin_role() -> u128 {
-        SET_QUOTE_TOKENS + SET_TWAP_DURATION
+        SET_ORACLE_EXTENSION + SET_QUOTE_TOKENS + SET_TWAP_DURATION
     }
 }
 
