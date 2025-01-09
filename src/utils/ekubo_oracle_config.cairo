@@ -79,7 +79,7 @@ pub mod ekubo_oracle_config_component {
 
         fn set_quote_tokens(ref self: ComponentState<TContractState>, quote_tokens: Span<ContractAddress>) {
             assert(quote_tokens.len() == NUM_QUOTE_TOKENS, 'EOC: Not 3 quote tokens');
-            println!("after check");
+
             let mut index = LOOP_START;
             let mut quote_tokens_copy = quote_tokens;
             let mut quote_tokens_info: Array<QuoteTokenInfo> = Default::default();
