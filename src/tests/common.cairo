@@ -1,10 +1,12 @@
 use core::num::traits::Zero;
+use opus::constants::{DAI_DECIMALS, LUSD_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
 use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
+use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
@@ -12,7 +14,7 @@ use opus::utils::math::pow;
 use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, Event, start_prank, start_warp, stop_prank};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
-use wadray::{Ray, Wad};
+use wadray::{Ray, Wad, WAD_ONE};
 
 //
 // Types
@@ -72,6 +74,10 @@ pub fn eth_hoarder() -> ContractAddress {
 
 pub fn wbtc_hoarder() -> ContractAddress {
     'wbtc hoarder'.try_into().unwrap()
+}
+
+pub fn admin() -> ContractAddress {
+    'admin'.try_into().unwrap()
 }
 
 
@@ -164,12 +170,34 @@ pub fn advance_intervals(intervals: u64) {
 }
 
 
+// Mock tokens
+
 pub fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
     deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
 }
 
 pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
     deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
+}
+
+pub fn usdc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn usdt_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn dai_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
+    deploy_token('LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+}
+
+pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
+    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class)].span()
 }
 
 pub fn eth_vault_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
@@ -256,6 +284,25 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
             Option::None => { break; }
         };
     };
+}
+
+// Mock Ekubo deployment helper
+
+pub fn mock_ekubo_oracle_extension_deploy(
+    mock_ekubo_oracle_extension_class: Option<ContractClass>
+) -> IMockEkuboOracleExtensionDispatcher {
+    let mut calldata: Array<felt252> = ArrayTrait::new();
+
+    let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
+        Option::Some(class) => class,
+        Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
+    };
+
+    let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
+        .deploy(@calldata)
+        .expect('mock ekubo deploy failed');
+
+    IMockEkuboOracleExtensionDispatcher { contract_address: mock_ekubo_oracle_extension_addr }
 }
 
 // Helper function to approve Gates to transfer tokens from user, and to open a trove

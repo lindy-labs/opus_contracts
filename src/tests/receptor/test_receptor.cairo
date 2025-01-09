@@ -7,6 +7,7 @@ mod test_receptor {
     use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
     use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
     use opus::tests::receptor::utils::receptor_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -74,7 +75,7 @@ mod test_receptor {
 
         start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
 
-        let lusd: ContractAddress = receptor_utils::mock_lusd(Option::Some(token_class));
+        let lusd: ContractAddress = common::lusd_token_deploy(Option::Some(token_class));
         let new_quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1], lusd].span();
         receptor.set_quote_tokens(new_quote_tokens);
 
@@ -241,9 +242,7 @@ mod test_receptor {
             340328625112763872478829777, // 1.000135940607925 USDT / CASH
         ]
             .span();
-        receptor_utils::set_next_prices(
-            shrine.contract_address, mock_ekubo_oracle_extension_addr, quote_tokens, prices,
-        );
+        set_next_ekubo_prices(mock_ekubo_oracle_extension_addr, shrine.contract_address, quote_tokens, prices,);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
         start_warp(CheatTarget::All, next_ts);
@@ -302,9 +301,7 @@ mod test_receptor {
             340328625112763872478829777, // 1.000271899695698999556601210 USDT / CASH
         ]
             .span();
-        receptor_utils::set_next_prices(
-            shrine.contract_address, mock_ekubo_oracle_extension_addr, quote_tokens, prices,
-        );
+        set_next_ekubo_prices(mock_ekubo_oracle_extension_addr, shrine.contract_address, quote_tokens, prices,);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
         start_warp(CheatTarget::All, next_ts);
@@ -339,9 +336,7 @@ mod test_receptor {
             340328625112763872478829777, // 1.000271899695698999556601210 USDT / CASH
         ]
             .span();
-        receptor_utils::set_next_prices(
-            shrine.contract_address, mock_ekubo_oracle_extension_addr, quote_tokens, prices,
-        );
+        set_next_ekubo_prices(mock_ekubo_oracle_extension_addr, shrine.contract_address, quote_tokens, prices,);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
         start_warp(CheatTarget::All, next_ts);
@@ -370,15 +365,12 @@ mod test_receptor {
             340328625112763872478829777, // 1.000271899695698999556601210 USDT / CASH
         ]
             .span();
-        receptor_utils::set_next_prices(
-            shrine.contract_address, mock_ekubo_oracle_extension_addr, quote_tokens, prices,
-        );
+        set_next_ekubo_prices(mock_ekubo_oracle_extension_addr, shrine.contract_address, quote_tokens, prices,);
 
         let task = ITaskDispatcher { contract_address: receptor.contract_address };
         assert(task.probe_task(), 'should be ready 1');
 
         task.execute_task();
-
         assert(!task.probe_task(), 'should not be ready 1');
 
         start_warp(CheatTarget::All, get_block_timestamp() + receptor.get_update_frequency() - 1);

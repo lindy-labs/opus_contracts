@@ -23,6 +23,7 @@ pub mod core {
 }
 
 pub mod external {
+    pub mod ekubo;
     pub mod interfaces;
     pub mod pragma;
     pub mod pragma_v2;
@@ -38,6 +39,7 @@ mod interfaces {
     pub mod IController;
     pub mod IERC20;
     pub mod IERC4626;
+    pub mod IEkubo;
     pub mod IEqualizer;
     pub mod IFlashBorrower;
     pub mod IFlashMint;
@@ -56,6 +58,7 @@ mod interfaces {
 
 pub mod utils {
     pub mod address_registry;
+    pub mod ekubo_oracle_adapter;
     pub mod exp;
     pub mod math;
     pub mod reentrancy_guard;
@@ -108,6 +111,7 @@ mod tests {
         pub mod utils;
     }
     mod external {
+        mod test_ekubo;
         mod test_pragma;
         mod test_pragma_v2;
         mod test_switchboard;
@@ -150,8 +154,10 @@ mod tests {
     }
     mod utils {
         mod mock_address_registry;
+        mod mock_ekubo_oracle_adapter;
         mod mock_reentrancy_guard;
         mod test_address_registry;
+        mod test_ekubo_oracle_adapter;
         mod test_exp;
         mod test_math;
         mod test_reentrancy_guard;

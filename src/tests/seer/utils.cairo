@@ -9,7 +9,7 @@ pub mod seer_utils {
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
-    use opus::tests::external::utils::{pragma_utils, switchboard_utils};
+    use opus::tests::external::utils::{pragma_utils, ekubo_utils};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::PriceType;
@@ -108,16 +108,17 @@ pub mod seer_utils {
         seer: ISeerV2Dispatcher,
         pragma_v2_class: Option<ContractClass>,
         mock_pragma_class: Option<ContractClass>,
-        switchboard_class: Option<ContractClass>,
-        mock_switchboard_class: Option<ContractClass>
+        ekubo_class: Option<ContractClass>,
+        mock_ekubo_class: Option<ContractClass>,
+        token_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
         let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_v2_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
 
-        let (switchboard, _) = switchboard_utils::switchboard_deploy(switchboard_class, mock_switchboard_class);
-        oracles.append(switchboard.contract_address);
+        let (ekubo, _, _) = ekubo_utils::ekubo_deploy(ekubo_class, mock_ekubo_class, token_class);
+        oracles.append(ekubo.contract_address);
 
         start_prank(CheatTarget::One(seer.contract_address), admin());
         seer.set_oracles(oracles.span());

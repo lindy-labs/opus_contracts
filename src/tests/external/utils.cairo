@@ -1,3 +1,13 @@
+use starknet::ContractAddress;
+
+pub fn mock_eth_token_addr() -> ContractAddress {
+    'ETH'.try_into().unwrap()
+}
+
+pub fn pepe_token_addr() -> ContractAddress {
+    'PEPE'.try_into().unwrap()
+}
+
 pub mod pragma_utils {
     use core::num::traits::Zero;
     use core::traits::Into;
@@ -211,10 +221,6 @@ pub mod switchboard_utils {
         'switchboard owner'.try_into().unwrap()
     }
 
-    pub fn mock_eth_token_addr() -> ContractAddress {
-        'ETH'.try_into().unwrap()
-    }
-
     fn mock_switchboard_deploy(mock_switchboard_class: Option<ContractClass>) -> IMockSwitchboardDispatcher {
         let mut calldata: Array<felt252> = ArrayTrait::new();
 
@@ -266,5 +272,80 @@ pub mod switchboard_utils {
         switchboard_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
         switchboard_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
         stop_prank(CheatTarget::One(switchboard));
+    }
+}
+
+pub mod ekubo_utils {
+    use core::num::traits::Zero;
+    use core::traits::Into;
+    use opus::core::roles::shrine_roles;
+    use opus::external::ekubo::ekubo as ekubo_contract;
+    use opus::external::roles::ekubo_roles;
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::mock::mock_ekubo_oracle_extension::{
+        mock_ekubo_oracle_extension as mock_ekubo_oracle_extension_contract, IMockEkuboOracleExtensionDispatcher,
+        IMockEkuboOracleExtensionDispatcherTrait
+    };
+    use opus::tests::common;
+    use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::shrine::utils::shrine_utils;
+    use opus::utils::math::pow;
+    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use starknet::{ContractAddress, get_block_timestamp,};
+    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
+
+    //
+    // Constants
+    //
+
+    pub const TWAP_DURATION: u64 = 5 * 60; // 5 minutes * 60 seconds
+    pub const PEPE_USD_PAIR_ID: felt252 = 'PEPE/USD';
+
+    //
+    // Constant addresses
+    //
+
+    #[inline(always)]
+    pub fn admin() -> ContractAddress {
+        'ekubo owner'.try_into().unwrap()
+    }
+
+    //
+    // Test setup helpers
+    //
+
+    pub fn ekubo_deploy(
+        ekubo_class: Option<ContractClass>,
+        mock_ekubo_oracle_extension_class: Option<ContractClass>,
+        token_class: Option<ContractClass>
+    ) -> (IEkuboDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
+        let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher =
+            common::mock_ekubo_oracle_extension_deploy(
+            mock_ekubo_oracle_extension_class
+        );
+        let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
+        let mut calldata: Array<felt252> = array![
+            admin().into(),
+            mock_ekubo_oracle_extension.contract_address.into(),
+            TWAP_DURATION.into(),
+            quote_tokens.len().into(),
+            (*quote_tokens[0]).into(),
+            (*quote_tokens[1]).into(),
+            (*quote_tokens[2]).into(),
+        ];
+
+        let ekubo_class = match ekubo_class {
+            Option::Some(class) => class,
+            Option::None => declare("ekubo").unwrap(),
+        };
+        let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
+        let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
+
+        (ekubo, mock_ekubo_oracle_extension, quote_tokens)
     }
 }

@@ -52,8 +52,8 @@ pub mod purger_utils {
         purger: ContractClass,
         pragma_v2: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
-        switchboard: Option<ContractClass>,
-        mock_switchboard: Option<ContractClass>,
+        ekubo: Option<ContractClass>,
+        mock_ekubo: Option<ContractClass>,
         seer: Option<ContractClass>,
     }
 
@@ -349,7 +349,7 @@ pub mod purger_utils {
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, classes.pragma_v2, classes.mock_pragma, classes.switchboard, classes.mock_switchboard
+            seer, classes.pragma_v2, classes.mock_pragma, classes.ekubo, classes.mock_ekubo, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -704,8 +704,8 @@ pub mod purger_utils {
             purger: declare("purger").unwrap(),
             pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
             mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
-            switchboard: Option::Some(declare("switchboard").unwrap()),
-            mock_switchboard: Option::Some(declare("mock_switchboard").unwrap()),
+            ekubo: Option::Some(declare("ekubo").unwrap()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
             seer: Option::Some(declare("seer").unwrap()),
         }
     }
