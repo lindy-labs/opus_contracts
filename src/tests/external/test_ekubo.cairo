@@ -7,27 +7,18 @@ mod test_ekubo {
     use opus::external::ekubo::ekubo as ekubo_contract;
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
-    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::{
         IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
     };
     use opus::tests::common;
     use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr};
-    use opus::tests::seer::utils::seer_utils;
-    use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::types::QuoteTokenInfo;
     use opus::utils::ekubo_oracle_config::{
         ekubo_oracle_config_component, IEkuboOracleConfigDispatcher, IEkuboOracleConfigDispatcherTrait
     };
-    use opus::utils::math::{convert_ekubo_oracle_price_to_wad, pow};
-    use snforge_std::{
-        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
-    };
-    use starknet::{ContractAddress, get_block_timestamp};
+    use opus::utils::math::convert_ekubo_oracle_price_to_wad;
+    use snforge_std::{declare, start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
     //
@@ -48,10 +39,9 @@ mod test_ekubo {
         assert(ekubo_ac.get_admin() == admin, 'wrong admin');
         assert(ekubo_ac.get_roles(admin) == ekubo_roles::default_admin_role(), 'wrong admin role');
 
-        let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
-        assert(oracle.get_name() == 'Ekubo', 'wrong name');
+        assert(ekubo.get_name() == 'Ekubo', 'wrong name');
         let oracles: Span<ContractAddress> = array![mock_ekubo.contract_address].span();
-        assert(oracle.get_oracles() == oracles, 'wrong oracle addresses');
+        assert(ekubo.get_oracles() == oracles, 'wrong oracle addresses');
     }
 
     #[test]
@@ -90,7 +80,6 @@ mod test_ekubo {
         let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
-        let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
 
         let eth = common::eth_token_deploy(Option::Some(token_class));
 
@@ -105,15 +94,13 @@ mod test_ekubo {
         let exact_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS
         );
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth);
+        let result: Result<Wad, felt252> = ekubo.fetch_price(eth);
         assert(result.is_ok(), 'fetch price failed');
         let actual_price: Wad = result.unwrap();
         assert_eq!(actual_price, exact_price, "wrong price");
 
         let expected_price: Wad = 3335573392107353791360_u128.into();
-        let error_margin: Wad = 1000_u128.into();
-        println!("actual price: {}", actual_price);
-        println!("expected_price: {}", expected_price);
+        let error_margin: Wad = 1_u128.into();
         common::assert_equalish(actual_price, expected_price, error_margin, 'wrong converted price');
     }
 
@@ -123,7 +110,6 @@ mod test_ekubo {
         let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
-        let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
 
         let mut spy = spy_events(SpyOn::One(ekubo.contract_address));
 
@@ -140,7 +126,7 @@ mod test_ekubo {
         let expected_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS
         );
-        let result: Result<Wad, felt252> = oracle.fetch_price(eth);
+        let result: Result<Wad, felt252> = ekubo.fetch_price(eth);
         assert(result.is_err(), 'fetch price should fail');
         assert(result.unwrap_err() == 'EKB: Invalid price update', 'wrong err');
 

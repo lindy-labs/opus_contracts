@@ -5,13 +5,12 @@ pub mod ekubo {
     use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::external::roles::ekubo_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IEkubo::IEkubo;
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;
     use opus::utils::ekubo_oracle_config::{ekubo_oracle_config_component, IEkuboOracleConfig};
     use opus::utils::math::{median_of_three, convert_ekubo_oracle_price_to_wad};
     use starknet::ContractAddress;
-    use wadray::{Wad, WAD_DECIMALS};
+    use wadray::Wad;
 
     //
     // Components

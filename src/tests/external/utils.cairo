@@ -282,7 +282,6 @@ pub mod ekubo_utils {
     use opus::external::ekubo::ekubo as ekubo_contract;
     use opus::external::roles::ekubo_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -340,7 +339,7 @@ pub mod ekubo_utils {
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
         token_class: Option<ContractClass>
-    ) -> (IEkuboDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
+    ) -> (IOracleDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
         let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher = mock_ekubo_oracle_extension_deploy(
             mock_ekubo_oracle_extension_class
         );
@@ -360,7 +359,7 @@ pub mod ekubo_utils {
             Option::None => declare("ekubo").unwrap(),
         };
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
-        let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
+        let ekubo = IOracleDispatcher { contract_address: ekubo_addr };
 
         (ekubo, mock_ekubo_oracle_extension, quote_tokens)
     }

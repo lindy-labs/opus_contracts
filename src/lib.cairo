@@ -39,7 +39,6 @@ mod interfaces {
     pub mod IController;
     pub mod IERC20;
     pub mod IERC4626;
-    pub mod IEkubo;
     pub mod IEqualizer;
     pub mod IFlashBorrower;
     pub mod IFlashMint;
