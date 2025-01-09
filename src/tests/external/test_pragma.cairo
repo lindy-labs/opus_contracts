@@ -17,7 +17,7 @@ mod test_pragma {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::pragma_utils;
+    use opus::tests::external::utils::{mock_eth_token_addr, pepe_token_addr, pragma_utils};
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{PragmaPricesResponse, PriceValidityThresholds};
@@ -27,20 +27,6 @@ mod test_pragma {
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
     const TS: u64 = 1700000000; // arbitrary timestamp
-
-    //
-    // Address constants
-    //
-
-    #[inline(always)]
-    fn pepe_token_addr() -> ContractAddress {
-        'PEPE'.try_into().unwrap()
-    }
-
-    #[inline(always)]
-    fn mock_eth_token_addr() -> ContractAddress {
-        'ETH'.try_into().unwrap()
-    }
 
     //
     // Tests - Deployment and setters

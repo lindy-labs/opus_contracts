@@ -8,7 +8,7 @@ mod test_switchboard {
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::{switchboard_utils, switchboard_utils::TIMESTAMP};
+    use opus::tests::external::utils::{mock_eth_token_addr, switchboard_utils, switchboard_utils::TIMESTAMP};
     use opus::tests::seer::utils::seer_utils::ETH_INIT_PRICE;
     use snforge_std::{
         start_prank, stop_prank, spy_events, CheatTarget, ContractClassTrait, EventAssertions, EventSpy, SpyOn
@@ -39,7 +39,7 @@ mod test_switchboard {
         start_prank(CheatTarget::All, switchboard_utils::admin());
         let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
 
@@ -64,7 +64,7 @@ mod test_switchboard {
         let mut spy = spy_events(SpyOn::One(switchboard.contract_address));
 
         let typo_eth: ContractAddress = 'whoops'.try_into().unwrap();
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
 
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         switchboard.set_yang_pair_id(typo_eth, ETH_USD_PAIR_ID);
@@ -98,7 +98,7 @@ mod test_switchboard {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_switchboard_set_yang_pair_id_unauthorized_fail() {
         let (switchboard, _) = switchboard_utils::switchboard_deploy(Option::None, Option::None);
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
     }
 
@@ -107,7 +107,7 @@ mod test_switchboard {
     fn test_switchboard_set_yang_pair_id_zero() {
         let (switchboard, _) = switchboard_utils::switchboard_deploy(Option::None, Option::None);
         start_prank(CheatTarget::All, switchboard_utils::admin());
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         switchboard.set_yang_pair_id(eth, 0);
     }
 
@@ -126,7 +126,7 @@ mod test_switchboard {
 
         start_prank(CheatTarget::All, switchboard_utils::admin());
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, 0, TIMESTAMP);
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
     }
@@ -138,7 +138,7 @@ mod test_switchboard {
 
         start_prank(CheatTarget::All, switchboard_utils::admin());
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, 0);
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
     }
@@ -148,7 +148,7 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy(Option::None, Option::None);
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
@@ -164,7 +164,7 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy(Option::None, Option::None);
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
@@ -198,7 +198,7 @@ mod test_switchboard {
         let (switchboard, mock_switchboard) = switchboard_utils::switchboard_deploy(Option::None, Option::None);
         let oracle = IOracleDispatcher { contract_address: switchboard.contract_address };
 
-        let eth: ContractAddress = switchboard_utils::mock_eth_token_addr();
+        let eth: ContractAddress = mock_eth_token_addr();
         mock_switchboard.next_get_latest_result(ETH_USD_PAIR_ID, ETH_INIT_PRICE, TIMESTAMP);
         start_prank(CheatTarget::One(switchboard.contract_address), switchboard_utils::admin());
         switchboard.set_yang_pair_id(eth, ETH_USD_PAIR_ID);
