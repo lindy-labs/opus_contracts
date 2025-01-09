@@ -94,27 +94,4 @@ pub mod receptor_utils {
             quote_tokens
         )
     }
-
-    pub fn set_next_prices(
-        shrine_addr: ContractAddress,
-        mock_ekubo_oracle_extension_addr: ContractAddress,
-        mut quote_tokens: Span<ContractAddress>,
-        mut prices: Span<u256>
-    ) {
-        let mock_ekubo_oracle_extension_setter = IMockEkuboOracleExtensionDispatcher {
-            contract_address: mock_ekubo_oracle_extension_addr
-        };
-
-        assert_eq!(quote_tokens.len(), prices.len(), "unequal len");
-
-        loop {
-            match quote_tokens.pop_front() {
-                Option::Some(quote_token) => {
-                    mock_ekubo_oracle_extension_setter
-                        .next_get_price_x128_over_last(shrine_addr, *quote_token, *prices.pop_front().unwrap(),);
-                },
-                Option::None => { break; }
-            };
-        };
-    }
 }
