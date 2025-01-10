@@ -12,6 +12,9 @@ mod test_receptor {
     use opus::tests::receptor::utils::receptor_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
+    use opus::utils::ekubo_oracle_adapter::{
+        ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
+    };
     use snforge_std::{
         declare, start_warp, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
     };
@@ -31,8 +34,13 @@ mod test_receptor {
         assert(receptor_ac.get_admin() == admin, 'wrong admin');
         assert(receptor_ac.get_roles(admin) == receptor_roles::default_admin_role(), 'wrong role');
 
-        assert_eq!(receptor.get_oracle_extension(), mock_ekubo_oracle_extension_addr, "wrong extension addr");
-        assert_eq!(receptor.get_twap_duration(), receptor_utils::INITIAL_TWAP_DURATION, "wrong twap duration");
+        let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
+        assert_eq!(
+            ekubo_oracle_adapter.get_oracle_extension(), mock_ekubo_oracle_extension_addr, "wrong extension addr"
+        );
+        assert_eq!(
+            ekubo_oracle_adapter.get_twap_duration(), receptor_utils::INITIAL_TWAP_DURATION, "wrong twap duration"
+        );
 
         let expected_quote_tokens_info: Span<QuoteTokenInfo> = array![
             QuoteTokenInfo { address: *quote_tokens[0], decimals: constants::DAI_DECIMALS },
@@ -40,76 +48,20 @@ mod test_receptor {
             QuoteTokenInfo { address: *quote_tokens[2], decimals: constants::USDT_DECIMALS },
         ]
             .span();
-        assert_eq!(receptor.get_quote_tokens(), expected_quote_tokens_info, "wrong quote tokens");
+        assert_eq!(ekubo_oracle_adapter.get_quote_tokens(), expected_quote_tokens_info, "wrong quote tokens");
     }
 
     // Parameters
-
-    #[test]
-    fn test_set_oracle_extension() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
-
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
-        let new_addr: ContractAddress = receptor_utils::mock_oracle_extension();
-        receptor.set_oracle_extension(new_addr);
-
-        assert_eq!(receptor.get_oracle_extension(), new_addr, "wrong extension addr");
-    }
 
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracle_extension_unauthorized() {
         let token_class = declare("erc20_mintable").unwrap();
         let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
+        let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
-        receptor.set_oracle_extension(receptor_utils::mock_oracle_extension());
-    }
-
-    #[test]
-    fn test_set_quote_tokens() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (_, receptor, _, quote_tokens) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
-        let mut spy = spy_events(SpyOn::One(receptor.contract_address));
-
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
-
-        let lusd: ContractAddress = common::lusd_token_deploy(Option::Some(token_class));
-        let new_quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1], lusd].span();
-        receptor.set_quote_tokens(new_quote_tokens);
-
-        let expected_quote_tokens_info: Span<QuoteTokenInfo> = array![
-            QuoteTokenInfo { address: *quote_tokens[0], decimals: constants::DAI_DECIMALS },
-            QuoteTokenInfo { address: *quote_tokens[1], decimals: constants::USDC_DECIMALS },
-            QuoteTokenInfo { address: lusd, decimals: constants::LUSD_DECIMALS },
-        ]
-            .span();
-        assert_eq!(receptor.get_quote_tokens(), expected_quote_tokens_info, "wrong quote tokens");
-
-        let expected_events = array![
-            (
-                receptor.contract_address,
-                receptor_contract::Event::QuoteTokensUpdated(
-                    receptor_contract::QuoteTokensUpdated { quote_tokens: expected_quote_tokens_info }
-                )
-            )
-        ];
-
-        spy.assert_emitted(@expected_events);
-    }
-
-    #[test]
-    #[should_panic(expected: ('REC: Too many decimals',))]
-    fn test_set_quote_tokens_too_many_decimals() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (_, receptor, _, quote_tokens) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
-
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
-
-        let invalid_token: ContractAddress = receptor_utils::invalid_token(Option::Some(token_class));
-        let new_quote_tokens: Span<ContractAddress> = array![*quote_tokens[0], *quote_tokens[1], invalid_token].span();
-        receptor.set_quote_tokens(new_quote_tokens);
+        ekubo_oracle_adapter.set_oracle_extension(receptor_utils::mock_oracle_extension());
     }
 
     #[test]
@@ -117,42 +69,10 @@ mod test_receptor {
     fn test_set_quote_tokens_unauthorized() {
         let token_class = declare("erc20_mintable").unwrap();
         let (_, receptor, _, quote_tokens) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
+        let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
-        receptor.set_quote_tokens(quote_tokens);
-    }
-
-    #[test]
-    fn test_set_twap_duration_pass() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
-        let mut spy = spy_events(SpyOn::One(receptor.contract_address));
-
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin().into());
-        let old_duration: u64 = receptor_utils::INITIAL_TWAP_DURATION;
-        let new_duration: u64 = old_duration + 1;
-        receptor.set_twap_duration(new_duration);
-
-        let expected_events = array![
-            (
-                receptor.contract_address,
-                receptor_contract::Event::TwapDurationUpdated(
-                    receptor_contract::TwapDurationUpdated { old_duration, new_duration }
-                )
-            )
-        ];
-
-        spy.assert_emitted(@expected_events);
-    }
-
-    #[test]
-    #[should_panic(expected: ('REC: TWAP duration too low',))]
-    fn test_set_twap_duration_zero_fail() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
-
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin().into());
-        receptor.set_twap_duration(receptor_contract::MIN_TWAP_DURATION - 1);
+        ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
     }
 
     #[test]
@@ -160,9 +80,10 @@ mod test_receptor {
     fn test_set_twap_duration_unauthorized_fail() {
         let token_class = declare("erc20_mintable").unwrap();
         let (_, receptor, _, _) = receptor_utils::receptor_deploy(Option::None, Option::Some(token_class));
+        let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
-        receptor.set_twap_duration(receptor_utils::INITIAL_TWAP_DURATION + 1);
+        ekubo_oracle_adapter.set_twap_duration(receptor_utils::INITIAL_TWAP_DURATION + 1);
     }
 
     #[test]
