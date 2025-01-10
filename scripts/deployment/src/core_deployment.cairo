@@ -15,6 +15,9 @@ const BETA_P: u8 = 8;
 const ALPHA_I: u8 = 1;
 const BETA_I: u8 = 2;
 
+// Constants for Ekubo
+const EKUBO_TWAP_DURATION: u64 = 60 * 60; // 1 hour
+
 // Constants for Receptor
 const RECEPTOR_UPDATE_FREQUENCY: u64 = 1000;
 const RECEPTOR_TWAP_DURATION: u64 = 10800; // 3 hours
@@ -284,6 +287,28 @@ pub fn deploy_switchboard(admin: ContractAddress, oracle: ContractAddress) -> Co
         .expect('failed switchboard deploy');
 
     deploy_switchboard.contract_address
+}
+
+pub fn deploy_ekubo(admin: ContractAddress, oracle: ContractAddress) -> ContractAddress {
+    let declare_ekubo = declare("ekubo", Option::Some(MAX_FEE), Option::None).expect('failed ekubo declare');
+
+    let num_quote_tokens: felt252 = 3;
+    let calldata: Array<felt252> = array![
+        admin.into(),
+        oracle.into(),
+        EKUBO_TWAP_DURATION.into(),
+        num_quote_tokens,
+        addresses::mainnet::dai().into(),
+        addresses::mainnet::usdc().into(),
+        addresses::mainnet::usdt().into(),
+    ];
+
+    let deploy_ekubo = deploy(
+        declare_ekubo.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed ekubo deploy');
+
+    deploy_ekubo.contract_address
 }
 
 pub fn deploy_transmuter_restricted(
