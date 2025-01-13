@@ -338,14 +338,25 @@ pub mod purger_utils {
             Option::None => declare_contracts(),
         };
 
+        let absorber_classes = absorber_utils::AbsorberTestClasses {
+            abbot: classes.abbot,
+            sentinel: classes.sentinel,
+            token: classes.token,
+            gate: classes.gate,
+            shrine: classes.shrine,
+            absorber: classes.absorber,
+            blesser: Option::Some(classes.blesser)
+        };
         let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
+            Option::Some(absorber_classes)
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
 
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
-        absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
+        absorber_utils::deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing, Option::Some(classes.blesser)
+        );
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
