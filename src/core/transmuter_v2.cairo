@@ -2,6 +2,7 @@
 pub mod transmuter_v2 {
     use access_control::access_control_component;
     use core::cmp::min;
+    use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -406,10 +407,9 @@ pub mod transmuter_v2 {
 
             self.access_control.assert_has_role(transmuter_roles::SWEEP);
 
-            let recipient: ContractAddress = self.receiver.read();
-            let asset_amt_transferred = self.transfer_asset(self.asset.read(), asset_amt, recipient);
+            let asset_amt_transferred = self.transfer_asset_to_receiver(self.asset.read(), asset_amt);
             if let Option::Some(asset_amt) = asset_amt_transferred {
-                self.emit(Sweep { recipient, asset_amt });
+                self.emit(Sweep { recipient: self.receiver.read(), asset_amt });
             }
         }
 
@@ -421,11 +421,10 @@ pub mod transmuter_v2 {
             self.access_control.assert_has_role(transmuter_roles::WITHDRAW_SECONDARY_ASSET);
             assert(asset != self.asset.read().contract_address, 'TR: Primary asset');
 
-            let recipient: ContractAddress = self.receiver.read();
             let asset_amt_transferred = self
-                .transfer_asset(IERC20Dispatcher { contract_address: asset }, asset_amt, recipient);
+                .transfer_asset_to_receiver(IERC20Dispatcher { contract_address: asset }, asset_amt);
             if let Option::Some(asset_amt) = asset_amt_transferred {
-                self.emit(WithdrawSecondaryAsset { recipient, asset, asset_amt });
+                self.emit(WithdrawSecondaryAsset { recipient: self.receiver.read(), asset, asset_amt });
             }
         }
 
@@ -465,8 +464,7 @@ pub mod transmuter_v2 {
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
 
-            let asset: IERC20Dispatcher = self.asset.read();
-            asset.transfer(receiver, asset.balance_of(transmuter));
+            self.transfer_asset_to_receiver(self.asset.read(), BoundedInt::max());
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })
@@ -610,17 +608,17 @@ pub mod transmuter_v2 {
 
         // Helper function to transfer an asset to a recipient, capping the amount at the contract's balance.
         // Returns an Option containing the amount transferred if it is non-zero.
-        fn transfer_asset(
-            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128, recipient: ContractAddress
+        fn transfer_asset_to_receiver(
+            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128
         ) -> Option<u128> {
-            let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
-            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
+            let asset_balance: u256 = asset.balance_of(get_contract_address());
+            let capped_asset_amt: u256 = min(asset_balance, asset_amt.into());
 
             if capped_asset_amt.is_zero() {
                 Option::None
             } else {
-                asset.transfer(recipient, capped_asset_amt.into());
-                Option::Some(capped_asset_amt)
+                asset.transfer(self.receiver.read(), capped_asset_amt);
+                Option::Some(capped_asset_amt.try_into().unwrap())
             }
         }
     }
