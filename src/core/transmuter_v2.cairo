@@ -414,6 +414,10 @@ pub mod transmuter_v2 {
         }
 
         // Transfers any secondary asset in the Transmuter to a user.
+        // The primary asset cannot be withdrawn using this function so to ensure that the existing amount
+        // can be reclaimed after the Transmuter is killed. However, it is possible to withdraw any yin
+        // in the Transmuter through this function, although it is not envisaged that this contract will
+        // hold any yin in its ordinary usage.
         // This does not require the Transmuter to be live because the winding down
         // (i.e. conversion of secondary assets to the primary asset) may occur after
         // a shutdown.
