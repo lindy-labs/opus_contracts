@@ -29,9 +29,7 @@ pub mod caretaker_utils {
     ) {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(Option::None);
         let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address, Option::None
         );

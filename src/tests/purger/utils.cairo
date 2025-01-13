@@ -27,17 +27,6 @@ pub mod purger_utils {
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
-    //
-    // Constants
-    //
-
-    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
-    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
-
-    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
-    pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
-
-
     // Struct to group together all contract classes
     // needed for purger tests
     #[derive(Copy, Drop)]
@@ -56,6 +45,16 @@ pub mod purger_utils {
         mock_ekubo: Option<ContractClass>,
         seer: Option<ContractClass>,
     }
+
+    //
+    // Constants
+    //
+
+    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
+    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
+
+    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
+    pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
     //
     // Address constants
@@ -321,6 +320,24 @@ pub mod purger_utils {
     //
     // Test setup helpers
     //
+
+    pub fn declare_contracts() -> PurgerTestClasses {
+        PurgerTestClasses {
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: declare("blesser").unwrap(),
+            purger: declare("purger").unwrap(),
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            ekubo: Option::Some(declare("ekubo").unwrap()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
+            seer: Option::Some(declare("seer").unwrap()),
+        }
+    }
 
     pub fn purger_deploy(
         classes: Option<PurgerTestClasses>
@@ -700,24 +717,6 @@ pub mod purger_utils {
                 },
                 Option::None => { break sum; }
             }
-        }
-    }
-
-    pub fn declare_contracts() -> PurgerTestClasses {
-        PurgerTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
-            absorber: Option::Some(declare("absorber").unwrap()),
-            blesser: declare("blesser").unwrap(),
-            purger: declare("purger").unwrap(),
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
-            ekubo: Option::Some(declare("ekubo").unwrap()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
-            seer: Option::Some(declare("seer").unwrap()),
         }
     }
 

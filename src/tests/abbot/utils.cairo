@@ -14,6 +14,17 @@ pub mod abbot_utils {
     use starknet::ContractAddress;
     use wadray::Wad;
 
+    // Struct to group together all contract classes
+    // needed for abbot tests
+    #[derive(Copy, Drop)]
+    pub struct AbbotTestClasses {
+        pub abbot: Option<ContractClass>,
+        pub sentinel: Option<ContractClass>,
+        pub token: Option<ContractClass>,
+        pub gate: Option<ContractClass>,
+        pub shrine: Option<ContractClass>,
+    }
+
     //
     // Constants
     //
@@ -48,26 +59,31 @@ pub mod abbot_utils {
     // Test setup helpers
     //
 
+    pub fn declare_contracts() -> AbbotTestClasses {
+        AbbotTestClasses {
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+        }
+    }
+
     pub fn abbot_deploy(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
+        classes: Option<AbbotTestClasses>
     ) -> (IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            sentinel_class, token_class, gate_class, shrine_class
+            classes.sentinel, classes.token, classes.gate, classes.shrine
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into()];
 
-        let abbot_class = match abbot_class {
-            Option::Some(class) => class,
-            Option::None => declare("abbot").unwrap(),
-        };
-
-        let (abbot_addr, _) = abbot_class.deploy(@calldata).expect('abbot deploy failed');
+        let (abbot_addr, _) = classes.abbot.unwrap().deploy(@calldata).expect('abbot deploy failed');
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
@@ -87,11 +103,7 @@ pub mod abbot_utils {
     }
 
     pub fn deploy_abbot_and_open_trove(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
+        classes: Option<AbbotTestClasses>
     ) -> (
         IShrineDispatcher,
         ISentinelDispatcher,
@@ -103,9 +115,7 @@ pub mod abbot_utils {
         Span<u128>, // deposited yang asset amounts
         Wad, // forge amount
     ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class
-        );
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy(classes);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();

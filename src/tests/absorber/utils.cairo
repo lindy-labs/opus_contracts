@@ -24,17 +24,8 @@ pub mod absorber_utils {
     use starknet::ContractAddress;
     use wadray::{Ray, Wad, WAD_ONE, WAD_SCALE};
 
-    //
-    // Constants
-    //
-
-    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
-
-    pub const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-    pub const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
-
     // Struct to group together all contract classes
-    // needed for purger tests
+    // needed for absorber tests
     #[derive(Copy, Drop)]
     pub struct AbsorberTestClasses {
         pub abbot: Option<ContractClass>,
@@ -45,6 +36,15 @@ pub mod absorber_utils {
         pub absorber: Option<ContractClass>,
         pub blesser: Option<ContractClass>,
     }
+
+    //
+    // Constants
+    //
+
+    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
+
+    pub const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
+    pub const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
 
     #[inline(always)]
     pub fn provider_asset_amts() -> Span<u128> {
@@ -96,6 +96,18 @@ pub mod absorber_utils {
     // Test setup helpers
     //
 
+    pub fn declare_contracts() -> AbsorberTestClasses {
+        AbsorberTestClasses {
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: Option::Some(declare("blesser").unwrap()),
+        }
+    }
+
     pub fn absorber_deploy(
         classes: Option<AbsorberTestClasses>
     ) -> (
@@ -112,7 +124,15 @@ pub mod absorber_utils {
         };
 
         let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine
+            Option::Some(
+                abbot_utils::AbbotTestClasses {
+                    abbot: classes.abbot,
+                    sentinel: classes.sentinel,
+                    token: classes.token,
+                    gate: classes.gate,
+                    shrine: classes.shrine
+                }
+            )
         );
 
         let admin: ContractAddress = admin();
@@ -673,17 +693,5 @@ pub mod absorber_utils {
                 Option::None => { break; }
             };
         };
-    }
-
-    pub fn declare_contracts() -> AbsorberTestClasses {
-        AbsorberTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
-            absorber: Option::Some(declare("absorber").unwrap()),
-            blesser: Option::Some(declare("blesser").unwrap()),
-        }
     }
 }
