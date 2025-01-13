@@ -22,9 +22,7 @@ mod test_sentinel {
     fn test_deploy_sentinel_and_add_yang() {
         let mut spy = spy_events(SpyOn::All);
 
-        let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
-        );
+        let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
 
         // Checking that sentinel was set up correctly
 
@@ -116,7 +114,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_add_yang_unauthorized() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
         sentinel
             .add_yang(
@@ -132,7 +130,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang cannot be zero address',))]
     fn test_add_yang_yang_zero_addr() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel
             .add_yang(
@@ -148,7 +146,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Gate cannot be zero address',))]
     fn test_add_yang_gate_zero_addr() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel
             .add_yang(
@@ -164,7 +162,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Start price cannot be zero',))]
     fn test_add_yang_zero_price() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel
             .add_yang(
@@ -197,9 +195,9 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Asset of gate is not yang',))]
     fn test_add_yang_gate_yang_mismatch() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (sentinel, _, _, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::Some(token_class));
-        let wbtc: ContractAddress = common::wbtc_token_deploy(Option::Some(token_class));
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, _, _, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::Some(classes));
+        let wbtc: ContractAddress = common::wbtc_token_deploy(classes.token);
 
         start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
@@ -330,9 +328,7 @@ mod test_sentinel {
 
     #[test]
     fn test_wbtc_enter_exit() {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::None, Option::None, Option::None
-        );
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
 
         let wbtc: ContractAddress = *yangs[1];
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
@@ -397,7 +393,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_enter_yang_not_added() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
         let user: ContractAddress = common::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
@@ -423,7 +419,7 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_exit_yang_not_added() {
-        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None, Option::None);
+        let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
         let user: ContractAddress = common::eth_hoarder();
 

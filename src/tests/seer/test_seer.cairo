@@ -37,7 +37,7 @@ mod test_seer {
     #[test]
     fn test_seer_setup() {
         let mut spy = spy_events(SpyOn::All);
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
@@ -59,7 +59,7 @@ mod test_seer {
 
     #[test]
     fn test_set_oracles() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array!['pragma addr'.try_into().unwrap(), 'ekubo addr'.try_into().unwrap()]
@@ -74,7 +74,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracles_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array!['pragma addr'.try_into().unwrap(), 'ekubo addr'.try_into().unwrap()]
@@ -86,7 +86,7 @@ mod test_seer {
 
     #[test]
     fn test_set_update_frequency() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let new_frequency: u64 = 1200;
@@ -110,7 +110,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_update_frequency_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
         seer.set_update_frequency(1200);
@@ -119,7 +119,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_lower() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let new_frequency: u64 = seer_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -129,7 +129,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_higher() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let new_frequency: u64 = seer_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -138,16 +138,13 @@ mod test_seer {
 
     #[test]
     fn test_set_yang_price_type() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let gate_class = declare("gate").unwrap();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::Some(gate_class), Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
-            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+            shrine, sentinel, classes.gate.expect('gate class'), Option::None, eth_addr, wbtc_addr
         );
 
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
@@ -158,7 +155,7 @@ mod test_seer {
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -197,7 +194,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_yang_price_type_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let price_type = PriceType::Direct;
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
@@ -207,7 +204,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Not wad scale',))]
     fn test_set_yang_price_type_to_vault_not_wad_decimals() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let eth = common::eth_token_deploy(Option::None);
         let irregular_vault = common::deploy_vault(
@@ -222,7 +219,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
     fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let eth = common::eth_token_deploy(Option::None);
         let irregular_vault = common::deploy_vault(
@@ -239,7 +236,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Too many decimals',))]
     fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         let irregular_token = common::deploy_token(
             'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), Option::None
@@ -255,16 +252,13 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_successful() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let gate_class = declare("gate").unwrap();
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::Some(gate_class), Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let (vaults, vault_gates) = sentinel_utils::add_vaults_to_sentinel(
-            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+            shrine, sentinel, classes.gate.expect('gate class'), Option::None, eth_addr, wbtc_addr
         );
 
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
@@ -275,7 +269,7 @@ mod test_seer {
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
@@ -453,16 +447,13 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_from_fallback_oracle_successful() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let gate_class = declare("gate").unwrap();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::Some(gate_class), Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let eth_addr: ContractAddress = *yangs[0];
         let wbtc_addr: ContractAddress = *yangs[1];
 
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
-            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+            shrine, sentinel, classes.gate.expect('gate class'), Option::None, eth_addr, wbtc_addr
         );
         let eth_vault_addr: ContractAddress = *vaults[0];
         let wbtc_vault_addr: ContractAddress = *vaults[1];
@@ -473,7 +464,7 @@ mod test_seer {
         seer_utils::set_price_types_to_vault(seer, vaults);
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -558,16 +549,13 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_via_execute_task_successful() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let gate_class = declare("gate").unwrap();
-        let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::Some(gate_class), Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
-            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+            shrine, sentinel, classes.gate.expect('gate class'), Option::None, eth_addr, wbtc_addr
         );
         let eth_vault_addr: ContractAddress = *vaults[0];
         let wbtc_vault_addr: ContractAddress = *vaults[1];
@@ -580,7 +568,7 @@ mod test_seer {
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
@@ -641,16 +629,12 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::None, Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
-        );
+        seer_utils::add_oracles(seer, Option::None, Option::None, Option::None, Option::None, classes.token);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
     }
@@ -658,17 +642,15 @@ mod test_seer {
     #[test]
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
-        let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, token_class, Option::None, Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, token_class
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
-        let eth_yang: ContractAddress = common::eth_token_deploy(token_class);
+        let eth_yang: ContractAddress = common::eth_token_deploy(classes.token);
         let yangs = array![eth_yang, eth_yang].span();
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -679,7 +661,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_update_prices_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None, Option::None);
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
 
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
         seer.update_prices();
@@ -687,10 +669,8 @@ mod test_seer {
 
     #[test]
     fn test_update_prices_missed_updates() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::None, Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
@@ -698,7 +678,7 @@ mod test_seer {
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -751,16 +731,13 @@ mod test_seer {
 
     #[test]
     fn test_probe_task() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let gate_class = declare("gate").unwrap();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(
-            Option::None, Option::Some(token_class), Option::Some(gate_class), Option::None
-        );
+        let classes = sentinel_utils::declare_contracts();
+        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let (vaults, _vault_gates) = sentinel_utils::add_vaults_to_sentinel(
-            shrine, sentinel, gate_class, Option::None, eth_addr, wbtc_addr
+            shrine, sentinel, classes.gate.expect('gate class'), Option::None, eth_addr, wbtc_addr
         );
 
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
@@ -769,7 +746,7 @@ mod test_seer {
         seer_utils::set_price_types_to_vault(seer, vaults);
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, Option::Some(token_class)
+            seer, Option::None, Option::None, Option::None, Option::None, classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 

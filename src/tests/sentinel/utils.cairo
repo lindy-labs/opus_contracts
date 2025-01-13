@@ -16,6 +16,20 @@ pub mod sentinel_utils {
     use starknet::{ContractAddress, get_caller_address};
     use wadray::{Wad, Ray};
 
+    // Struct to group together all contract classes
+    // needed for abbot tests
+    #[derive(Copy, Drop)]
+    pub struct SentinelTestClasses {
+        pub sentinel: Option<ContractClass>,
+        pub token: Option<ContractClass>,
+        pub gate: Option<ContractClass>,
+        pub shrine: Option<ContractClass>,
+    }
+
+    //
+    // Constants
+    //
+
     pub const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
     pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
@@ -43,19 +57,26 @@ pub mod sentinel_utils {
     // Test setup
     //
 
-    pub fn deploy_sentinel(
-        sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>,
-    ) -> (ISentinelDispatcher, ContractAddress) {
-        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(shrine_class);
+    pub fn declare_contracts() -> SentinelTestClasses {
+        SentinelTestClasses {
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+        }
+    }
+
+    pub fn deploy_sentinel(classes: Option<SentinelTestClasses>) -> (ISentinelDispatcher, ContractAddress) {
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
+
+        let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(classes.shrine);
 
         let calldata: Array<felt252> = array![admin().into(), shrine_addr.into()];
 
-        let sentinel_class = match sentinel_class {
-            Option::Some(class) => class,
-            Option::None => declare("sentinel").unwrap()
-        };
-
-        let (sentinel_addr, _) = sentinel_class.deploy(@calldata).expect('sentinel deploy failed');
+        let (sentinel_addr, _) = classes.sentinel.unwrap().deploy(@calldata).expect('sentinel deploy failed');
 
         // Grant `abbot` role to `mock_abbot`
         start_prank(CheatTarget::One(sentinel_addr), admin());
@@ -73,29 +94,16 @@ pub mod sentinel_utils {
     }
 
     pub fn deploy_sentinel_with_gates(
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
+        classes: Option<SentinelTestClasses>
     ) -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
-        let (sentinel, shrine_addr) = deploy_sentinel(sentinel_class, shrine_class);
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
+        let (sentinel, shrine_addr) = deploy_sentinel(Option::Some(classes));
 
-        let token_class = Option::Some(
-            match token_class {
-                Option::Some(class) => class,
-                Option::None => declare("erc20_mintable").unwrap()
-            }
-        );
-
-        let gate_class = Option::Some(
-            match gate_class {
-                Option::Some(class) => class,
-                Option::None => declare("gate").unwrap()
-            }
-        );
-
-        let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, token_class, gate_class);
-        let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr, token_class, gate_class);
+        let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);
+        let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr, classes.token, classes.gate);
 
         let mut assets: Array<ContractAddress> = array![eth, wbtc];
         let mut gates: Array<IGateDispatcher> = array![eth_gate, wbtc_gate];
@@ -210,10 +218,15 @@ pub mod sentinel_utils {
     }
 
     pub fn deploy_sentinel_with_eth_gate(
-        token_class: Option<ContractClass>
+        classes: Option<SentinelTestClasses>
     ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
-        let (sentinel, shrine_addr) = deploy_sentinel(Option::None, Option::None);
-        let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, token_class, Option::None);
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
+
+        let (sentinel, shrine_addr) = deploy_sentinel(Option::Some(classes));
+        let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
     }

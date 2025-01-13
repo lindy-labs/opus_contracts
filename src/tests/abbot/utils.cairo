@@ -77,7 +77,11 @@ pub mod abbot_utils {
             Option::None => declare_contracts(),
         };
         let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
-            classes.sentinel, classes.token, classes.gate, classes.shrine
+            Option::Some(
+                sentinel_utils::SentinelTestClasses {
+                    sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine
+                }
+            )
         );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 

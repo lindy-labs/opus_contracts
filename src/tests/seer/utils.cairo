@@ -43,9 +43,9 @@ pub mod seer_utils {
     }
 
     pub fn deploy_seer(
-        seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
+        seer_class: Option<ContractClass>, sentinel_classes: Option<sentinel_utils::SentinelTestClasses>
     ) -> (ISeerV2Dispatcher, ISentinelDispatcher, IShrineDispatcher) {
-        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
+        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_classes);
         let calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into()
         ];
