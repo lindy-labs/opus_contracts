@@ -251,6 +251,7 @@ pub mod transmuter_roles {
     pub const TOGGLE_REVERSIBILITY: u128 = 512;
     // For restricted variant of transmuter
     pub const TRANSMUTE: u128 = 1024;
+    pub const WITHDRAW_SECONDARY_ASSET: u128 = 2048;
 
     #[inline(always)]
     pub fn default_admin_role() -> u128 {
@@ -265,6 +266,7 @@ pub mod transmuter_roles {
             + SWEEP
             + TOGGLE_REVERSIBILITY
             + TRANSMUTE
+            + WITHDRAW_SECONDARY_ASSET
     }
 }
 
