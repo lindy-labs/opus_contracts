@@ -406,20 +406,14 @@ pub mod transmuter_v2 {
 
             self.access_control.assert_has_role(transmuter_roles::SWEEP);
 
-            let asset: IERC20Dispatcher = self.asset.read();
-            let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
-            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
-
-            if capped_asset_amt.is_zero() {
-                return;
-            }
-
             let recipient: ContractAddress = self.receiver.read();
-            asset.transfer(recipient, capped_asset_amt.into());
-            self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
+            let asset_amt_transferred = self.transfer_asset(self.asset.read(), asset_amt, recipient);
+            if let Option::Some(asset_amt) = asset_amt_transferred {
+                self.emit(Sweep { recipient, asset_amt });
+            }
         }
 
-        // Transfers any secondary asset in the Transmuter to the receiver.
+        // Transfers any secondary asset in the Transmuter to a user.
         // This does not require the Transmuter to be live because the winding down
         // (i.e. conversion of secondary assets to the primary asset) may occur after
         // a shutdown.
@@ -427,17 +421,12 @@ pub mod transmuter_v2 {
             self.access_control.assert_has_role(transmuter_roles::WITHDRAW_SECONDARY_ASSET);
             assert(asset != self.asset.read().contract_address, 'TR: Primary asset');
 
-            let asset_erc20 = IERC20Dispatcher { contract_address: asset };
-            let asset_balance: u128 = asset_erc20.balance_of(get_contract_address()).try_into().unwrap();
-            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
-
-            if capped_asset_amt.is_zero() {
-                return;
-            }
-
             let recipient: ContractAddress = self.receiver.read();
-            asset_erc20.transfer(recipient, capped_asset_amt.into());
-            self.emit(WithdrawSecondaryAsset { recipient, asset, asset_amt: capped_asset_amt });
+            let asset_amt_transferred = self
+                .transfer_asset(IERC20Dispatcher { contract_address: asset }, asset_amt, recipient);
+            if let Option::Some(asset_amt) = asset_amt_transferred {
+                self.emit(WithdrawSecondaryAsset { recipient, asset, asset_amt });
+            }
         }
 
         // 
@@ -616,6 +605,22 @@ pub mod transmuter_v2 {
                 (Zero::zero(), 0)
             } else {
                 (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
+            }
+        }
+
+        // Helper function to transfer an asset to a recipient, capping the amount at the contract's balance.
+        // Returns an Option containing the amount transferred if it is non-zero.
+        fn transfer_asset(
+            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128, recipient: ContractAddress
+        ) -> Option<u128> {
+            let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
+            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
+
+            if capped_asset_amt.is_zero() {
+                Option::None
+            } else {
+                asset.transfer(recipient, capped_asset_amt.into());
+                Option::Some(capped_asset_amt)
             }
         }
     }
