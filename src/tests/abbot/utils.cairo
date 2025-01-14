@@ -76,7 +76,8 @@ pub mod abbot_utils {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
         };
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_gates(
             Option::Some(
                 sentinel_utils::SentinelTestClasses {
                     sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine

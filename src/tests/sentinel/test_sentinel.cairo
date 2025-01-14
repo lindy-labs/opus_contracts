@@ -22,33 +22,36 @@ mod test_sentinel {
     fn test_deploy_sentinel_and_add_yang() {
         let mut spy = spy_events(SpyOn::All);
 
-        let (sentinel, shrine, assets, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
 
         // Checking that sentinel was set up correctly
 
         let eth_gate = *gates.at(0);
         let wbtc_gate = *gates.at(1);
 
-        let eth = *assets.at(0);
-        let wbtc = *assets.at(1);
+        let eth = *yangs.at(0);
+        let wbtc = *yangs.at(1);
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
 
-        assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
-        assert(sentinel.get_gate_address(*assets.at(1)) == wbtc_gate.contract_address, 'Wrong gate address #2');
+        assert(sentinel.get_gate_address(*yangs.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
+        assert(sentinel.get_gate_address(*yangs.at(1)) == wbtc_gate.contract_address, 'Wrong gate address #2');
 
-        assert(sentinel.get_gate_live(*assets.at(0)), 'Gate not live #1');
-        assert(sentinel.get_gate_live(*assets.at(1)), 'Gate not live #2');
+        assert(sentinel.get_gate_live(*yangs.at(0)), 'Gate not live #1');
+        assert(sentinel.get_gate_live(*yangs.at(1)), 'Gate not live #2');
 
         let given_yang_addresses = sentinel.get_yang_addresses();
         assert(
-            *given_yang_addresses.at(0) == *assets.at(0) && *given_yang_addresses.at(1) == *assets.at(1),
+            *given_yang_addresses.at(0) == *yangs.at(0) && *given_yang_addresses.at(1) == *yangs.at(1),
             'Wrong yang addresses'
         );
 
         assert(sentinel.get_yang(0) == Zero::zero(), 'Should be zero address');
-        assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
-        assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
+        assert(sentinel.get_yang(1) == *yangs.at(0), 'Wrong yang #1');
+        assert(sentinel.get_yang(2) == *yangs.at(1), 'Wrong yang #2');
 
         assert(sentinel.get_yang_asset_max(eth) == sentinel_utils::ETH_ASSET_MAX, 'Wrong asset max #1');
         assert(sentinel.get_yang_asset_max(wbtc) == sentinel_utils::WBTC_ASSET_MAX, 'Wrong asset max #2');
@@ -178,7 +181,12 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang already added',))]
     fn test_add_yang_yang_already_added() {
-        let (sentinel, _, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, gates, .. } =
+            sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
+        let eth_gate = *gates[0];
 
         start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel
@@ -196,7 +204,10 @@ mod test_sentinel {
     #[should_panic(expected: ('SE: Asset of gate is not yang',))]
     fn test_add_yang_gate_yang_mismatch() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, _, _, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, gates, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::Some(classes)
+        );
+        let eth_gate = *gates[0];
         let wbtc: ContractAddress = common::wbtc_token_deploy(classes.token);
 
         start_prank(CheatTarget::All, sentinel_utils::admin());
@@ -213,7 +224,10 @@ mod test_sentinel {
 
     #[test]
     fn test_set_yang_asset_max() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         let mut spy = spy_events(SpyOn::One(sentinel.contract_address));
 
         let new_asset_max = sentinel_utils::ETH_ASSET_MAX * 2;
@@ -266,7 +280,9 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_set_yang_asset_max_non_existent_yang() {
-        let (sentinel, _, _, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
 
         start_prank(CheatTarget::All, sentinel_utils::admin());
         sentinel.set_yang_asset_max(sentinel_utils::dummy_yang_addr(), sentinel_utils::ETH_ASSET_MAX);
@@ -275,14 +291,22 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_yang_asset_max_unauthed() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
         sentinel.set_yang_asset_max(eth, sentinel_utils::ETH_ASSET_MAX);
     }
 
     #[test]
     fn test_eth_enter_exit() {
-        let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
+        let eth_gate = *gates[0];
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = common::eth_hoarder();
@@ -328,7 +352,10 @@ mod test_sentinel {
 
     #[test]
     fn test_wbtc_enter_exit() {
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::None
+        );
 
         let wbtc: ContractAddress = *yangs[1];
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
@@ -374,7 +401,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('u256_sub Overflow',))]
     fn test_enter_insufficient_balance() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = common::eth_hoarder();
@@ -406,7 +436,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Exceeds max amount allowed',))]
     fn test_enter_exceeds_max_deposit() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let user: ContractAddress = common::eth_hoarder();
         let deposit_amt: Wad = (sentinel_utils::ETH_ASSET_MAX + 1).into(); // Deposit amount exceeds max deposit
@@ -431,7 +464,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('u256_sub Overflow',))]
     fn test_exit_insufficient_balance() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let user: ContractAddress = common::eth_hoarder();
 
@@ -443,7 +479,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_enter_unauthorized() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let user: ContractAddress = common::eth_hoarder();
 
@@ -456,7 +495,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_exit_unauthorized() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let user: ContractAddress = common::eth_hoarder();
 
@@ -468,7 +510,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Gate is not live',))]
     fn test_kill_gate_and_enter() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         let user: ContractAddress = common::eth_hoarder();
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
@@ -486,7 +531,12 @@ mod test_sentinel {
 
     #[test]
     fn test_kill_gate_and_exit() {
-        let (sentinel, shrine, eth, eth_gate) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
+        let eth_gate = *gates[0];
 
         // Making a regular deposit
         let user: ContractAddress = common::eth_hoarder();
@@ -516,7 +566,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Gate is not live',))]
     fn test_kill_gate_and_preview_enter() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
@@ -531,7 +584,11 @@ mod test_sentinel {
 
     #[test]
     fn test_suspend_unsuspend_yang() {
-        let (sentinel, shrine, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
@@ -553,7 +610,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('SE: Yang suspended',))]
     fn test_try_enter_when_yang_suspended() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
         sentinel.suspend_yang(eth);
 
@@ -567,7 +627,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_try_suspending_yang_unauthorized() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
         sentinel.suspend_yang(eth);
     }
@@ -575,7 +638,10 @@ mod test_sentinel {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_try_unsuspending_yang_unauthorized() {
-        let (sentinel, _, eth, _) = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
+        let sentinel_utils::SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(
+            Option::None
+        );
+        let eth = *yangs[0];
         start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
         sentinel.unsuspend_yang(eth);
     }

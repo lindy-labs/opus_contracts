@@ -26,6 +26,14 @@ pub mod sentinel_utils {
         pub shrine: Option<ContractClass>,
     }
 
+    #[derive(Copy, Drop)]
+    pub struct SentinelTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub sentinel: ISentinelDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>
+    }
+
     //
     // Constants
     //
@@ -93,9 +101,7 @@ pub mod sentinel_utils {
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
 
-    pub fn deploy_sentinel_with_gates(
-        classes: Option<SentinelTestClasses>
-    ) -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
+    pub fn deploy_sentinel_with_gates(classes: Option<SentinelTestClasses>) -> SentinelTestConfig {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
@@ -105,10 +111,10 @@ pub mod sentinel_utils {
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);
         let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr, classes.token, classes.gate);
 
-        let mut assets: Array<ContractAddress> = array![eth, wbtc];
-        let mut gates: Array<IGateDispatcher> = array![eth_gate, wbtc_gate];
+        let mut yangs: Span<ContractAddress> = array![eth, wbtc].span();
+        let mut gates: Span<IGateDispatcher> = array![eth_gate, wbtc_gate].span();
 
-        (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
+        SentinelTestConfig { sentinel, shrine: IShrineDispatcher { contract_address: shrine_addr }, yangs, gates }
     }
 
     pub fn add_eth_vault_yang(
@@ -217,9 +223,7 @@ pub mod sentinel_utils {
         (vaults, gates)
     }
 
-    pub fn deploy_sentinel_with_eth_gate(
-        classes: Option<SentinelTestClasses>
-    ) -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
+    pub fn deploy_sentinel_with_eth_gate(classes: Option<SentinelTestClasses>) -> SentinelTestConfig {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
@@ -228,7 +232,12 @@ pub mod sentinel_utils {
         let (sentinel, shrine_addr) = deploy_sentinel(Option::Some(classes));
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);
 
-        (sentinel, IShrineDispatcher { contract_address: shrine_addr }, eth, eth_gate)
+        SentinelTestConfig {
+            sentinel,
+            shrine: IShrineDispatcher { contract_address: shrine_addr },
+            yangs: array![eth].span(),
+            gates: array![eth_gate].span()
+        }
     }
 
     pub fn add_eth_yang(

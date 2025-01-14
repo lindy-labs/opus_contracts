@@ -139,7 +139,10 @@ mod test_seer {
     #[test]
     fn test_set_yang_price_type() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
@@ -256,7 +259,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_successful() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
@@ -451,7 +457,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_from_fallback_oracle_successful() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let eth_addr: ContractAddress = *yangs[0];
         let wbtc_addr: ContractAddress = *yangs[1];
 
@@ -553,7 +562,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_via_execute_task_successful() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, _) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
@@ -633,7 +645,9 @@ mod test_seer {
     #[should_panic(expected: ('PGM: Unknown yang',))]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, .. } = sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
@@ -646,7 +660,9 @@ mod test_seer {
     #[should_panic]
     fn test_update_prices_fails_with_wrong_yang_in_seer() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, _yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, .. } = sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
@@ -673,7 +689,10 @@ mod test_seer {
     #[test]
     fn test_update_prices_missed_updates() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
@@ -735,7 +754,10 @@ mod test_seer {
     #[test]
     fn test_probe_task() {
         let classes = sentinel_utils::declare_contracts();
-        let (sentinel, shrine, yangs, _gates) = sentinel_utils::deploy_sentinel_with_gates(Option::Some(classes));
+        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, .. } =
+            sentinel_utils::deploy_sentinel_with_gates(
+            Option::Some(classes)
+        );
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
