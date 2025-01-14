@@ -29,9 +29,8 @@ mod test_ekubo {
 
     #[test]
     fn test_ekubo_setup() {
-        let token_class = declare("erc20_mintable").unwrap();
         let EkuboTestConfig { ekubo, mock_ekubo, .. } = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
+            Option::None, Option::None, Option::None
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
 
@@ -50,10 +49,7 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracle_extension_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
-        );
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
         start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());
@@ -63,9 +59,8 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_quote_tokens_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
         let EkuboTestConfig { ekubo, quote_tokens, .. } = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
+            Option::None, Option::None, Option::None
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
@@ -76,10 +71,7 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_twap_duration_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
-        );
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
         start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());

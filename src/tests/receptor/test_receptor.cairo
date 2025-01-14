@@ -25,10 +25,9 @@ mod test_receptor {
 
     #[test]
     fn test_receptor_deploy() {
-        let token_class = declare("erc20_mintable").unwrap();
         let ReceptorTestConfig { receptor, mock_ekubo_oracle_extension, quote_tokens, .. } =
             receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
+            Option::None, Option::None
         );
 
         let receptor_ac = IAccessControlDispatcher { contract_address: receptor.contract_address };
@@ -60,10 +59,7 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracle_extension_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
@@ -73,9 +69,8 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_quote_tokens_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
         let ReceptorTestConfig { receptor, quote_tokens, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
+            Option::None, Option::None
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
@@ -86,10 +81,7 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_twap_duration_unauthorized_fail() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
@@ -98,10 +90,7 @@ mod test_receptor {
 
     #[test]
     fn test_set_update_frequency_pass() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(receptor.contract_address));
 
         let old_frequency: u64 = receptor_utils::INITIAL_UPDATE_FREQUENCY;
@@ -126,10 +115,7 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_update_frequency_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
         receptor.set_update_frequency(receptor_utils::INITIAL_UPDATE_FREQUENCY - 1);
     }
@@ -137,10 +123,7 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('REC: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_lower() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
         start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
@@ -150,10 +133,7 @@ mod test_receptor {
     #[test]
     #[should_panic(expected: ('REC: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_higher() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
-        );
+        let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
         start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
@@ -164,10 +144,9 @@ mod test_receptor {
 
     #[test]
     fn test_update_yin_price() {
-        let token_class = declare("erc20_mintable").unwrap();
         let ReceptorTestConfig { shrine, receptor, mock_ekubo_oracle_extension, quote_tokens } =
             receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
+            Option::None, Option::None
         );
         let mut shrine_spy = spy_events(SpyOn::One(shrine.contract_address));
         let mut receptor_spy = spy_events(SpyOn::One(receptor.contract_address));
@@ -263,10 +242,9 @@ mod test_receptor {
 
     #[test]
     fn test_update_yin_price_via_execute_task() {
-        let token_class = declare("erc20_mintable").unwrap();
         let ReceptorTestConfig { shrine, receptor, mock_ekubo_oracle_extension, quote_tokens } =
             receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
+            Option::None, Option::None
         );
 
         // actual mainnet values from 1727418625 start time to 1727429425 end time
@@ -293,10 +271,9 @@ mod test_receptor {
 
     #[test]
     fn test_probe_task() {
-        let token_class = declare("erc20_mintable").unwrap();
         let ReceptorTestConfig { shrine, receptor, mock_ekubo_oracle_extension, quote_tokens } =
             receptor_utils::receptor_deploy(
-            Option::None, Option::Some(token_class)
+            Option::None, Option::None
         );
 
         // actual mainnet values from 1727418625 start time to 1727429425 end time

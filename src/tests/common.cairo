@@ -197,7 +197,16 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 }
 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
-    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class)].span()
+    let token_class = match token_class {
+        Option::Some(class) => class,
+        Option::None => declare("erc20_mintable").unwrap()
+    };
+    array![
+        dai_token_deploy(Option::Some(token_class)),
+        usdc_token_deploy(Option::Some(token_class)),
+        usdt_token_deploy(Option::Some(token_class))
+    ]
+        .span()
 }
 
 pub fn eth_vault_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
