@@ -20,6 +20,7 @@ mod test_seer {
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
     use opus::tests::external::utils::{pragma_utils, ekubo_utils};
+    use opus::tests::seer::utils::seer_utils::SeerTestConfig;
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -37,7 +38,7 @@ mod test_seer {
     #[test]
     fn test_seer_setup() {
         let mut spy = spy_events(SpyOn::All);
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
@@ -59,7 +60,7 @@ mod test_seer {
 
     #[test]
     fn test_set_oracles() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array!['pragma addr'.try_into().unwrap(), 'ekubo addr'.try_into().unwrap()]
@@ -74,7 +75,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracles_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         // seer doesn't validate the addresses, so any will do
         let oracles: Span<ContractAddress> = array!['pragma addr'.try_into().unwrap(), 'ekubo addr'.try_into().unwrap()]
@@ -86,7 +87,7 @@ mod test_seer {
 
     #[test]
     fn test_set_update_frequency() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
         let new_frequency: u64 = 1200;
@@ -110,7 +111,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_update_frequency_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
         seer.set_update_frequency(1200);
@@ -119,7 +120,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_lower() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         let new_frequency: u64 = seer_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -129,7 +130,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Frequency out of bounds',))]
     fn test_set_update_frequency_oob_higher() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         let new_frequency: u64 = seer_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -195,7 +196,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_yang_price_type_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         let price_type = PriceType::Direct;
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
@@ -206,7 +207,7 @@ mod test_seer {
     #[should_panic(expected: ('SEER: Not wad scale',))]
     fn test_set_yang_price_type_to_vault_not_wad_decimals() {
         let classes = sentinel_utils::declare_contracts();
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
         let eth = common::eth_token_deploy(classes.token);
         let irregular_vault = common::deploy_vault(
@@ -222,7 +223,7 @@ mod test_seer {
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
     fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
         let classes = sentinel_utils::declare_contracts();
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
         let eth = common::eth_token_deploy(classes.token);
         let irregular_vault = common::deploy_vault(
@@ -240,7 +241,7 @@ mod test_seer {
     #[should_panic(expected: ('SEER: Too many decimals',))]
     fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
         let classes = sentinel_utils::declare_contracts();
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
         let irregular_token = common::deploy_token(
             'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), classes.token
@@ -670,7 +671,7 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_update_prices_unauthorized() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         start_prank(CheatTarget::One(seer.contract_address), common::badguy());
         seer.update_prices();
