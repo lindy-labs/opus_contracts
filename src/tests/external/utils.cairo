@@ -299,6 +299,13 @@ pub mod ekubo_utils {
     use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
+    #[derive(Copy, Drop)]
+    pub struct EkuboTestConfig {
+        pub ekubo: IEkuboDispatcher,
+        pub mock_ekubo: IMockEkuboOracleExtensionDispatcher,
+        pub quote_tokens: Span<ContractAddress>
+    }
+
     //
     // Constants
     //
@@ -323,15 +330,14 @@ pub mod ekubo_utils {
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
         token_class: Option<ContractClass>
-    ) -> (IEkuboDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
-        let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher =
-            common::mock_ekubo_oracle_extension_deploy(
+    ) -> EkuboTestConfig {
+        let mock_ekubo: IMockEkuboOracleExtensionDispatcher = common::mock_ekubo_oracle_extension_deploy(
             mock_ekubo_oracle_extension_class
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
         let mut calldata: Array<felt252> = array![
             admin().into(),
-            mock_ekubo_oracle_extension.contract_address.into(),
+            mock_ekubo.contract_address.into(),
             TWAP_DURATION.into(),
             quote_tokens.len().into(),
             (*quote_tokens[0]).into(),
@@ -346,6 +352,6 @@ pub mod ekubo_utils {
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
         let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
 
-        (ekubo, mock_ekubo_oracle_extension, quote_tokens)
+        EkuboTestConfig { ekubo, mock_ekubo, quote_tokens }
     }
 }

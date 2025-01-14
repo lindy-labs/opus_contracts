@@ -117,7 +117,9 @@ pub mod seer_utils {
         let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_v2_class, mock_pragma_class);
         oracles.append(pragma.contract_address);
 
-        let (ekubo, _, _) = ekubo_utils::ekubo_deploy(ekubo_class, mock_ekubo_class, token_class);
+        let ekubo_utils::EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
+            ekubo_class, mock_ekubo_class, token_class
+        );
         oracles.append(ekubo.contract_address);
 
         start_prank(CheatTarget::One(seer.contract_address), admin());

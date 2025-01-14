@@ -138,7 +138,6 @@ mod test_ekubo_oracle_adapter {
 
     #[test]
     fn test_get_quotes() {
-        println!("enter");
         let mut state = state();
 
         let mock_ekubo = common::mock_ekubo_oracle_extension_deploy(Option::None);

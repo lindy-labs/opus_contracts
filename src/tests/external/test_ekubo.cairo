@@ -13,6 +13,7 @@ mod test_ekubo {
         IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
     };
     use opus::tests::common;
+    use opus::tests::external::utils::ekubo_utils::EkuboTestConfig;
     use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr};
     use opus::utils::ekubo_oracle_adapter::{
         ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
@@ -29,7 +30,7 @@ mod test_ekubo {
     #[test]
     fn test_ekubo_setup() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, mock_ekubo, .. } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
@@ -50,7 +51,7 @@ mod test_ekubo {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracle_extension_unauthorized() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
@@ -63,7 +64,7 @@ mod test_ekubo {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_quote_tokens_unauthorized() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, quote_tokens, .. } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
@@ -76,7 +77,7 @@ mod test_ekubo {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_twap_duration_unauthorized() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
@@ -92,7 +93,7 @@ mod test_ekubo {
     #[test]
     fn test_fetch_price_pass() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
@@ -145,7 +146,7 @@ mod test_ekubo {
     #[test]
     fn test_fetch_price_more_than_one_invalid_price_fail() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
