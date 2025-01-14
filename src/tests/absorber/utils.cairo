@@ -123,7 +123,7 @@ pub mod absorber_utils {
             Option::None => declare_contracts(),
         };
 
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
+        let abbot_utils::AbbotTestConfig { shrine, sentinel, abbot, yangs, gates } = abbot_utils::abbot_deploy(
             Option::Some(
                 abbot_utils::AbbotTestClasses {
                     abbot: classes.abbot,
