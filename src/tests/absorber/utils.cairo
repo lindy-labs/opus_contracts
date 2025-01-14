@@ -37,6 +37,25 @@ pub mod absorber_utils {
         pub blesser: Option<ContractClass>,
     }
 
+    #[derive(Copy, Drop)]
+    pub struct AbsorberTestConfig {
+        pub abbot: IAbbotDispatcher,
+        pub absorber: IAbsorberDispatcher,
+        pub sentinel: ISentinelDispatcher,
+        pub shrine: IShrineDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>
+    }
+
+    #[derive(Copy, Drop)]
+    pub struct AbsorberRewardsTestConfig {
+        pub reward_tokens: Span<ContractAddress>,
+        pub blessers: Span<ContractAddress>,
+        pub reward_amts_per_blessing: Span<u128>,
+        pub provider: ContractAddress,
+        pub provided_amt: Wad
+    }
+
     //
     // Constants
     //
@@ -108,16 +127,7 @@ pub mod absorber_utils {
         }
     }
 
-    pub fn absorber_deploy(
-        classes: Option<AbsorberTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>
-    ) {
+    pub fn absorber_deploy(classes: Option<AbsorberTestClasses>) -> AbsorberTestConfig {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
@@ -150,7 +160,7 @@ pub mod absorber_utils {
         stop_prank(CheatTarget::One(absorber_addr));
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
-        (shrine, sentinel, abbot, absorber, yangs, gates)
+        AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates }
     }
 
     pub fn opus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
@@ -245,68 +255,38 @@ pub mod absorber_utils {
 
     pub fn absorber_with_first_provider(
         classes: Option<AbsorberTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>, // yangs
-        Span<IGateDispatcher>,
-        ContractAddress, // provider
-        Wad, // provided amount
+    ) -> (AbsorberTestConfig, ContractAddress, // provider
+     Wad, // provided amount
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(classes);
+        let AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } = absorber_deploy(classes);
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt);
 
-        (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt)
+        (AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates }, provider, provided_amt)
     }
 
     // Helper function to deploy Absorber, add rewards and create a trove.
     pub fn absorber_with_rewards_and_first_provider(
         classes: Option<AbsorberTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>, // yangs
-        Span<IGateDispatcher>,
-        Span<ContractAddress>, // reward tokens
-        Span<ContractAddress>, // blessers
-        Span<u128>, // reward amts per blessing
-        ContractAddress, // provider
-        Wad, // provided amount
-    ) {
+    ) -> (AbsorberTestConfig, AbsorberRewardsTestConfig) {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
         };
-        let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
-            Option::Some(classes)
-        );
+        let (absorber_test_config, provider, provided_amt) = absorber_with_first_provider(Option::Some(classes));
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(classes.token);
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
         let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing, classes.blesser
+            absorber_test_config.absorber, reward_tokens, reward_amts_per_blessing, classes.blesser
         );
-        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+        add_rewards_to_absorber(absorber_test_config.absorber, reward_tokens, blessers);
 
         (
-            shrine,
-            sentinel,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            blessers,
-            reward_amts_per_blessing,
-            provider,
-            provided_amt
+            absorber_test_config,
+            AbsorberRewardsTestConfig { reward_tokens, blessers, reward_amts_per_blessing, provider, provided_amt }
         )
     }
 

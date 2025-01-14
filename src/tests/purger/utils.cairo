@@ -364,7 +364,8 @@ pub mod purger_utils {
             absorber: classes.absorber,
             blesser: Option::Some(classes.blesser)
         };
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
+        let absorber_utils::AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } =
+            absorber_utils::absorber_deploy(
             Option::Some(absorber_classes)
         );
 
