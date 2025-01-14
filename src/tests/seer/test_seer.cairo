@@ -204,9 +204,10 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Not wad scale',))]
     fn test_set_yang_price_type_to_vault_not_wad_decimals() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let classes = sentinel_utils::declare_contracts();
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
-        let eth = common::eth_token_deploy(Option::None);
+        let eth = common::eth_token_deploy(classes.token);
         let irregular_vault = common::deploy_vault(
             'Irregular Vault', 'iVAULT', 8, Zero::zero(), seer_utils::admin(), eth, Option::None
         );
@@ -219,9 +220,10 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Zero conversion rate',))]
     fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let classes = sentinel_utils::declare_contracts();
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
-        let eth = common::eth_token_deploy(Option::None);
+        let eth = common::eth_token_deploy(classes.token);
         let irregular_vault = common::deploy_vault(
             'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), eth, Option::None
         );
@@ -236,10 +238,11 @@ mod test_seer {
     #[test]
     #[should_panic(expected: ('SEER: Too many decimals',))]
     fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
-        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::None);
+        let classes = sentinel_utils::declare_contracts();
+        let (seer, _, _) = seer_utils::deploy_seer(Option::None, Option::Some(classes));
 
         let irregular_token = common::deploy_token(
-            'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), Option::None
+            'Irregular Token', 'iTOKEN', 19, Zero::zero(), seer_utils::admin(), classes.token
         );
         let irregular_vault = common::deploy_vault(
             'Irregular Vault', 'iVAULT', 18, Zero::zero(), seer_utils::admin(), irregular_token, Option::None
