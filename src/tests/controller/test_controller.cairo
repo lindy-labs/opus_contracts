@@ -4,6 +4,7 @@ mod test_controller {
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
+    use opus::tests::controller::utils::controller_utils::ControllerTestConfig;
     use opus::tests::controller::utils::controller_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
@@ -18,7 +19,7 @@ mod test_controller {
     #[test]
     fn test_deploy_controller() {
         let mut spy = spy_events(SpyOn::All);
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
         assert(p_gain == controller_utils::P_GAIN.into(), 'wrong p gain');
@@ -70,7 +71,7 @@ mod test_controller {
 
     #[test]
     fn test_setters() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         let mut spy = spy_events(SpyOn::One(controller.contract_address));
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
@@ -142,7 +143,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_p_gain_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_p_gain(1_u128.into());
     }
@@ -150,7 +151,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_i_gain_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_i_gain(1_u128.into());
     }
@@ -158,7 +159,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_p_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_alpha_p(1);
     }
@@ -166,7 +167,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_i_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_alpha_i(1);
     }
@@ -174,7 +175,7 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_p_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_beta_p(1);
     }
@@ -182,14 +183,14 @@ mod test_controller {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_i_unauthorized() {
-        let (controller, _) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         start_prank(CheatTarget::All, common::badguy());
         controller.set_beta_i(1);
     }
 
     #[test]
     fn test_against_ground_truth1() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -221,7 +222,7 @@ mod test_controller {
 
     #[test]
     fn test_against_ground_truth2() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -479,7 +480,7 @@ mod test_controller {
     // when the time between updates is variable.
     #[test]
     fn test_against_ground_truth3() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::All, controller_utils::admin());
 
@@ -572,7 +573,7 @@ mod test_controller {
 
     #[test]
     fn test_against_ground_truth4() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -705,7 +706,7 @@ mod test_controller {
     // Multiple updates in one interval
     #[test]
     fn test_against_ground_truth5() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
@@ -799,7 +800,7 @@ mod test_controller {
 
     #[test]
     fn test_frequent_updates() {
-        let (controller, shrine) = controller_utils::deploy_controller();
+        let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
         // Ensuring the integral gain is non-zero
         controller.set_i_gain(100000000000000000000000_u128.into()); // 0.0001
