@@ -156,7 +156,7 @@ mod test_ekubo_oracle_adapter {
         let eth_usdt_x128_price: u256 = 1134582885198987280493503591381;
         let prices = array![eth_dai_x128_price, eth_usdc_x128_price, eth_usdt_x128_price].span();
 
-        set_next_ekubo_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo, eth, quote_tokens, prices);
 
         let exact_eth_dai_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_dai_x128_price, WAD_DECIMALS, constants::DAI_DECIMALS
@@ -179,7 +179,7 @@ mod test_ekubo_oracle_adapter {
         let wbtc_usdt_x128_price: u256 = 317746236343423991390061019847542458957558;
         let prices = array![wbtc_dai_x128_price, wbtc_usdc_x128_price, wbtc_usdt_x128_price].span();
 
-        set_next_ekubo_prices(mock_ekubo.contract_address, wbtc, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo, wbtc, quote_tokens, prices);
 
         let exact_wbtc_dai_price: Wad = convert_ekubo_oracle_price_to_wad(
             wbtc_dai_x128_price, constants::WBTC_DECIMALS, constants::DAI_DECIMALS

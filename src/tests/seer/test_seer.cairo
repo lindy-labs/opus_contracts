@@ -504,7 +504,7 @@ mod test_seer {
         let eth_usdc_x128_price: u256 = 1135036808904793908619842566045;
         let eth_usdt_x128_price: u256 = 1134582885198987280493503591381;
         set_next_ekubo_prices(
-            *ekubo.get_oracles().at(0),
+            IMockEkuboOracleExtensionDispatcher { contract_address: *ekubo.get_oracles().at(0) },
             eth_addr,
             quote_tokens: array![*quote_tokens.at(0).address, *quote_tokens.at(1).address, *quote_tokens.at(2).address]
                 .span(),
@@ -730,7 +730,7 @@ mod test_seer {
         let quote_tokens = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address }
             .get_quote_tokens();
         set_next_ekubo_prices(
-            *ekubo.get_oracles().at(0),
+            IMockEkuboOracleExtensionDispatcher { contract_address: *ekubo.get_oracles().at(0) },
             eth_addr,
             quote_tokens: array![*quote_tokens.at(0).address, *quote_tokens.at(1).address, *quote_tokens.at(2).address]
                 .span(),

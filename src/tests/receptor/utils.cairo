@@ -14,6 +14,13 @@ pub mod receptor_utils {
     use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
+    #[derive(Copy, Drop)]
+    pub struct ReceptorTestConfig {
+        pub mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher,
+        pub receptor: IReceptorDispatcher,
+        pub shrine: IShrineDispatcher,
+        pub quote_tokens: Span<ContractAddress>
+    }
 
     //
     // constants
@@ -55,7 +62,7 @@ pub mod receptor_utils {
 
     pub fn receptor_deploy(
         receptor_class: Option<ContractClass>, token_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, IReceptorDispatcher, ContractAddress, Span<ContractAddress>) {
+    ) -> ReceptorTestConfig {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let quote_tokens = common::quote_tokens(token_class);
@@ -87,11 +94,13 @@ pub mod receptor_utils {
         shrine_accesscontrol.grant_role(shrine_roles::receptor(), receptor_addr);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        (
+        ReceptorTestConfig {
             shrine,
-            IReceptorDispatcher { contract_address: receptor_addr },
-            mock_ekubo_oracle_extension_addr,
+            receptor: IReceptorDispatcher { contract_address: receptor_addr },
+            mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher {
+                contract_address: mock_ekubo_oracle_extension_addr
+            },
             quote_tokens
-        )
+        }
     }
 }
