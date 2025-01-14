@@ -42,9 +42,11 @@ mod test_transmuter_registry {
 
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (shrine, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { shrine, transmuter, .. } =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
         );
+        let first_transmuter = transmuter;
         let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
         let second_transmuter = transmuter_utils::transmuter_deploy(
             Option::Some(transmuter_class),
@@ -90,13 +92,14 @@ mod test_transmuter_registry {
     fn test_add_duplicate_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (_, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
         start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
-        registry.add_transmuter(first_transmuter.contract_address);
-        registry.add_transmuter(first_transmuter.contract_address);
+        registry.add_transmuter(transmuter.contract_address);
+        registry.add_transmuter(transmuter.contract_address);
     }
 
     #[test]
@@ -104,11 +107,12 @@ mod test_transmuter_registry {
     fn test_remove_nonexistent_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (_, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
+            transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
         start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
-        registry.remove_transmuter(first_transmuter.contract_address);
+        registry.remove_transmuter(transmuter.contract_address);
     }
 }

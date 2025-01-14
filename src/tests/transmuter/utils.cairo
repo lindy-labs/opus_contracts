@@ -16,6 +16,13 @@ pub mod transmuter_utils {
     use starknet::ContractAddress;
     use wadray::Wad;
 
+    #[derive(Copy, Drop)]
+    pub struct TransmuterTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub transmuter: ITransmuterDispatcher,
+        pub mock_usd_stable: IERC20Dispatcher,
+    }
+
     // Constants
 
     // 1_000_000 (Wad)
@@ -120,7 +127,7 @@ pub mod transmuter_utils {
 
     pub fn shrine_with_mock_wad_usd_stable_transmuter(
         transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, ITransmuterDispatcher, IERC20Dispatcher) {
+    ) -> TransmuterTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mock_usd_stable: IERC20Dispatcher = mock_wad_usd_stable_deploy(token_class);
 
@@ -132,7 +139,7 @@ pub mod transmuter_utils {
         let seed_amt: Wad = START_TOTAL_YIN.into();
         setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user());
 
-        (shrine, transmuter, mock_usd_stable)
+        TransmuterTestConfig { shrine, transmuter, mock_usd_stable }
     }
 
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
