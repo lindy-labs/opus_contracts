@@ -14,19 +14,21 @@ pub mod caretaker_utils {
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
     use starknet::ContractAddress;
 
+    #[derive(Copy, Drop)]
+    pub struct CaretakerTestConfig {
+        pub abbot: IAbbotDispatcher,
+        pub caretaker: ICaretakerDispatcher,
+        pub sentinel: ISentinelDispatcher,
+        pub shrine: IShrineDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>
+    }
+
     pub fn admin() -> ContractAddress {
         'caretaker admin'.try_into().unwrap()
     }
 
-    // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
-    pub fn caretaker_deploy() -> (
-        ICaretakerDispatcher,
-        IShrineDispatcher,
-        IAbbotDispatcher,
-        ISentinelDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>
-    ) {
+    pub fn caretaker_deploy() -> CaretakerTestConfig {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let abbot_utils::AbbotTestConfig { shrine, sentinel, abbot, yangs, gates } = abbot_utils::abbot_deploy(
@@ -61,7 +63,7 @@ pub mod caretaker_utils {
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 
-        (caretaker, shrine, abbot, sentinel, yangs, gates)
+        CaretakerTestConfig { caretaker, shrine, abbot, sentinel, yangs, gates }
     }
 
     pub fn only_eth(

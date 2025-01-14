@@ -8,6 +8,7 @@ mod test_caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::caretaker::utils::caretaker_utils::CaretakerTestConfig;
     use opus::tests::caretaker::utils::caretaker_utils;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
@@ -19,7 +20,7 @@ mod test_caretaker {
 
     #[test]
     fn test_caretaker_setup() {
-        let (caretaker, shrine, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, .. } = caretaker_utils::caretaker_deploy();
 
         let caretaker_ac = IAccessControlDispatcher { contract_address: caretaker.contract_address };
 
@@ -33,28 +34,28 @@ mod test_caretaker {
     #[test]
     #[should_panic(expected: ('CA: System is live',))]
     fn test_caretaker_setup_preview_release_throws() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         caretaker.preview_release(1);
     }
 
     #[test]
     #[should_panic(expected: ('CA: System is live',))]
     fn test_caretaker_setup_preview_reclaim_throws() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         caretaker.preview_reclaim(WAD_ONE.into());
     }
 
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_shut_by_badguy_throws() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_prank(CheatTarget::One(caretaker.contract_address), common::badguy());
         caretaker.shut();
     }
 
     #[test]
     fn test_shut() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
         let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 950 yin and 2 different yangs
@@ -151,7 +152,7 @@ mod test_caretaker {
 
     #[test]
     fn test_release() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
         let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
@@ -246,7 +247,7 @@ mod test_caretaker {
 
     #[test]
     fn test_preview_reclaim_more_than_total_yin() {
-        let (caretaker, _, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -277,7 +278,7 @@ mod test_caretaker {
 
     #[test]
     fn test_reclaim() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
         let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
@@ -415,7 +416,7 @@ mod test_caretaker {
 
     #[test]
     fn test_shut_during_armageddon() {
-        let (caretaker, shrine, abbot, _sentinel, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
         let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
 
         // user 1 with 10000 yin and 2 different yangs
@@ -492,7 +493,7 @@ mod test_caretaker {
     #[test]
     #[should_panic(expected: ('CA: System is live',))]
     fn test_release_when_system_live_reverts() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.release(1);
     }
@@ -500,7 +501,7 @@ mod test_caretaker {
     #[test]
     #[should_panic(expected: ('CA: Owner should not be zero',))]
     fn test_release_foreign_trove_reverts() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.shut();
         caretaker.release(1);
@@ -509,7 +510,7 @@ mod test_caretaker {
     #[test]
     #[should_panic(expected: ('CA: System is live',))]
     fn test_reclaim_when_system_live_reverts() {
-        let (caretaker, _, _, _, _, _) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());
         caretaker.reclaim(WAD_ONE.into());
     }
@@ -517,7 +518,7 @@ mod test_caretaker {
     #[test]
     #[should_panic(expected: ('SH: Insufficient yin balance',))]
     fn test_reclaim_insufficient_yin() {
-        let (caretaker, shrine, abbot, _, yangs, gates) = caretaker_utils::caretaker_deploy();
+        let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
 
         // opening a trove
         let user1 = common::trove1_owner_addr();
