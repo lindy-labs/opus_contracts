@@ -379,7 +379,16 @@ pub mod purger_utils {
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, classes.pragma_v2, classes.mock_pragma, classes.ekubo, classes.mock_ekubo, classes.token
+            seer,
+            Option::Some(
+                seer_utils::OracleTestClasses {
+                    pragma_v2: classes.pragma_v2,
+                    mock_pragma: classes.mock_pragma,
+                    ekubo: classes.ekubo,
+                    mock_ekubo: classes.mock_ekubo
+                }
+            ),
+            classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 

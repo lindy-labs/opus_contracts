@@ -157,9 +157,7 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         let eth_vault = *vaults.at(0);
@@ -277,9 +275,7 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let mut eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
@@ -475,9 +471,7 @@ mod test_seer {
         );
         seer_utils::set_price_types_to_vault(seer, vaults);
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         // mock an ETH price update of spot Pragma that will fail due to too few sources,
@@ -582,9 +576,7 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
         // add_yangs_v2 uses ETH_INIT_PRICE and WBTC_INIT_PRICE
         let eth_price: Wad = seer_utils::ETH_INIT_PRICE.into();
@@ -651,7 +643,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        seer_utils::add_oracles(seer, Option::None, Option::None, Option::None, Option::None, classes.token);
+        seer_utils::add_oracles(seer, Option::None, classes.token);
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
     }
@@ -666,9 +658,7 @@ mod test_seer {
         let seer: ISeerV2Dispatcher = seer_utils::deploy_seer_using(
             Option::None, shrine.contract_address, sentinel.contract_address
         );
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         let eth_yang: ContractAddress = common::eth_token_deploy(classes.token);
         let yangs = array![eth_yang, eth_yang].span();
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
@@ -699,9 +689,7 @@ mod test_seer {
 
         let mut spy = spy_events(SpyOn::One(seer.contract_address));
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         // mock a price update of Pragma spot eth that
@@ -770,9 +758,7 @@ mod test_seer {
         );
         seer_utils::set_price_types_to_vault(seer, vaults);
 
-        let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, Option::None, Option::None, Option::None, Option::None, classes.token
-        );
+        let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
         let task = ITaskDispatcher { contract_address: seer.contract_address };

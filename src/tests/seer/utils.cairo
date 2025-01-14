@@ -17,6 +17,14 @@ pub mod seer_utils {
     use starknet::{get_block_timestamp, ContractAddress};
     use wadray::Wad;
 
+    #[derive(Copy, Drop)]
+    pub struct OracleTestClasses {
+        pub pragma_v2: Option<ContractClass>,
+        pub mock_pragma: Option<ContractClass>,
+        pub ekubo: Option<ContractClass>,
+        pub mock_ekubo: Option<ContractClass>,
+    }
+
     //
     // Constants
     //
@@ -40,6 +48,19 @@ pub mod seer_utils {
 
     pub fn dummy_wbtc() -> ContractAddress {
         'wbtc token'.try_into().unwrap()
+    }
+
+    //
+    // Test setup helpers
+    //
+
+    pub fn declare_oracles() -> OracleTestClasses {
+        OracleTestClasses {
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            ekubo: Option::Some(declare("ekubo").unwrap()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
+        }
     }
 
     pub fn deploy_seer(
@@ -105,20 +126,20 @@ pub mod seer_utils {
     }
 
     pub fn add_oracles(
-        seer: ISeerV2Dispatcher,
-        pragma_v2_class: Option<ContractClass>,
-        mock_pragma_class: Option<ContractClass>,
-        ekubo_class: Option<ContractClass>,
-        mock_ekubo_class: Option<ContractClass>,
-        token_class: Option<ContractClass>
+        seer: ISeerV2Dispatcher, oracle_classes: Option<OracleTestClasses>, token_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
+        let oracle_classes = match oracle_classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_oracles()
+        };
+
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_v2_class, mock_pragma_class);
+        let (pragma, _) = pragma_utils::pragma_v2_deploy(oracle_classes.pragma_v2, oracle_classes.mock_pragma);
         oracles.append(pragma.contract_address);
 
         let ekubo_utils::EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
-            ekubo_class, mock_ekubo_class, token_class
+            oracle_classes.ekubo, oracle_classes.mock_ekubo, token_class
         );
         oracles.append(ekubo.contract_address);
 
