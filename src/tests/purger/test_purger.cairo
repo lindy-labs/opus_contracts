@@ -18,6 +18,7 @@ mod test_purger {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::flash_mint::utils::flash_mint_utils;
+    use opus::tests::purger::utils::purger_utils::PurgerTestConfig;
     use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
@@ -35,7 +36,7 @@ mod test_purger {
     #[test]
     fn test_purger_setup() {
         let mut spy = spy_events(SpyOn::All);
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
         assert(
@@ -59,7 +60,9 @@ mod test_purger {
 
     #[test]
     fn test_set_penalty_scalar_pass() {
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } = purger_utils::purger_deploy(
+            Option::None
+        );
         let mut spy = spy_events(SpyOn::One(purger.contract_address));
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
@@ -152,7 +155,9 @@ mod test_purger {
 
     #[test]
     fn test_penalty_scalar_lower_bound() {
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } = purger_utils::purger_deploy(
+            Option::None
+        );
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -195,7 +200,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_low_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MIN_PENALTY_SCALAR - 1).into());
@@ -204,7 +209,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Invalid scalar',))]
     fn test_set_penalty_scalar_too_high_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), purger_utils::admin());
         purger.set_penalty_scalar((purger_contract::MAX_PENALTY_SCALAR + 1).into());
@@ -213,7 +218,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_penalty_scalar_unauthorized_fail() {
-        let (_, _, _, _, purger, _, _) = purger_utils::purger_deploy(Option::None);
+        let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         start_prank(CheatTarget::One(purger.contract_address), common::badguy());
         purger.set_penalty_scalar(RAY_ONE.into());
@@ -265,7 +270,10 @@ mod test_purger {
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
-                    let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } =
+                        purger_utils::purger_deploy(
+                        classes
+                    );
 
                     purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -333,7 +341,8 @@ mod test_purger {
     #[test]
     fn test_liquidate_pass() {
         let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } =
+            purger_utils::purger_deploy_with_searcher(
             searcher_start_yin, Option::None
         );
         let mut spy = spy_events(SpyOn::One(purger.contract_address));
@@ -434,7 +443,8 @@ mod test_purger {
 
     #[test]
     fn test_liquidate_with_flashmint_pass() {
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } =
+            purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -515,7 +525,8 @@ mod test_purger {
             match target_ltvs.pop_front() {
                 Option::Some(target_ltv) => {
                     let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-                    let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+                    let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } =
+                        purger_utils::purger_deploy_with_searcher(
                         searcher_start_yin, classes
                     );
 
@@ -747,7 +758,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_fail() {
-        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, purger, yangs, gates, .. } = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
@@ -764,7 +775,7 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Not liquidatable',))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
-        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, purger, yangs, gates, .. } = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let healthy_trove: u64 = purger_utils::funded_healthy_trove(
@@ -796,7 +807,8 @@ mod test_purger {
         let target_trove_yin: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.val / 10).into();
 
-        let (shrine, abbot, seer, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } =
+            purger_utils::purger_deploy_with_searcher(
             searcher_yin, Option::None
         );
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, target_trove_yin);
@@ -883,7 +895,8 @@ mod test_purger {
                     loop {
                         match is_recovery_mode_fuzz.pop_front() {
                             Option::Some(is_recovery_mode) => {
-                                let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(
+                                let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+                                    purger_utils::purger_deploy(
                                     classes
                                 );
 
@@ -967,7 +980,8 @@ mod test_purger {
 
     #[test]
     fn test_full_absorb_pass() {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+            purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
         let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
@@ -1133,7 +1147,13 @@ mod test_purger {
 
                                                     match kill_absorber_fuzz.pop_front() {
                                                         Option::Some(kill_absorber) => {
-                                                            let (shrine, abbot, seer, absorber, purger, yangs, gates) =
+                                                            let PurgerTestConfig { shrine,
+                                                            abbot,
+                                                            seer,
+                                                            absorber,
+                                                            purger,
+                                                            yangs,
+                                                            gates } =
                                                                 purger_utils::purger_deploy(
                                                                 classes
                                                             );
@@ -1561,7 +1581,10 @@ mod test_purger {
                     let mut target_ltvs_arr: Span<Ray> = *target_ltvs.pop_front().unwrap();
                     let target_ltv: Ray = *target_ltvs_arr.pop_front().unwrap();
 
-                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+                        purger_utils::purger_deploy(
+                        classes
+                    );
 
                     let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
                     let mut shrine_spy = spy_events(SpyOn::One(shrine.contract_address));
@@ -2786,7 +2809,13 @@ mod test_purger {
 
                                             match kill_absorber_fuzz.pop_front() {
                                                 Option::Some(kill_absorber) => {
-                                                    let (shrine, abbot, seer, absorber, purger, yangs, gates) =
+                                                    let PurgerTestConfig { shrine,
+                                                    abbot,
+                                                    seer,
+                                                    absorber,
+                                                    purger,
+                                                    yangs,
+                                                    gates } =
                                                         purger_utils::purger_deploy(
                                                         classes
                                                     );
@@ -3082,7 +3111,10 @@ mod test_purger {
         loop {
             match target_ltvs.pop_front() {
                 Option::Some(target_ltv) => {
-                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+                        purger_utils::purger_deploy(
+                        classes
+                    );
                     let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
                     // Set thresholds to provided value
@@ -3349,7 +3381,10 @@ mod test_purger {
         loop {
             match target_ltvs.pop_front() {
                 Option::Some(target_ltv) => {
-                    let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy(classes);
+                    let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+                        purger_utils::purger_deploy(
+                        classes
+                    );
                     let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
 
                     // Set thresholds to provided value
@@ -3694,7 +3729,8 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Not absorbable',))]
     fn test_absorb_trove_healthy_fail() {
-        let (shrine, abbot, _, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, absorber, purger, yangs, gates, .. } =
+            purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3712,7 +3748,8 @@ mod test_purger {
     #[test]
     #[should_panic(expected: ('PU: Not absorbable',))]
     fn test_absorb_below_absorbable_ltv_fail() {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+            purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3748,7 +3785,7 @@ mod test_purger {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let searcher_start_yin: Wad = purger_utils::SEARCHER_YIN.into();
-                    let (shrine, abbot, seer, absorber, purger, yangs, gates) =
+                    let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
                         purger_utils::purger_deploy_with_searcher(
                         searcher_start_yin, classes
                     );
@@ -3793,7 +3830,7 @@ mod test_purger {
 
     #[test]
     fn test_liquidate_suspended_yang() {
-        let (shrine, abbot, _, _, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, purger, yangs, gates, .. } = purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -3880,7 +3917,8 @@ mod test_purger {
     fn test_liquidate_suspended_yang_threshold_near_zero(
         starting_ltv: Ray, liquidate_via_absorption: bool, is_recovery_mode: bool
     ) {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_utils::purger_deploy_with_searcher(
+        let PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates } =
+            purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
 
@@ -4095,7 +4133,7 @@ mod test_purger {
                     loop {
                         match target_ltvs_param.pop_front() {
                             Option::Some(target_ltv) => {
-                                let (shrine, abbot, _seer, absorber, purger, yangs, gates) =
+                                let PurgerTestConfig { shrine, abbot, absorber, purger, yangs, gates, .. } =
                                     purger_utils::purger_deploy_with_searcher(
                                     searcher_start_yin, classes
                                 );

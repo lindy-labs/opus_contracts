@@ -46,6 +46,17 @@ pub mod purger_utils {
         seer: Option<ContractClass>,
     }
 
+    #[derive(Copy, Drop)]
+    pub struct PurgerTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub abbot: IAbbotDispatcher,
+        pub seer: ISeerV2Dispatcher,
+        pub absorber: IAbsorberDispatcher,
+        pub purger: IPurgerDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>,
+    }
+
     //
     // Constants
     //
@@ -339,17 +350,7 @@ pub mod purger_utils {
         }
     }
 
-    pub fn purger_deploy(
-        classes: Option<PurgerTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        IAbbotDispatcher,
-        ISeerV2Dispatcher,
-        IAbsorberDispatcher,
-        IPurgerDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>,
-    ) {
+    pub fn purger_deploy(classes: Option<PurgerTestClasses>) -> PurgerTestConfig {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
@@ -426,24 +427,14 @@ pub mod purger_utils {
 
         stop_prank(CheatTarget::All);
 
-        (shrine, abbot, seer, absorber, purger, yangs, gates)
+        PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates }
     }
 
-    pub fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        IAbbotDispatcher,
-        ISeerV2Dispatcher,
-        IAbsorberDispatcher,
-        IPurgerDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>,
-    ) {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(classes);
-        funded_searcher(abbot, yangs, gates, searcher_yin_amt);
+    pub fn purger_deploy_with_searcher(searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>) -> PurgerTestConfig {
+        let config = purger_deploy(classes);
+        funded_searcher(config.abbot, config.yangs, config.gates, searcher_yin_amt);
 
-        (shrine, abbot, seer, absorber, purger, yangs, gates)
+        config
     }
 
     pub fn flash_liquidator_deploy(
