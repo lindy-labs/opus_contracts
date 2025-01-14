@@ -34,7 +34,8 @@ pub mod caretaker_utils {
         let abbot_utils::AbbotTestConfig { shrine, sentinel, abbot, yangs, gates } = abbot_utils::abbot_deploy(
             Option::None
         );
-        let (shrine, equalizer, _allocator) = equalizer_utils::equalizer_deploy_with_shrine(
+        let equalizer_utils::EqualizerTestConfig { shrine, equalizer, .. } =
+            equalizer_utils::equalizer_deploy_with_shrine(
             shrine.contract_address, Option::None
         );
 

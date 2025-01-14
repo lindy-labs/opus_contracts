@@ -12,6 +12,13 @@ pub mod equalizer_utils {
     use starknet::ContractAddress;
     use wadray::Ray;
 
+    #[derive(Copy, Drop)]
+    pub struct EqualizerTestConfig {
+        pub allocator: IAllocatorDispatcher,
+        pub equalizer: IEqualizerDispatcher,
+        pub shrine: IShrineDispatcher,
+    }
+
     //
     // Convenience helpers
     //
@@ -98,16 +105,14 @@ pub mod equalizer_utils {
         IAllocatorDispatcher { contract_address: allocator_addr }
     }
 
-    pub fn equalizer_deploy(
-        allocator_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+    pub fn equalizer_deploy(allocator_class: Option<ContractClass>) -> EqualizerTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         equalizer_deploy_with_shrine(shrine.contract_address, allocator_class)
     }
 
     pub fn equalizer_deploy_with_shrine(
         shrine: ContractAddress, allocator_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+    ) -> EqualizerTestConfig {
         let allocator: IAllocatorDispatcher = allocator_deploy(
             initial_recipients(), initial_percentages(), allocator_class
         );
@@ -127,10 +132,10 @@ pub mod equalizer_utils {
 
         stop_prank(CheatTarget::Multiple(array![equalizer_addr, shrine]));
 
-        (
-            IShrineDispatcher { contract_address: shrine },
-            IEqualizerDispatcher { contract_address: equalizer_addr },
+        EqualizerTestConfig {
+            shrine: IShrineDispatcher { contract_address: shrine },
+            equalizer: IEqualizerDispatcher { contract_address: equalizer_addr },
             allocator
-        )
+        }
     }
 }
