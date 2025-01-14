@@ -82,6 +82,24 @@ pub mod transmuter_utils {
         ITransmuterV2Dispatcher { contract_address: transmuter_addr }
     }
 
+    // mock stable with 18 decimals
+    pub fn wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+        IERC20Dispatcher {
+            contract_address: common::deploy_token(
+                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class
+            )
+        }
+    }
+
+    // mock stable with 6 decimals
+    pub fn nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+        IERC20Dispatcher {
+            contract_address: common::deploy_token(
+                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class
+            )
+        }
+    }
+
     pub fn setup_shrine_with_transmuter(
         shrine: IShrineDispatcher,
         transmuter: ITransmuterV2Dispatcher,
@@ -107,7 +125,7 @@ pub mod transmuter_utils {
         transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>
     ) -> TransmuterTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let wad_usd_stable = IERC20Dispatcher { contract_address: common::dai_token_deploy(token_class) };
+        let wad_usd_stable = wad_usd_stable_deploy(token_class);
 
         let transmuter: ITransmuterV2Dispatcher = transmuter_deploy(
             transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver()

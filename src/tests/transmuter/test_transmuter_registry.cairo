@@ -45,9 +45,12 @@ mod test_transmuter_registry {
             Option::Some(transmuter_class), Option::Some(token_class)
         );
         let first_transmuter = transmuter;
-        let nonwad_usd_stable = common::usdc_token_deploy(Option::Some(token_class));
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let second_transmuter = transmuter_utils::transmuter_deploy(
-            Option::Some(transmuter_class), shrine.contract_address, nonwad_usd_stable, transmuter_utils::receiver()
+            Option::Some(transmuter_class),
+            shrine.contract_address,
+            nonwad_usd_stable.contract_address,
+            transmuter_utils::receiver()
         );
 
         start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());

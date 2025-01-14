@@ -371,9 +371,12 @@ mod test_transmuter {
             Option::Some(transmuter_class), Option::Some(token_class)
         );
         let wad_transmuter = transmuter;
-        let nonwad_usd_stable = common::usdc_token_deploy(Option::Some(token_class));
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            Option::Some(transmuter_class), shrine.contract_address, nonwad_usd_stable, transmuter_utils::receiver()
+            Option::Some(transmuter_class),
+            shrine.contract_address,
+            nonwad_usd_stable.contract_address,
+            transmuter_utils::receiver()
         );
 
         let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -563,9 +566,12 @@ mod test_transmuter {
             Option::Some(transmuter_class), Option::Some(token_class)
         );
         let wad_transmuter = transmuter;
-        let nonwad_usd_stable = common::usdc_token_deploy(Option::Some(token_class));
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
-            Option::Some(transmuter_class), shrine.contract_address, nonwad_usd_stable, transmuter_utils::receiver()
+            Option::Some(transmuter_class),
+            shrine.contract_address,
+            nonwad_usd_stable.contract_address,
+            transmuter_utils::receiver()
         );
 
         let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -758,9 +764,9 @@ mod test_transmuter {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
                     let asset = if *transmuter_id == 0 {
-                        IERC20Dispatcher { contract_address: common::dai_token_deploy(Option::Some(token_class)) }
+                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        IERC20Dispatcher { contract_address: common::usdc_token_deploy(Option::Some(token_class)) }
+                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
 
@@ -864,7 +870,7 @@ mod test_transmuter {
         let user: ContractAddress = transmuter_utils::user();
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
-        let asset = IERC20Dispatcher { contract_address: common::dai_token_deploy(Option::Some(token_class)) };
+        let asset = transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class));
 
         let mut secondary_asset_decimals: Span<u8> = array![6, 18].span();
 
@@ -1028,9 +1034,9 @@ mod test_transmuter {
 
         // parametrize transmuter and asset
         let asset = if transmuter_id == 0 {
-            IERC20Dispatcher { contract_address: common::dai_token_deploy(Option::Some(token_class)) }
+            transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
         } else {
-            IERC20Dispatcher { contract_address: common::usdc_token_deploy(Option::Some(token_class)) }
+            transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
         };
         let asset_decimals: u8 = asset.decimals();
 
@@ -1230,9 +1236,9 @@ mod test_transmuter {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
                     let asset = if *transmuter_id == 0 {
-                        IERC20Dispatcher { contract_address: common::dai_token_deploy(Option::Some(token_class)) }
+                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        IERC20Dispatcher { contract_address: common::usdc_token_deploy(Option::Some(token_class)) }
+                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
