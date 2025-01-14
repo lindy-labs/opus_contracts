@@ -3,10 +3,7 @@ mod test_transmuter_registry {
     use opus::core::roles::transmuter_registry_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{
-        ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistryDispatcher,
-        ITransmuterRegistryDispatcherTrait
-    };
+    use opus::interfaces::ITransmuter::{ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;

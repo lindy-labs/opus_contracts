@@ -20,6 +20,7 @@ pub mod core {
     pub mod transmuter;
     pub mod transmuter_registry;
     pub mod transmuter_restricted;
+    pub mod transmuter_v2;
 }
 
 pub mod external {

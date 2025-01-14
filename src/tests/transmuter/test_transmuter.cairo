@@ -4,10 +4,12 @@ mod test_transmuter {
     use core::integer::BoundedInt;
     use core::num::traits::Zero;
     use opus::core::roles::transmuter_roles;
-    use opus::core::transmuter::transmuter as transmuter_contract;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::core::transmuter_v2::transmuter_v2 as transmuter_contract;
+    use opus::interfaces::IERC20::{
+        IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
+    };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
+    use opus::interfaces::ITransmuter::{ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils::TransmuterTestConfig;
@@ -374,7 +376,7 @@ mod test_transmuter {
             Option::Some(transmuter_class), shrine.contract_address, nonwad_usd_stable, transmuter_utils::receiver()
         );
 
-        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
+        let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let transmute_fees: Span<Ray> = array![
             Zero::zero(), // 0%
@@ -566,7 +568,7 @@ mod test_transmuter {
             Option::Some(transmuter_class), shrine.contract_address, nonwad_usd_stable, transmuter_utils::receiver()
         );
 
-        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
+        let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let reverse_fees: Span<Ray> = array![
             Zero::zero(), // 0%
@@ -764,7 +766,7 @@ mod test_transmuter {
 
                     let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                    let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
                         Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver
                     );
 
@@ -848,6 +850,168 @@ mod test_transmuter {
     }
 
     //
+    // Tests - Withdraw secondary asset
+    //
+
+    #[test]
+    fn test_withdraw_secondary_parametrized_pass() {
+        let shrine_class: ContractClass = shrine_utils::declare_shrine();
+        let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
+        let token_class = declare("erc20_mintable").unwrap();
+
+        let admin: ContractAddress = transmuter_utils::admin();
+        let receiver: ContractAddress = transmuter_utils::receiver();
+        let user: ContractAddress = transmuter_utils::user();
+
+        let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
+        let asset = IERC20Dispatcher { contract_address: common::dai_token_deploy(Option::Some(token_class)) };
+
+        let mut secondary_asset_decimals: Span<u8> = array![6, 18].span();
+
+        loop {
+            match secondary_asset_decimals.pop_front() {
+                Option::Some(secondary_asset_decimal) => {
+                    let mut kill_transmuter: Span<bool> = array![true, false].span();
+                    loop {
+                        match kill_transmuter.pop_front() {
+                            Option::Some(kill_transmuter) => {
+                                let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
+                                    Option::Some(transmuter_class),
+                                    shrine.contract_address,
+                                    asset.contract_address,
+                                    receiver
+                                );
+
+                                // parametrize transmuter and asset
+                                let secondary_asset: ContractAddress = common::deploy_token(
+                                    'Secondary Asset',
+                                    'sASSET',
+                                    (*secondary_asset_decimal).into(),
+                                    WAD_ONE.into(),
+                                    transmuter_utils::admin(),
+                                    Option::Some(token_class)
+                                );
+                                let secondary_asset_erc20 = IERC20Dispatcher { contract_address: secondary_asset };
+                                let secondary_asset_amt: u128 = pow(10, *secondary_asset_decimal);
+
+                                let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+                                let seed_amt: Wad = (100000 * WAD_ONE).into();
+
+                                transmuter_utils::setup_shrine_with_transmuter(
+                                    shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+                                );
+
+                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+
+                                // parametrize amount to withdraw
+                                let mut withdraw_secondary_amts: Span<u128> = array![
+                                    0, 1, secondary_asset_amt, secondary_asset_amt + 1,
+                                ]
+                                    .span();
+
+                                if *kill_transmuter {
+                                    start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                                    transmuter.kill();
+                                    stop_prank(CheatTarget::One(transmuter.contract_address));
+                                }
+
+                                loop {
+                                    match withdraw_secondary_amts.pop_front() {
+                                        Option::Some(withdraw_secondary_amt) => {
+                                            IMintableDispatcher { contract_address: secondary_asset }
+                                                .mint(transmuter.contract_address, secondary_asset_amt.into());
+
+                                            start_prank(CheatTarget::One(transmuter.contract_address), user);
+
+                                            let before_receiver_asset_bal: u256 = secondary_asset_erc20
+                                                .balance_of(receiver);
+
+                                            start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                                            transmuter
+                                                .withdraw_secondary_asset(secondary_asset, *withdraw_secondary_amt);
+
+                                            let adjusted_secondary_amt: u128 = min(
+                                                secondary_asset_amt, *withdraw_secondary_amt
+                                            );
+
+                                            assert(
+                                                secondary_asset_erc20.balance_of(receiver) == before_receiver_asset_bal
+                                                    + adjusted_secondary_amt.into(),
+                                                'wrong receiver asset bal'
+                                            );
+
+                                            if adjusted_secondary_amt.is_non_zero() {
+                                                let expected_events = array![
+                                                    (
+                                                        transmuter.contract_address,
+                                                        transmuter_contract::Event::WithdrawSecondaryAsset(
+                                                            transmuter_contract::WithdrawSecondaryAsset {
+                                                                recipient: receiver,
+                                                                asset: secondary_asset,
+                                                                asset_amt: adjusted_secondary_amt
+                                                            }
+                                                        )
+                                                    )
+                                                ];
+                                                spy.assert_emitted(@expected_events);
+                                            }
+
+                                            // reset by sweeping all remaining amount
+                                            transmuter.withdraw_secondary_asset(secondary_asset, BoundedInt::max());
+                                            assert(
+                                                secondary_asset_erc20.balance_of(transmuter.contract_address).is_zero(),
+                                                'sanity check'
+                                            );
+
+                                            stop_prank(CheatTarget::One(transmuter.contract_address));
+                                        },
+                                        Option::None => { break; },
+                                    };
+                                };
+                            },
+                            Option::None => { break; },
+                        };
+                    };
+                },
+                Option::None => { break; },
+            };
+        };
+    }
+
+    #[test]
+    #[should_panic(expected: ('Caller missing role',))]
+    fn test_withdraw_secondary_asset_unauthorized() {
+        let token_class = declare("erc20_mintable").unwrap();
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
+            Option::None, Option::Some(token_class)
+        );
+
+        let secondary_asset: ContractAddress = common::deploy_token(
+            'Secondary Asset', 'sASSET', 18, WAD_ONE.into(), transmuter.contract_address, Option::Some(token_class)
+        );
+
+        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        transmuter.withdraw_secondary_asset(secondary_asset, BoundedInt::max());
+    }
+
+    #[test]
+    #[should_panic(expected: ('TR: Primary asset',))]
+    fn test_withdraw_primary_asset_as_secondary_asset_fail() {
+        let token_class = declare("erc20_mintable").unwrap();
+        let TransmuterTestConfig { transmuter, wad_usd_stable, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
+            Option::None, Option::Some(token_class)
+        );
+
+        let _secondary_asset: ContractAddress = common::deploy_token(
+            'Secondary Asset', 'sASSET', 18, WAD_ONE.into(), transmuter.contract_address, Option::Some(token_class)
+        );
+
+        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, BoundedInt::max());
+    }
+
+    //
     // Tests - Settle
     //
 
@@ -896,7 +1060,7 @@ mod test_transmuter {
                                     Option::Some(shrine_class)
                                 );
 
-                                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                                let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
                                     Option::Some(transmuter_class),
                                     shrine.contract_address,
                                     asset.contract_address,
@@ -1076,7 +1240,7 @@ mod test_transmuter {
 
                     let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                    let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
                         Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
                     );
 
