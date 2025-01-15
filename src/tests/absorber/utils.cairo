@@ -309,7 +309,7 @@ pub mod absorber_utils {
         );
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);

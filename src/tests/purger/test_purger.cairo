@@ -3902,7 +3902,7 @@ mod test_purger {
         assert(target_trove_after_health.debt < target_trove_start_health.debt, 'trove not correctly liquidated');
 
         assert(
-            IERC20Dispatcher { contract_address: shrine.contract_address }
+            shrine_utils::yin(shrine.contract_address)
                 .balance_of(searcher)
                 .try_into()
                 .unwrap() < purger_utils::SEARCHER_YIN,
@@ -3944,7 +3944,7 @@ mod test_purger {
         // Have the searcher provide half of his yin to the absorber
         let searcher = purger_utils::searcher();
         let searcher_yin: Wad = (purger_utils::SEARCHER_YIN / 2).into();
-        let yin_erc20 = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin_erc20 = shrine_utils::yin(shrine.contract_address);
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), searcher);
         yin_erc20.approve(absorber.contract_address, searcher_yin.into());
@@ -4150,9 +4150,7 @@ mod test_purger {
 
                                 // Approve absorber for maximum yin
                                 start_prank(CheatTarget::One(shrine.contract_address), searcher);
-                                let yin_erc20: IERC20Dispatcher = IERC20Dispatcher {
-                                    contract_address: shrine.contract_address
-                                };
+                                let yin_erc20 = shrine_utils::yin(shrine.contract_address);
                                 yin_erc20.approve(absorber.contract_address, BoundedInt::max());
 
                                 stop_prank(CheatTarget::One(shrine.contract_address));

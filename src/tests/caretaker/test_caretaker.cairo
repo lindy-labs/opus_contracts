@@ -294,7 +294,7 @@ mod test_caretaker {
         let scammer = common::badguy();
         let scam_amt: u256 = (4000 * WAD_ONE).into();
         start_prank(CheatTarget::One(shrine.contract_address), user1);
-        IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(scammer, scam_amt);
+        shrine_utils::yin(shrine.contract_address).transfer(scammer, scam_amt);
         stop_prank(CheatTarget::One(shrine.contract_address));
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
@@ -543,7 +543,7 @@ mod test_caretaker {
         let user2 = common::trove2_owner_addr();
         let transfer_amt: u256 = (4000 * WAD_ONE).into();
         start_prank(CheatTarget::One(caretaker.contract_address), user1);
-        IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(user2, transfer_amt);
+        shrine_utils::yin(shrine.contract_address).transfer(user2, transfer_amt);
 
         // Activating global settlement mode
         start_prank(CheatTarget::One(caretaker.contract_address), caretaker_utils::admin());

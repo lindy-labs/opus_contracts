@@ -30,7 +30,7 @@ mod test_shrine {
         let shrine_addr = shrine_utils::shrine_deploy(Option::None);
 
         // Check ERC-20 getters
-        let yin: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine_addr };
+        let yin = shrine_utils::yin(shrine_addr);
         assert(yin.name() == shrine_utils::YIN_NAME, 'wrong name');
         assert(yin.symbol() == shrine_utils::YIN_SYMBOL, 'wrong symbol');
         assert(yin.decimals() == WAD_DECIMALS, 'wrong decimals');

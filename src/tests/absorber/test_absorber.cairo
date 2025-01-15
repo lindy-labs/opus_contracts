@@ -638,7 +638,7 @@ mod test_absorber {
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
 
         let before_provider_info: Provision = absorber.get_provision(provider);
         let before_last_absorption_id: u32 = absorber.get_provider_last_absorption(provider);
@@ -744,7 +744,7 @@ mod test_absorber {
         common::open_trove_helper(abbot, donor, yangs, yang_asset_amts, gates, provided_amt);
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         yin.transfer(provider, provider_amt.into());
 
@@ -2003,7 +2003,7 @@ mod test_absorber {
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
