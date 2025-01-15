@@ -33,7 +33,9 @@ mod test_flash_mint {
 
     #[test]
     fn test_flashmint_debt_ceiling_exceeded_max_loan() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let equalizer_utils::EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(
+            Option::None
+        );
         let flashmint = flash_mint_utils::flashmint_deploy(shrine.contract_address);
 
         let debt_ceiling: Wad = shrine.get_debt_ceiling();

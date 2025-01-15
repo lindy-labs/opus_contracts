@@ -9,6 +9,12 @@ pub mod controller_utils {
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, SignedRay, Wad};
 
+    #[derive(Copy, Drop)]
+    pub struct ControllerTestConfig {
+        pub controller: IControllerDispatcher,
+        pub shrine: IShrineDispatcher,
+    }
+
     // Controller update interval
     pub const ONE_HOUR: u64 = 60 * 60; // 1 hour
 
@@ -27,7 +33,7 @@ pub mod controller_utils {
         'controller admin'.try_into().unwrap()
     }
 
-    pub fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
+    pub fn deploy_controller() -> ControllerTestConfig {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::make_root(shrine_addr, shrine_utils::admin());
 
@@ -51,10 +57,10 @@ pub mod controller_utils {
 
         start_prank(CheatTarget::All, Zero::zero());
 
-        (
-            IControllerDispatcher { contract_address: controller_addr },
-            IShrineDispatcher { contract_address: shrine_addr }
-        )
+        ControllerTestConfig {
+            controller: IControllerDispatcher { contract_address: controller_addr },
+            shrine: IShrineDispatcher { contract_address: shrine_addr }
+        }
     }
 
     #[inline(always)]

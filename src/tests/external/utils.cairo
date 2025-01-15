@@ -34,6 +34,18 @@ pub mod pragma_utils {
     use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
+    #[derive(Copy, Drop)]
+    pub struct PragmaTestConfig {
+        pub pragma: IPragmaDispatcher,
+        pub mock_pragma: IMockPragmaDispatcher
+    }
+
+    #[derive(Copy, Drop)]
+    pub struct PragmaV2TestConfig {
+        pub pragma: IPragmaV2Dispatcher,
+        pub mock_pragma: IMockPragmaDispatcher
+    }
+
     //
     // Constants
     //
@@ -72,7 +84,7 @@ pub mod pragma_utils {
 
     pub fn pragma_deploy(
         pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
-    ) -> (IPragmaDispatcher, IMockPragmaDispatcher) {
+    ) -> PragmaTestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
             admin().into(),
@@ -91,12 +103,12 @@ pub mod pragma_utils {
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        (pragma, mock_pragma)
+        PragmaTestConfig { pragma, mock_pragma }
     }
 
     pub fn pragma_v2_deploy(
         pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
-    ) -> (IPragmaV2Dispatcher, IMockPragmaDispatcher) {
+    ) -> PragmaV2TestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
             admin().into(),
@@ -115,7 +127,7 @@ pub mod pragma_utils {
 
         let pragma_v2 = IPragmaV2Dispatcher { contract_address: pragma_v2_addr };
 
-        (pragma_v2, mock_pragma)
+        PragmaV2TestConfig { pragma: pragma_v2, mock_pragma }
     }
 
     pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
@@ -213,6 +225,12 @@ pub mod switchboard_utils {
     use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
     use starknet::ContractAddress;
 
+    #[derive(Copy, Drop)]
+    pub struct SwitchboardTestConfig {
+        pub switchboard: ISwitchboardDispatcher,
+        pub mock_switchboard: IMockSwitchboardDispatcher
+    }
+
     pub const ETH_USD_PAIR_ID: felt252 = 'ETH/USD';
     pub const WBTC_USD_PAIR_ID: felt252 = 'BTC/USD';
     pub const TIMESTAMP: u64 = 1710000000;
@@ -237,7 +255,7 @@ pub mod switchboard_utils {
 
     pub fn switchboard_deploy(
         switchboard_class: Option<ContractClass>, mock_switchboard_class: Option<ContractClass>
-    ) -> (ISwitchboardDispatcher, IMockSwitchboardDispatcher) {
+    ) -> SwitchboardTestConfig {
         let mock_switchboard: IMockSwitchboardDispatcher = mock_switchboard_deploy(mock_switchboard_class);
 
         let mut calldata: Array<felt252> = array![admin().into(), mock_switchboard.contract_address.into()];
@@ -251,7 +269,7 @@ pub mod switchboard_utils {
 
         let switchboard = ISwitchboardDispatcher { contract_address: switchboard_addr };
 
-        (switchboard, mock_switchboard)
+        SwitchboardTestConfig { switchboard, mock_switchboard }
     }
 
     pub fn add_yangs(switchboard: ContractAddress, yangs: Span<ContractAddress>) {
@@ -299,6 +317,13 @@ pub mod ekubo_utils {
     use starknet::{ContractAddress, get_block_timestamp,};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
+    #[derive(Copy, Drop)]
+    pub struct EkuboTestConfig {
+        pub ekubo: IEkuboDispatcher,
+        pub mock_ekubo: IMockEkuboOracleExtensionDispatcher,
+        pub quote_tokens: Span<ContractAddress>
+    }
+
     //
     // Constants
     //
@@ -323,15 +348,14 @@ pub mod ekubo_utils {
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
         token_class: Option<ContractClass>
-    ) -> (IEkuboDispatcher, IMockEkuboOracleExtensionDispatcher, Span<ContractAddress>) {
-        let mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher =
-            common::mock_ekubo_oracle_extension_deploy(
+    ) -> EkuboTestConfig {
+        let mock_ekubo: IMockEkuboOracleExtensionDispatcher = common::mock_ekubo_oracle_extension_deploy(
             mock_ekubo_oracle_extension_class
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
         let mut calldata: Array<felt252> = array![
             admin().into(),
-            mock_ekubo_oracle_extension.contract_address.into(),
+            mock_ekubo.contract_address.into(),
             TWAP_DURATION.into(),
             quote_tokens.len().into(),
             (*quote_tokens[0]).into(),
@@ -346,6 +370,6 @@ pub mod ekubo_utils {
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
         let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
 
-        (ekubo, mock_ekubo_oracle_extension, quote_tokens)
+        EkuboTestConfig { ekubo, mock_ekubo, quote_tokens }
     }
 }

@@ -12,10 +12,11 @@ mod test_transmuter {
     use opus::interfaces::ITransmuter::{ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::transmuter::utils::transmuter_utils;
+    use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
-        CheatTarget, ContractClass, EventAssertions, EventSpy, SpyOn, spy_events, start_prank, stop_prank
+        declare, CheatTarget, ContractClass, ContractClassTrait, EventAssertions, EventSpy, SpyOn, spy_events,
+        start_prank, stop_prank
     };
     use starknet::ContractAddress;
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Signed, SignedWad, Wad, WAD_ONE};
@@ -28,7 +29,8 @@ mod test_transmuter {
     #[test]
     fn test_transmuter_deploy() {
         let mut spy = spy_events(SpyOn::All);
-        let (_, transmuter, mock_usd_stable) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, wad_usd_stable, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -36,7 +38,7 @@ mod test_transmuter {
         let ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
         let receiver: ContractAddress = transmuter_utils::receiver();
 
-        assert(transmuter.get_asset() == mock_usd_stable.contract_address, 'wrong asset');
+        assert(transmuter.get_asset() == wad_usd_stable.contract_address, 'wrong asset');
         assert(transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted');
         assert(transmuter.get_ceiling() == ceiling, 'wrong ceiling');
         assert(
@@ -88,7 +90,7 @@ mod test_transmuter {
 
     #[test]
     fn test_set_ceiling() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -117,7 +119,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_ceiling_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -129,7 +131,7 @@ mod test_transmuter {
 
     #[test]
     fn test_set_percentage_cap() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -154,7 +156,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Exceeds upper bound',))]
     fn test_set_percentage_cap_too_high_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -167,7 +169,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_percentage_cap_unauthorized_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -179,7 +181,7 @@ mod test_transmuter {
 
     #[test]
     fn test_set_receiver() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -205,7 +207,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Zero address',))]
     fn test_set_receiver_zero_addr_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -216,7 +218,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_receiver_unauthorized_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -227,7 +229,7 @@ mod test_transmuter {
 
     #[test]
     fn test_set_transmute_and_reverse_fee() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -271,7 +273,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Exceeds max fee',))]
     fn test_set_transmute_fee_exceeds_max_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -284,7 +286,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_transmute_fee_unauthorized_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -297,7 +299,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Exceeds max fee',))]
     fn test_set_reverse_fee_exceeds_max_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -310,7 +312,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_reverse_fee_unauthorized_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -322,7 +324,7 @@ mod test_transmuter {
 
     #[test]
     fn test_toggle_reversibility_pass() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -363,15 +365,16 @@ mod test_transmuter {
     #[test]
     fn test_transmute_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
-        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let token_class = declare("erc20_mintable").unwrap();
+        let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
         );
-        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
+        let wad_transmuter = transmuter;
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
             Option::Some(transmuter_class),
             shrine.contract_address,
-            mock_nonwad_usd_stable.contract_address,
+            nonwad_usd_stable.contract_address,
             transmuter_utils::receiver()
         );
 
@@ -486,7 +489,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('SH: Debt ceiling reached',))]
     fn test_transmute_exceeds_shrine_ceiling_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
         let user: ContractAddress = transmuter_utils::user();
@@ -501,7 +504,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_exceeds_transmuter_ceiling_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -517,7 +520,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_exceeds_percentage_cap_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -539,7 +542,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmute is paused',))]
     fn test_transmute_yin_spot_price_too_low_fail() {
-        let (shrine, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -556,16 +559,17 @@ mod test_transmuter {
     #[test]
     fn test_reverse_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
-        let (shrine, wad_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
         );
-        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
+        let wad_transmuter = transmuter;
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let nonwad_transmuter = transmuter_utils::transmuter_deploy(
             Option::Some(transmuter_class),
             shrine.contract_address,
-            mock_nonwad_usd_stable.contract_address,
+            nonwad_usd_stable.contract_address,
             transmuter_utils::receiver()
         );
 
@@ -704,7 +708,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Reverse is paused',))]
     fn test_reverse_disabled_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -722,7 +726,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Insufficient assets',))]
     fn test_reverse_zero_assets_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -746,7 +750,7 @@ mod test_transmuter {
     fn test_sweep_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -758,10 +762,10 @@ mod test_transmuter {
             match transmuter_ids.pop_front() {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
-                    let asset: IERC20Dispatcher = if *transmuter_id == 0 {
-                        transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
+                    let asset = if *transmuter_id == 0 {
+                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
+                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
 
@@ -858,14 +862,14 @@ mod test_transmuter {
     fn test_withdraw_secondary_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
         let user: ContractAddress = transmuter_utils::user();
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
-        let asset = transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class));
+        let asset = transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class));
 
         let mut secondary_asset_decimals: Span<u8> = array![6, 18].span();
 
@@ -982,8 +986,8 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_withdraw_secondary_asset_unauthorized() {
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let token_class = declare("erc20_mintable").unwrap();
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::Some(token_class)
         );
 
@@ -998,8 +1002,9 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Primary asset',))]
     fn test_withdraw_primary_asset_as_secondary_asset_fail() {
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
-        let (_, transmuter, primary_asset) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let token_class = declare("erc20_mintable").unwrap();
+        let TransmuterTestConfig { transmuter, wad_usd_stable, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::Some(token_class)
         );
 
@@ -1008,7 +1013,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        transmuter.withdraw_secondary_asset(primary_asset.contract_address, BoundedInt::max());
+        transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, BoundedInt::max());
     }
 
     //
@@ -1019,7 +1024,7 @@ mod test_transmuter {
     fn test_settle(transmuter_id: u32) {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
         let transmuter_admin: ContractAddress = transmuter_utils::admin();
         let shrine_admin: ContractAddress = shrine_utils::admin();
@@ -1027,10 +1032,10 @@ mod test_transmuter {
         let user: ContractAddress = transmuter_utils::user();
 
         // parametrize transmuter and asset
-        let asset: IERC20Dispatcher = if transmuter_id == 0 {
-            transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
+        let asset = if transmuter_id == 0 {
+            transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
         } else {
-            transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
+            transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
         };
         let asset_decimals: u8 = asset.decimals();
 
@@ -1160,7 +1165,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_transmute_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1174,7 +1179,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_reverse_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1188,7 +1193,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_sweep_after_settle_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1201,7 +1206,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_sweep_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1217,7 +1222,7 @@ mod test_transmuter {
     fn test_kill_and_reclaim_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -1229,10 +1234,10 @@ mod test_transmuter {
             match transmuter_ids.pop_front() {
                 Option::Some(transmuter_id) => {
                     // parametrize transmuter and asset
-                    let asset: IERC20Dispatcher = if *transmuter_id == 0 {
-                        transmuter_utils::mock_wad_usd_stable_deploy(Option::Some(token_class))
+                    let asset = if *transmuter_id == 0 {
+                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
                     } else {
-                        transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class))
+                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
                     };
                     let asset_decimals: u8 = asset.decimals();
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
@@ -1388,7 +1393,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_kill_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1399,7 +1404,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_transmute_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1413,7 +1418,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_reverse_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1427,7 +1432,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is not live',))]
     fn test_sweep_after_kill_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1440,7 +1445,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Reclaim unavailable',))]
     fn test_reclaim_disabled_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1453,7 +1458,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Transmuter is live',))]
     fn test_enable_reclaim_while_live_fail() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
@@ -1464,7 +1469,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_enable_reclaim_unauthorized() {
-        let (_, transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 

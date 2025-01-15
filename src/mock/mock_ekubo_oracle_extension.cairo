@@ -41,21 +41,17 @@ pub mod mock_ekubo_oracle_extension {
 
 
 pub fn set_next_ekubo_prices(
-    mock_ekubo_oracle_extension_addr: ContractAddress,
+    mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher,
     base_token: ContractAddress,
     mut quote_tokens: Span<ContractAddress>,
     mut prices: Span<u256>
 ) {
-    let mock_ekubo_oracle_extension_setter = IMockEkuboOracleExtensionDispatcher {
-        contract_address: mock_ekubo_oracle_extension_addr
-    };
-
     assert(quote_tokens.len() == prices.len(), 'unequal len');
 
     loop {
         match quote_tokens.pop_front() {
             Option::Some(quote_token) => {
-                mock_ekubo_oracle_extension_setter
+                mock_ekubo_oracle_extension
                     .next_get_price_x128_over_last(base_token, *quote_token, *prices.pop_front().unwrap(),);
             },
             Option::None => { break; }

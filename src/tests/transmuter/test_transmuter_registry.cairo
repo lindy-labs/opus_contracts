@@ -4,9 +4,10 @@ mod test_transmuter_registry {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::{ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait};
+    use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use snforge_std::{CheatTarget, ContractClass, start_prank, stop_prank};
+    use snforge_std::{declare, CheatTarget, ContractClass, ContractClassTrait, start_prank, stop_prank};
     use starknet::ContractAddress;
 
     //
@@ -35,18 +36,20 @@ mod test_transmuter_registry {
     #[test]
     fn test_add_and_remove_transmuters() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class: ContractClass = transmuter_utils::declare_erc20();
+        let token_class = declare("erc20_mintable").unwrap();
 
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (shrine, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { shrine, transmuter, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
         );
-        let mock_nonwad_usd_stable = transmuter_utils::mock_nonwad_usd_stable_deploy(Option::Some(token_class));
+        let first_transmuter = transmuter;
+        let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let second_transmuter = transmuter_utils::transmuter_deploy(
             Option::Some(transmuter_class),
             shrine.contract_address,
-            mock_nonwad_usd_stable.contract_address,
+            nonwad_usd_stable.contract_address,
             transmuter_utils::receiver()
         );
 
@@ -87,13 +90,14 @@ mod test_transmuter_registry {
     fn test_add_duplicate_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (_, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
         start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
-        registry.add_transmuter(first_transmuter.contract_address);
-        registry.add_transmuter(first_transmuter.contract_address);
+        registry.add_transmuter(transmuter.contract_address);
+        registry.add_transmuter(transmuter.contract_address);
     }
 
     #[test]
@@ -101,11 +105,12 @@ mod test_transmuter_registry {
     fn test_remove_nonexistent_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let (_, first_transmuter, _) = transmuter_utils::shrine_with_mock_wad_usd_stable_transmuter(
+        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
+            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
         );
 
         start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
-        registry.remove_transmuter(first_transmuter.contract_address);
+        registry.remove_transmuter(transmuter.contract_address);
     }
 }

@@ -27,17 +27,6 @@ pub mod purger_utils {
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
-    //
-    // Constants
-    //
-
-    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
-    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
-
-    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
-    pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
-
-
     // Struct to group together all contract classes
     // needed for purger tests
     #[derive(Copy, Drop)]
@@ -57,16 +46,33 @@ pub mod purger_utils {
         seer: Option<ContractClass>,
     }
 
+    #[derive(Copy, Drop)]
+    pub struct PurgerTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub abbot: IAbbotDispatcher,
+        pub seer: ISeerV2Dispatcher,
+        pub absorber: IAbsorberDispatcher,
+        pub purger: IPurgerDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>,
+    }
+
+    //
+    // Constants
+    //
+
+    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
+    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
+
+    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
+    pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+
     //
     // Address constants
     //
 
     pub fn admin() -> ContractAddress {
         'purger owner'.try_into().unwrap()
-    }
-
-    pub fn random_user() -> ContractAddress {
-        'random user'.try_into().unwrap()
     }
 
     pub fn searcher() -> ContractAddress {
@@ -322,34 +328,63 @@ pub mod purger_utils {
     // Test setup helpers
     //
 
-    pub fn purger_deploy(
-        classes: Option<PurgerTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        IAbbotDispatcher,
-        ISeerV2Dispatcher,
-        IAbsorberDispatcher,
-        IPurgerDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>,
-    ) {
+    pub fn declare_contracts() -> PurgerTestClasses {
+        PurgerTestClasses {
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: declare("blesser").unwrap(),
+            purger: declare("purger").unwrap(),
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            ekubo: Option::Some(declare("ekubo").unwrap()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
+            seer: Option::Some(declare("seer").unwrap()),
+        }
+    }
+
+    pub fn purger_deploy(classes: Option<PurgerTestClasses>) -> PurgerTestConfig {
         let classes = match classes {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
         };
 
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            classes.abbot, classes.sentinel, classes.token, classes.gate, classes.shrine, classes.absorber,
+        let absorber_classes = absorber_utils::AbsorberTestClasses {
+            abbot: classes.abbot,
+            sentinel: classes.sentinel,
+            token: classes.token,
+            gate: classes.gate,
+            shrine: classes.shrine,
+            absorber: classes.absorber,
+            blesser: Option::Some(classes.blesser)
+        };
+        let absorber_utils::AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } =
+            absorber_utils::absorber_deploy(
+            Option::Some(absorber_classes)
         );
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
 
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
-        absorber_utils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing, classes.blesser);
+        absorber_utils::deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing, Option::Some(classes.blesser)
+        );
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(
-            seer, classes.pragma_v2, classes.mock_pragma, classes.ekubo, classes.mock_ekubo, classes.token
+            seer,
+            Option::Some(
+                seer_utils::OracleTestClasses {
+                    pragma_v2: classes.pragma_v2,
+                    mock_pragma: classes.mock_pragma,
+                    ekubo: classes.ekubo,
+                    mock_ekubo: classes.mock_ekubo
+                }
+            ),
+            classes.token
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -397,24 +432,14 @@ pub mod purger_utils {
 
         stop_prank(CheatTarget::All);
 
-        (shrine, abbot, seer, absorber, purger, yangs, gates)
+        PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates }
     }
 
-    pub fn purger_deploy_with_searcher(
-        searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>
-    ) -> (
-        IShrineDispatcher,
-        IAbbotDispatcher,
-        ISeerV2Dispatcher,
-        IAbsorberDispatcher,
-        IPurgerDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>,
-    ) {
-        let (shrine, abbot, seer, absorber, purger, yangs, gates) = purger_deploy(classes);
-        funded_searcher(abbot, yangs, gates, searcher_yin_amt);
+    pub fn purger_deploy_with_searcher(searcher_yin_amt: Wad, classes: Option<PurgerTestClasses>) -> PurgerTestConfig {
+        let config = purger_deploy(classes);
+        funded_searcher(config.abbot, config.yangs, config.gates, searcher_yin_amt);
 
-        (shrine, abbot, seer, absorber, purger, yangs, gates)
+        config
     }
 
     pub fn flash_liquidator_deploy(
@@ -689,24 +714,6 @@ pub mod purger_utils {
                 },
                 Option::None => { break sum; }
             }
-        }
-    }
-
-    pub fn declare_contracts() -> PurgerTestClasses {
-        PurgerTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
-            absorber: Option::Some(declare("absorber").unwrap()),
-            blesser: declare("blesser").unwrap(),
-            purger: declare("purger").unwrap(),
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
-            ekubo: Option::Some(declare("ekubo").unwrap()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
-            seer: Option::Some(declare("seer").unwrap()),
         }
     }
 

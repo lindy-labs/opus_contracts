@@ -13,7 +13,7 @@ mod test_ekubo {
         IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
     };
     use opus::tests::common;
-    use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr};
+    use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr, ekubo_utils::EkuboTestConfig};
     use opus::utils::ekubo_oracle_adapter::{
         ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
     };
@@ -28,9 +28,8 @@ mod test_ekubo {
 
     #[test]
     fn test_ekubo_setup() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
+        let EkuboTestConfig { ekubo, mock_ekubo, .. } = ekubo_utils::ekubo_deploy(
+            Option::None, Option::None, Option::None
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
 
@@ -49,10 +48,7 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_oracle_extension_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
-        );
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
         start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());
@@ -62,9 +58,8 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_quote_tokens_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
+        let EkuboTestConfig { ekubo, quote_tokens, .. } = ekubo_utils::ekubo_deploy(
+            Option::None, Option::None, Option::None
         );
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
@@ -75,10 +70,7 @@ mod test_ekubo {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_twap_duration_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, _mock_ekubo, _quote_tokens) = ekubo_utils::ekubo_deploy(
-            Option::None, Option::None, Option::Some(token_class)
-        );
+        let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
         start_prank(CheatTarget::One(ekubo.contract_address), common::badguy());
@@ -92,7 +84,7 @@ mod test_ekubo {
     #[test]
     fn test_fetch_price_pass() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
@@ -105,7 +97,7 @@ mod test_ekubo {
         let eth_usdt_x128_price: u256 = 1134582885198987280493503591381;
         let prices = array![eth_dai_x128_price, eth_usdc_x128_price, eth_usdt_x128_price].span();
 
-        set_next_ekubo_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo, eth, quote_tokens, prices);
 
         let result: Result<Wad, felt252> = oracle.fetch_price(eth);
         assert(result.is_ok(), 'fetch price failed #1');
@@ -127,7 +119,7 @@ mod test_ekubo {
         let wbtc_usdt_x128_price: u256 = 317746236343423991390061019847542458957558;
         let prices = array![wbtc_dai_x128_price, wbtc_usdc_x128_price, wbtc_usdt_x128_price].span();
 
-        set_next_ekubo_prices(mock_ekubo.contract_address, wbtc, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo, wbtc, quote_tokens, prices);
 
         let exact_wbtc_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
             wbtc_usdc_x128_price, constants::WBTC_DECIMALS, constants::USDC_DECIMALS
@@ -145,7 +137,7 @@ mod test_ekubo {
     #[test]
     fn test_fetch_price_more_than_one_invalid_price_fail() {
         let token_class = declare("erc20_mintable").unwrap();
-        let (ekubo, mock_ekubo, quote_tokens) = ekubo_utils::ekubo_deploy(
+        let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
@@ -160,7 +152,7 @@ mod test_ekubo {
         let eth_usdt_x128_price: u256 = 0;
         let prices = array![eth_dai_x128_price, eth_usdc_x128_price, eth_usdt_x128_price].span();
 
-        set_next_ekubo_prices(mock_ekubo.contract_address, eth, quote_tokens, prices);
+        set_next_ekubo_prices(mock_ekubo, eth, quote_tokens, prices);
 
         let expected_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS

@@ -17,6 +17,21 @@ pub mod seer_utils {
     use starknet::{get_block_timestamp, ContractAddress};
     use wadray::Wad;
 
+    #[derive(Copy, Drop)]
+    pub struct SeerTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub seer: ISeerV2Dispatcher,
+        pub sentinel: ISentinelDispatcher
+    }
+
+    #[derive(Copy, Drop)]
+    pub struct OracleTestClasses {
+        pub pragma_v2: Option<ContractClass>,
+        pub mock_pragma: Option<ContractClass>,
+        pub ekubo: Option<ContractClass>,
+        pub mock_ekubo: Option<ContractClass>,
+    }
+
     //
     // Constants
     //
@@ -42,10 +57,23 @@ pub mod seer_utils {
         'wbtc token'.try_into().unwrap()
     }
 
+    //
+    // Test setup helpers
+    //
+
+    pub fn declare_oracles() -> OracleTestClasses {
+        OracleTestClasses {
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
+            ekubo: Option::Some(declare("ekubo").unwrap()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
+        }
+    }
+
     pub fn deploy_seer(
-        seer_class: Option<ContractClass>, sentinel_class: Option<ContractClass>, shrine_class: Option<ContractClass>
-    ) -> (ISeerV2Dispatcher, ISentinelDispatcher, IShrineDispatcher) {
-        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_class, shrine_class);
+        seer_class: Option<ContractClass>, sentinel_classes: Option<sentinel_utils::SentinelTestClasses>
+    ) -> SeerTestConfig {
+        let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_classes);
         let calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into()
         ];
@@ -63,11 +91,11 @@ pub mod seer_utils {
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_prank(CheatTarget::One(shrine));
 
-        (
-            ISeerV2Dispatcher { contract_address: seer_addr },
-            sentinel_dispatcher,
-            IShrineDispatcher { contract_address: shrine }
-        )
+        SeerTestConfig {
+            seer: ISeerV2Dispatcher { contract_address: seer_addr },
+            sentinel: sentinel_dispatcher,
+            shrine: IShrineDispatcher { contract_address: shrine }
+        }
     }
 
     pub fn deploy_seer_using(
@@ -105,19 +133,23 @@ pub mod seer_utils {
     }
 
     pub fn add_oracles(
-        seer: ISeerV2Dispatcher,
-        pragma_v2_class: Option<ContractClass>,
-        mock_pragma_class: Option<ContractClass>,
-        ekubo_class: Option<ContractClass>,
-        mock_ekubo_class: Option<ContractClass>,
-        token_class: Option<ContractClass>
+        seer: ISeerV2Dispatcher, oracle_classes: Option<OracleTestClasses>, token_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
+        let oracle_classes = match oracle_classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_oracles()
+        };
+
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_v2_deploy(pragma_v2_class, mock_pragma_class);
+        let pragma_utils::PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(
+            oracle_classes.pragma_v2, oracle_classes.mock_pragma
+        );
         oracles.append(pragma.contract_address);
 
-        let (ekubo, _, _) = ekubo_utils::ekubo_deploy(ekubo_class, mock_ekubo_class, token_class);
+        let ekubo_utils::EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
+            oracle_classes.ekubo, oracle_classes.mock_ekubo, token_class
+        );
         oracles.append(ekubo.contract_address);
 
         start_prank(CheatTarget::One(seer.contract_address), admin());

@@ -10,7 +10,7 @@ mod test_equalizer {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::equalizer::utils::equalizer_utils;
+    use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
@@ -20,7 +20,7 @@ mod test_equalizer {
 
     #[test]
     fn test_equalizer_deploy() {
-        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { equalizer, allocator, .. } = equalizer_utils::equalizer_deploy(Option::None);
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
@@ -33,7 +33,7 @@ mod test_equalizer {
 
     #[test]
     fn test_equalize_pass() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let surplus: Wad = (500 * WAD_ONE).into();
@@ -75,7 +75,7 @@ mod test_equalizer {
 
     #[test]
     fn test_equalize_debt_ceiling_exceeded_pass() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr()].span();
@@ -143,7 +143,7 @@ mod test_equalizer {
 
     #[test]
     fn test_allocate_pass() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         // Simulate minted surplus by injecting to Equalizer directly
@@ -198,7 +198,7 @@ mod test_equalizer {
 
     #[test]
     fn test_allocate_zero_amount_pass() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
 
         assert(shrine.get_yin(equalizer.contract_address).is_zero(), 'sanity check');
 
@@ -207,7 +207,7 @@ mod test_equalizer {
 
     #[test]
     fn test_normalize_pass() {
-        let (shrine, equalizer, _) = equalizer_utils::equalizer_deploy(Option::None);
+        let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let inject_amt: Wad = (5000 * WAD_ONE).into();
@@ -270,7 +270,7 @@ mod test_equalizer {
     #[test]
     fn test_set_allocator_pass() {
         let allocator_class = Option::Some(declare("allocator").unwrap());
-        let (_, equalizer, allocator) = equalizer_utils::equalizer_deploy(allocator_class);
+        let EqualizerTestConfig { allocator, equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
         let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
 
         let new_recipients = equalizer_utils::new_recipients();
@@ -300,7 +300,7 @@ mod test_equalizer {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocator_fail() {
         let allocator_class = Option::Some(declare("allocator").unwrap());
-        let (_, equalizer, _) = equalizer_utils::equalizer_deploy(allocator_class);
+        let EqualizerTestConfig { equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
         let new_allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class
         );

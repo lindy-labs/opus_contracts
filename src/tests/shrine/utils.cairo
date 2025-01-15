@@ -109,11 +109,6 @@ pub mod shrine_utils {
     }
 
     #[inline(always)]
-    pub fn deployment_interval() -> u64 {
-        get_interval(DEPLOYMENT_TIMESTAMP)
-    }
-
-    #[inline(always)]
     pub fn current_interval() -> u64 {
         get_interval(get_block_timestamp())
     }

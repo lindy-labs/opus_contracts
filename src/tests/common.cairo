@@ -197,7 +197,16 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 }
 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
-    array![dai_token_deploy(token_class), usdc_token_deploy(token_class), usdt_token_deploy(token_class)].span()
+    let token_class = match token_class {
+        Option::Some(class) => class,
+        Option::None => declare("erc20_mintable").unwrap()
+    };
+    array![
+        dai_token_deploy(Option::Some(token_class)),
+        usdc_token_deploy(Option::Some(token_class)),
+        usdt_token_deploy(Option::Some(token_class))
+    ]
+        .span()
 }
 
 pub fn eth_vault_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
@@ -399,21 +408,6 @@ pub fn assert_asset_balances_equalish(
             Option::Some(a) => {
                 let b: AssetBalance = *b.pop_front().unwrap();
                 assert(*a.address == b.address, 'wrong asset address');
-                assert_equalish(*a.amount, b.amount, error, message);
-            },
-            Option::None => { break; }
-        };
-    };
-}
-
-pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
-    assert(a.len() == b.len(), message);
-
-    loop {
-        match a.pop_front() {
-            Option::Some(a) => {
-                let b: YangBalance = *b.pop_front().unwrap();
-                assert(*a.yang_id == b.yang_id, 'wrong yang ID');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None => { break; }

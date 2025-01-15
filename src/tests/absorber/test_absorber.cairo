@@ -11,7 +11,7 @@ mod test_absorber {
     };
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::absorber::utils::absorber_utils;
+    use opus::tests::absorber::utils::{absorber_utils, absorber_utils::{AbsorberTestConfig, AbsorberRewardsTestConfig}};
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::common;
     use opus::tests::purger::utils::purger_utils;
@@ -29,9 +29,7 @@ mod test_absorber {
 
     #[test]
     fn test_absorber_setup() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         assert(absorber.get_total_shares_for_current_epoch().is_zero(), 'total shares should be 0');
         assert(absorber.get_current_epoch() == absorber_contract::FIRST_EPOCH, 'epoch should be 1');
@@ -53,22 +51,19 @@ mod test_absorber {
 
     #[test]
     fn test_set_reward_pass() {
-        let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let blesser_class = Option::Some(declare("blesser").unwrap());
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, token_class, Option::None, Option::None, Option::None
-        );
+        let classes = absorber_utils::declare_contracts();
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::Some(classes));
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let opus_token: ContractAddress = absorber_utils::opus_token_deploy(token_class);
+        let opus_token: ContractAddress = absorber_utils::opus_token_deploy(classes.token);
         let opus_blesser: ContractAddress = absorber_utils::deploy_blesser_for_reward(
-            absorber, opus_token, absorber_utils::OPUS_BLESS_AMT, true, blesser_class
+            absorber, opus_token, absorber_utils::OPUS_BLESS_AMT, true, classes.blesser
         );
 
-        let veopus_token: ContractAddress = absorber_utils::veopus_token_deploy(token_class);
+        let veopus_token: ContractAddress = absorber_utils::veopus_token_deploy(classes.token);
         let veopus_blesser: ContractAddress = absorber_utils::deploy_blesser_for_reward(
-            absorber, veopus_token, absorber_utils::veOPUS_BLESS_AMT, true, blesser_class
+            absorber, veopus_token, absorber_utils::veOPUS_BLESS_AMT, true, classes.blesser
         );
 
         let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
@@ -143,9 +138,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Address cannot be 0',))]
     fn test_set_reward_blesser_zero_address_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         let valid_address = common::non_zero_address();
         let invalid_address = Zero::zero();
@@ -157,9 +150,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Address cannot be 0',))]
     fn test_set_reward_token_zero_address_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         let valid_address = common::non_zero_address();
         let invalid_address = Zero::zero();
@@ -174,9 +165,9 @@ mod test_absorber {
 
     #[test]
     fn test_kill_and_remove_pass() {
-        let (shrine, _, _, absorber, _, _, _, _, _, provider, provided_amt) =
+        let (AbsorberTestConfig { shrine, absorber, .. }, AbsorberRewardsTestConfig { provider, provided_amt, .. }) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+            Option::None
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
@@ -216,9 +207,12 @@ mod test_absorber {
     #[test]
     fn test_update_after_kill_pass() {
         // Setup
-        let (shrine, _, _, absorber, yangs, _, reward_tokens, _, _, provider, _) =
+        let (
+            AbsorberTestConfig { shrine, absorber, yangs, .. },
+            AbsorberRewardsTestConfig { reward_tokens, provider, .. }
+        ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None,
+            Option::None
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
@@ -332,9 +326,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_kill_unauthorized_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
         absorber.kill();
@@ -343,9 +335,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Not live',))]
     fn test_provide_after_kill_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.kill();
@@ -358,8 +348,7 @@ mod test_absorber {
 
     #[test]
     fn test_update_and_subsequent_provider_action() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
         // Parametrization so that the second provider action is performed
         // for each percentage
@@ -381,27 +370,17 @@ mod test_absorber {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
                     let (
-                        shrine,
-                        sentinel,
-                        _,
-                        absorber,
-                        yangs,
-                        _,
-                        reward_tokens,
-                        _,
+                        AbsorberTestConfig { shrine, sentinel, absorber, yangs, .. },
+                        AbsorberRewardsTestConfig { reward_tokens,
                         reward_amts_per_blessing,
                         provider,
-                        first_provided_amt
+                        provided_amt,
+                        .. }
                     ) =
                         absorber_utils::absorber_with_rewards_and_first_provider(
-                        abbot_class,
-                        sentinel_class,
-                        token_class,
-                        gate_class,
-                        shrine_class,
-                        absorber_class,
-                        blesser_class
+                        Option::Some(classes)
                     );
+                    let first_provided_amt = provided_amt;
 
                     let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -627,10 +606,9 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_update_unauthorized_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, yangs, _, _, _, _, _, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+        let classes = absorber_utils::declare_contracts();
+        let (AbsorberTestConfig { absorber, yangs, .. }, _) = absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::Some(classes)
         );
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
@@ -646,29 +624,20 @@ mod test_absorber {
 
     #[test]
     fn test_provide_first_epoch() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
         let (
-            shrine,
-            _,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            provider,
-            first_provided_amt
+            AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. },
+            AbsorberRewardsTestConfig { reward_tokens, reward_amts_per_blessing, provider, provided_amt, .. }
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provided_amt = provided_amt;
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
 
         let before_provider_info: Provision = absorber.get_provision(provider);
         let before_last_absorption_id: u32 = absorber.get_provider_last_absorption(provider);
@@ -759,8 +728,8 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Amount too low',))]
     fn test_provide_amount_too_low_zero_shares_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        let AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(
+            Option::None
         );
 
         let donor: ContractAddress = absorber_utils::provider_1();
@@ -774,7 +743,7 @@ mod test_absorber {
         common::open_trove_helper(abbot, donor, yangs, yang_asset_amts, gates, provided_amt);
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         yin.transfer(provider, provider_amt.into());
 
@@ -818,13 +787,16 @@ mod test_absorber {
     #[test]
     fn test_reap_different_epochs() {
         // Setup
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
-        let (shrine, _, abbot, absorber, yangs, gates, reward_tokens, _, reward_amts_per_blessing, first_provider, _) =
+        let (
+            AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. },
+            AbsorberRewardsTestConfig { reward_tokens, reward_amts_per_blessing, provider, .. }
+        ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provider = provider;
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -1055,25 +1027,17 @@ mod test_absorber {
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
     #[test]
     fn test_provide_after_threshold_absorption_above_minimum() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
         let (
-            shrine,
-            _,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            first_provider,
-            first_provided_amt
+            AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. },
+            AbsorberRewardsTestConfig { reward_tokens, reward_amts_per_blessing, provider, provided_amt, .. }
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provider = provider;
+        let first_provided_amt = provided_amt;
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -1298,12 +1262,16 @@ mod test_absorber {
     // 3. Provider 1 should have zero shares due to loss of precision
     #[test]
     fn test_provider_shares_after_threshold_absorption_with_minimum_shares() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (shrine, _, _, absorber, yangs, _, reward_tokens, _, _, first_provider, first_provided_amt) =
+        let classes = absorber_utils::declare_contracts();
+        let (
+            AbsorberTestConfig { shrine, absorber, yangs, .. },
+            AbsorberRewardsTestConfig { reward_tokens, provider, provided_amt, .. }
+        ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provider = provider;
+        let first_provided_amt = provided_amt;
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -1357,24 +1325,16 @@ mod test_absorber {
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
     #[test]
     fn test_provide_after_threshold_absorption_below_initial_shares() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
         let (
-            shrine,
-            _,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            first_provider,
-            first_provided_amt
+            AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. },
+            AbsorberRewardsTestConfig { reward_tokens, reward_amts_per_blessing, provider, provided_amt, .. }
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provider = provider;
+        let first_provided_amt = provided_amt;
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -1507,8 +1467,7 @@ mod test_absorber {
     // 3. Provider 1 withdraws, no rewards should be distributed.
     #[test]
     fn test_after_threshold_absorption_between_initial_and_minimum_shares() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
         let mut remaining_yin_amts: Array<Wad> = array![
             // lower bound for remaining yin without total shares being zeroed
@@ -1522,27 +1481,18 @@ mod test_absorber {
             match remaining_yin_amts.pop_front() {
                 Option::Some(remaining_yin_amt) => {
                     let (
-                        shrine,
-                        _,
-                        _,
-                        absorber,
-                        yangs,
-                        _,
-                        reward_tokens,
-                        _,
+                        AbsorberTestConfig { shrine, absorber, yangs, .. },
+                        AbsorberRewardsTestConfig { reward_tokens,
                         reward_amts_per_blessing,
-                        first_provider,
-                        first_provided_amt
+                        provider,
+                        provided_amt,
+                        .. }
                     ) =
                         absorber_utils::absorber_with_rewards_and_first_provider(
-                        abbot_class,
-                        sentinel_class,
-                        token_class,
-                        gate_class,
-                        shrine_class,
-                        absorber_class,
-                        blesser_class
+                        Option::Some(classes)
                     );
+                    let first_provider = provider;
+                    let first_provided_amt = provided_amt;
 
                     let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
@@ -1633,24 +1583,16 @@ mod test_absorber {
     // 6. Provider 2 reaps, providers share 1 round of rewards
     #[test]
     fn test_multi_user_reap_same_epoch_multi_absorptions() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
         let (
-            shrine,
-            _,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            first_provider,
-            first_provided_amt
+            AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. },
+            AbsorberRewardsTestConfig { reward_tokens, reward_amts_per_blessing, provider, provided_amt, .. }
         ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
+        let first_provider = provider;
+        let first_provided_amt = provided_amt;
 
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1821,10 +1763,10 @@ mod test_absorber {
 
     #[test]
     fn test_request_pass() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+        let classes = absorber_utils::declare_contracts();
+        let (AbsorberTestConfig { absorber, .. }, AbsorberRewardsTestConfig { provider, .. }) =
+            absorber_utils::absorber_with_rewards_and_first_provider(
+            Option::Some(classes)
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
@@ -1879,9 +1821,11 @@ mod test_absorber {
 
     #[test]
     fn test_shrine_killed_and_remove_pass() {
-        let (shrine, _, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
+        let (
+            AbsorberTestConfig { shrine, absorber, yangs, .. }, AbsorberRewardsTestConfig { provider, provided_amt, .. }
+        ) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+            Option::None
         );
 
         shrine_utils::recovery_mode_test_setup(shrine, yangs, common::RecoveryModeSetupType::BufferLowerBound);
@@ -1912,11 +1856,10 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Recovery Mode active',))]
     fn test_remove_exceeds_limit_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (shrine, _, _, absorber, yangs, _, _, _, _, provider, _) =
+        let classes = absorber_utils::declare_contracts();
+        let (AbsorberTestConfig { shrine, absorber, yangs, .. }, AbsorberRewardsTestConfig { provider, .. }) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
 
         // Change ETH price to make Shrine's LTV to threshold above the limit
@@ -1937,11 +1880,9 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: No request found',))]
     fn test_remove_no_request_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
-        );
+        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
+        let absorber = config.absorber;
+        let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.remove(BoundedInt::max());
@@ -1950,11 +1891,9 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Request is no longer valid',))]
     fn test_remove_fulfilled_request_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
-        );
+        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
+        let absorber = config.absorber;
+        let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
@@ -1969,11 +1908,9 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Before withdrawal period',))]
     fn test_remove_request_not_valid_yet_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
-        );
+        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
+        let absorber = config.absorber;
+        let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
@@ -1985,11 +1922,9 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
     fn test_remove_request_expired_fail() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
-        let (_, _, _, absorber, _, _, _, _, _, provider, _) = absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
-        );
+        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
+        let absorber = config.absorber;
+        let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
@@ -2007,9 +1942,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Not a provider',))]
     fn test_non_provider_request_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
         absorber.request();
@@ -2018,9 +1951,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Not a provider',))]
     fn test_non_provider_remove_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
         absorber.remove(0_u128.into());
@@ -2029,9 +1960,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: Not a provider',))]
     fn test_non_provider_reap_fail() {
-        let (_, _, _, absorber, _, _) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
         start_prank(CheatTarget::One(absorber.contract_address), common::badguy());
         absorber.reap();
@@ -2040,8 +1969,8 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('ABS: provision < minimum',))]
     fn test_provide_less_than_initial_shares_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        let AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(
+            Option::None
         );
 
         let provider = absorber_utils::provider_1();
@@ -2061,8 +1990,8 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('SH: Insufficient yin balance',))]
     fn test_provide_insufficient_yin_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
+        let AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(
+            Option::None
         );
 
         let provider = absorber_utils::provider_1();
@@ -2073,7 +2002,7 @@ mod test_absorber {
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
@@ -2084,9 +2013,7 @@ mod test_absorber {
     #[test]
     #[should_panic(expected: ('SH: Insufficient yin allowance',))]
     fn test_provide_insufficient_allowance_fail() {
-        let (_, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, Option::None, Option::None, Option::None, Option::None
-        );
+        let AbsorberTestConfig { abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(Option::None);
 
         let provider = absorber_utils::provider_1();
         let provided_amt: Wad = (10000 * WAD_ONE).into();
@@ -2105,12 +2032,11 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_inactive_reward() {
-        let (abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class) =
-            absorber_utils::declare_contracts();
+        let classes = absorber_utils::declare_contracts();
 
-        let (_, _, _, absorber, _, _, reward_tokens, blessers, _, provider, _) =
+        let (AbsorberTestConfig { absorber, .. }, AbsorberRewardsTestConfig { reward_tokens, blessers, provider, .. }) =
             absorber_utils::absorber_with_rewards_and_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class, blesser_class
+            Option::Some(classes)
         );
 
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
@@ -2191,14 +2117,13 @@ mod test_absorber {
 
     #[test]
     fn test_bestow_depleted_active_reward() {
-        let token_class = Option::Some(declare("erc20_mintable").unwrap());
-        let blesser_class = Option::Some(declare("blesser").unwrap());
-        let (shrine, _, abbot, absorber, yangs, gates) = absorber_utils::absorber_deploy(
-            Option::None, Option::None, token_class, Option::None, Option::None, Option::None
+        let classes = absorber_utils::declare_contracts();
+        let AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(
+            Option::Some(classes)
         );
         let mut spy = spy_events(SpyOn::One(absorber.contract_address));
 
-        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(token_class);
+        let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
 
         let opus_addr: ContractAddress = *reward_tokens.at(0);
         let veopus_addr: ContractAddress = *reward_tokens.at(1);
@@ -2206,10 +2131,10 @@ mod test_absorber {
         // Manually deploy blesser to control minting of reward tokens to blesser
         // so that opus blesser has no tokens
         let opus_blesser_addr: ContractAddress = absorber_utils::deploy_blesser_for_reward(
-            absorber, opus_addr, absorber_utils::OPUS_BLESS_AMT, false, blesser_class
+            absorber, opus_addr, absorber_utils::OPUS_BLESS_AMT, false, classes.blesser
         );
         let veopus_blesser_addr: ContractAddress = absorber_utils::deploy_blesser_for_reward(
-            absorber, veopus_addr, absorber_utils::veOPUS_BLESS_AMT, true, blesser_class
+            absorber, veopus_addr, absorber_utils::veOPUS_BLESS_AMT, true, classes.blesser
         );
 
         let mut blessers: Array<ContractAddress> = array![opus_blesser_addr, veopus_blesser_addr];

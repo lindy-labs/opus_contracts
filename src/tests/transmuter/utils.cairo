@@ -16,6 +16,13 @@ pub mod transmuter_utils {
     use starknet::ContractAddress;
     use wadray::Wad;
 
+    #[derive(Copy, Drop)]
+    pub struct TransmuterTestConfig {
+        pub shrine: IShrineDispatcher,
+        pub transmuter: ITransmuterV2Dispatcher,
+        pub wad_usd_stable: IERC20Dispatcher,
+    }
+
     // Constants
 
     // 1_000_000 (Wad)
@@ -51,10 +58,6 @@ pub mod transmuter_utils {
         declare("transmuter_v2").unwrap()
     }
 
-    pub fn declare_erc20() -> ContractClass {
-        declare("erc20_mintable").unwrap()
-    }
-
     pub fn transmuter_deploy(
         transmuter_class: Option<ContractClass>,
         shrine: ContractAddress,
@@ -80,7 +83,7 @@ pub mod transmuter_utils {
     }
 
     // mock stable with 18 decimals
-    pub fn mock_wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+    pub fn wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
                 'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class
@@ -89,7 +92,7 @@ pub mod transmuter_utils {
     }
 
     // mock stable with 6 decimals
-    pub fn mock_nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
+    pub fn nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
                 'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class
@@ -118,21 +121,21 @@ pub mod transmuter_utils {
         stop_prank(CheatTarget::One(asset));
     }
 
-    pub fn shrine_with_mock_wad_usd_stable_transmuter(
+    pub fn shrine_with_wad_usd_stable_transmuter(
         transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>
-    ) -> (IShrineDispatcher, ITransmuterV2Dispatcher, IERC20Dispatcher) {
+    ) -> TransmuterTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mock_usd_stable: IERC20Dispatcher = mock_wad_usd_stable_deploy(token_class);
+        let wad_usd_stable = wad_usd_stable_deploy(token_class);
 
         let transmuter: ITransmuterV2Dispatcher = transmuter_deploy(
-            transmuter_class, shrine.contract_address, mock_usd_stable.contract_address, receiver()
+            transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver()
         );
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
         let seed_amt: Wad = START_TOTAL_YIN.into();
         setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user());
 
-        (shrine, transmuter, mock_usd_stable)
+        TransmuterTestConfig { shrine, transmuter, wad_usd_stable }
     }
 
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {

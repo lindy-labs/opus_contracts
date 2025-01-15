@@ -24,6 +24,38 @@ pub mod absorber_utils {
     use starknet::ContractAddress;
     use wadray::{Ray, Wad, WAD_ONE, WAD_SCALE};
 
+    // Struct to group together all contract classes
+    // needed for absorber tests
+    #[derive(Copy, Drop)]
+    pub struct AbsorberTestClasses {
+        pub abbot: Option<ContractClass>,
+        pub sentinel: Option<ContractClass>,
+        pub token: Option<ContractClass>,
+        pub gate: Option<ContractClass>,
+        pub shrine: Option<ContractClass>,
+        pub absorber: Option<ContractClass>,
+        pub blesser: Option<ContractClass>,
+    }
+
+    #[derive(Copy, Drop)]
+    pub struct AbsorberTestConfig {
+        pub abbot: IAbbotDispatcher,
+        pub absorber: IAbsorberDispatcher,
+        pub sentinel: ISentinelDispatcher,
+        pub shrine: IShrineDispatcher,
+        pub yangs: Span<ContractAddress>,
+        pub gates: Span<IGateDispatcher>
+    }
+
+    #[derive(Copy, Drop)]
+    pub struct AbsorberRewardsTestConfig {
+        pub reward_tokens: Span<ContractAddress>,
+        pub blessers: Span<ContractAddress>,
+        pub reward_amts_per_blessing: Span<u128>,
+        pub provider: ContractAddress,
+        pub provided_amt: Wad
+    }
+
     //
     // Constants
     //
@@ -83,23 +115,34 @@ pub mod absorber_utils {
     // Test setup helpers
     //
 
-    pub fn absorber_deploy(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>,
-        Span<IGateDispatcher>
-    ) {
-        let (shrine, sentinel, abbot, yangs, gates) = abbot_utils::abbot_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class
+    pub fn declare_contracts() -> AbsorberTestClasses {
+        AbsorberTestClasses {
+            abbot: Option::Some(declare("abbot").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap()),
+            token: Option::Some(declare("erc20_mintable").unwrap()),
+            gate: Option::Some(declare("gate").unwrap()),
+            shrine: Option::Some(declare("shrine").unwrap()),
+            absorber: Option::Some(declare("absorber").unwrap()),
+            blesser: Option::Some(declare("blesser").unwrap()),
+        }
+    }
+
+    pub fn absorber_deploy(classes: Option<AbsorberTestClasses>) -> AbsorberTestConfig {
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
+        };
+
+        let abbot_utils::AbbotTestConfig { shrine, sentinel, abbot, yangs, gates } = abbot_utils::abbot_deploy(
+            Option::Some(
+                abbot_utils::AbbotTestClasses {
+                    abbot: classes.abbot,
+                    sentinel: classes.sentinel,
+                    token: classes.token,
+                    gate: classes.gate,
+                    shrine: classes.shrine
+                }
+            )
         );
 
         let admin: ContractAddress = admin();
@@ -108,11 +151,7 @@ pub mod absorber_utils {
             admin.into(), shrine.contract_address.into(), sentinel.contract_address.into(),
         ];
 
-        let absorber_class = match absorber_class {
-            Option::Some(class) => class,
-            Option::None => declare("absorber").unwrap()
-        };
-
+        let absorber_class = classes.absorber.unwrap();
         let (absorber_addr, _) = absorber_class.deploy(@calldata).expect('absorber deploy failed');
 
         start_prank(CheatTarget::One(absorber_addr), admin);
@@ -121,7 +160,7 @@ pub mod absorber_utils {
         stop_prank(CheatTarget::One(absorber_addr));
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
-        (shrine, sentinel, abbot, absorber, yangs, gates)
+        AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates }
     }
 
     pub fn opus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
@@ -180,7 +219,7 @@ pub mod absorber_utils {
         absorber: IAbsorberDispatcher,
         mut assets: Span<ContractAddress>,
         mut bless_amts: Span<u128>,
-        blesser_class: ContractClass
+        blesser_class: Option<ContractClass>
     ) -> Span<ContractAddress> {
         let mut blessers: Array<ContractAddress> = ArrayTrait::new();
 
@@ -188,7 +227,7 @@ pub mod absorber_utils {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let blesser: ContractAddress = deploy_blesser_for_reward(
-                        absorber, *asset, *bless_amts.pop_front().unwrap(), true, Option::Some(blesser_class)
+                        absorber, *asset, *bless_amts.pop_front().unwrap(), true, blesser_class
                     );
                     blessers.append(blesser);
                 },
@@ -215,90 +254,39 @@ pub mod absorber_utils {
     }
 
     pub fn absorber_with_first_provider(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>, // yangs
-        Span<IGateDispatcher>,
-        ContractAddress, // provider
-        Wad, // provided amount
+        classes: Option<AbsorberTestClasses>
+    ) -> (AbsorberTestConfig, ContractAddress, // provider
+     Wad, // provided amount
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
-        );
+        let AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } = absorber_deploy(classes);
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt);
 
-        (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt)
+        (AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates }, provider, provided_amt)
     }
 
     // Helper function to deploy Absorber, add rewards and create a trove.
     pub fn absorber_with_rewards_and_first_provider(
-        abbot_class: Option<ContractClass>,
-        sentinel_class: Option<ContractClass>,
-        token_class: Option<ContractClass>,
-        gate_class: Option<ContractClass>,
-        shrine_class: Option<ContractClass>,
-        absorber_class: Option<ContractClass>,
-        blesser_class: Option<ContractClass>,
-    ) -> (
-        IShrineDispatcher,
-        ISentinelDispatcher,
-        IAbbotDispatcher,
-        IAbsorberDispatcher,
-        Span<ContractAddress>, // yangs
-        Span<IGateDispatcher>,
-        Span<ContractAddress>, // reward tokens
-        Span<ContractAddress>, // blessers
-        Span<u128>, // reward amts per blessing
-        ContractAddress, // provider
-        Wad, // provided amount
-    ) {
-        let token_class = Option::Some(
-            match token_class {
-                Option::Some(class) => class,
-                Option::None => declare("erc20_mintable").unwrap()
-            }
-        );
-
-        let blesser_class = match blesser_class {
-            Option::Some(class) => class,
-            Option::None => declare("blesser").unwrap()
+        classes: Option<AbsorberTestClasses>
+    ) -> (AbsorberTestConfig, AbsorberRewardsTestConfig) {
+        let classes = match classes {
+            Option::Some(classes) => classes,
+            Option::None => declare_contracts(),
         };
+        let (absorber_test_config, provider, provided_amt) = absorber_with_first_provider(Option::Some(classes));
 
-        let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider(
-            abbot_class, sentinel_class, token_class, gate_class, shrine_class, absorber_class
-        );
-
-        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(token_class);
+        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy(classes.token);
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
         let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing, blesser_class
+            absorber_test_config.absorber, reward_tokens, reward_amts_per_blessing, classes.blesser
         );
-        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+        add_rewards_to_absorber(absorber_test_config.absorber, reward_tokens, blessers);
 
         (
-            shrine,
-            sentinel,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            blessers,
-            reward_amts_per_blessing,
-            provider,
-            provided_amt
+            absorber_test_config,
+            AbsorberRewardsTestConfig { reward_tokens, blessers, reward_amts_per_blessing, provider, provided_amt }
         )
     }
 
@@ -321,7 +309,7 @@ pub mod absorber_utils {
         );
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, BoundedInt::max());
         stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);
@@ -685,25 +673,5 @@ pub mod absorber_utils {
                 Option::None => { break; }
             };
         };
-    }
-
-    pub fn declare_contracts() -> (
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>,
-        Option<ContractClass>
-    ) {
-        (
-            Option::Some(declare("abbot").unwrap()),
-            Option::Some(declare("sentinel").unwrap()),
-            Option::Some(declare("erc20_mintable").unwrap()),
-            Option::Some(declare("gate").unwrap()),
-            Option::Some(declare("shrine").unwrap()),
-            Option::Some(declare("absorber").unwrap()),
-            Option::Some(declare("blesser").unwrap()),
-        )
     }
 }
