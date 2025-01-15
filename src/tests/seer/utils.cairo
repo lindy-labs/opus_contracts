@@ -142,7 +142,9 @@ pub mod seer_utils {
 
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let (pragma, _) = pragma_utils::pragma_v2_deploy(oracle_classes.pragma_v2, oracle_classes.mock_pragma);
+        let pragma_utils::PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(
+            oracle_classes.pragma_v2, oracle_classes.mock_pragma
+        );
         oracles.append(pragma.contract_address);
 
         let ekubo_utils::EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(
