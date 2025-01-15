@@ -11,8 +11,7 @@ mod test_absorber {
     };
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::absorber::utils::absorber_utils::{AbsorberTestConfig, AbsorberRewardsTestConfig};
-    use opus::tests::absorber::utils::absorber_utils;
+    use opus::tests::absorber::utils::{absorber_utils, absorber_utils::{AbsorberTestConfig, AbsorberRewardsTestConfig}};
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::common;
     use opus::tests::purger::utils::purger_utils;

@@ -8,8 +8,9 @@ mod test_switchboard {
     use opus::interfaces::ISwitchboard::{ISwitchboardDispatcher, ISwitchboardDispatcherTrait};
     use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::switchboard_utils::{SwitchboardTestConfig, TIMESTAMP};
-    use opus::tests::external::utils::{mock_eth_token_addr, switchboard_utils};
+    use opus::tests::external::utils::{
+        mock_eth_token_addr, switchboard_utils, switchboard_utils::{SwitchboardTestConfig, TIMESTAMP}
+    };
     use opus::tests::seer::utils::seer_utils::ETH_INIT_PRICE;
     use snforge_std::{
         start_prank, stop_prank, spy_events, CheatTarget, ContractClassTrait, EventAssertions, EventSpy, SpyOn

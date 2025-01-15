@@ -7,8 +7,7 @@ mod test_abbot {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::abbot::utils::abbot_utils::{AbbotTestConfig, AbbotTestTrove};
-    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::abbot::utils::{abbot_utils, abbot_utils::{AbbotTestConfig, AbbotTestTrove}};
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;

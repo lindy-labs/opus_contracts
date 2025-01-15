@@ -4,8 +4,7 @@ mod test_controller {
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::controller::utils::controller_utils::ControllerTestConfig;
-    use opus::tests::controller::utils::controller_utils;
+    use opus::tests::controller::utils::{controller_utils, controller_utils::ControllerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
     use starknet::get_block_timestamp;

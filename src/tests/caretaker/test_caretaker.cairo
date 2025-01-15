@@ -8,8 +8,7 @@ mod test_caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::abbot::utils::abbot_utils;
-    use opus::tests::caretaker::utils::caretaker_utils::CaretakerTestConfig;
-    use opus::tests::caretaker::utils::caretaker_utils;
+    use opus::tests::caretaker::utils::{caretaker_utils, caretaker_utils::CaretakerTestConfig};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};

@@ -10,8 +10,7 @@ mod test_equalizer {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::equalizer::utils::equalizer_utils::EqualizerTestConfig;
-    use opus::tests::equalizer::utils::equalizer_utils;
+    use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};

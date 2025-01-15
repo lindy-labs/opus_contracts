@@ -12,8 +12,7 @@ mod test_transmuter {
     use opus::interfaces::ITransmuter::{ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::transmuter::utils::transmuter_utils::TransmuterTestConfig;
-    use opus::tests::transmuter::utils::transmuter_utils;
+    use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
         declare, CheatTarget, ContractClass, ContractClassTrait, EventAssertions, EventSpy, SpyOn, spy_events,

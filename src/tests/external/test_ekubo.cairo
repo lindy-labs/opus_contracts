@@ -13,8 +13,7 @@ mod test_ekubo {
         IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
     };
     use opus::tests::common;
-    use opus::tests::external::utils::ekubo_utils::EkuboTestConfig;
-    use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr};
+    use opus::tests::external::utils::{ekubo_utils, mock_eth_token_addr, ekubo_utils::EkuboTestConfig};
     use opus::utils::ekubo_oracle_adapter::{
         ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
     };

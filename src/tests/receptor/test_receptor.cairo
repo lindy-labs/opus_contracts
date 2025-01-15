@@ -9,8 +9,7 @@ mod test_receptor {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
-    use opus::tests::receptor::utils::receptor_utils::ReceptorTestConfig;
-    use opus::tests::receptor::utils::receptor_utils;
+    use opus::tests::receptor::utils::{receptor_utils, receptor_utils::ReceptorTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
     use opus::utils::ekubo_oracle_adapter::{
