@@ -15,7 +15,6 @@ pub mod controller_utils {
         pub shrine: IShrineDispatcher,
     }
 
-
     // Controller update interval
     pub const ONE_HOUR: u64 = 60 * 60; // 1 hour
 

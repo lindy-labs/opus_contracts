@@ -1018,7 +1018,7 @@ mod test_purger {
         let (penalty, max_close_amt, expected_compensation_value) = purger
             .preview_absorb(target_trove)
             .expect('Should be absorbable');
-        let caller: ContractAddress = purger_utils::random_user();
+        let caller: ContractAddress = common::non_zero_address();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![caller].span());
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -1264,7 +1264,7 @@ mod test_purger {
                                                                 'not less than close amount'
                                                             );
 
-                                                            let caller: ContractAddress = purger_utils::random_user();
+                                                            let caller: ContractAddress = common::non_zero_address();
 
                                                             let before_caller_asset_bals: Span<Span<u128>> =
                                                                 common::get_token_balances(
@@ -1629,7 +1629,7 @@ mod test_purger {
                     // sanity check
                     assert(max_close_amt < target_trove_start_health.debt, 'close amt ge trove debt #1');
 
-                    let caller: ContractAddress = purger_utils::random_user();
+                    let caller: ContractAddress = common::non_zero_address();
 
                     let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
                         yangs, array![caller].span()
@@ -2900,7 +2900,7 @@ mod test_purger {
                                                         shrine, purger, target_trove, target_trove_updated_start_health
                                                     );
 
-                                                    let caller: ContractAddress = purger_utils::random_user();
+                                                    let caller: ContractAddress = common::non_zero_address();
                                                     let before_caller_asset_bals: Span<Span<u128>> =
                                                         common::get_token_balances(
                                                         yangs, array![caller].span()
@@ -3175,7 +3175,7 @@ mod test_purger {
                         assert(max_close_amt < target_trove_updated_start_health.debt, 'close amount == debt');
                     }
 
-                    let caller: ContractAddress = purger_utils::random_user();
+                    let caller: ContractAddress = common::non_zero_address();
                     start_prank(CheatTarget::One(purger.contract_address), caller);
                     let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
@@ -3457,7 +3457,7 @@ mod test_purger {
                         }
                     }
 
-                    let caller: ContractAddress = purger_utils::random_user();
+                    let caller: ContractAddress = common::non_zero_address();
                     start_prank(CheatTarget::One(purger.contract_address), caller);
                     let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
@@ -3741,7 +3741,7 @@ mod test_purger {
 
         purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, shrine.get_trove_health(healthy_trove));
 
-        start_prank(CheatTarget::One(purger.contract_address), purger_utils::random_user());
+        start_prank(CheatTarget::One(purger.contract_address), common::non_zero_address());
         purger.absorb(healthy_trove);
     }
 
@@ -3769,7 +3769,7 @@ mod test_purger {
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health);
         purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
 
-        start_prank(CheatTarget::One(purger.contract_address), purger_utils::random_user());
+        start_prank(CheatTarget::One(purger.contract_address), common::non_zero_address());
         purger.absorb(target_trove);
     }
 

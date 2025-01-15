@@ -75,10 +75,6 @@ pub mod purger_utils {
         'purger owner'.try_into().unwrap()
     }
 
-    pub fn random_user() -> ContractAddress {
-        'random user'.try_into().unwrap()
-    }
-
     pub fn searcher() -> ContractAddress {
         'searcher'.try_into().unwrap()
     }

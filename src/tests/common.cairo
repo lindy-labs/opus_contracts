@@ -415,21 +415,6 @@ pub fn assert_asset_balances_equalish(
     };
 }
 
-pub fn assert_yang_balances_equalish(mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252) {
-    assert(a.len() == b.len(), message);
-
-    loop {
-        match a.pop_front() {
-            Option::Some(a) => {
-                let b: YangBalance = *b.pop_front().unwrap();
-                assert(*a.yang_id == b.yang_id, 'wrong yang ID');
-                assert_equalish(*a.amount, b.amount, error, message);
-            },
-            Option::None => { break; }
-        };
-    };
-}
-
 // Helper to assert that an event was not emitted at all by checking the event name only
 // without checking specific values of the event's members
 pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, Event)>, event_selector: felt252) {
