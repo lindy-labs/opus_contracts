@@ -34,6 +34,14 @@ pub mod abbot_utils {
         pub gates: Span<IGateDispatcher>
     }
 
+    #[derive(Copy, Drop)]
+    pub struct AbbotTestTrove {
+        pub trove_id: u64,
+        pub trove_owner: ContractAddress,
+        pub yang_asset_amts: Span<u128>,
+        pub forge_amt: Wad,
+    }
+
     //
     // Constants
     //
@@ -114,30 +122,22 @@ pub mod abbot_utils {
         AbbotTestConfig { shrine, sentinel, abbot, yangs, gates }
     }
 
-    pub fn deploy_abbot_and_open_trove(
-        classes: Option<AbbotTestClasses>
-    ) -> (
-        AbbotTestConfig,
-        ContractAddress, // trove owner
-        u64, // trove ID
-        Span<u128>, // deposited yang asset amounts
-        Wad, // forge amount
-    ) {
+    pub fn deploy_abbot_and_open_trove(classes: Option<AbbotTestClasses>) -> (AbbotTestConfig, AbbotTestTrove) {
         let abbot_test_config = abbot_deploy(classes);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, abbot_test_config.yangs, initial_asset_amts());
-        let deposited_amts: Span<u128> = open_trove_yang_asset_amts();
+        let yang_asset_amts: Span<u128> = open_trove_yang_asset_amts();
         let trove_id: u64 = common::open_trove_helper(
             abbot_test_config.abbot,
             trove_owner,
             abbot_test_config.yangs,
-            deposited_amts,
+            yang_asset_amts,
             abbot_test_config.gates,
             forge_amt
         );
 
-        (abbot_test_config, trove_owner, trove_id, deposited_amts, forge_amt)
+        (abbot_test_config, AbbotTestTrove { trove_owner, trove_id, yang_asset_amts, forge_amt })
     }
 }

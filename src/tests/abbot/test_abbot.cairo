@@ -7,7 +7,7 @@ mod test_abbot {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::tests::abbot::utils::abbot_utils::AbbotTestConfig;
+    use opus::tests::abbot::utils::abbot_utils::{AbbotTestConfig, AbbotTestTrove};
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
@@ -221,7 +221,7 @@ mod test_abbot {
 
     #[test]
     fn test_close_trove_pass() {
-        let (AbbotTestConfig { shrine, abbot, yangs, .. }, trove_owner, trove_id, _, _) =
+        let (AbbotTestConfig { shrine, abbot, yangs, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -292,7 +292,9 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_close_non_owner_fail() {
-        let (AbbotTestConfig { abbot, .. }, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(Option::None);
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_id, .. }) = abbot_utils::deploy_abbot_and_open_trove(
+            Option::None
+        );
 
         start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
         abbot.close_trove(trove_id);
@@ -300,7 +302,9 @@ mod test_abbot {
 
     #[test]
     fn test_deposit_pass() {
-        let (AbbotTestConfig { shrine, abbot, yangs, .. }, trove_owner, trove_id, deposited_amts, _) =
+        let (
+            AbbotTestConfig { shrine, abbot, yangs, .. }, AbbotTestTrove { trove_owner, trove_id, yang_asset_amts, .. }
+        ) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -310,7 +314,7 @@ mod test_abbot {
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         let mut yangs_copy = yangs;
-        let mut deposited_amts_copy = deposited_amts;
+        let mut deposited_amts_copy = yang_asset_amts;
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
@@ -354,7 +358,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_deposit_zero_address_yang_fail() {
-        let (AbbotTestConfig { abbot, .. }, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -382,7 +387,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_deposit_not_trove_owner_fail() {
-        let (AbbotTestConfig { abbot, yangs, .. }, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, yangs, .. }, AbbotTestTrove { trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -396,7 +402,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_deposit_invalid_yang_fail() {
-        let (AbbotTestConfig { abbot, .. }, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -411,7 +418,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Exceeds max amount allowed',))]
     fn test_deposit_exceeds_asset_cap_fail() {
-        let (AbbotTestConfig { sentinel, abbot, yangs, gates, .. }, trove_owner, trove_id, _, _) =
+        let (AbbotTestConfig { sentinel, abbot, yangs, gates, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -432,7 +439,7 @@ mod test_abbot {
 
     #[test]
     fn test_withdraw_pass() {
-        let (AbbotTestConfig { shrine, abbot, yangs, .. }, trove_owner, trove_id, _, _) =
+        let (AbbotTestConfig { shrine, abbot, yangs, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -549,7 +556,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_withdraw_zero_address_yang_fail() {
-        let (AbbotTestConfig { abbot, .. }, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -563,7 +571,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SE: Yang not added',))]
     fn test_withdraw_invalid_yang_fail() {
-        let (AbbotTestConfig { abbot, .. }, trove_owner, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -578,7 +587,8 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_withdraw_non_owner_fail() {
-        let (AbbotTestConfig { abbot, yangs, .. }, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(
+        let (AbbotTestConfig { abbot, yangs, .. }, AbbotTestTrove { trove_id, .. }) =
+            abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
 
@@ -592,7 +602,7 @@ mod test_abbot {
 
     #[test]
     fn test_forge_pass() {
-        let (AbbotTestConfig { shrine, abbot, yangs, .. }, trove_owner, trove_id, _, forge_amt) =
+        let (AbbotTestConfig { shrine, abbot, yangs, .. }, AbbotTestTrove { trove_owner, trove_id, forge_amt, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -611,7 +621,7 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > threshold',))]
     fn test_forge_ltv_unsafe_fail() {
-        let (AbbotTestConfig { shrine, abbot, yangs, gates, .. }, trove_owner, trove_id, _, _) =
+        let (AbbotTestConfig { shrine, abbot, yangs, gates, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -631,7 +641,9 @@ mod test_abbot {
     #[test]
     #[should_panic(expected: ('ABB: Not trove owner',))]
     fn test_forge_non_owner_fail() {
-        let (AbbotTestConfig { abbot, .. }, _, trove_id, _, _) = abbot_utils::deploy_abbot_and_open_trove(Option::None);
+        let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_id, .. }) = abbot_utils::deploy_abbot_and_open_trove(
+            Option::None
+        );
 
         start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
         abbot.forge(trove_id, Zero::zero(), Zero::zero());
@@ -639,7 +651,9 @@ mod test_abbot {
 
     #[test]
     fn test_melt_pass() {
-        let (AbbotTestConfig { shrine, abbot, yangs, gates, .. }, trove_owner, trove_id, _, start_forge_amt) =
+        let (
+            AbbotTestConfig { shrine, abbot, yangs, gates, .. }, AbbotTestTrove { trove_owner, trove_id, forge_amt, .. }
+        ) =
             abbot_utils::deploy_abbot_and_open_trove(
             Option::None
         );
@@ -658,7 +672,7 @@ mod test_abbot {
         // Test non-owner melting
         let non_owner: ContractAddress = common::trove2_owner_addr();
         common::fund_user(non_owner, yangs, abbot_utils::initial_asset_amts());
-        let non_owner_forge_amt = start_forge_amt;
+        let non_owner_forge_amt = forge_amt;
         common::open_trove_helper(
             abbot, non_owner, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, non_owner_forge_amt
         );
