@@ -57,6 +57,11 @@ fn main() {
     // utils::grant_role(shrine, purger, shrine_roles::purger(), "SHR -> PU");
     // utils::grant_role(shrine, seer, shrine_roles::seer(), "SHR -> SEER");
 
+    // utils::revoke_role(absorber, addresses::mainnet::purger(), absorber_roles::purger(), "ABS -> PU");
+    // utils::revoke_role(sentinel, addresses::mainnet::purger(), sentinel_roles::purger(), "SE -> PU");
+    // utils::revoke_role(shrine, addresses::mainnet::purger(), shrine_roles::purger(), "SHR -> PU");
+    // utils::revoke_role(shrine, addresses::mainnet::seer(), shrine_roles::seer(), "SHR -> SEER");
+
     // Update prices
     println!("Updating prices");
     let _update_prices = invoke(
@@ -81,5 +86,5 @@ fn main() {
     println!("Frontend Data Provider: {}", frontend_data_provider);
     println!("Pragma v2: {}", pragma);
     println!("Purger: {}", purger);
-    println!("Seer: {}", seer);
+    println!("Seer v2: {}", seer);
 }

@@ -89,5 +89,5 @@ fn main() {
     println!("Frontend Data Provider: {}", frontend_data_provider);
     println!("Pragma v2: {}", pragma);
     println!("Purger: {}", purger);
-    println!("Seer: {}", seer);
+    println!("Seer v2: {}", seer);
 }
