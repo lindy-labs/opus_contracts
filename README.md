@@ -56,12 +56,12 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Controller  | `0x0005efaa9df09e86be5aa8ffa453adc11977628ddc0cb493625ca0f3caaa94b2` |
 | Equalizer   | `0x013be5f3de034ca1a0dec2b2da4cce2d0fe5505511cbea7a309979c45202d052` |
 | Flash Mint  | `0x0726e7d7bef2bcfc2814e0d5f0735b1a9326a98f2307a5edfda8db82d60d3f5f` |
-| Frontend Data Provider | `0x03d124e4166a09fb92787d480d44d6c25e6f638f706f8ae4074ee2766b634293` |
+| Frontend Data Provider | `0x0148763033b7ecb24f425e150867835c95ac40dfd7bc8b1ff26dd4c3fed59fce` |
 | Gate[ETH]   | `0x02e1e0988565d99cd3a384e9f9cf2d348af50ee1ad549880aa37ba625e8c98d6` |
 | Gate[STRK]  | `0x05c6ec6e1748fbab3d65c2aa7897aeb7d7ec843331c1a469666e162da735fd5f` |
-| Pragma      | `0x02a67fac89d6921b05067b99e2491ce753778958ec89b0b0221b22c16a3073f7` |
-| Purger      | `0x0397fda455fd16d76995da81908931057594527b46cc99e12b8e579a9127e372` |
-| Seer        | `0x07bdece1aeb7f2c31a90a6cc73dfdba1cb9055197cca24b6117c9e0895a1832d` |
+| Pragma v2   | `0x077402727ec67d177e10b2a4e54b631d5d1bad6dc0dda08cd15c7f179aede624` |
+| Purger      | `0x02ffd8c21cbfb3f5efb78f250f0c8e4e527cbb264e2d6e8f2731cb594d2ed81c` |
+| Seer v2     | `0x044501c24bb9c4eb1b02372943d42320d091826e7b047c23132b427a2b8b7696` |
 | Sentinel    | `0x04c4d997f2a4b1fbf9db9c290ea1c97cb596e7765e058978b25683efd88e586d` |
 | Shrine      | `0x0398c179d65929f3652b6b82875eaf5826ea1c9a9dd49271e0d749328186713e` |
 | Transmuter[USDC] (Restricted) | `0x03280ae1d855fd195a63bc72fa19c2f8a9820b7871f34eff13e3841ff7388c81` |
