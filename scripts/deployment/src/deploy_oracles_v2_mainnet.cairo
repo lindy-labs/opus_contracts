@@ -46,7 +46,7 @@ fn main() {
     utils::set_yang_pair_settings_for_oracle(pragma, xstrk, constants::pragma_xstrk_pair_settings());
     utils::set_yang_pair_settings_for_oracle(pragma, sstrk, constants::pragma_sstrk_pair_settings());
 
-    utils::set_oracles_to_seer(seer, array![pragma].span());
+    utils::set_oracles_to_seer(seer, array![pragma, ekubo].span());
 
     utils::grant_role(seer, purger, seer_roles::purger(), "SEER -> PU");
 
