@@ -20,7 +20,7 @@ fn main() {
 
     let ekubo: ContractAddress = core_deployment::deploy_ekubo(multisig, addresses::mainnet::ekubo_oracle_extension());
 
-    let pragma: ContractAddress = core_deployment::deploy_pragma(
+    let pragma: ContractAddress = core_deployment::deploy_pragma_v2(
         multisig,
         addresses::mainnet::pragma_spot_oracle(),
         addresses::mainnet::pragma_twap_oracle(),
@@ -67,7 +67,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        multisig, shrine, sentinel, abbot, purger
+        Option::None, multisig, shrine, sentinel, abbot, purger
     );
 
     // Transfer admin role to multisig

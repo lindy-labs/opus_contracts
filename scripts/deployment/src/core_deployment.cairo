@@ -255,7 +255,6 @@ pub fn deploy_gate(
     deploy_gate_result.unwrap().contract_address
 }
 
-// This can be used for both Pragma v1 and Pragma v2
 pub fn deploy_pragma(
     admin: ContractAddress,
     spot_oracle: ContractAddress,
@@ -264,6 +263,26 @@ pub fn deploy_pragma(
     sources_threshold: u32
 ) -> ContractAddress {
     let declare_pragma = declare("pragma", Option::Some(MAX_FEE), Option::None).expect('failed pragma declare');
+    let calldata: Array<felt252> = array![
+        admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into()
+    ];
+
+    let deploy_pragma = deploy(
+        declare_pragma.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
+    )
+        .expect('failed pragma deploy');
+
+    deploy_pragma.contract_address
+}
+
+pub fn deploy_pragma_v2(
+    admin: ContractAddress,
+    spot_oracle: ContractAddress,
+    twap_oracle: ContractAddress,
+    freshness_threshold: u64,
+    sources_threshold: u32
+) -> ContractAddress {
+    let declare_pragma = declare("pragma_v2", Option::Some(MAX_FEE), Option::None).expect('failed pragma declare');
     let calldata: Array<felt252> = array![
         admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into()
     ];
@@ -289,6 +308,8 @@ pub fn deploy_switchboard(admin: ContractAddress, oracle: ContractAddress) -> Co
     deploy_switchboard.contract_address
 }
 
+// Note that this works only for mainnet because Sepolia only has USDC and USDT so we are unable
+// to have 3 quote tokens in the first place. Also, USDT/EKUBO pool is not initialized.
 pub fn deploy_ekubo(admin: ContractAddress, oracle: ContractAddress) -> ContractAddress {
     let declare_ekubo = declare("ekubo", Option::Some(MAX_FEE), Option::None).expect('failed ekubo declare');
 
