@@ -1,4 +1,4 @@
-use starknet::ContractAddress;
+use starknet::{ClassHash, ContractAddress};
 
 // https://github.com/starknet-io/starknet-addresses/blob/master/bridged_tokens/
 
@@ -8,6 +8,10 @@ pub fn eth_addr() -> ContractAddress {
 
 pub fn strk_addr() -> ContractAddress {
     0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d.try_into().expect('invalid STRK address')
+}
+
+pub fn frontend_data_provider_class_hash() -> ClassHash {
+    0x057de79aa98ec372b03eae8a68077e719926035da35ac6ab0d64822d41457019.try_into().expect('invalid fdp class hash')
 }
 
 pub mod devnet {
@@ -110,7 +114,7 @@ pub mod devnet {
 }
 
 pub mod sepolia {
-    use starknet::{ClassHash, ContractAddress};
+    use starknet::ContractAddress;
 
     pub fn admin() -> ContractAddress {
         0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
@@ -134,10 +138,6 @@ pub mod sepolia {
     }
 
     // deployments
-    pub fn frontend_data_provider_class_hash() -> ClassHash {
-        0x057de79aa98ec372b03eae8a68077e719926035da35ac6ab0d64822d41457019.try_into().expect('invalid fdp class hash')
-    }
-
     pub fn abbot() -> ContractAddress {
         0x04280b97ecb8f1e0536e41888e387a04c3796e393f7086e5e24d61614927bc30.try_into().unwrap()
     }

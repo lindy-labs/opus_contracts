@@ -67,7 +67,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::None, multisig, shrine, sentinel, abbot, purger
+        Option::Some(addresses::frontend_data_provider_class_hash()), multisig, shrine, sentinel, abbot, purger
     );
 
     // Transfer admin role to multisig
