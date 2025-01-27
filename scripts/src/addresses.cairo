@@ -110,7 +110,7 @@ pub mod devnet {
 }
 
 pub mod sepolia {
-    use starknet::ContractAddress;
+    use starknet::{ClassHash, ContractAddress};
 
     pub fn admin() -> ContractAddress {
         0x17721cd89df40d33907b70b42be2a524abeea23a572cf41c79ffe2422e7814e.try_into().expect('invalid admin address')
@@ -134,6 +134,10 @@ pub mod sepolia {
     }
 
     // deployments
+    pub fn frontend_data_provider_class_hash() -> ClassHash {
+        0x057de79aa98ec372b03eae8a68077e719926035da35ac6ab0d64822d41457019.try_into().expect('invalid fdp class hash')
+    }
+
     pub fn abbot() -> ContractAddress {
         0x04280b97ecb8f1e0536e41888e387a04c3796e393f7086e5e24d61614927bc30.try_into().unwrap()
     }

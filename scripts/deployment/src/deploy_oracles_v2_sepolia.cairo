@@ -5,7 +5,7 @@ use opus::periphery::roles::frontend_data_provider_roles;
 use scripts::addresses;
 use scripts::constants;
 use sncast_std::{invoke, InvokeResult, DisplayContractAddress};
-use starknet::{ClassHash, ContractAddress};
+use starknet::ContractAddress;
 
 fn main() {
     let deployment_addr: ContractAddress = addresses::sepolia::admin();
@@ -74,11 +74,8 @@ fn main() {
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
-    let fdp_class_hash: ClassHash = 0x057de79aa98ec372b03eae8a68077e719926035da35ac6ab0d64822d41457019
-        .try_into()
-        .expect('invalid fdp class hash');
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::Some(fdp_class_hash), admin, shrine, sentinel, abbot, purger
+        Option::Some(addresses::sepolia::frontend_data_provider_class_hash()), admin, shrine, sentinel, abbot, purger
     );
 
     // Transfer admin role to admin
