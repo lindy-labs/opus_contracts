@@ -1348,12 +1348,11 @@ pub mod shrine {
             // Catch troves with no value
             if value.is_zero() {
                 // This `if` branch handles a corner case where a trove without any yangs deposited (i.e. zero value)
-                // attempts to forge a non-zero debt. It ensures that the `assert_healthy` check in `forge` would
-                // fail and revert.
+                // attempts to forge a non-zero debt. It ensures that `trove.is_healthy` will return false.
                 // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of
                 //   of debt / value will run into a zero division error.
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
-                //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
+                //   incorrectly set to 0 and `trove.is_healthy` will retrun true and fail to catch this illegal operation.
                 let ltv: Ray = if trove.debt.is_non_zero() {
                     BoundedInt::max()
                 } else {
