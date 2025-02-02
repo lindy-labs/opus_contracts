@@ -4,13 +4,22 @@ use scripts::constants::MAX_FEE;
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
 use starknet::ContractAddress;
 
-pub fn grant_role(target: ContractAddress, receiver: ContractAddress, role: u128, msg: ByteArray) {
+pub fn grant_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
-        target, selector!("grant_role"), array![role.into(), receiver.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("grant_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None
     )
         .expect('grant role failed');
 
     println!("Role granted: {}", msg);
+}
+
+pub fn revoke_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
+    let _grant_role = invoke(
+        target, selector!("revoke_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None
+    )
+        .expect('revoke role failed');
+
+    println!("Role revoked: {}", msg);
 }
 
 pub fn transfer_admin_and_role(
@@ -93,8 +102,8 @@ pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddres
 
 // Used for Pragma v2
 pub fn set_yang_pair_settings_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_settings: PairSettings) {
-    let mut calldata = array![yang.into(), pair_settings.pair_id];
-    pair_settings.aggregation_mode.serialize(ref calldata);
+    let mut calldata = array![yang.into()];
+    pair_settings.serialize(ref calldata);
     let _set_yang_pair_settings = invoke(
         oracle, selector!("set_yang_pair_settings"), calldata, Option::Some(MAX_FEE), Option::None,
     )

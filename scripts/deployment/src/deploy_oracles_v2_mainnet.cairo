@@ -20,7 +20,7 @@ fn main() {
 
     let ekubo: ContractAddress = core_deployment::deploy_ekubo(multisig, addresses::mainnet::ekubo_oracle_extension());
 
-    let pragma: ContractAddress = core_deployment::deploy_pragma(
+    let pragma: ContractAddress = core_deployment::deploy_pragma_v2(
         multisig,
         addresses::mainnet::pragma_spot_oracle(),
         addresses::mainnet::pragma_twap_oracle(),
@@ -46,7 +46,7 @@ fn main() {
     utils::set_yang_pair_settings_for_oracle(pragma, xstrk, constants::pragma_xstrk_pair_settings());
     utils::set_yang_pair_settings_for_oracle(pragma, sstrk, constants::pragma_sstrk_pair_settings());
 
-    utils::set_oracles_to_seer(seer, array![pragma].span());
+    utils::set_oracles_to_seer(seer, array![pragma, ekubo].span());
 
     utils::grant_role(seer, purger, seer_roles::purger(), "SEER -> PU");
 
@@ -56,6 +56,11 @@ fn main() {
     // utils::grant_role(sentinel, purger, sentinel_roles::purger(), "SE -> PU");
     // utils::grant_role(shrine, purger, shrine_roles::purger(), "SHR -> PU");
     // utils::grant_role(shrine, seer, shrine_roles::seer(), "SHR -> SEER");
+
+    // utils::revoke_role(absorber, addresses::mainnet::purger(), absorber_roles::purger(), "ABS -> PU");
+    // utils::revoke_role(sentinel, addresses::mainnet::purger(), sentinel_roles::purger(), "SE -> PU");
+    // utils::revoke_role(shrine, addresses::mainnet::purger(), shrine_roles::purger(), "SHR -> PU");
+    // utils::revoke_role(shrine, addresses::mainnet::seer(), shrine_roles::seer(), "SHR -> SEER");
 
     // Update prices
     println!("Updating prices");
@@ -67,7 +72,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        multisig, shrine, sentinel, abbot, purger
+        Option::Some(addresses::frontend_data_provider_class_hash()), multisig, shrine, sentinel, abbot, purger
     );
 
     // Transfer admin role to multisig
@@ -81,5 +86,5 @@ fn main() {
     println!("Frontend Data Provider: {}", frontend_data_provider);
     println!("Pragma v2: {}", pragma);
     println!("Purger: {}", purger);
-    println!("Seer: {}", seer);
+    println!("Seer v2: {}", seer);
 }

@@ -46,6 +46,7 @@ build-external-contracts = [
 deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet --package deployment"
 deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia --package deployment"
 deploy_mainnet = "sncast --profile mainnet script run deploy_mainnet --package deployment"
+deploy_oracles_v2_sepolia = "sncast --profile sepolia script run deploy_oracles_v2_sepolia --package deployment"
 deploy_oracles_v2_mainnet = "sncast --profile mainnet script run deploy_oracles_v2_mainnet --package deployment"
 
 upgrade_fdp_devnet = "rm upgrade_fdp_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run upgrade_fdp_devnet --package deployment"
