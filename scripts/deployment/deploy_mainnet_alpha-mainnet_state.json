@@ -1048,6 +1048,17 @@
         "status": "Success",
         "timestamp": 1733363485,
         "misc": null
+      },
+      "fa15b875c2c4c6a778599345e080edcfe3c8b1296c76bb04623b45e351b34081": {
+        "name": "deploy",
+        "output": {
+          "type": "DeployResponse",
+          "contract_address": "0x3dc297a3788751d6d02acfea1b5dcc21a0eee1d34317a91aea2fbd49113ea58",
+          "transaction_hash": "0x5a77ccd2d2b9ab1ee2bad06d0060bb34c766add701b7bb4b9da8715826904a4"
+        },
+        "status": "Success",
+        "timestamp": 1738808475,
+        "misc": null
       }
     }
   }
