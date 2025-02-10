@@ -129,7 +129,7 @@ pub mod receptor {
         }
 
         fn set_oracle_extension(ref self: ContractState, oracle_extension: ContractAddress) {
-            self.access_control.assert_has_role(receptor_roles::SET_QUOTE_TOKENS);
+            self.access_control.assert_has_role(receptor_roles::SET_ORACLE_EXTENSION);
 
             self.ekubo_oracle_adapter.set_oracle_extension(oracle_extension);
         }
