@@ -9,7 +9,7 @@ pub mod ekubo {
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;
     use opus::utils::ekubo_oracle_adapter::{ekubo_oracle_adapter_component, IEkuboOracleAdapter};
-    use opus::utils::math::{median_of_three, convert_ekubo_oracle_price_to_wad};
+    use opus::utils::math::median_of_three;
     use starknet::ContractAddress;
     use wadray::Wad;
 
