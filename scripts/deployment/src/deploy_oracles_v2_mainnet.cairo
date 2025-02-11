@@ -77,6 +77,7 @@ fn main() {
 
     // Transfer admin role to multisig
     utils::transfer_admin_and_role(pragma, multisig, pragma_roles::default_admin_role(), "Pragma");
+    utils::transfer_admin_and_role(purger, multisig, purger_roles::default_admin_role(), "Purger");
     utils::transfer_admin_and_role(seer, multisig, seer_roles::default_admin_role(), "Seer");
 
     // Print summary table of deployed contracts
