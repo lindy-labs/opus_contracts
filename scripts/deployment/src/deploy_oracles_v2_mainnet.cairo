@@ -4,8 +4,8 @@ use opus::external::roles::pragma_roles;
 use opus::periphery::roles::frontend_data_provider_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{invoke, InvokeResult, DisplayContractAddress};
-use starknet::ContractAddress;
+use sncast_std::{deploy, DeployResult, invoke, InvokeResult, DisplayContractAddress};
+use starknet::{ClassHash, ContractAddress};
 
 fn main() {
     let deployment_addr: ContractAddress = addresses::mainnet::admin();
@@ -21,14 +21,25 @@ fn main() {
     let ekubo: ContractAddress = core_deployment::deploy_ekubo(multisig, addresses::mainnet::ekubo_oracle_extension());
 
     let pragma: ContractAddress = core_deployment::deploy_pragma_v2(
-        multisig,
+        deployment_addr,
         addresses::mainnet::pragma_spot_oracle(),
         addresses::mainnet::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
         constants::PRAGMA_SOURCES_THRESHOLD
     );
     let seer: ContractAddress = core_deployment::deploy_seer_v2(deployment_addr, shrine, sentinel);
-    let purger: ContractAddress = core_deployment::deploy_purger(multisig, shrine, sentinel, absorber, seer);
+
+    let purger_class_hash: ClassHash = 0x020edc26d65626a79f17d96e07d638b790c57435f9ffe0b1c446cc617a1b2d82
+        .try_into()
+        .unwrap();
+    let purger_calldata: Array<felt252> = array![
+        multisig.into(), shrine.into(), sentinel.into(), absorber.into(), seer.into()
+    ];
+    let purger = deploy(
+        purger_class_hash, purger_calldata, Option::None, true, Option::Some(constants::MAX_FEE), Option::None
+    )
+        .expect('failed purger deploy')
+        .contract_address;
 
     // Set up oracles
     println!("Setting up oracles");
@@ -63,11 +74,11 @@ fn main() {
     // utils::revoke_role(shrine, addresses::mainnet::seer(), shrine_roles::seer(), "SHR -> SEER");
 
     // Update prices
-    println!("Updating prices");
-    let _update_prices = invoke(
-        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
-    )
-        .expect('update prices failed');
+    // println!("Updating prices");
+    // let _update_prices = invoke(
+    //     seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+    // )
+    //     .expect('update prices failed');
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
@@ -77,7 +88,6 @@ fn main() {
 
     // Transfer admin role to multisig
     utils::transfer_admin_and_role(pragma, multisig, pragma_roles::default_admin_role(), "Pragma");
-    utils::transfer_admin_and_role(purger, multisig, purger_roles::default_admin_role(), "Purger");
     utils::transfer_admin_and_role(seer, multisig, seer_roles::default_admin_role(), "Seer");
 
     // Print summary table of deployed contracts
