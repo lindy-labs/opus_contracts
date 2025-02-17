@@ -35,5 +35,5 @@ Option (2) is intended to enable price updates when redistributions occur to ens
 
 ## Supported Oracles
 
-At launch, the protocol will rely on [Pragma](https://www.pragma.build/) as the primary oracle and [Switchboard](https://switchboard.xyz/) as the fallback oracle. More fallback oracles may be added as and when they are available on Starknet.
+At launch, the protocol will rely on [Pragma](https://www.pragma.build/) as the primary oracle. More fallback oracles may be added as and when they are available on Starknet.
 
