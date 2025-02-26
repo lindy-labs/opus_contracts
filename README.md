@@ -34,7 +34,8 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[ETH]   | `0x0315ce9c5d3e5772481181441369d8eea74303b9710a6c72e3fcbbdb83c0dab1` |
 | Gate[STRK]  | `0x031a96fe18fe3fdab28822c82c81471f1802800723c8f3e209f1d9da53bc637d` |
 | Gate[WBTC]  | `0x05bc1c8a78667fac3bf9617903dbf2c1bfe3937e1d37ada3d8b86bf70fb7926e` |
-| Gate[WSTETH] | `0x02d1e95661e7726022071c06a95cdae092595954096c373cde24a34bb3984cbf` |
+| Gate[WSTETH_LEGACY] | `0x02d1e95661e7726022071c06a95cdae092595954096c373cde24a34bb3984cbf` |
+| Gate[WSTETH] | `0x03dc297a3788751d6d02acfea1b5dcc21a0eee1d34317a91aea2fbd49113ea58` |
 | Gate[xSTRK] | `0x04a3e7dffd8e74a706be9abe6474e07fbbcf41e1be71387514c4977d54dbc428` |
 | Gate[sSTRK] | `0x03b709f3ab9bc072a195b907fb2c27688723b6e4abb812a8941def819f929bd8` |
 | Pragma v2   | `0x0532f8b442e90eae93493a4f3e4f6d3bf2579e56a75238b786a5e90cb82fdfe9` |

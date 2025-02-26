@@ -239,6 +239,10 @@ pub mod mainnet {
         0x042b8f0484674ca266ac5d08e4ac6a3fe65bd3129795def2dca5c34ecc5f96d2.try_into().expect('invalid WSTETH address')
     }
 
+    pub fn wsteth_canonical() -> ContractAddress {
+        0x0057912720381af14b0e5c87aa4718ed5e527eab60b3801ebf702ab09139e38b.try_into().expect('invalid WSTETH address')
+    }
+
     pub fn xstrk() -> ContractAddress {
         0x028d709c875c0ceac3dce7065bec5328186dc89fe254527084d1689910954b0a.try_into().expect('invalid xSTRK address')
     }

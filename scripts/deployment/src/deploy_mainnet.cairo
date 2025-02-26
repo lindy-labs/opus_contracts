@@ -47,6 +47,7 @@ fn main() {
     let wsteth: ContractAddress = addresses::mainnet::wsteth();
     let xstrk: ContractAddress = addresses::mainnet::xstrk();
     let sstrk: ContractAddress = addresses::mainnet::sstrk();
+    let wsteth_canonical: ContractAddress = addresses::mainnet::wsteth_canonical();
 
     let eth_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, eth, sentinel, "ETH");
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
@@ -56,6 +57,9 @@ fn main() {
     );
     let xstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, xstrk, sentinel, "xSTRK");
     let sstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, sstrk, sentinel, "sSTRK");
+    let wsteth_canonical_gate: ContractAddress = core_deployment::deploy_gate(
+        gate_class_hash, shrine, wsteth_canonical, sentinel, "WSTETH"
+    );
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
@@ -233,6 +237,7 @@ fn main() {
     println!("Gate[WSTETH]: {}", wsteth_gate);
     println!("Gate[xSTRK]: {}", xstrk_gate);
     println!("Gate[sSTRK]: {}", sstrk_gate);
+    println!("Gate[WSTETH_CANONICAL]: {}", wsteth_canonical_gate);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
     println!("Receptor: {}", receptor);
