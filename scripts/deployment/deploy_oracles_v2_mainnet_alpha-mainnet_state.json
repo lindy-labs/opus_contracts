@@ -66,16 +66,6 @@
         "timestamp": 1739248277,
         "misc": null
       },
-      "2648363ff48566f7af77a2d82548c17660bf2201e9319b61f4e2333d032aa848": {
-        "name": "invoke",
-        "output": {
-          "type": "ErrorResponse",
-          "message": "Transaction has been reverted = Transaction execution has failed:\n0: Error in the called contract (contract address: 0x0684f8b5dd37cad41327891262cb17397fdb3daf54e861ec90f781c004972b15, class hash: 0x05400e90f7e0ae78bd02c77cd75527280470e2fe19c54970dd79dc37a9d3645c, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nError at pc=0:4573:\nCairo traceback (most recent call last):\nUnknown location (pc=0:67)\nUnknown location (pc=0:1835)\nUnknown location (pc=0:2478)\nUnknown location (pc=0:3255)\nUnknown location (pc=0:3795)\n\n1: Error in the called contract (contract address: 0x02cef5286b554f4122a2070bbd492a95ad810774903c92633979ed54d51b04ca, class hash: 0x020edc26d65626a79f17d96e07d638b790c57435f9ffe0b1c446cc617a1b2d82, selector: 0x018a2f881894a5eb15a2a00f598839abaa75bd7f1fea1a37e42779d7fbcd9cf8):\nExecution failed. Failure reason: 0x43616c6c6572206e6f742061646d696e ('Caller not admin').\n"
-        },
-        "status": "Fail",
-        "timestamp": 1739249384,
-        "misc": null
-      },
       "bb72654c424ae6b38ba8563b4b0633ef741bb3ca3813f6736a588de9c1f5db76": {
         "name": "invoke",
         "output": {
