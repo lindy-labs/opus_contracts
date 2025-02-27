@@ -1,0 +1,530 @@
+[
+  {
+    "type": "impl",
+    "name": "ISeerV2Impl",
+    "interface_name": "opus::interfaces::ISeer::ISeerV2"
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<core::starknet::contract_address::ContractAddress>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<core::starknet::contract_address::ContractAddress>"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "opus::types::PriceType",
+    "variants": [
+      {
+        "name": "Direct",
+        "type": "()"
+      },
+      {
+        "name": "Vault",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::ISeer::ISeerV2",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_oracles",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_update_frequency",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::integer::u64"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_yang_price_type",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "opus::types::PriceType"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "set_oracles",
+        "inputs": [
+          {
+            "name": "oracles",
+            "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_update_frequency",
+        "inputs": [
+          {
+            "name": "new_frequency",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_yang_price_type",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "price_type",
+            "type": "opus::types::PriceType"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "update_prices",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "ITaskImpl",
+    "interface_name": "opus::external::interfaces::ITask"
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::external::interfaces::ITask",
+    "items": [
+      {
+        "type": "function",
+        "name": "probe_task",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "execute_task",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlPublic",
+    "interface_name": "access_control::access_control::IAccessControl"
+  },
+  {
+    "type": "interface",
+    "name": "access_control::access_control::IAccessControl",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_roles",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "has_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pending_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grant_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revoke_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounce_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_pending_admin",
+        "inputs": [
+          {
+            "name": "new_admin",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_admin",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "shrine",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "sentinel",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "update_frequency",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::AdminChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::NewPendingAdmin",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleGranted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_granted",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleRevoked",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_revoked",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AdminChanged",
+        "type": "access_control::access_control::access_control_component::AdminChanged",
+        "kind": "nested"
+      },
+      {
+        "name": "NewPendingAdmin",
+        "type": "access_control::access_control::access_control_component::NewPendingAdmin",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleGranted",
+        "type": "access_control::access_control::access_control_component::RoleGranted",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleRevoked",
+        "type": "access_control::access_control::access_control_component::RoleRevoked",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "wadray::wadray::Wad",
+    "members": [
+      {
+        "name": "val",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::PriceUpdate",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "oracle",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "yang",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "price",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::PriceUpdateMissed",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yang",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::UpdateFrequencyUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_frequency",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "new_frequency",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::UpdatePricesDone",
+    "kind": "struct",
+    "members": []
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::YangPriceTypeUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yang",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "price_type",
+        "type": "opus::types::PriceType",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::seer_v2::seer_v2::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AccessControlEvent",
+        "type": "access_control::access_control::access_control_component::Event",
+        "kind": "nested"
+      },
+      {
+        "name": "PriceUpdate",
+        "type": "opus::core::seer_v2::seer_v2::PriceUpdate",
+        "kind": "nested"
+      },
+      {
+        "name": "PriceUpdateMissed",
+        "type": "opus::core::seer_v2::seer_v2::PriceUpdateMissed",
+        "kind": "nested"
+      },
+      {
+        "name": "UpdateFrequencyUpdated",
+        "type": "opus::core::seer_v2::seer_v2::UpdateFrequencyUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "UpdatePricesDone",
+        "type": "opus::core::seer_v2::seer_v2::UpdatePricesDone",
+        "kind": "nested"
+      },
+      {
+        "name": "YangPriceTypeUpdated",
+        "type": "opus::core::seer_v2::seer_v2::YangPriceTypeUpdated",
+        "kind": "nested"
+      }
+    ]
+  }
+]

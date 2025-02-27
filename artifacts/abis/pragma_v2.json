@@ -1,0 +1,533 @@
+[
+  {
+    "type": "impl",
+    "name": "IPragmaV2Impl",
+    "interface_name": "opus::interfaces::IPragma::IPragmaV2"
+  },
+  {
+    "type": "enum",
+    "name": "opus::types::pragma::AggregationMode",
+    "variants": [
+      {
+        "name": "Median",
+        "type": "()"
+      },
+      {
+        "name": "Mean",
+        "type": "()"
+      },
+      {
+        "name": "ConversionRate",
+        "type": "()"
+      },
+      {
+        "name": "Error",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::pragma::PairSettings",
+    "members": [
+      {
+        "name": "pair_id",
+        "type": "core::felt252"
+      },
+      {
+        "name": "aggregation_mode",
+        "type": "opus::types::pragma::AggregationMode"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::IPragma::IPragmaV2",
+    "items": [
+      {
+        "type": "function",
+        "name": "set_yang_pair_settings",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "pair_settings",
+            "type": "opus::types::pragma::PairSettings"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_price_validity_thresholds",
+        "inputs": [
+          {
+            "name": "freshness",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "sources",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "IOracleImpl",
+    "interface_name": "opus::interfaces::IOracle::IOracle"
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<core::starknet::contract_address::ContractAddress>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<core::starknet::contract_address::ContractAddress>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "wadray::wadray::Wad",
+    "members": [
+      {
+        "name": "val",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::result::Result::<wadray::wadray::Wad, core::felt252>",
+    "variants": [
+      {
+        "name": "Ok",
+        "type": "wadray::wadray::Wad"
+      },
+      {
+        "name": "Err",
+        "type": "core::felt252"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::IOracle::IOracle",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_name",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_oracles",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "fetch_price",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::result::Result::<wadray::wadray::Wad, core::felt252>"
+          }
+        ],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "AccessControlPublic",
+    "interface_name": "access_control::access_control::IAccessControl"
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "access_control::access_control::IAccessControl",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_roles",
+        "inputs": [
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u128"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "has_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pending_admin",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "grant_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "revoke_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "renounce_role",
+        "inputs": [
+          {
+            "name": "role",
+            "type": "core::integer::u128"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_pending_admin",
+        "inputs": [
+          {
+            "name": "new_admin",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "accept_admin",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "spot_oracle",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "twap_oracle",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "freshness_threshold",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "sources_threshold",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::AdminChanged",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::NewPendingAdmin",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "new_admin",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleGranted",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_granted",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::RoleRevoked",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "user",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "role_revoked",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "access_control::access_control::access_control_component::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AdminChanged",
+        "type": "access_control::access_control::access_control_component::AdminChanged",
+        "kind": "nested"
+      },
+      {
+        "name": "NewPendingAdmin",
+        "type": "access_control::access_control::access_control_component::NewPendingAdmin",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleGranted",
+        "type": "access_control::access_control::access_control_component::RoleGranted",
+        "kind": "nested"
+      },
+      {
+        "name": "RoleRevoked",
+        "type": "access_control::access_control::access_control_component::RoleRevoked",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::external::pragma_v2::pragma_v2::InvalidSpotPriceUpdate",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pair_id",
+        "type": "core::felt252",
+        "kind": "key"
+      },
+      {
+        "name": "aggregation_mode",
+        "type": "opus::types::pragma::AggregationMode",
+        "kind": "data"
+      },
+      {
+        "name": "price",
+        "type": "wadray::wadray::Wad",
+        "kind": "data"
+      },
+      {
+        "name": "pragma_last_updated_ts",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "pragma_num_sources",
+        "type": "core::integer::u32",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::pragma::PriceValidityThresholds",
+    "members": [
+      {
+        "name": "freshness",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "sources",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::external::pragma_v2::pragma_v2::PriceValidityThresholdsUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "old_thresholds",
+        "type": "opus::types::pragma::PriceValidityThresholds",
+        "kind": "data"
+      },
+      {
+        "name": "new_thresholds",
+        "type": "opus::types::pragma::PriceValidityThresholds",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::external::pragma_v2::pragma_v2::YangPairSettingsUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "address",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "pair_settings",
+        "type": "opus::types::pragma::PairSettings",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::external::pragma_v2::pragma_v2::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "AccessControlEvent",
+        "type": "access_control::access_control::access_control_component::Event",
+        "kind": "nested"
+      },
+      {
+        "name": "InvalidSpotPriceUpdate",
+        "type": "opus::external::pragma_v2::pragma_v2::InvalidSpotPriceUpdate",
+        "kind": "nested"
+      },
+      {
+        "name": "PriceValidityThresholdsUpdated",
+        "type": "opus::external::pragma_v2::pragma_v2::PriceValidityThresholdsUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "YangPairSettingsUpdated",
+        "type": "opus::external::pragma_v2::pragma_v2::YangPairSettingsUpdated",
+        "kind": "nested"
+      }
+    ]
+  }
+]

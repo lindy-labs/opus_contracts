@@ -294,6 +294,10 @@ pub mod mainnet {
         0x07558a9da2fac57f5a4381fef8c36c92ca66adc20978063982382846f72a4448.try_into().unwrap()
     }
 
+    pub fn ekubo() -> ContractAddress {
+        0x048a1cc699025faec330b85ab74a7586e424206a481daed14160982b57567cce.try_into().unwrap()
+    }
+
     pub fn equalizer() -> ContractAddress {
         0x066e3e2ea2095b2a0424b9a2272e4058f30332df5ff226518d19c20d3ab8e842.try_into().unwrap()
     }
@@ -307,23 +311,23 @@ pub mod mainnet {
     }
 
     pub fn frontend_data_provider() -> ContractAddress {
-        0x037063d98568c6d9b383f5353b2f85d9710c0338ef8c49c15700e68d046da430.try_into().unwrap()
+        0x023037703b187f6ff23b883624a0a9f266c9d44671e762048c70100c2f128ab9.try_into().unwrap()
     }
 
-    pub fn pragma() -> ContractAddress {
-        0x0734abeebd842926c860f3f82d23a7d2e0a24c8756d7f6b88a7456dc95a7e0fd.try_into().unwrap()
+    pub fn pragma_v2() -> ContractAddress {
+        0x0532f8b442e90eae93493a4f3e4f6d3bf2579e56a75238b786a5e90cb82fdfe9.try_into().unwrap()
     }
 
     pub fn purger() -> ContractAddress {
-        0x0149c1539f39945ce1f63917ff6076845888ab40e9327640cb78dcaebfed42e4.try_into().unwrap()
+        0x02cef5286b554f4122a2070bbd492a95ad810774903c92633979ed54d51b04ca.try_into().unwrap()
     }
 
     pub fn receptor() -> ContractAddress {
         0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678.try_into().unwrap()
     }
 
-    pub fn seer() -> ContractAddress {
-        0x07b4d65be7415812cea9edcfce5cf169217f4a53fce84e693fe8efb5be9f0437.try_into().unwrap()
+    pub fn seer_v2() -> ContractAddress {
+        0x076baf9a48986ae11b144481aec7699823d7ebc5843f30cf47b053ebfe579824.try_into().unwrap()
     }
 
     pub fn sentinel() -> ContractAddress {
