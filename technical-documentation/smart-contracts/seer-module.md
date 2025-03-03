@@ -35,5 +35,8 @@ Option (2) is intended to enable price updates when redistributions occur to ens
 
 ## Supported Oracles
 
-At launch, the protocol will rely on [Pragma](https://www.pragma.build/) as the primary oracle. More fallback oracles may be added as and when they are available on Starknet.
+Presently, the protocol relies on the following oracles in order of priority:
+
+1. [Pragma](https://www.pragma.build/) as the primary oracle, taking the lower of the spot price and the 7-days TWAP;
+2. [Ekubo](https://ekubo.org/) oracle pools as the fallback oracle if Pragma's spot price is determined to be invalid, taking the 1H TWAP.
 
