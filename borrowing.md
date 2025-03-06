@@ -16,6 +16,9 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 | wBTC   | 4%        | 78%                |
 | wstETH | 4.75%     | 79%                |
 | STRK   | 7%        | 63%                |
+| xSTRK  | 9%        | 60%                |
+| sSTRK  | 9%        | 60%                |
+| EKUBO  | 8%        | 60%                |
 
 {% hint style="info" %}
 New collateral types will be added in short order.
