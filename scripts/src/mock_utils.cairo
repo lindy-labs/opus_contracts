@@ -1,6 +1,5 @@
 use opus::constants::PRAGMA_DECIMALS;
 use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
-use opus::mock::mock_switchboard::{IMockSwitchboardDispatcher, IMockSwitchboardDispatcherTrait};
 use opus::types::pragma::PragmaPricesResponse;
 use scripts::constants::{MAX_FEE, PRAGMA_SOURCES_THRESHOLD};
 use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
@@ -38,29 +37,4 @@ pub fn set_mock_pragma_prices(
         };
     };
     println!("Prices set for mock Pragma");
-}
-
-pub fn set_mock_switchboard_prices(
-    mock_switchboard: ContractAddress, mut pair_ids: Span<felt252>, mut prices: Span<u128>
-) {
-    let ts = 1000;
-
-    loop {
-        match pair_ids.pop_front() {
-            Option::Some(pair_id) => {
-                let price = *prices.pop_front().unwrap();
-
-                let _set_twap_price = invoke(
-                    mock_switchboard,
-                    selector!("next_get_latest_result"),
-                    array![*pair_id, price.into(), ts.into(),],
-                    Option::Some(MAX_FEE),
-                    Option::None,
-                )
-                    .expect('set switchboard price failed');
-            },
-            Option::None => { break; },
-        };
-    };
-    println!("Prices set for mock Switchboard");
 }

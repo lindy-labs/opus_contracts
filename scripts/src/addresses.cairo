@@ -64,10 +64,6 @@ pub mod devnet {
         0x485f7ce22da86b087fed259bca12f7cf4684a02158048d4a7098c61fce9b09f.try_into().unwrap()
     }
 
-    pub fn mock_switchboard() -> ContractAddress {
-        0x446e0de2b6ea68f73c027a3a3c06f13828a67230c719f71144c99bca328a2e2.try_into().unwrap()
-    }
-
     pub fn pragma() -> ContractAddress {
         0x60b9d9307875f8559384570b94339933bd9afa9ab12c7ec170ac4aa37b03ba1.try_into().unwrap()
     }
@@ -90,10 +86,6 @@ pub mod devnet {
 
     pub fn strk_gate() -> ContractAddress {
         0x3beae87c85ae726d33e071c982b4d075586f58660a53e1e80deda56c6fb579.try_into().unwrap()
-    }
-
-    pub fn switchboard() -> ContractAddress {
-        0x301a2fa543f905409698adb96823e293871befeb8459b14633447d01edd1d06.try_into().unwrap()
     }
 
     pub fn usdc_transmuter_restricted() -> ContractAddress {

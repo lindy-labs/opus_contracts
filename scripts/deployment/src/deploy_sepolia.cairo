@@ -47,7 +47,7 @@ fn main() {
         constants::PRAGMA_FRESHNESS_THRESHOLD,
         constants::PRAGMA_SOURCES_THRESHOLD
     );
-    // Switchboard is not yet deployed on Starknet Sepolia
+
     utils::set_oracles_to_seer(seer, array![pragma].span());
 
     println!("Setting up roles");
