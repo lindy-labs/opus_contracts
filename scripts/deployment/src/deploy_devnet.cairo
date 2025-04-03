@@ -32,7 +32,6 @@ fn main() {
     // Deploy mocks
     println!("Deploying mocks");
     let mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
-    let mock_switchboard: ContractAddress = mock_deployment::deploy_mock_switchboard();
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
     let usdc: ContractAddress = mock_deployment::deploy_erc20_mintable(
@@ -62,9 +61,7 @@ fn main() {
         admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD
     );
 
-    let switchboard: ContractAddress = core_deployment::deploy_switchboard(admin, mock_switchboard);
-
-    utils::set_oracles_to_seer(seer, array![pragma, switchboard].span());
+    utils::set_oracles_to_seer(seer, array![pragma].span());
 
     // Grant roles
     println!("Setting up roles");
@@ -166,26 +163,11 @@ fn main() {
             .span()
     );
 
-    mock_utils::set_mock_switchboard_prices(
-        mock_switchboard,
-        array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
-        array![
-            constants::INITIAL_ETH_PRICE.into(),
-            constants::INITIAL_STRK_PRICE.into(),
-            constants::INITIAL_WBTC_PRICE.into(),
-        ]
-            .span()
-    );
-
     // Set up oracles
     println!("Setting up oracles");
     utils::set_yang_pair_id_for_oracle(pragma, eth, ETH_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, strk, STRK_USD_PAIR_ID);
-
-    utils::set_yang_pair_id_for_oracle(switchboard, eth, ETH_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, wbtc, WBTC_USD_PAIR_ID);
-    utils::set_yang_pair_id_for_oracle(switchboard, strk, STRK_USD_PAIR_ID);
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
@@ -229,13 +211,11 @@ fn main() {
     println!("Gate[STRK]: {}", strk_gate);
     println!("Gate[WBTC]: {}", wbtc_gate);
     println!("Mock Pragma: {}", mock_pragma);
-    println!("Mock Switchboard: {}", mock_switchboard);
     println!("Pragma: {}", pragma);
     println!("Purger: {}", purger);
     println!("Seer: {}", seer);
     println!("Sentinel: {}", sentinel);
     println!("Shrine: {}", shrine);
-    println!("Switchboard: {}", switchboard);
     println!("Token[USDC]: {}", usdc);
     println!("Token[WBTC]: {}", wbtc);
     println!("Transmuter[USDC] (Restricted): {}", usdc_transmuter_restricted);

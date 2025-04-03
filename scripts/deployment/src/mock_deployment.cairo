@@ -19,20 +19,8 @@ pub fn deploy_mock_pragma() -> ContractAddress {
     deploy_mock_pragma.contract_address
 }
 
-pub fn deploy_mock_switchboard() -> ContractAddress {
-    let declare_mock_switchboard = declare("mock_switchboard", Option::Some(MAX_FEE), Option::None)
-        .expect('failed mock_switchboard declare');
-
-    let deploy_mock_switchboard = deploy(
-        declare_mock_switchboard.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
-    )
-        .expect('failed mock switchboard deploy');
-
-    deploy_mock_switchboard.contract_address
-}
-
 pub fn declare_erc20_mintable() -> ClassHash {
-    declare("erc20_mintable", Option::Some(MAX_FEE), Option::None).expect('failed mock_switchboard declare').class_hash
+    declare("erc20_mintable", Option::Some(MAX_FEE), Option::None).expect('failed erc20 mintable declare').class_hash
 }
 
 pub fn deploy_erc20_mintable(
