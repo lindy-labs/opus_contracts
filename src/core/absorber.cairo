@@ -17,6 +17,9 @@ pub mod absorber {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use wadray::{Ray, u128_wdiv, u128_wmul, Wad};
 
     //
@@ -96,44 +99,44 @@ pub mod absorber {
         // absorptions start from 1.
         absorptions_count: u32,
         // mapping from a provider to the last absorption ID accounted for
-        provider_last_absorption: LegacyMap::<ContractAddress, u32>,
+        provider_last_absorption: Map::<ContractAddress, u32>,
         // mapping of address to a struct of
         // 1. epoch in which the provider's shares are issued
         // 2. number of shares for the provider in the above epoch
-        provisions: LegacyMap::<ContractAddress, Provision>,
+        provisions: Map::<ContractAddress, Provision>,
         // mapping from an absorption to its epoch
-        absorption_epoch: LegacyMap::<u32, u32>,
+        absorption_epoch: Map::<u32, u32>,
         // total number of shares for current epoch
         total_shares: Wad,
         // mapping of a tuple of asset and absorption ID to the amount of that asset in its 
         // decimal precision absorbed per share Wad for an absorption
-        asset_absorption: LegacyMap::<(ContractAddress, u32), u128>,
+        asset_absorption: Map::<(ContractAddress, u32), u128>,
         // conversion rate of an epoch's shares to the next
         // if an update causes the yin per share to drop below the threshold,
         // the epoch is incremented and yin per share is reset to one Ray.
         // a provider with shares in that epoch will receive new shares in the next epoch
         // based on this conversion rate.
         // if the absorber's yin balance is wiped out, the conversion rate will be 0.
-        epoch_share_conversion_rate: LegacyMap::<u32, Ray>,
+        epoch_share_conversion_rate: Map::<u32, Ray>,
         // total number of reward tokens, starting from 1
         // a reward token cannot be removed once added.
         rewards_count: u8,
         // mapping from a reward token address to its id for iteration
-        reward_id: LegacyMap::<ContractAddress, u8>,
+        reward_id: Map::<ContractAddress, u8>,
         // mapping from a reward token ID to its Reward struct:
         // 1. the ERC-20 token address
         // 2. the address of the vesting contract (blesser) implementing `IBlesser` for the ERC-20 token
         // 3. a boolean indicating if the blesser should be called
-        rewards: LegacyMap::<u8, Reward>,
+        rewards: Map::<u8, Reward>,
         // mapping from a reward token address and epoch to a struct of
         // 1. the cumulative amount of that reward asset in its decimal precision per share Wad in that epoch
         // 2. the rounding error from calculating (1) that is to be added to the next reward distribution
-        cumulative_reward_amt_by_epoch: LegacyMap::<(ContractAddress, u32), DistributionInfo>,
+        cumulative_reward_amt_by_epoch: Map::<(ContractAddress, u32), DistributionInfo>,
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
-        provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress), u128>,
+        provider_last_reward_cumulative: Map::<(ContractAddress, ContractAddress), u128>,
         // Mapping from a provider to its latest request for removal
-        provider_request: LegacyMap::<ContractAddress, Request>,
+        provider_request: Map::<ContractAddress, Request>,
     }
 
     //
@@ -586,14 +589,14 @@ pub mod absorber {
 
             // This also checks for absorber's yin balance being emptied because yin per share will be
             // below threshold if yin balance is 0.
-            if YIN_PER_SHARE_THRESHOLD > yin_per_share.val {
+            if YIN_PER_SHARE_THRESHOLD.into() > yin_per_share {
                 let new_epoch: u32 = current_epoch + 1;
                 self.current_epoch.write(new_epoch);
 
                 // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
                 // minimum shares worth of yin from the yin balance so that there is at least such amount
                 // of yin that cannot be removed in the next epoch.
-                if INITIAL_SHARES < yin_balance.val {
+                if INITIAL_SHARES.into() < yin_balance {
                     let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
                         yin_balance - INITIAL_SHARES.into(), total_recipient_shares
                     );
@@ -672,12 +675,12 @@ pub mod absorber {
         fn convert_to_shares(self: @ContractState, yin_amt: Wad, round_up: bool) -> (Wad, Wad) {
             let total_shares: Wad = self.total_shares.read();
 
-            if INITIAL_SHARES > total_shares.val {
+            if INITIAL_SHARES.into() > total_shares {
                 // By subtracting the initial shares from the first provider's shares, we ensure that
                 // there is a non-removable amount of shares. This subtraction also prevents a user
                 // from providing an amount less than the minimum shares.
-                assert(yin_amt.val >= INITIAL_SHARES, 'ABS: provision < minimum');
-                return ((yin_amt.val - INITIAL_SHARES).into(), yin_amt);
+                assert(yin_amt >= INITIAL_SHARES.into(), 'ABS: provision < minimum');
+                return (yin_amt - INITIAL_SHARES.into(), yin_amt);
             }
 
             let absorber: ContractAddress = get_contract_address();
@@ -736,8 +739,8 @@ pub mod absorber {
 
             let total_amount_to_distribute: u128 = asset_balance.amount;
 
-            let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.val);
-            let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.val);
+            let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.into());
+            let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.into());
             let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
             self.asset_absorption.write((asset_balance.address, absorption_id), asset_amt_per_share);
@@ -847,7 +850,7 @@ pub mod absorber {
 
                             let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
 
-                            absorbed_amt += u128_wmul(adjusted_shares.val, asset_amt_per_share);
+                            absorbed_amt += u128_wmul(adjusted_shares.into(), asset_amt_per_share);
                         };
 
                         absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
@@ -940,8 +943,8 @@ pub mod absorber {
                         .read((reward.asset, epoch));
                     let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
 
-                    let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.val);
-                    let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.val);
+                    let asset_amt_per_share: u128 = u128_wdiv(total_amount_to_distribute, total_recipient_shares.into());
+                    let actual_amount_distributed: u128 = u128_wmul(asset_amt_per_share, total_recipient_shares.into());
                     let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
                     let updated_asset_amt_per_share: u128 = epoch_reward_info.asset_amt_per_share + asset_amt_per_share;
@@ -1005,7 +1008,7 @@ pub mod absorber {
                         let total_recipient_shares: Wad = self.total_shares.read() - INITIAL_SHARES.into();
                         let pending_amt: u128 = reward.blesser.preview_bless();
                         let pending_amt_per_share: u128 = u128_wdiv(
-                            pending_amt + epoch_reward_info.error, total_recipient_shares.val
+                            pending_amt + epoch_reward_info.error, total_recipient_shares.into()
                         );
                         epoch_reward_info.asset_amt_per_share + pending_amt_per_share
                     } else {
@@ -1020,7 +1023,7 @@ pub mod absorber {
                     } else {
                         asset_amt_per_share
                     };
-                    reward_amt += u128_wmul(rate, epoch_shares.val);
+                    reward_amt += u128_wmul(rate, epoch_shares.into());
 
                     epoch_shares = self.convert_epoch_shares(epoch, epoch + 1, epoch_shares);
 
