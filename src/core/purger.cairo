@@ -12,6 +12,7 @@ pub mod purger {
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use wadray::{Ray, RAY_ONE, Wad};
 
     //
@@ -603,7 +604,7 @@ pub mod purger {
     // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
     fn get_percentage_freed(trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad) -> Ray {
-        if trove_ltv.val <= RAY_ONE {
+        if trove_ltv <= RAY_ONE.into() {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
             wadray::rdiv_ww(purge_amt + penalty_amt, trove_value)
         } else {
@@ -619,7 +620,7 @@ pub mod purger {
     fn get_compensation(trove_value: Wad) -> (Ray, Wad) {
         let default_compensation_pct: Ray = COMPENSATION_PCT.into();
         let default_compensation: Wad = wadray::rmul_wr(trove_value, default_compensation_pct);
-        if default_compensation.val < COMPENSATION_CAP {
+        if default_compensation < COMPENSATION_CAP.into() {
             (default_compensation_pct, default_compensation)
         } else {
             (wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value), COMPENSATION_CAP.into())
