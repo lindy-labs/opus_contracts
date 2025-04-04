@@ -1,10 +1,14 @@
 #[starknet::contract]
 pub mod allocator {
     use access_control::access_control_component;
+    use core::dict::Felt252Dict;
     use core::num::traits::Zero;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
     use starknet::ContractAddress;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use wadray::{Ray, RAY_ONE};
 
     //
@@ -42,10 +46,10 @@ pub mod allocator {
         // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
-        recipients: LegacyMap::<u32, ContractAddress>,
+        recipients: Map::<u32, ContractAddress>,
         // Keeps track of the percentage for each recipient by address
         // (Recipient Address) -> (percentage)
-        percentages: LegacyMap::<ContractAddress, Ray>,
+        percentages: Map::<ContractAddress, Ray>,
     }
 
     //
