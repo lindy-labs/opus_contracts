@@ -2,8 +2,11 @@
 pub mod erc20_mintable {
     use core::num::traits::Zero;
     use opus::interfaces::IERC20::{IERC20, IMintable};
-    use starknet::contract_address::ContractAddress;
-    use starknet::get_caller_address;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
+    use starknet::{ContractAddress, get_caller_address};
+
 
     #[storage]
     struct Storage {
@@ -11,8 +14,8 @@ pub mod erc20_mintable {
         symbol: felt252,
         decimals: u8,
         total_supply: u256,
-        balances: LegacyMap::<ContractAddress, u256>,
-        allowances: LegacyMap::<(ContractAddress, ContractAddress), u256>,
+        balances: Map::<ContractAddress, u256>,
+        allowances: Map::<(ContractAddress, ContractAddress), u256>,
     }
 
     #[event]

@@ -4,6 +4,7 @@ pub mod flash_borrower {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
     pub const VALID_USAGE: felt252 = 0;

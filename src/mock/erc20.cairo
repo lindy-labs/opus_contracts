@@ -18,9 +18,11 @@ pub trait IERC20<TState> {
 
 #[starknet::contract]
 pub mod erc20 {
-    use core::num::traits::Zero;
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
+    use core::num::traits::{Bounded, Zero};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
+    use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
     struct Storage {
@@ -28,8 +30,8 @@ pub mod erc20 {
         symbol: felt252,
         decimals: u8,
         total_supply: u256,
-        balances: LegacyMap<ContractAddress, u256>,
-        allowances: LegacyMap<(ContractAddress, ContractAddress), u256>,
+        balances: Map<ContractAddress, u256>,
+        allowances: Map<(ContractAddress, ContractAddress), u256>,
     }
 
     #[event]
@@ -167,7 +169,7 @@ pub mod erc20 {
 
         fn _spend_allowance(ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256) {
             let current_allowance = self.allowances.read((owner, spender));
-            if current_allowance != core::integer::BoundedInt::max() {
+            if current_allowance != Bounded::MAX {
                 self._approve(owner, spender, current_allowance - amount);
             }
         }

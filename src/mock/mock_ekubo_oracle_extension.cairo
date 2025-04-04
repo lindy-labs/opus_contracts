@@ -12,12 +12,13 @@ pub trait IMockEkuboOracleExtension<TContractState> {
 pub mod mock_ekubo_oracle_extension {
     use opus::external::interfaces::IEkuboOracleExtension;
     use starknet::ContractAddress;
+    use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
     use super::IMockEkuboOracleExtension;
 
     #[storage]
     struct Storage {
         // Mapping from (base token, quote token) to x128 price
-        price: LegacyMap::<(ContractAddress, ContractAddress), u256>,
+        price: Map::<(ContractAddress, ContractAddress), u256>,
     }
 
     #[abi(embed_v0)]

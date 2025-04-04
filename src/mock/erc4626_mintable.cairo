@@ -6,10 +6,12 @@ pub trait IMockERC4626<TContractState> {
 #[starknet::contract]
 pub mod erc4626_mintable {
     use core::num::traits::Zero;
-    use opus::interfaces::IERC20::{IERC20, IMintable};
+    use opus::interfaces::IERC20::IERC20;
     use opus::interfaces::IERC4626::IERC4626;
-    use starknet::contract_address::ContractAddress;
-    use starknet::get_caller_address;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
+    use starknet::{ContractAddress, get_caller_address};
     use super::IMockERC4626;
 
     #[storage]
@@ -18,8 +20,8 @@ pub mod erc4626_mintable {
         symbol: felt252,
         decimals: u8,
         total_supply: u256,
-        balances: LegacyMap::<ContractAddress, u256>,
-        allowances: LegacyMap::<(ContractAddress, ContractAddress), u256>,
+        balances: Map::<ContractAddress, u256>,
+        allowances: Map::<(ContractAddress, ContractAddress), u256>,
         // storage variables for mock ERC-4626
         asset: ContractAddress,
         convert_to_assets_wad_scale: u256,

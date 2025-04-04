@@ -1,4 +1,4 @@
-use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use opus::interfaces::IGate::IGateDispatcher;
 use starknet::ContractAddress;
 
 #[starknet::interface]
@@ -10,19 +10,19 @@ pub trait IFlashLiquidator<TContractState> {
 
 #[starknet::contract]
 pub mod flash_liquidator {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::types::AssetBalance;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_contract_address};
-    use wadray::{Wad, WAD_ONE};
+    use wadray::WAD_ONE;
 
     #[storage]
     struct Storage {
@@ -58,7 +58,7 @@ pub mod flash_liquidator {
                     Option::Some(yang) => {
                         let gate: IGateDispatcher = *gates.pop_front().unwrap();
                         let token = IERC20Dispatcher { contract_address: *yang };
-                        token.approve(gate.contract_address, BoundedInt::max());
+                        token.approve(gate.contract_address, Bounded::MAX);
                     },
                     Option::None => { break; }
                 };
