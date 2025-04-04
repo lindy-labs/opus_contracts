@@ -4,15 +4,14 @@ pub mod receptor {
     use core::num::traits::Zero;
     use opus::core::roles::receptor_roles;
     use opus::external::interfaces::ITask;
-    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
     use opus::utils::ekubo_oracle_adapter::{ekubo_oracle_adapter_component, IEkuboOracleAdapter};
     use opus::utils::math::median_of_three;
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Wad, WAD_DECIMALS};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use wadray::Wad;
 
     //
     // Components
