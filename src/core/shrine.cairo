@@ -2,8 +2,7 @@
 pub mod shrine {
     use access_control::access_control_component;
     use core::cmp::{max, min};
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use core::starknet::event::EventEmitter;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
@@ -12,7 +11,10 @@ pub mod shrine {
     use opus::types::{Health, HealthTrait, Trove, YangBalance, YangSuspensionStatus};
     use opus::utils::exp::{exp, neg_exp};
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use wadray::{Ray, RAY_ONE, SignedWad, Wad, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
+    use wadray::{Ray, RAY_ONE, SignedWad, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Components
@@ -115,26 +117,26 @@ pub mod shrine {
         access_control: access_control_component::Storage,
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
-        troves: LegacyMap::<u64, Trove>,
+        troves: Map::<u64, Trove>,
         // Stores the amount of the "yin" (synthetic) each user owns.
         // (user_address) -> (Yin)
-        yin: LegacyMap::<ContractAddress, Wad>,
+        yin: Map::<ContractAddress, Wad>,
         // Stores information about the total supply for each yang
         // (yang_id) -> (Total Supply)
-        yang_total: LegacyMap::<u32, Wad>,
+        yang_total: Map::<u32, Wad>,
         // Stores information about the yang amount owned by the protocol, including the
         // initial yanga amount minted to the protocol
-        protocol_owned_yang_amts: LegacyMap::<u32, Wad>,
+        protocol_owned_yang_amts: Map::<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
         yangs_count: u32,
         // Mapping from yang ContractAddress to yang ID.
         // Yang ID starts at 1.
         // (yang_address) -> (yang_id)
-        yang_ids: LegacyMap::<ContractAddress, u32>,
+        yang_ids: Map::<ContractAddress, u32>,
         // Keeps track of how much of each yang has been deposited into each Trove - Wad
         // (yang_id, trove_id) -> (Amount Deposited)
-        deposits: LegacyMap::<(u32, u64), Wad>,
+        deposits: Map::<(u32, u64), Wad>,
         // Total amount of debt accrued for troves. This includes any debt surplus 
         // already accounted for in the budget.
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
@@ -161,7 +163,7 @@ pub mod shrine {
         // the yang at each time interval, both as Wads.
         // - interval: timestamp divided by TIME_INTERVAL.
         // (yang_id, interval) -> (price, cumulative_price)
-        yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
+        yang_prices: Map::<(u32, u64), (Wad, Wad)>,
         // Spot price of yin
         yin_spot_price: Wad,
         // Minimum value for a trove before a user can forge any debt
@@ -181,27 +183,27 @@ pub mod shrine {
         // stores both the actual multiplier, and the cumulative multiplier of
         // the yang at each time interval, both as Rays
         // (interval) -> (multiplier, cumulative_multiplier)
-        multiplier: LegacyMap::<u64, (Ray, Ray)>,
+        multiplier: Map::<u64, (Ray, Ray)>,
         // Keeps track of the most recent rates index.
         // Rate era starts at 1.
         // Each index is associated with an update to the interest rates of all yangs.
         rates_latest_era: u64,
         // Keeps track of the interval at which the rate update at `era` was made.
         // (era) -> (interval)
-        rates_intervals: LegacyMap::<u64, u64>,
+        rates_intervals: Map::<u64, u64>,
         // Keeps track of the interest rate of each yang at each era
         // (yang_id, era) -> (Interest Rate)
-        yang_rates: LegacyMap::<(u32, u64), Ray>,
+        yang_rates: Map::<(u32, u64), Ray>,
         // Keeps track of when a yang was suspended
         // 0 means it is not suspended
         // (yang_id) -> (suspension timestamp)
-        yang_suspension: LegacyMap::<u32, u64>,
+        yang_suspension: Map::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
         // NOTE: don't read the value directly, instead use `get_yang_threshold_helper`
         //       because a yang might be suspended; the function will return the correct
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
-        thresholds: LegacyMap::<u32, Ray>,
+        thresholds: Map::<u32, Ray>,
         // This factor is applied to:
         // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
         // - a trove's threshold to determine its target recovery mode LTV, so `forge` and `withdraw` 
@@ -221,11 +223,11 @@ pub mod shrine {
         redistributions_count: u32,
         // Last redistribution accounted for a trove
         // (trove_id) -> (Last Redistribution ID)
-        trove_redistribution_id: LegacyMap::<u64, u32>,
+        trove_redistribution_id: Map::<u64, u32>,
         // Mapping of yang ID and redistribution ID to amount of debt in Wad to be redistributed 
         // to each Wad unit of yang
         // (yang_id, redistribution_id) -> debt_per_wad
-        yang_redistributions: LegacyMap::<(u32, u32), Wad>,
+        yang_redistributions: Map::<(u32, u32), Wad>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
         // Yin storage
@@ -234,7 +236,7 @@ pub mod shrine {
         yin_decimals: u8,
         // Mapping of user's yin allowance for another user
         // (user_address, spender_address) -> (Allowance)
-        yin_allowances: LegacyMap::<(ContractAddress, ContractAddress), u256>,
+        yin_allowances: Map::<(ContractAddress, ContractAddress), u256>,
     }
 
     //
@@ -617,7 +619,7 @@ pub mod shrine {
             // If no collateral has been deposited, then shrine's LTV is
             // returned as the maximum possible value.
             let ltv: Ray = if value.is_zero() {
-                BoundedInt::max()
+                Bounded::MAX
             } else {
                 wadray::rdiv_ww(debt, value)
             };
@@ -774,7 +776,7 @@ pub mod shrine {
                 match new_rates_copy.pop_front() {
                     Option::Some(rate) => {
                         let current_yang_id: u32 = self_snap.get_valid_yang_id(*yangs_copy.pop_front().unwrap());
-                        if *rate.val == USE_PREV_ERA_BASE_RATE {
+                        if (*rate).into() == USE_PREV_ERA_BASE_RATE {
                             // Setting new era rate to the previous era's rate
                             self
                                 .yang_rates
@@ -824,8 +826,9 @@ pub mod shrine {
             // for the current interval.
             let (last_price, last_cumulative_price, last_interval) = self.get_recent_price_from(yang_id, interval - 1);
 
+            let intermediate_cumulative: u128 = last_price.into() * (interval - last_interval - 1).into();
             let cumulative_price: Wad = last_cumulative_price
-                + (last_price.val * (interval - last_interval - 1).into()).into()
+                + intermediate_cumulative.into()
                 + price;
 
             self.yang_prices.write((yang_id, interval), (price, cumulative_price));
@@ -837,14 +840,15 @@ pub mod shrine {
             self.access_control.assert_has_role(shrine_roles::SET_MULTIPLIER);
 
             assert(multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
-            assert(multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
+            assert(multiplier.into() <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
 
             let interval: u64 = now();
             let (last_multiplier, last_cumulative_multiplier, last_interval) = self
                 .get_recent_multiplier_from(interval - 1);
 
-            let cumulative_multiplier = last_cumulative_multiplier
-                + ((interval - last_interval - 1).into() * last_multiplier.val).into()
+            let intermediate_cumulative: u128 = (interval - last_interval - 1).into() * last_multiplier.into();
+            let cumulative_multiplier: Ray = last_cumulative_multiplier
+                + intermediate_cumulative.into()
                 + multiplier;
             self.multiplier.write(interval, (multiplier, cumulative_multiplier));
 
@@ -914,7 +918,7 @@ pub mod shrine {
         fn set_recovery_mode_target_factor(ref self: ContractState, factor: Ray) {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
             assert(
-                MIN_RECOVERY_MODE_TARGET_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_TARGET_FACTOR,
+                MIN_RECOVERY_MODE_TARGET_FACTOR <= factor.into() && factor.into() <= MAX_RECOVERY_MODE_TARGET_FACTOR,
                 'SH: Invalid target LTV factor'
             );
             self.recovery_mode_target_factor.write(factor);
@@ -925,7 +929,7 @@ pub mod shrine {
         fn set_recovery_mode_buffer_factor(ref self: ContractState, factor: Ray) {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
             assert(
-                MIN_RECOVERY_MODE_BUFFER_FACTOR <= factor.val && factor.val <= MAX_RECOVERY_MODE_BUFFER_FACTOR,
+                MIN_RECOVERY_MODE_BUFFER_FACTOR <= factor.into() && factor.into() <= MAX_RECOVERY_MODE_BUFFER_FACTOR,
                 'SH: Invalid buffer factor'
             );
             self.recovery_mode_buffer_factor.write(factor);
@@ -985,13 +989,13 @@ pub mod shrine {
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
 
-            let forge_fee = amount * forge_fee_pct;
-            let debt_amount = amount + forge_fee;
+            let forge_fee: Wad = amount * forge_fee_pct;
+            let debt_amount: Wad = amount + forge_fee;
 
             self.assert_le_debt_ceiling(self.total_yin.read() + amount, self.budget.read() + forge_fee.into());
 
             let forge_fee_adjustment_for_total_troves_debt: Wad = if forge_fee.is_non_zero() {
-                let excess: Wad = self.reduce_protocol_owned_troves_debt(forge_fee.into());
+                let excess: Wad = self.reduce_protocol_owned_troves_debt(forge_fee);
                 self.adjust_budget_helper(excess.into());
                 excess
             } else {
@@ -1354,9 +1358,9 @@ pub mod shrine {
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
                 //   incorrectly set to 0 and `trove.is_healthy` will retrun true and fail to catch this illegal operation.
                 let ltv: Ray = if trove.debt.is_non_zero() {
-                    BoundedInt::max()
+                    Bounded::MAX
                 } else {
-                    BoundedInt::min()
+                    Bounded::MIN
                 };
 
                 return Health { threshold, ltv, value, debt: trove.debt };
@@ -1395,7 +1399,7 @@ pub mod shrine {
                 trove_health_with_base_threshold.threshold
                     * THRESHOLD_DECREASE_FACTOR.into()
                     * (trove_recovery_mode_target_ltv / trove_health_with_base_threshold.ltv),
-                (trove_health_with_base_threshold.threshold.val / 2_u128).into()
+                (trove_health_with_base_threshold.threshold.into() / 2_u128).into()
             );
         }
 
@@ -1468,7 +1472,7 @@ pub mod shrine {
         //
 
         fn set_threshold_helper(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
-            assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
+            assert(threshold.into() <= MAX_THRESHOLD, 'SH: Threshold > max');
             self.thresholds.write(self.get_valid_yang_id(yang), threshold);
 
             // Event emission
@@ -1620,7 +1624,7 @@ pub mod shrine {
                     let avg_rate: Ray = avg_base_rate * self.get_avg_multiplier(start_interval, end_interval);
 
                     // represents `t` in the compound interest formula
-                    let t: Wad = Wad { val: (end_interval - start_interval).into() * TIME_INTERVAL_DIV_YEAR };
+                    let t: Wad = ((end_interval - start_interval).into() * TIME_INTERVAL_DIV_YEAR).into();
                     compounded_debt *= exp(wadray::rmul_rw(avg_rate, t));
                     break compounded_debt;
                 }
@@ -1635,9 +1639,8 @@ pub mod shrine {
                 let avg_rate: Ray = avg_base_rate
                     * self.get_avg_multiplier(start_interval, next_rate_update_era_interval);
 
-                let t: Wad = Wad {
-                    val: (next_rate_update_era_interval - start_interval).into() * TIME_INTERVAL_DIV_YEAR
-                };
+                let t: Wad = ((next_rate_update_era_interval - start_interval).into() * TIME_INTERVAL_DIV_YEAR).into();
+
                 compounded_debt *= exp(wadray::rmul_rw(avg_rate, t));
 
                 start_interval = next_rate_update_era_interval;
@@ -1711,28 +1714,26 @@ pub mod shrine {
 
             // Early termination if `start_interval` and `end_interval` are updated
             if start_interval == available_start_interval && end_interval == available_end_interval {
-                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
+                let res: u128 = cumulative_diff.into() / (end_interval - start_interval).into();
+                return res.into();
             }
 
             // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
             // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
             if start_interval != available_start_interval {
-                let cumulative_offset = Wad {
-                    val: (start_interval - available_start_interval).into() * start_yang_price.val
-                };
-                cumulative_diff -= cumulative_offset;
+                let cumulative_offset: u128 = (start_interval - available_start_interval).into() * start_yang_price.into();
+                cumulative_diff -= cumulative_offset.into();
             }
 
             // If the end interval is not updated, adjust the cumulative difference by adding
             // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
             if end_interval != available_end_interval {
-                let cumulative_offset = Wad {
-                    val: (end_interval - available_end_interval).into() * end_yang_price.val
-                };
-                cumulative_diff += cumulative_offset;
+                let cumulative_offset: u128 = (end_interval - available_end_interval).into() * end_yang_price.into();
+                cumulative_diff += cumulative_offset.into();
             }
 
-            (cumulative_diff.val / (end_interval - start_interval).into()).into()
+            let res: u128 = cumulative_diff.into() / (end_interval - start_interval).into();
+            res.into()
         }
 
         // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
@@ -1756,28 +1757,26 @@ pub mod shrine {
 
             // Early termination if `start_interval` and `end_interval` are updated
             if start_interval == available_start_interval && end_interval == available_end_interval {
-                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
+                let res: u128 = cumulative_diff.into() / (end_interval - start_interval).into();
+                return res.into();
             }
 
             // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
             // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
             if start_interval != available_start_interval {
-                let cumulative_offset = Ray {
-                    val: (start_interval - available_start_interval).into() * start_multiplier.val
-                };
-                cumulative_diff -= cumulative_offset;
+                let cumulative_offset: u128 = ((start_interval - available_start_interval).into() * start_multiplier.into());
+                cumulative_diff -= cumulative_offset.into();
             }
 
             // If the end interval is not updated, adjust the cumulative difference by adding
             // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
             if (end_interval != available_end_interval) {
-                let cumulative_offset = Ray {
-                    val: (end_interval - available_end_interval).into() * end_multiplier.val
-                };
-                cumulative_diff += cumulative_offset;
+                let cumulative_offset: u128 = (end_interval - available_end_interval).into() * end_multiplier.into();
+                cumulative_diff += cumulative_offset.into();
             }
 
-            (cumulative_diff.val / (end_interval - start_interval).into()).into()
+            let res: u128 = cumulative_diff.into() / (end_interval - start_interval).into();
+            res.into()
         }
 
         // Loop through yangs for the trove:
@@ -2050,7 +2049,7 @@ pub mod shrine {
 
     // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
     fn assert_rate_is_valid(rate: Ray) {
-        assert(0 < rate.val && rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
+        assert(0_u128 < rate.into() && rate.into() <= MAX_YANG_RATE, 'SH: Rate out of bounds');
     }
 
     // Helper function to round up the debt to be redistributed for a yang if the remaining debt
@@ -2062,7 +2061,7 @@ pub mod shrine {
         let updated_cumulative_redistributed_debt = cumulative_redistributed_debt + debt_to_distribute;
         let remaining_debt: Wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
 
-        if remaining_debt.val <= ROUNDING_THRESHOLD {
+        if remaining_debt.into() <= ROUNDING_THRESHOLD {
             return (debt_to_distribute + remaining_debt, updated_cumulative_redistributed_debt + remaining_debt);
         }
 
@@ -2145,7 +2144,7 @@ pub mod shrine {
         fn transfer_helper(ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) {
             assert(recipient.is_non_zero(), 'SH: No transfer to 0 address');
 
-            let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
+            let amount_wad: Wad = amount.try_into().unwrap();
 
             // Transferring the Yin
             let sender_balance: Wad = self.yin.read(sender);
@@ -2173,7 +2172,7 @@ pub mod shrine {
 
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
-            if current_allowance != BoundedInt::max() {
+            if current_allowance != Bounded::MAX {
                 assert(current_allowance >= amount, 'SH: Insufficient yin allowance');
                 self.approve_helper(owner, spender, current_allowance - amount);
             }
