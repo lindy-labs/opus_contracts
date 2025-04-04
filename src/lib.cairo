@@ -26,7 +26,6 @@ pub mod core {
 pub mod external {
     pub mod ekubo;
     pub mod interfaces;
-    pub mod pragma;
     pub mod pragma_v2;
     pub mod roles;
 }
@@ -110,7 +109,6 @@ mod tests {
     }
     mod external {
         mod test_ekubo;
-        mod test_pragma;
         mod test_pragma_v2;
         pub mod utils;
     }
