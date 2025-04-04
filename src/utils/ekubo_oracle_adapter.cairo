@@ -40,7 +40,7 @@ pub mod ekubo_oracle_adapter_component {
     //
 
     #[storage]
-    struct Storage {
+    pub struct Storage {
         // Ekubo oracle extension for reading TWAP
         oracle_extension: IEkuboOracleExtensionDispatcher,
         // Collection of quote tokens, in no particular order
