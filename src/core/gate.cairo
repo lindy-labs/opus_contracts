@@ -6,6 +6,7 @@ pub mod gate {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::{fixed_point_to_wad, pow};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
@@ -164,7 +165,7 @@ pub mod gate {
                 // Scale `yang_amt` down by the difference to match the decimal
                 // precision of the asset. If asset is of `Wad` precision, then
                 // the same value is returned
-                yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
+                yang_amt.into() / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
                 // use u256 to avoid precision loss from Wad multiplication
                 let res: u256 = (yang_amt.into() * get_total_assets_helper(asset).into()) / total_yang.into();
