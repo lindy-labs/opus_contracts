@@ -11,6 +11,7 @@ pub mod frontend_data_provider {
     use opus::periphery::types::{RecoveryModeInfo, ShrineAssetInfo, TroveAssetInfo, TroveInfo, YinInfo};
     use opus::types::{Health, YangBalance};
     use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress};
     use wadray::{Ray, Wad};
 
