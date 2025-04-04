@@ -1,6 +1,6 @@
 use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
 use starknet::ContractAddress;
-use wadray::{Ray, Wad};
+use wadray::Wad;
 
 #[starknet::interface]
 pub trait IAbsorber<TContractState> {

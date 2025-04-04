@@ -1,4 +1,4 @@
-use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
+use opus::types::{Health, YangBalance, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
