@@ -8,8 +8,8 @@ pub mod equalizer {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::Health;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use wadray::{Ray, Signed, SignedWad, Wad};
 
     //
@@ -150,7 +150,7 @@ pub mod equalizer {
                 shrine.set_debt_ceiling(total_yin + minted_surplus);
             }
 
-            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
+            shrine.adjust_budget(-minted_surplus.into());
             shrine.inject(get_contract_address(), minted_surplus);
 
             if adjust_ceiling {
@@ -207,7 +207,7 @@ pub mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
             let budget: SignedWad = shrine.get_budget();
             if budget.is_negative() {
-                let wipe_amt: Wad = min(yin_amt, budget.val.into());
+                let wipe_amt: Wad = min(yin_amt, (-budget).try_into().unwrap());
                 let caller: ContractAddress = get_caller_address();
                 shrine.eject(caller, wipe_amt);
                 shrine.adjust_budget(wipe_amt.into());
