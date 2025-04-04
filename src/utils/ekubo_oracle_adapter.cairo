@@ -21,7 +21,9 @@ pub mod ekubo_oracle_adapter_component {
     use opus::types::QuoteTokenInfo;
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use starknet::ContractAddress;
-    use super::IEkuboOracleAdapter;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use wadray::{Wad, WAD_DECIMALS};
 
     //
@@ -44,7 +46,7 @@ pub mod ekubo_oracle_adapter_component {
         // Collection of quote tokens, in no particular order
         // Starts from 1
         // (idx) -> (token to be quoted per yang)
-        quote_tokens: LegacyMap<u32, QuoteTokenInfo>,
+        quote_tokens: Map<u32, QuoteTokenInfo>,
         // The duration in seconds for reading TWAP from Ekubo
         twap_duration: u64
     }

@@ -15,7 +15,7 @@ pub mod upgradeable_component {
     use starknet::{ClassHash, SyscallResultTrait};
 
     #[storage]
-    struct Storage {}
+    pub struct Storage {}
 
     #[event]
     #[derive(Copy, Drop, PartialEq, starknet::Event)]

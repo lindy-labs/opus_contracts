@@ -2,12 +2,15 @@
 pub mod address_registry_component {
     use core::num::traits::Zero;
     use starknet::ContractAddress;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
 
     #[storage]
     struct Storage {
         entries_count: u32,
-        entry_ids: LegacyMap::<ContractAddress, u32>,
-        entries: LegacyMap::<u32, ContractAddress>,
+        entry_ids: Map::<ContractAddress, u32>,
+        entries: Map::<u32, ContractAddress>,
     }
 
     #[event]

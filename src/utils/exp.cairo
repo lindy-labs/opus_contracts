@@ -44,7 +44,7 @@ const a9: u128 = 106449445891785942956; // eˆ(x9)
 //   it may not be necessary for our purposes.
 
 pub fn exp(x: Wad) -> Wad {
-    let mut x: u128 = x.val;
+    let mut x: u128 = x.into();
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
 
@@ -156,8 +156,7 @@ pub fn exp(x: Wad) -> Wad {
     // and then drop two digits to return an 18 decimal value.
 
     let result: u256 = (((product * series_sum) / ONE_20) * firstAN) / 100.into();
-
-    Wad { val: result.try_into().unwrap() }
+    result.try_into().unwrap()
 }
 
 // Computes 1/exp(x) = exp(-x)

@@ -1,5 +1,7 @@
 #[starknet::component]
 pub mod reentrancy_guard_component {
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+
     #[storage]
     struct Storage {
         entered: bool,

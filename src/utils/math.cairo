@@ -1,14 +1,12 @@
-use core::integer::{u256_sqrt, u256_wide_mul, u512, u512_safe_div_rem_by_u256};
-use core::num::traits::One;
-use core::traits::DivRem;
+use core::num::traits::{One, Sqrt};
 use wadray::{Ray, u128_rdiv, u128_rmul, Wad, WAD_DECIMALS, WAD_SCALE};
 
 
 const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
 
 pub fn sqrt(x: Ray) -> Ray {
-    let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();
-    u256_sqrt(scaled_val).into()
+    let scaled_val: u256 = x.into() * wadray::RAY_SCALE.into();
+    Sqrt::sqrt(scaled_val).into()
 }
 
 pub fn pow<T, impl TMul: Mul<T>, impl TOne: One<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(x: T, mut n: u8) -> T {
@@ -32,17 +30,17 @@ pub fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
 pub fn wad_to_fixed_point(n: Wad, decimals: u8) -> u128 {
     assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
     let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
-    n.val / scale
+    n.into() / scale
 }
 
 #[inline(always)]
 pub fn scale_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
-    u128_rmul(lhs, rhs.val)
+    u128_rmul(lhs, rhs.into())
 }
 
 #[inline(always)]
 pub fn div_u128_by_ray(lhs: u128, rhs: Ray) -> u128 {
-    u128_rdiv(lhs, rhs.val)
+    u128_rdiv(lhs, rhs.into())
 }
 
 // See https://docs.ekubo.org/integration-guides/reference/reading-pool-price
