@@ -2,15 +2,15 @@
 pub mod transmuter_v2 {
     use access_control::access_control_component;
     use core::cmp::min;
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuterV2;
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, Wad, WAD_ONE};
 
     //
     // Components
@@ -460,7 +460,7 @@ pub mod transmuter_v2 {
 
             // Incur deficit if any
             if total_transmuted.is_non_zero() {
-                self.shrine.read().adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
+                self.shrine.read().adjust_budget(-total_transmuted.into());
             }
 
             // Transfer all remaining yin and all assets to receiver
@@ -468,7 +468,7 @@ pub mod transmuter_v2 {
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
 
-            self.transfer_asset_to_receiver(self.asset.read(), BoundedInt::max());
+            self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })
@@ -581,7 +581,7 @@ pub mod transmuter_v2 {
 
             assert(self.reversibility.read(), 'TR: Reverse is paused');
 
-            let fee: Wad = wadray::rmul_wr(yin_amt.into(), self.reverse_fee.read());
+            let fee: Wad = wadray::rmul_wr(yin_amt, self.reverse_fee.read());
 
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_amt: u128 = wad_to_fixed_point(yin_amt - fee, asset.decimals());
@@ -606,7 +606,7 @@ pub mod transmuter_v2 {
             if asset_balance.is_zero() {
                 (Zero::zero(), 0)
             } else {
-                (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
+                (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).into())
             }
         }
 
