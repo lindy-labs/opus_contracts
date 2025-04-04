@@ -22,6 +22,7 @@ pub mod flash_mint {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -38,10 +39,10 @@ pub mod flash_mint {
 
     #[storage]
     struct Storage {
-        shrine: IShrineDispatcher,
         // components
         #[substorage(v0)]
         reentrancy_guard: reentrancy_guard_component::Storage,
+        shrine: IShrineDispatcher,
     }
 
 
@@ -80,7 +81,7 @@ pub mod flash_mint {
             // Can only flash mint our own synthetic
             if token == shrine.contract_address {
                 let supply: Wad = shrine.get_total_yin();
-                return (supply * FLASH_MINT_AMOUNT_PCT.into()).val.into();
+                return (supply * FLASH_MINT_AMOUNT_PCT.into()).into();
             }
 
             0_u256
