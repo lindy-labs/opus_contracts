@@ -13,6 +13,7 @@ pub mod caretaker {
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use wadray::{Ray, RAY_ONE, Wad};
 
     //
@@ -175,7 +176,7 @@ pub mod caretaker {
                         let asset = IERC20Dispatcher { contract_address: *yang };
                         let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
                         let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
-                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.val });
+                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.into() });
                     },
                     Option::None => { break (capped_yin, reclaimable_assets.span()); },
                 };
