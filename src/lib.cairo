@@ -13,13 +13,10 @@ pub mod core {
     pub mod purger;
     pub mod receptor;
     pub mod roles;
-    pub mod seer;
     pub mod seer_v2;
     pub mod sentinel;
     pub mod shrine;
-    pub mod transmuter;
     pub mod transmuter_registry;
-    pub mod transmuter_restricted;
     pub mod transmuter_v2;
 }
 
