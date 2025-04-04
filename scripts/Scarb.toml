@@ -1,19 +1,19 @@
 [package]
 name = "scripts"
 version = "1.0.0"
-edition = "2023_11"
+edition = "2024_07"
 
 [workspace]
 members = ["deployment", "simulation"]
 
 [dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.23.0" }
-starknet = ">=2.6.4"
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.38.0" }
+starknet = ">=2.10.0"
 opus = { path = "../" }
 
 [workspace.dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.23.0" }
-starknet = ">=2.6.4"
+sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.38.0" }
+starknet = ">=2.10.0"
 opus = { path = "../" }
 scripts = { path = "./" }
 

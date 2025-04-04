@@ -3,8 +3,8 @@ version = 1
 
 [[package]]
 name = "access_control"
-version = "0.3.0"
-source = "git+https://github.com/lindy-labs/access_control.git?tag=v0.3.0#8fdfc97e15c4fb1b6cb1aa0da91d94e5956c3b1a"
+version = "0.4.0"
+source = "git+https://github.com/lindy-labs/access_control.git?tag=v0.4.0#3fc8328155526f35f1b2d01fe12e3d0c7a20604c"
 
 [[package]]
 name = "opus"
@@ -25,15 +25,23 @@ dependencies = [
 
 [[package]]
 name = "sncast_std"
-version = "0.23.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.23.0#f2bff8f796763ada77fe6033ec1b034ceee22abd"
+version = "0.38.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.38.0#f2e7d0d4077a654992914a688575a85bbe57b9a9"
+
+[[package]]
+name = "snforge_scarb_plugin"
+version = "0.38.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.38.0#f2e7d0d4077a654992914a688575a85bbe57b9a9"
 
 [[package]]
 name = "snforge_std"
-version = "0.23.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.23.0#f2bff8f796763ada77fe6033ec1b034ceee22abd"
+version = "0.38.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.38.0#f2e7d0d4077a654992914a688575a85bbe57b9a9"
+dependencies = [
+ "snforge_scarb_plugin",
+]
 
 [[package]]
 name = "wadray"
-version = "0.3.0"
-source = "git+https://github.com/lindy-labs/wadray.git?tag=v0.3.0#9b1f0e21abac6811b09d8a9e861b5d53e6a52d9c"
+version = "0.5.0"
+source = "git+https://github.com/lindy-labs/wadray.git?tag=v0.5.0#4186a1e0d0879731fc5dc27b824ef489a79a3d30"
