@@ -13,6 +13,9 @@ pub mod seer_v2 {
     use opus::types::{ConversionRateInfo, InternalPriceType, PriceType, YangSuspensionStatus};
     use opus::utils::math::pow;
     use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
     //
@@ -47,11 +50,11 @@ pub mod seer_v2 {
         // Sentinel associated with the Shrine and this module
         sentinel: ISentinelDispatcher,
         // Mapping of a yang to its price type
-        yang_price_types: LegacyMap<ContractAddress, InternalPriceType>,
+        yang_price_types: Map<ContractAddress, InternalPriceType>,
         // Collection of oracles, ordered by priority,
         // starting from 1 as the key.
         // (key) -> (oracle)
-        oracles: LegacyMap<u32, IOracleDispatcher>,
+        oracles: Map<u32, IOracleDispatcher>,
         // Block timestamp of the last `update_prices_internal` execution
         last_update_prices_call_timestamp: u64,
         // The minimal time difference in seconds of how often we
