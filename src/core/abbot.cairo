@@ -1,13 +1,15 @@
 #[starknet::contract]
 pub mod abbot {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
     use starknet::{ContractAddress, get_caller_address};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use wadray::Wad;
 
     // 
@@ -34,16 +36,16 @@ pub mod abbot {
         // the total number of troves of a particular address;
         // used to build the tuple key of `user_troves` variable
         // (user) -> (number of troves opened)
-        user_troves_count: LegacyMap<ContractAddress, u64>,
+        user_troves_count: Map<ContractAddress, u64>,
         // a mapping of an address and index to a trove ID
         // belonging to this address; the index is a number from 0
         // up to `user_troves_count` for that address
         // (user, idx) -> (trove ID)
-        user_troves: LegacyMap<(ContractAddress, u64), u64>,
+        user_troves: Map<(ContractAddress, u64), u64>,
         // a mapping of a trove ID to the contract address which
         // was used to open the trove
         // (trove ID) -> (owner)
-        trove_owner: LegacyMap<u64, ContractAddress>,
+        trove_owner: Map<u64, ContractAddress>,
     }
 
     //
@@ -197,7 +199,7 @@ pub mod abbot {
 
             let shrine = self.shrine.read();
             // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-            shrine.melt(user, trove_id, BoundedInt::max());
+            shrine.melt(user, trove_id, Bounded::MAX);
 
             let mut yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
             // withdraw each and every Yang belonging to the trove from the system
