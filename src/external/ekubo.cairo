@@ -2,9 +2,7 @@
 pub mod ekubo {
     use access_control::access_control_component;
     use core::num::traits::Zero;
-    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEkubo::IEkubo;
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;

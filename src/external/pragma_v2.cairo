@@ -19,6 +19,9 @@ pub mod pragma_v2 {
     use opus::interfaces::IPragma::IPragmaV2;
     use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -69,7 +72,7 @@ pub mod pragma_v2 {
         price_validity_thresholds: PriceValidityThresholds,
         // A mapping between a token's address and its pair settings in Pragma
         // (yang address) -> (PairSettings struct)
-        yang_pair_settings: LegacyMap::<ContractAddress, PairSettings>,
+        yang_pair_settings: Map::<ContractAddress, PairSettings>,
     }
 
     //
