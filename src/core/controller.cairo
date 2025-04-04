@@ -6,8 +6,9 @@ pub mod controller {
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
-    use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, SignedRay, Wad, wad_to_signed_ray};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use wadray::{Ray, RAY_ONE, Signed, SignedRay, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -186,7 +187,7 @@ pub mod controller {
             }
 
             // Updating the previous yin price for the next integral term update
-            self.yin_previous_price.write(shrine.get_yin_spot_price().into());
+            self.yin_previous_price.write(shrine.get_yin_spot_price());
 
             let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
             shrine.set_multiplier(multiplier_ray);
@@ -286,7 +287,11 @@ pub mod controller {
 
     #[inline(always)]
     fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
-        let error_ray: Ray = Ray { val: error.val };
+        let error_ray: Ray = if error.is_negative() {
+            (-error).try_into().unwrap()
+        } else {
+            error.try_into().unwrap()
+        };
         let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
         math::pow(error, alpha) / denominator
     }
