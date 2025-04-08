@@ -1,9 +1,10 @@
-# Price Stability
+# Peg Stability
 
 Opus employs various mechanisms to incentivize user behaviour towards ensuring the price stability of CASH.
 
 1. A global multiplier value applied to interest rates for all troves
 2. Forge fees
+3. Incentivized LP staking
 
 ## How does the multiplier work?
 
@@ -19,3 +20,12 @@ When the spot price of CASH drops below its peg, it may take a while for the eff
 The forge fee increases exponentially the greater the spot price of CASH is below its peg, up to a maximum of 400% of the amount sought to be borrowed.
 
 See [#forge-fee](technical-documentation/smart-contracts/shrine-module.md#forge-fee "mention") for more details on how the forge fee is calculated.
+
+## What is incentivized LP staking?
+
+Users can provide liquidity to the CASH-USDC pool on Ekubo, and stake the resulting NFT. In addition to the swap fees from the underlying LP, users will also receive a portion of protocol income that is streamed over time. See [stabilizer-module.md](technical-documentation/smart-contracts/stabilizer-module.md "mention") for more details.
+
+Incentivized LP staking deepens the liquidity depth for CASH against other stables on secondary markets, helping to stabilize the price of CASH around its peg.
+
+
+

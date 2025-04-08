@@ -43,6 +43,7 @@ As demand for CASH grows, the DAO will move to establish direct CASH↔USD ramps
 1. [Borrow](borrowing.md) CASH against a set of whitelisted collateral by opening a Trove
 2. [Provide](liquidations.md#why-should-i-deposit-cash-to-the-absorber) CASH to the Absorber to participate in liquidations and receive liquidated assets and a share of the protocol's income from accrued interest and fees
 3. Secure Opus by [liquidating](liquidations.md#what-are-the-incentives-to-perform-a-searcher-liquidation) unhealthy Troves yourself or by using the Absorber's liquidity and be compensated
+4. Provide liquidity to the CASH-EKUBO [pool](https://app.ekubo.org/positions/new?quoteCurrency=USDC\&baseCurrency=CASH\&tickLower=-27641000\&tickUpper=-27626000\&tickSpacing=20\&fee=6805647338418769825990228293189632) on Ekubo, and stake the LP on Opus to receive a share of the protocol's income from accrued interest and fees, on top of the underlying swap fees.
 
 ## How to get CASH?
 

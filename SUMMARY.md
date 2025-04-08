@@ -23,6 +23,7 @@
   * [Absorber Module](smart-contracts/absorber-module.md)
   * [Controller Module](technical-documentation/smart-contracts/controller-module.md)
   * [Equalizer Module](technical-documentation/smart-contracts/equalizer-module.md)
+  * [Stabilizer Module](technical-documentation/smart-contracts/stabilizer-module.md)
   * [Seer Module](technical-documentation/smart-contracts/seer-module.md)
   * [Receptor Module](technical-documentation/smart-contracts/receptor-module.md)
   * [Flash Mint Module](technical-documentation/smart-contracts/flash-mint-module.md)
