@@ -6,7 +6,7 @@ mod test_shrine_compound {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::exp::exp;
-    use snforge_std::{CheatTarget, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp};
+    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, EventsFilterTrait, spy_events, start_prank, start_warp};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_SCALE, SignedWad, Wad, WAD_ONE};
 
@@ -20,7 +20,7 @@ mod test_shrine_compound {
     #[test]
     fn test_compound_and_charge_scenario_1() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -70,11 +70,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        let shrine_events = spy.get_events().emitted_by(shrine.contract_address).events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(shrine_events, selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -100,7 +100,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_1b() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -170,7 +170,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -199,7 +199,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_2() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -270,7 +270,7 @@ mod test_shrine_compound {
         );
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -303,7 +303,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_3() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         // Advance one interval to avoid overwriting the last price
         shrine_utils::advance_interval();
@@ -368,7 +368,7 @@ mod test_shrine_compound {
         );
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -403,7 +403,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_4() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let start_debt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
@@ -461,7 +461,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -492,7 +492,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_5() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         let trove_id: u64 = common::TROVE_1;
 
@@ -589,7 +589,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -619,7 +619,7 @@ mod test_shrine_compound {
     #[test]
     fn setup_charge_scenario_6() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         let trove_id: u64 = common::TROVE_1;
         let yang1_addr = shrine_utils::yang1_addr();
@@ -699,7 +699,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -725,7 +725,7 @@ mod test_shrine_compound {
     #[test]
     fn test_charge_scenario_7() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
         shrine_utils::advance_prices_and_set_multiplier(
@@ -963,7 +963,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
@@ -1035,7 +1035,7 @@ mod test_shrine_compound {
     #[test]
     fn test_adjust_budget_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
 
         let surplus: Wad = (500 * WAD_ONE).into();
         start_prank(CheatTarget::All, shrine_utils::admin());
@@ -1071,7 +1071,7 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == deficit, 'wrong budget #3');
 
         // Check events
-        spy.fetch_events();
+        spy.get_events();
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted

@@ -13,7 +13,7 @@ mod test_abbot {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, YangBalance};
     use opus::utils::math::fixed_point_to_wad;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::ContractAddress;
     use wadray::{Wad, WAD_ONE, WAD_SCALE};
 
@@ -25,7 +25,7 @@ mod test_abbot {
     fn test_open_trove_pass() {
         let AbbotTestConfig { shrine, abbot, yangs, gates, .. } = abbot_utils::abbot_deploy(Option::None);
 
-        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut spy = spy_events();
         let mut expected_events = ArrayTrait::new();
 
         // Deploying the first trove
@@ -225,7 +225,7 @@ mod test_abbot {
             Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut spy = spy_events();
         let mut expected_events = ArrayTrait::new();
 
         let mut before_trove_owner_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -308,7 +308,7 @@ mod test_abbot {
             Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut spy = spy_events();
         let mut expected_events = ArrayTrait::new();
 
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
@@ -443,7 +443,7 @@ mod test_abbot {
             Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(abbot.contract_address));
+        let mut spy = spy_events();
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;

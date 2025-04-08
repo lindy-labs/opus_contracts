@@ -16,7 +16,7 @@ mod test_receptor {
         ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
     };
     use snforge_std::{
-        declare, start_warp, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions
+        declare, start_warp, start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
@@ -90,7 +90,7 @@ mod test_receptor {
     #[test]
     fn test_set_update_frequency_pass() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(receptor.contract_address));
+        let mut spy = spy_events();
 
         let old_frequency: u64 = receptor_utils::INITIAL_UPDATE_FREQUENCY;
         let new_frequency: u64 = old_frequency + 1;
@@ -147,8 +147,8 @@ mod test_receptor {
             receptor_utils::receptor_deploy(
             Option::None, Option::None
         );
-        let mut shrine_spy = spy_events(SpyOn::One(shrine.contract_address));
-        let mut receptor_spy = spy_events(SpyOn::One(receptor.contract_address));
+        let mut shrine_spy = spy_events();
+        let mut receptor_spy = spy_events();
 
         let before_yin_spot_price: Wad = shrine.get_yin_spot_price();
 

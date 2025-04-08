@@ -11,7 +11,7 @@ mod test_flash_mint {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::ContractAddress;
     use wadray::{SignedWad, Wad, WAD_ONE};
 
@@ -79,7 +79,7 @@ mod test_flash_mint {
     fn test_flashmint_pass() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
 
-        let mut spy = spy_events(SpyOn::Multiple(array![flashmint.contract_address, borrower]));
+        let mut spy = spy_events();
 
         let yin = shrine_utils::yin(shrine);
 

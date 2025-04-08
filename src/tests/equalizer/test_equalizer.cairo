@@ -12,7 +12,7 @@ mod test_equalizer {
     use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
-    use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, SignedWad, Wad, WAD_ONE};
@@ -33,7 +33,7 @@ mod test_equalizer {
     #[test]
     fn test_equalize_pass() {
         let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+        let mut spy = spy_events();
 
         let surplus: Wad = (500 * WAD_ONE).into();
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -75,7 +75,7 @@ mod test_equalizer {
     #[test]
     fn test_equalize_debt_ceiling_exceeded_pass() {
         let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+        let mut spy = spy_events();
 
         let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr()].span();
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
@@ -143,7 +143,7 @@ mod test_equalizer {
     #[test]
     fn test_allocate_pass() {
         let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+        let mut spy = spy_events();
 
         // Simulate minted surplus by injecting to Equalizer directly
         start_prank(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
@@ -207,7 +207,7 @@ mod test_equalizer {
     #[test]
     fn test_normalize_pass() {
         let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
-        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+        let mut spy = spy_events();
 
         let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
@@ -270,7 +270,7 @@ mod test_equalizer {
     fn test_set_allocator_pass() {
         let allocator_class = Option::Some(declare("allocator").unwrap().contract_class());
         let EqualizerTestConfig { allocator, equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
-        let mut spy = spy_events(SpyOn::One(equalizer.contract_address));
+        let mut spy = spy_events();
 
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();

@@ -5,7 +5,7 @@ mod test_address_registry {
     use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use opus::utils::address_registry::address_registry_component;
     use snforge_std::cheatcodes::events::EventAssertions;
-    use snforge_std::{spy_events, SpyOn, EventSpy, EventFetcher, Event, test_address,};
+    use snforge_std::{spy_events, EventSpyAssertionsTrait, EventSpyTrait, Event, test_address,};
     use starknet::ContractAddress;
 
     //
@@ -56,7 +56,7 @@ mod test_address_registry {
     fn test_add_and_remove_entry() {
         let mut state = state();
 
-        let mut spy = spy_events(SpyOn::One(test_address()));
+        let mut spy = spy_events();
 
         // add first entry
         // order: 1
@@ -66,10 +66,10 @@ mod test_address_registry {
         let expected_entry_id: u32 = 1;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         let mut event_id = 0;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryAdded"), 'wrong event name #1');
         assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 1');
@@ -86,10 +86,10 @@ mod test_address_registry {
         let expected_entry_id: u32 = 2;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryAdded"), 'wrong event name #2');
         assert(*event.data[0] == ENTRY2_ADDR, 'should be entry 2');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 2');
@@ -106,10 +106,10 @@ mod test_address_registry {
         let expected_entry_id: u32 = 3;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryAdded"), 'wrong event name #3');
         assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 3');
@@ -126,10 +126,10 @@ mod test_address_registry {
 
         let expected_entry_id: u32 = 3;
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryRemoved"), 'wrong event name #4');
         assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 3');
@@ -145,10 +145,10 @@ mod test_address_registry {
         let expected_entry_id: u32 = 4;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryAdded"), 'wrong event name #5');
         assert(*event.data[0] == ENTRY3_ADDR, 'should be entry 3');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 4');
@@ -163,10 +163,10 @@ mod test_address_registry {
         assert(res.unwrap() == entry1(), 'error');
         let expected_entry_id: u32 = 1;
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryRemoved"), 'wrong event name #6');
         assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 1');
@@ -182,10 +182,10 @@ mod test_address_registry {
         let expected_entry_id: u32 = 5;
         assert(res.unwrap() == expected_entry_id, 'error');
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
         event_id += 1;
-        let (_, event) = spy.events.at(event_id);
+        let (_, event) = events.events.at(event_id);
         assert(*event.keys[1] == selector!("EntryAdded"), 'wrong event name #7');
         assert(*event.data[0] == ENTRY1_ADDR, 'should be entry 1');
         assert(*event.data[1] == expected_entry_id.into(), 'should be ID 5');

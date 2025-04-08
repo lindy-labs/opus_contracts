@@ -18,7 +18,7 @@ mod test_ekubo {
         ekubo_oracle_adapter_component, IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{declare, start_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{declare, start_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
@@ -142,7 +142,7 @@ mod test_ekubo {
         );
         let oracle = IOracleDispatcher { contract_address: ekubo.contract_address };
 
-        let mut spy = spy_events(SpyOn::One(ekubo.contract_address));
+        let mut spy = spy_events();
 
         let eth = common::eth_token_deploy(Option::Some(token_class));
 

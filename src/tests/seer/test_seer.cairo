@@ -28,7 +28,7 @@ mod test_seer {
     use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait};
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use snforge_std::{
-        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
+        declare, start_prank, stop_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait,
         ContractClassTrait
     };
     use starknet::{get_block_timestamp, ContractAddress};
@@ -36,7 +36,7 @@ mod test_seer {
 
     #[test]
     fn test_seer_setup() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         assert(seer_ac.get_roles(seer_utils::admin()) == seer_roles::default_admin_role(), 'wrong role for admin');
@@ -87,7 +87,7 @@ mod test_seer {
     #[test]
     fn test_set_update_frequency() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
 
         let new_frequency: u64 = 1200;
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
@@ -155,7 +155,7 @@ mod test_seer {
         );
         seer_utils::set_price_types_to_vault(seer, vaults);
 
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
@@ -273,7 +273,7 @@ mod test_seer {
         );
         seer_utils::set_price_types_to_vault(seer, vaults);
 
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
@@ -506,7 +506,7 @@ mod test_seer {
         );
         let exact_eth_price: Wad = convert_ekubo_oracle_price_to_wad(eth_usdc_x128_price, WAD_DECIMALS, USDC_DECIMALS);
 
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
         start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
         seer.update_prices();
 
@@ -574,7 +574,7 @@ mod test_seer {
         );
         seer_utils::set_price_types_to_vault(seer, vaults);
 
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
@@ -687,7 +687,7 @@ mod test_seer {
             Option::None, shrine.contract_address, sentinel.contract_address
         );
 
-        let mut spy = spy_events(SpyOn::One(seer.contract_address));
+        let mut spy = spy_events();
 
         let oracles: Span<ContractAddress> = seer_utils::add_oracles(seer, Option::None, classes.token);
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);

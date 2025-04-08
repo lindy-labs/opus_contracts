@@ -17,7 +17,7 @@ mod test_absorber {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
-        CheatTarget, declare, EventAssertions, EventFetcher, EventSpy, spy_events, SpyOn, start_prank, start_warp,
+        CheatTarget, declare, Event, EventSpyTrait, spy_events, EventSpyAssertionsTrait, start_prank, start_warp,
         stop_prank
     };
     use starknet::{ContractAddress, get_block_timestamp};
@@ -53,7 +53,7 @@ mod test_absorber {
         let classes = absorber_utils::declare_contracts();
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::Some(classes));
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let opus_token: ContractAddress = absorber_utils::opus_token_deploy(classes.token);
         let opus_blesser: ContractAddress = absorber_utils::deploy_blesser_for_reward(
@@ -169,7 +169,7 @@ mod test_absorber {
             Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
         absorber.kill();
@@ -214,7 +214,7 @@ mod test_absorber {
             Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let expected_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
@@ -381,7 +381,7 @@ mod test_absorber {
                     );
                     let first_provided_amt = provided_amt;
 
-                    let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+                    let mut spy = spy_events();
 
                     assert(absorber.is_operational(), 'should be operational');
 
@@ -634,7 +634,7 @@ mod test_absorber {
         );
         let first_provided_amt = provided_amt;
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let yin = shrine_utils::yin(shrine.contract_address);
 
@@ -797,7 +797,7 @@ mod test_absorber {
         );
         let first_provider = provider;
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let first_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
@@ -941,11 +941,11 @@ mod test_absorber {
             ),
         ];
 
-        spy.fetch_events();
+        let events = spy.get_events().events;
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name((spy.events).span(), selector!("Bestow"));
+        common::assert_event_not_emitted_by_name(events, selector!("Bestow"));
 
         spy.assert_emitted(@expected_events);
 
@@ -1008,11 +1008,11 @@ mod test_absorber {
             ),
         ];
 
-        spy.fetch_events();
+        let events = spy.get_events().events;
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name((spy.events).span(), selector!("Bestow"));
+        common::assert_event_not_emitted_by_name(events, selector!("Bestow"));
 
         spy.assert_emitted(@expected_events);
     }
@@ -1038,7 +1038,7 @@ mod test_absorber {
         let first_provider = provider;
         let first_provided_amt = provided_amt;
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1272,7 +1272,7 @@ mod test_absorber {
         let first_provider = provider;
         let first_provided_amt = provided_amt;
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         // Step 2
         let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1335,7 +1335,7 @@ mod test_absorber {
         let first_provider = provider;
         let first_provided_amt = provided_amt;
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let first_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
@@ -1493,7 +1493,7 @@ mod test_absorber {
                     let first_provider = provider;
                     let first_provided_amt = provided_amt;
 
-                    let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+                    let mut spy = spy_events();
 
                     // Step 2
                     let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
@@ -1768,7 +1768,7 @@ mod test_absorber {
             Option::Some(classes)
         );
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         let mut idx: u128 = 0;
@@ -2038,7 +2038,7 @@ mod test_absorber {
             Option::Some(classes)
         );
 
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let expected_epoch: u32 = absorber_contract::FIRST_EPOCH;
         let opus_addr: ContractAddress = *reward_tokens.at(0);
@@ -2120,7 +2120,7 @@ mod test_absorber {
         let AbsorberTestConfig { shrine, abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(
             Option::Some(classes)
         );
-        let mut spy = spy_events(SpyOn::One(absorber.contract_address));
+        let mut spy = spy_events();
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
 

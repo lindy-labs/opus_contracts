@@ -22,7 +22,7 @@ mod test_purger {
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        CheatTarget, EventAssertions, EventFetcher, EventSpy, SpyOn, spy_events, start_prank, start_warp, stop_prank
+        CheatTarget, Event, EventSpyTrait, spy_events, EventSpyAssertionsTrait, EventsFilterTrait, start_prank, start_warp, stop_prank
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
@@ -33,7 +33,7 @@ mod test_purger {
 
     #[test]
     fn test_purger_setup() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
@@ -61,7 +61,7 @@ mod test_purger {
         let PurgerTestConfig { shrine, abbot, seer, purger, yangs, gates, .. } = purger_utils::purger_deploy(
             Option::None
         );
-        let mut spy = spy_events(SpyOn::One(purger.contract_address));
+        let mut spy = spy_events();
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -343,7 +343,7 @@ mod test_purger {
             purger_utils::purger_deploy_with_searcher(
             searcher_start_yin, Option::None
         );
-        let mut spy = spy_events(SpyOn::One(purger.contract_address));
+        let mut spy = spy_events();
 
         purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -528,7 +528,7 @@ mod test_purger {
                         searcher_start_yin, classes
                     );
 
-                    let mut spy = spy_events(SpyOn::One(purger.contract_address));
+                    let mut spy = spy_events();
 
                     purger_utils::create_whale_trove(abbot, yangs, gates);
 
@@ -982,7 +982,7 @@ mod test_purger {
             purger_utils::purger_deploy_with_searcher(
             purger_utils::SEARCHER_YIN.into(), Option::None
         );
-        let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+        let mut spy = spy_events();
 
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, initial_trove_debt);
@@ -1090,9 +1090,9 @@ mod test_purger {
             'wrong absorber asset balance',
         );
 
-        purger_spy.fetch_events();
+        let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
-        let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+        let (_, raw_purged_event) = purger_events.pop_front().unwrap();
         let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
         common::assert_asset_balances_equalish(
@@ -1110,7 +1110,7 @@ mod test_purger {
                 purger_contract::Event::Compensate(purger_contract::Compensate { recipient: caller, compensation }),
             ),
         ];
-        purger_spy.assert_emitted(@expected_events);
+        spy.assert_emitted(@expected_events);
 
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
@@ -1156,12 +1156,7 @@ mod test_purger {
                                                                 classes
                                                             );
 
-                                                            let mut purger_spy = spy_events(
-                                                                SpyOn::One(purger.contract_address)
-                                                            );
-                                                            let mut shrine_spy = spy_events(
-                                                                SpyOn::One(shrine.contract_address)
-                                                            );
+                                                            let mut spy = spy_events();
 
                                                             start_prank(
                                                                 CheatTarget::One(shrine.contract_address),
@@ -1424,10 +1419,9 @@ mod test_purger {
                                                             }
 
                                                             // Check Purger events
-                                                            purger_spy.fetch_events();
+                                                            let purger_events = spy.get_events().emitted_by(purger.contract_address);
 
-                                                            let (_, raw_purged_event) = purger_spy
-                                                                .events
+                                                            let (_, raw_purged_event) = purger_events
                                                                 .pop_front()
                                                                 .unwrap();
                                                             let purged_event = purger_utils::deserialize_purged_event(
@@ -1470,7 +1464,7 @@ mod test_purger {
                                                                     ),
                                                                 ),
                                                             ];
-                                                            purger_spy.assert_emitted(@expected_events);
+                                                            spy.assert_emitted(@expected_events);
 
                                                             // Check Shrine event
 
@@ -1487,7 +1481,7 @@ mod test_purger {
                                                                 ),
                                                             ];
 
-                                                            shrine_spy.assert_emitted(@expected_events);
+                                                            spy.assert_emitted(@expected_events);
 
                                                             shrine_utils::assert_shrine_invariants(
                                                                 shrine, yangs, abbot.get_troves_count()
@@ -1584,8 +1578,7 @@ mod test_purger {
                         classes
                     );
 
-                    let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
-                    let mut shrine_spy = spy_events(SpyOn::One(shrine.contract_address));
+                    let mut spy = spy_events();
 
                     let target_trove_owner: ContractAddress = purger_utils::target_trove_owner();
                     common::fund_user(target_trove_owner, yangs, target_trove_yang_asset_amts);
@@ -1871,8 +1864,8 @@ mod test_purger {
 
                     // Check Purger events
 
-                    purger_spy.fetch_events();
-                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
+                    let (_, raw_purged_event) = events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
                     common::assert_asset_balances_equalish(
@@ -1894,7 +1887,7 @@ mod test_purger {
                             ),
                         ),
                     ];
-                    purger_spy.assert_emitted(@expected_events);
+                    spy.assert_emitted(@expected_events);
 
                     // Check Shrine event
                     let expected_events = array![
@@ -1910,7 +1903,7 @@ mod test_purger {
                         ),
                     ];
 
-                    shrine_spy.assert_emitted(@expected_events);
+                    spy.assert_emitted(@expected_events);
 
                     shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count(),);
                 },
@@ -2818,12 +2811,7 @@ mod test_purger {
                                                         classes
                                                     );
 
-                                                    let mut purger_spy = spy_events(
-                                                        SpyOn::One(purger.contract_address)
-                                                    );
-                                                    let mut shrine_spy = spy_events(
-                                                        SpyOn::One(shrine.contract_address)
-                                                    );
+                                                    let mut spy = spy_events();
 
                                                     start_prank(
                                                         CheatTarget::One(shrine.contract_address), shrine_utils::admin()
@@ -3019,10 +3007,10 @@ mod test_purger {
                                                     }
 
                                                     // Check Purger events
-                                                    purger_spy.fetch_events();
+                                                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
                                                     common::assert_event_not_emitted_by_name(
-                                                        purger_spy.events.span(), selector!("Purged")
+                                                        purger_events, selector!("Purged")
                                                     );
 
                                                     let expected_events = array![
@@ -3035,7 +3023,7 @@ mod test_purger {
                                                             ),
                                                         ),
                                                     ];
-                                                    purger_spy.assert_emitted(@expected_events);
+                                                    spy.assert_emitted(@expected_events);
 
                                                     // Check Shrine event
                                                     let expected_events = array![
@@ -3051,7 +3039,7 @@ mod test_purger {
                                                         ),
                                                     ];
 
-                                                    shrine_spy.assert_emitted(@expected_events);
+                                                    spy.assert_emitted(@expected_events);
 
                                                     shrine_utils::assert_shrine_invariants(
                                                         shrine, yangs, abbot.get_troves_count(),
@@ -3113,7 +3101,7 @@ mod test_purger {
                         purger_utils::purger_deploy(
                         classes
                     );
-                    let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+                    let mut spy = spy_events();
 
                     // Set thresholds to provided value
                     purger_utils::set_thresholds(shrine, yangs, threshold);
@@ -3204,9 +3192,9 @@ mod test_purger {
                         yangs, expected_freed_amts
                     );
 
-                    purger_spy.fetch_events();
+                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
-                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                    let (_, raw_purged_event) = purger_events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
                     common::assert_asset_balances_equalish(
@@ -3228,7 +3216,7 @@ mod test_purger {
                             ),
                         ),
                     ];
-                    purger_spy.assert_emitted(@expected_events);
+                    spy.assert_emitted(@expected_events);
 
                     shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                 },
@@ -3383,7 +3371,7 @@ mod test_purger {
                         purger_utils::purger_deploy(
                         classes
                     );
-                    let mut purger_spy = spy_events(SpyOn::One(purger.contract_address));
+                    let mut spy = spy_events();
 
                     // Set thresholds to provided value
                     purger_utils::set_thresholds(shrine, yangs, threshold);
@@ -3477,9 +3465,9 @@ mod test_purger {
                         yangs, expected_freed_asset_amts,
                     );
 
-                    purger_spy.fetch_events();
+                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
-                    let (_, raw_purged_event) = purger_spy.events.pop_front().unwrap();
+                    let (_, raw_purged_event) = events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
                     assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
@@ -3499,7 +3487,7 @@ mod test_purger {
                             ),
                         ),
                     ];
-                    purger_spy.assert_emitted(@expected_events);
+                    spy.assert_emitted(@expected_events);
 
                     shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
                 },

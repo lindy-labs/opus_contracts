@@ -6,8 +6,7 @@ mod test_shrine_redistribution {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, YangBalance, YangSuspensionStatus};
     use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy,
-        EventAssertions
+        declare, ContractClass, ContractClassTrait, start_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WAD_ONE};
@@ -201,7 +200,7 @@ mod test_shrine_redistribution {
     #[test]
     fn test_shrine_one_redistribution() {
         let shrine: IShrineDispatcher = redistribution_setup(Option::None);
-        let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+        let mut spy = spy_events();
         let before_trove2_health: Health = shrine.get_trove_health(common::TROVE_2);
 
         // Note order is reversed to match `yangs`
@@ -407,7 +406,7 @@ mod test_shrine_redistribution {
                         match pct_debt_to_redistribute_arr.pop_front() {
                             Option::Some(pct_debt_to_redistribute) => {
                                 let shrine: IShrineDispatcher = redistribution_setup(Option::Some(shrine_class));
-                                let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+                                let mut spy = spy_events();
 
                                 let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
                                 let redistributed_trove = common::TROVE_1;
@@ -620,7 +619,7 @@ mod test_shrine_redistribution {
             match pct_value_to_redistribute_arr.pop_front() {
                 Option::Some(pct_value_to_redistribute) => {
                     let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
-                    let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+                    let mut spy = spy_events();
 
                     // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
                     // while the recipient troves (trove 2 and 3) uses only yang 2.
@@ -1152,7 +1151,7 @@ mod test_shrine_redistribution {
                     let before_budget: SignedWad = shrine.get_budget();
 
                     // Charge interest on the first trove
-                    let mut spy = spy_events(SpyOn::One(shrine.contract_address));
+                    let mut spy = spy_events();
                     shrine.forge(trove1_owner, target_trove, *target_trove_forge_amt, forge_fee_pct);
 
                     let expected_protocol_owned_troves_debt: Wad =

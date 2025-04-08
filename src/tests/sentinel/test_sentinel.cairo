@@ -13,14 +13,14 @@ mod test_sentinel {
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::{fixed_point_to_wad, pow};
     use snforge_std::{
-        declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions,
+        declare, ContractClass, start_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait,
     };
     use starknet::ContractAddress;
     use wadray::{Ray, Wad, WAD_ONE};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
 
         let SentinelTestConfig { sentinel, shrine, yangs, gates } = sentinel_utils::deploy_sentinel_with_gates(
             Option::None
@@ -224,7 +224,7 @@ mod test_sentinel {
     fn test_set_yang_asset_max() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        let mut spy = spy_events(SpyOn::One(sentinel.contract_address));
+        let mut spy = spy_events();
 
         let new_asset_max = sentinel_utils::ETH_ASSET_MAX * 2;
 

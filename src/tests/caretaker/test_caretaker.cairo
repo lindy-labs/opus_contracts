@@ -13,7 +13,7 @@ mod test_caretaker {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::fixed_point_to_wad;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::{ContractAddress};
     use wadray::{Ray, ray_to_wad, Wad, WAD_ONE};
 
@@ -55,7 +55,7 @@ mod test_caretaker {
     #[test]
     fn test_shut() {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
-        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
+        let mut spy = spy_events();
 
         // user 1 with 950 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -152,7 +152,7 @@ mod test_caretaker {
     #[test]
     fn test_release() {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
-        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
+        let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -278,7 +278,7 @@ mod test_caretaker {
     #[test]
     fn test_reclaim() {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
-        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
+        let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
@@ -416,7 +416,7 @@ mod test_caretaker {
     #[test]
     fn test_shut_during_armageddon() {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
-        let mut spy = spy_events(SpyOn::One(caretaker.contract_address));
+        let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();

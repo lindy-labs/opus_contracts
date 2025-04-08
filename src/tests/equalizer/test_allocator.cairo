@@ -6,13 +6,13 @@ mod test_allocator {
     use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::ContractAddress;
     use wadray::Ray;
 
     #[test]
     fn test_allocator_deploy() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
@@ -78,7 +78,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(allocator.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
         let new_recipients = equalizer_utils::new_recipients();

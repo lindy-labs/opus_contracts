@@ -10,7 +10,7 @@ mod test_ekubo_oracle_adapter {
         EkuboOracleAdapterHelpers, MIN_TWAP_DURATION
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{declare, ContractClass, spy_events, SpyOn, EventSpy, EventAssertions, EventFetcher, test_address};
+    use snforge_std::{declare, ContractClass, spy_events, EventSpyAssertionsTrait, EventSpyTrait, test_address};
     use starknet::ContractAddress;
     use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
 
@@ -50,15 +50,15 @@ mod test_ekubo_oracle_adapter {
 
         let quote_tokens = common::quote_tokens(Option::None);
 
-        let mut spy = spy_events(SpyOn::One(test_address()));
+        let mut spy = spy_events();
 
         state.ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
-        assert_eq!(spy.events.len(), 1, "wrong number of events");
+        assert_eq!(events.events.len(), 1, "wrong number of events");
 
-        let (_, event) = spy.events.at(0);
+        let (_, event) = events.events.at(0);
         assert_eq!(event.keys[1], @selector!("QuoteTokensUpdated"), "wrong event name");
         assert_eq!(*event.data[0], 3, "wrong span length in event");
         assert_eq!(*event.data[1], (*quote_tokens[0]).into(), "wrong token in event #1");
@@ -111,16 +111,16 @@ mod test_ekubo_oracle_adapter {
     fn test_set_twap_duration_pass() {
         let mut state = state();
 
-        let mut spy = spy_events(SpyOn::One(test_address()));
+        let mut spy = spy_events();
 
         let twap_duration: u64 = 5 * 60;
         state.ekubo_oracle_adapter.set_twap_duration(twap_duration);
 
-        spy.fetch_events();
+        let events = spy.get_events();
 
-        assert_eq!(spy.events.len(), 1, "wrong number of events");
+        assert_eq!(events.events.len(), 1, "wrong number of events");
 
-        let (_, event) = spy.events.at(0);
+        let (_, event) = events.events.at(0);
         assert_eq!(event.keys[1], @selector!("TwapDurationUpdated"), "wrong event name");
         assert_eq!(*event.data[0], 0, "wrong old duration in event");
         assert_eq!(*event.data[1], twap_duration.into(), "wrong new duration in event");

@@ -24,7 +24,7 @@ mod test_pragma {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::pow;
-    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, stop_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
 
@@ -36,7 +36,7 @@ mod test_pragma {
 
     #[test]
     fn test_pragma_setup() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
 
         // Check permissions
@@ -71,7 +71,7 @@ mod test_pragma {
     #[test]
     fn test_set_price_validity_thresholds_pass() {
         let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+        let mut spy = spy_events();
 
         let new_freshness: u64 = 5 * 60; // 5 minutes * 60 seconds
         let new_sources: u32 = 8;
@@ -158,7 +158,7 @@ mod test_pragma {
     #[test]
     fn test_set_yang_pair_settings_pass() {
         let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+        let mut spy = spy_events();
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
         let pepe_token: ContractAddress = common::deploy_token(
@@ -191,7 +191,7 @@ mod test_pragma {
     #[test]
     fn test_set_yang_pair_settings_overwrite_pass() {
         let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+        let mut spy = spy_events();
         start_warp(CheatTarget::All, TS);
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
@@ -475,7 +475,7 @@ mod test_pragma {
     #[test]
     fn test_fetch_price_too_soon() {
         let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+        let mut spy = spy_events();
 
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
         pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
@@ -518,7 +518,7 @@ mod test_pragma {
     #[test]
     fn test_fetch_price_insufficient_sources() {
         let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
-        let mut spy = spy_events(SpyOn::One(pragma.contract_address));
+        let mut spy = spy_events();
 
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
         pragma_utils::add_yangs_v2(pragma.contract_address, yangs);

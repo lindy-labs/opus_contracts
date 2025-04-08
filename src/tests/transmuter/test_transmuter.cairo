@@ -14,7 +14,7 @@ mod test_transmuter {
     use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
-        declare, CheatTarget, ContractClass, ContractClassTrait, EventAssertions, EventSpy, SpyOn, spy_events,
+        declare, CheatTarget, ContractClass, ContractClassTrait, EventSpyAssertionsTrait, spy_events,
         start_prank, stop_prank
     };
     use starknet::ContractAddress;
@@ -27,7 +27,7 @@ mod test_transmuter {
     // Check constructor function
     #[test]
     fn test_transmuter_deploy() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let TransmuterTestConfig { transmuter, wad_usd_stable, .. } =
             transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::None
@@ -93,7 +93,7 @@ mod test_transmuter {
             Option::None, Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 2_000_000 (Wad)
@@ -134,7 +134,7 @@ mod test_transmuter {
             Option::None, Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 5% (Ray)
@@ -184,7 +184,7 @@ mod test_transmuter {
             Option::None, Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
@@ -232,7 +232,7 @@ mod test_transmuter {
             Option::None, Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         // 0.5% (Ray)
@@ -327,7 +327,7 @@ mod test_transmuter {
             Option::None, Option::None
         );
 
-        let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.toggle_reversibility();
@@ -407,7 +407,7 @@ mod test_transmuter {
                     let transmuter = *transmuter;
                     let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
-                    let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                    let mut spy = spy_events();
 
                     // approve Transmuter to transfer user's mock USD stable
                     start_prank(CheatTarget::One(asset.contract_address), user);
@@ -627,7 +627,7 @@ mod test_transmuter {
                     loop {
                         match reverse_fees_copy.pop_front() {
                             Option::Some(reverse_fee) => {
-                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                                let mut spy = spy_events();
 
                                 start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
                                 transmuter.set_reverse_fee(*reverse_fee);
@@ -786,7 +786,7 @@ mod test_transmuter {
                     loop {
                         match transmute_asset_amts.pop_front() {
                             Option::Some(transmute_asset_amt) => {
-                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                                let mut spy = spy_events();
 
                                 // parametrize amount to sweep
                                 let mut sweep_amts: Array<u128> = array![
@@ -905,7 +905,7 @@ mod test_transmuter {
                                     shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                                 );
 
-                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                                let mut spy = spy_events();
 
                                 // parametrize amount to withdraw
                                 let mut withdraw_secondary_amts: Span<u128> = array![
@@ -1071,7 +1071,7 @@ mod test_transmuter {
                                     receiver,
                                 );
 
-                                let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                                let mut spy = spy_events();
 
                                 let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
                                 let seed_amt: Wad = (100000 * WAD_ONE).into();
@@ -1255,7 +1255,7 @@ mod test_transmuter {
                         shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                     );
 
-                    let mut spy = spy_events(SpyOn::One(transmuter.contract_address));
+                    let mut spy = spy_events();
 
                     start_prank(CheatTarget::One(transmuter.contract_address), user);
 

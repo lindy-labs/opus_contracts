@@ -6,7 +6,7 @@ mod test_controller {
     use opus::tests::common;
     use opus::tests::controller::utils::{controller_utils, controller_utils::ControllerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, SpyOn, EventSpy, EventAssertions};
+    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait};
     use starknet::get_block_timestamp;
     use wadray::{Ray, SignedRay, Wad};
 
@@ -17,7 +17,7 @@ mod test_controller {
 
     #[test]
     fn test_deploy_controller() {
-        let mut spy = spy_events(SpyOn::All);
+        let mut spy = spy_events();
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
@@ -71,7 +71,7 @@ mod test_controller {
     #[test]
     fn test_setters() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        let mut spy = spy_events(SpyOn::One(controller.contract_address));
+        let mut spy = spy_events();
 
         start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
 
