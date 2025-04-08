@@ -13,7 +13,7 @@ pub mod purger_utils {
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::flash_liquidator::{flash_liquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
+    use opus::mock::flash_liquidator::{IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait, flash_liquidator};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
@@ -23,9 +23,9 @@ pub mod purger_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
-    use snforge_std::{declare, CheatTarget, ContractClass, ContractClassTrait, Event, start_prank, stop_prank};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, Event, declare, start_prank, stop_prank};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_DECIMALS, WAD_ONE, Wad};
 
     // Struct to group together all contract classes
     // needed for purger tests
@@ -94,13 +94,13 @@ pub mod purger_utils {
     #[inline(always)]
     pub fn recipient_trove_yang_asset_amts() -> Span<u128> {
         array![30 * WAD_ONE, // 30 (Wad) - ETH
-         500000000 // 5 (10 ** 8) - BTC
+        500000000 // 5 (10 ** 8) - BTC
         ].span()
     }
 
     pub fn whale_trove_yang_asset_amts() -> Span<u128> {
         array![700 * WAD_ONE, // 700 (Wad) - ETH
-         70000000000 // 700 (10 ** 8) - BTC
+        70000000000 // 700 (10 ** 8) - BTC
         ].span()
     }
 
@@ -129,7 +129,7 @@ pub mod purger_utils {
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
             (75 * RAY_PERCENT).into(),
-            787400000000000000000000000_u128.into()
+            787400000000000000000000000_u128.into(),
         ]
             .span()
     }
@@ -147,7 +147,7 @@ pub mod purger_utils {
             (97 * RAY_PERCENT).into(),
             // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
-            (99 * RAY_PERCENT).into()
+            (99 * RAY_PERCENT).into(),
         ]
             .span()
     }
@@ -161,12 +161,12 @@ pub mod purger_utils {
         array![
             // First threshold of 65% (Ray)
             array![ // 71.18% (Ray) - LTV at which maximum penalty of 12.5% is first reached
-                711800000000000000000000000_u128.into(), max_possible_penalty_ltv
+                711800000000000000000000000_u128.into(), max_possible_penalty_ltv,
             ]
                 .span(),
             // Second threshold of 70% (Ray)
             array![ // 76.65% (Ray) - LTV at which maximum penalty of 12.5% is first reached
-                766500000000000000000000000_u128.into(), max_possible_penalty_ltv
+                766500000000000000000000000_u128.into(), max_possible_penalty_ltv,
             ]
                 .span(),
             // Third threshold of 75% (Ray)
@@ -176,9 +176,9 @@ pub mod purger_utils {
                 .span(),
             // Fourth threshold of 78.74% (Ray)
             array![ // 86.2203% (Ray) - LTV at which maximum penalty of 12.5% is reached
-                862203000000000000000000000_u128.into(), 862222200000000000000000000_u128.into()
+                862203000000000000000000000_u128.into(), 862222200000000000000000000_u128.into(),
             ]
-                .span()
+                .span(),
         ]
             .span()
     }
@@ -192,38 +192,38 @@ pub mod purger_utils {
         array![
             // First threshold of 78.75% (Ray)
             array![ // 86.23% (Ray) - Greater than LTV at which maximum penalty of 12.5% is last reached
-                862300000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+                862300000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct,
             ]
                 .span(),
             // Second threshold of 80% (Ray)
             array![ // 86.9% (Ray) - LTV at which maximum penalty is reached
-                869000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+                869000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct,
             ]
                 .span(),
             // Third threshold of 90% (Ray)
             array![ // 92.1% (Ray) - LTV at which maximum penalty is reached
-                921000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+                921000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct,
             ]
                 .span(),
             // Fourth threshold of 96% (Ray)
             array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
-                (96 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct
+                (96 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct,
             ]
                 .span(),
             // Fifth threshold of 97% (Ray)
             // This is the highest possible threshold because it may not be possible to charge a
             // penalty after deducting compensation at this LTV and beyond
             array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
-                (97 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct
+                (97 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct,
             ]
                 .span(),
             // Sixth threshold of 99% (Ray)
             // Note that this threshold should not be used because it makes absorber
             // providers worse off, but it should not break the purger's logic.
             array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
-                (99 * RAY_PERCENT + 1).into(), exceed_hundred_pct
+                (99 * RAY_PERCENT + 1).into(), exceed_hundred_pct,
             ]
-                .span()
+                .span(),
         ]
             .span()
     }
@@ -238,7 +238,7 @@ pub mod purger_utils {
             (75 * RAY_PERCENT).into(),
             787400000000000000000000000_u128.into(), // 78.74% (Ray)
             787500000000000000000000000_u128.into(), // 78.75% (Ray)
-            (80 * RAY_PERCENT).into()
+            (80 * RAY_PERCENT).into(),
         ];
 
         // The LTV at which the maximum penalty is reached minus 0.01%
@@ -248,7 +248,7 @@ pub mod purger_utils {
             821200000000000000000000000_u128.into(), // 82.12% (Ray)
             859200000000000000000000000_u128.into(), // 85.92% (Ray)
             862200000000000000000000000_u128.into(), // 86.22% (Ray)
-            868900000000000000000000000_u128.into(), // 86.89% (Ray)
+            868900000000000000000000000_u128.into() // 86.89% (Ray)
         ];
 
         (thresholds.span(), trove_ltvs.span())
@@ -267,14 +267,14 @@ pub mod purger_utils {
             // exceptional redistribution because recipient trove does not have
             // WBTC yang but redistributed trove has WBTC yang
             // 50 (Wad) ETH, 0 WBTC
-            array![50 * WAD_ONE, 0_u128].span()
+            array![50 * WAD_ONE, 0_u128].span(),
         ]
             .span()
     }
 
     pub fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
         array![target_trove_yang_asset_amts(), // Dust yang case
-         // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
+        // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
         array![20 * WAD_ONE, 100_u128].span()].span()
     }
 
@@ -282,7 +282,7 @@ pub mod purger_utils {
         array![ // minimum amount that must be provided based on initial shares
             absorber_contract::INITIAL_SHARES
                 .into(), // largest possible amount of yin in Absorber based on initial shares
-            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into()
+            (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into(),
         ]
             .span()
     }
@@ -296,13 +296,13 @@ pub mod purger_utils {
             (trove_debt.into() / 3_u128).into(),
             (trove_debt.into() - 1000_u128).into(),
             // trove's debt minus the smallest unit of Wad
-            (trove_debt.into() - 1_u128).into()
+            (trove_debt.into() - 1_u128).into(),
         ]
             .span()
     }
 
     pub fn absorb_trove_debt_test_expected_penalties() -> Span<Ray> {
-        // This array should match `ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt`. 
+        // This array should match `ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt`.
         // However, since only the first LTV in the inner span of has a non-zero penalty, and the
         // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
         // the array to be concise.
@@ -319,7 +319,7 @@ pub mod purger_utils {
             // Fifth threshold of 97% (Ray)
             Zero::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            Zero::zero(), // Dummy value since all target LTVs do not have a penalty
+            Zero::zero() // Dummy value since all target LTVs do not have a penalty
         ]
             .span()
     }
@@ -359,18 +359,17 @@ pub mod purger_utils {
             gate: classes.gate,
             shrine: classes.shrine,
             absorber: classes.absorber,
-            blesser: Option::Some(classes.blesser)
+            blesser: Option::Some(classes.blesser),
         };
-        let absorber_utils::AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } =
-            absorber_utils::absorber_deploy(
-            Option::Some(absorber_classes)
-        );
+        let absorber_utils::AbsorberTestConfig {
+            shrine, sentinel, abbot, absorber, yangs, gates,
+        } = absorber_utils::absorber_deploy(Option::Some(absorber_classes));
 
         let reward_tokens: Span<ContractAddress> = absorber_utils::reward_tokens_deploy(classes.token);
 
         let reward_amts_per_blessing: Span<u128> = absorber_utils::reward_amts_per_blessing();
         absorber_utils::deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing, Option::Some(classes.blesser)
+            absorber, reward_tokens, reward_amts_per_blessing, Option::Some(classes.blesser),
         );
 
         let seer = seer_utils::deploy_seer_using(classes.seer, shrine.contract_address, sentinel.contract_address);
@@ -381,10 +380,10 @@ pub mod purger_utils {
                     pragma_v2: classes.pragma_v2,
                     mock_pragma: classes.mock_pragma,
                     ekubo: classes.ekubo,
-                    mock_ekubo: classes.mock_ekubo
-                }
+                    mock_ekubo: classes.mock_ekubo,
+                },
             ),
-            classes.token
+            classes.token,
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
@@ -399,7 +398,7 @@ pub mod purger_utils {
             shrine.contract_address.into(),
             sentinel.contract_address.into(),
             absorber.contract_address.into(),
-            seer.contract_address.into()
+            seer.contract_address.into(),
         ];
 
         let (purger_addr, _) = classes.purger.deploy(@calldata).expect('purger deploy failed');
@@ -495,7 +494,7 @@ pub mod purger_utils {
     // Creates a trove with a lot of collateral
     // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
     pub fn create_whale_trove(
-        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>,
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
@@ -555,7 +554,7 @@ pub mod purger_utils {
         shrine: IShrineDispatcher,
         seer: ISeerV2Dispatcher,
         yangs: Span<ContractAddress>,
-        rm_setup_type: common::RecoveryModeSetupType
+        rm_setup_type: common::RecoveryModeSetupType,
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
         let offset: Ray = 100000000_u128.into();
@@ -573,7 +572,7 @@ pub mod purger_utils {
     //
 
     pub fn get_expected_compensation_assets(
-        trove_asset_amts: Span<u128>, trove_value: Wad, compensation_value: Wad
+        trove_asset_amts: Span<u128>, trove_value: Wad, compensation_value: Wad,
     ) -> Span<u128> {
         let expected_compensation_pct: Ray = wadray::rdiv_ww(compensation_value, trove_value);
         common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
@@ -586,7 +585,7 @@ pub mod purger_utils {
         trove_health: Health,
         close_amt: Wad,
         penalty: Ray,
-        compensation_value: Option<Wad>
+        compensation_value: Option<Wad>,
     ) -> (Ray, Span<u128>) {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
 
@@ -619,12 +618,12 @@ pub mod purger_utils {
 
         (
             expected_freed_pct_of_value_after_compensation,
-            common::scale_span_by_pct(trove_asset_amts, expected_freed_pct_of_value_before_compensation)
+            common::scale_span_by_pct(trove_asset_amts, expected_freed_pct_of_value_before_compensation),
         )
     }
 
     pub fn assert_trove_is_healthy(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health,
     ) {
         assert(trove_health.is_healthy(), 'should be healthy');
 
@@ -633,7 +632,7 @@ pub mod purger_utils {
     }
 
     pub fn assert_trove_is_liquidatable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health,
     ) {
         assert(!trove_health.is_healthy(), 'should not be healthy');
         let (penalty, _) = purger.preview_liquidate(trove_id).expect('Should be liquidatable');
@@ -645,7 +644,7 @@ pub mod purger_utils {
     }
 
     pub fn assert_trove_is_absorbable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, trove_health: Health,
     ) {
         assert(!trove_health.is_healthy(), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
@@ -666,7 +665,7 @@ pub mod purger_utils {
         let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
         let error_margin: Ray = match error_margin {
             Option::Some(e) => { e },
-            Option::None => { (RAY_PERCENT / 10).into() }, // 0.1%
+            Option::None => { (RAY_PERCENT / 10).into() } // 0.1%
         };
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
@@ -679,7 +678,7 @@ pub mod purger_utils {
         mut after_asset_bals: Span<Span<u128>>,
         mut expected_freed_assets: Span<AssetBalance>,
         error_margin: u128,
-        message: felt252
+        message: felt252,
     ) {
         assert_eq!(before_asset_bals.len(), after_asset_bals.len(), "balances array sanity check #1");
         loop {
@@ -703,7 +702,7 @@ pub mod purger_utils {
 
     // Helper function to calculate the sum of the value of the given yangs
     pub fn get_sum_of_value(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>,
     ) -> Wad {
         let mut sum: Wad = Zero::zero();
         loop {
@@ -712,7 +711,7 @@ pub mod purger_utils {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     sum = sum + yang_price * *amounts.pop_front().unwrap();
                 },
-                Option::None => { break sum; }
+                Option::None => { break sum; },
             }
         }
     }
@@ -732,10 +731,10 @@ pub mod purger_utils {
             // key no. 4 is skipped because it is the length of the array
             freed_assets: array![
                 AssetBalance {
-                    address: (*evt.data.at(3)).try_into().unwrap(), amount: (*evt.data.at(4)).try_into().unwrap()
+                    address: (*evt.data.at(3)).try_into().unwrap(), amount: (*evt.data.at(4)).try_into().unwrap(),
                 },
                 AssetBalance {
-                    address: (*evt.data.at(5)).try_into().unwrap(), amount: (*evt.data.at(6)).try_into().unwrap()
+                    address: (*evt.data.at(5)).try_into().unwrap(), amount: (*evt.data.at(6)).try_into().unwrap(),
                 },
             ]
                 .span(),

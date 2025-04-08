@@ -10,7 +10,7 @@ pub mod transmuter_v2 {
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, Wad, WAD_ONE};
+    use wadray::{Ray, WAD_ONE, Wad};
 
     //
     // Components
@@ -26,7 +26,7 @@ pub mod transmuter_v2 {
     // Constants
     //
 
-    // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a 
+    // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a
     // percentage of total yin supply: 100% (Ray)
     pub const PERCENTAGE_CAP_UPPER_BOUND: u128 = 1000000000000000000000000000;
     // Percentage cap at deployment: 10% (Ray)
@@ -51,7 +51,7 @@ pub mod transmuter_v2 {
         shrine: IShrineDispatcher,
         // The primary asset that can be swapped for yin via this Transmuter
         asset: IERC20Dispatcher,
-        // The total yin transmuted 
+        // The total yin transmuted
         total_transmuted: Wad,
         // The maximum amount of yin that can be minted via this Transmuter
         ceiling: Wad,
@@ -99,7 +99,7 @@ pub mod transmuter_v2 {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct CeilingUpdated {
         pub old_ceiling: Wad,
-        pub new_ceiling: Wad
+        pub new_ceiling: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -107,13 +107,13 @@ pub mod transmuter_v2 {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PercentageCapUpdated {
-        pub cap: Ray
+        pub cap: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReceiverUpdated {
         pub old_receiver: ContractAddress,
-        pub new_receiver: ContractAddress
+        pub new_receiver: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -130,30 +130,30 @@ pub mod transmuter_v2 {
         pub user: ContractAddress,
         pub asset_amt: u128,
         pub yin_amt: Wad,
-        pub fee: Wad
+        pub fee: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReverseFeeUpdated {
         pub old_fee: Ray,
-        pub new_fee: Ray
+        pub new_fee: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReversibilityToggled {
-        pub reversibility: bool
+        pub reversibility: bool,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Settle {
-        pub deficit: Wad
+        pub deficit: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Sweep {
         #[key]
         pub recipient: ContractAddress,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -162,7 +162,7 @@ pub mod transmuter_v2 {
         pub recipient: ContractAddress,
         #[key]
         pub asset: ContractAddress,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -171,13 +171,13 @@ pub mod transmuter_v2 {
         pub user: ContractAddress,
         pub asset_amt: u128,
         pub yin_amt: Wad,
-        pub fee: Wad
+        pub fee: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TransmuteFeeUpdated {
         pub old_fee: Ray,
-        pub new_fee: Ray
+        pub new_fee: Ray,
     }
 
     // Constructor
@@ -314,7 +314,7 @@ pub mod transmuter_v2 {
             self.is_reclaimable.write(true);
         }
 
-        // 
+        //
         // Core functions - View
         //
 
@@ -375,11 +375,11 @@ pub mod transmuter_v2 {
             // `preview_reverse_helper` checks for liveness and reversibility
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
-            // Decrement total transmuted amount by yin amount to be reversed 
+            // Decrement total transmuted amount by yin amount to be reversed
             // excluding the fee. The fee is excluded because this Transmuter
-            // is still liable to back the amount of yin representing the fee 
-            // (when it is added to the Shrine's budget and eventually minted 
-            // via the Equalizer) with the corresponding amount of assets, 
+            // is still liable to back the amount of yin representing the fee
+            // (when it is added to the Shrine's budget and eventually minted
+            // via the Equalizer) with the corresponding amount of assets,
             // particularly in the event of shutdown.
             self.total_transmuted.write(self.total_transmuted.read() - yin_amt + fee);
 
@@ -432,11 +432,11 @@ pub mod transmuter_v2 {
             }
         }
 
-        // 
+        //
         // Isolated deprecation
-        // 
+        //
 
-        // Irreversibly deprecate this Transmuter only by settling its debt and transferring 
+        // Irreversibly deprecate this Transmuter only by settling its debt and transferring
         // all of its yin and asset to the receiver.
         fn settle(ref self: ContractState) {
             self.assert_live();
@@ -490,7 +490,7 @@ pub mod transmuter_v2 {
         }
 
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
-        // because we do not make any assumptions as to the amount of assets held by the 
+        // because we do not make any assumptions as to the amount of assets held by the
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
             // `preview_reclaim` checks that reclaim is enabled
@@ -593,7 +593,7 @@ pub mod transmuter_v2 {
 
         // Returns a tuple of:
         // 1. the amount of yin that can be reclaimed, capped by what is still reclaimable; and
-        // 2. the amount of asset that a user is expected to receive for `reclaim` after the 
+        // 2. the amount of asset that a user is expected to receive for `reclaim` after the
         //    Transmuter is killed.
         fn preview_reclaim_helper(self: @ContractState, yin_amt: Wad) -> (Wad, u128) {
             assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
@@ -613,7 +613,7 @@ pub mod transmuter_v2 {
         // Helper function to transfer an asset to a recipient, capping the amount at the contract's balance.
         // Returns an Option containing the amount transferred if it is non-zero.
         fn transfer_asset_to_receiver(
-            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128
+            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128,
         ) -> Option<u128> {
             let asset_balance: u256 = asset.balance_of(get_contract_address());
             let capped_asset_amt: u256 = min(asset_balance, asset_amt.into());

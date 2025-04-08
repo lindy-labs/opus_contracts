@@ -9,10 +9,10 @@ pub mod sentinel {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::{fixed_point_to_wad, pow};
-    use starknet::{ContractAddress, get_caller_address};
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use starknet::{ContractAddress, get_caller_address};
     use wadray::{Ray, Wad};
 
     //
@@ -75,7 +75,7 @@ pub mod sentinel {
     pub struct YangAdded {
         #[key]
         pub yang: ContractAddress,
-        pub gate: ContractAddress
+        pub gate: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -83,14 +83,14 @@ pub mod sentinel {
         #[key]
         pub yang: ContractAddress,
         pub old_max: u128,
-        pub new_max: u128
+        pub new_max: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct GateKilled {
         #[key]
         pub yang: ContractAddress,
-        pub gate: ContractAddress
+        pub gate: ContractAddress,
     }
 
     //
@@ -155,7 +155,7 @@ pub mod sentinel {
         // View functions
         //
 
-        // This can be used to simulate the effects of `enter`. 
+        // This can be used to simulate the effects of `enter`.
         // However, it does not check if (1) the yang is suspended; and/or (2) depositing
         // the amount would exceed the maximum amount of assets allowed.
         fn convert_to_yang(self: @ContractState, yang: ContractAddress, asset_amt: u128) -> Wad {
@@ -182,7 +182,7 @@ pub mod sentinel {
             yang_threshold: Ray,
             yang_price: Wad,
             yang_rate: Ray,
-            gate: ContractAddress
+            gate: ContractAddress,
         ) {
             self.access_control.assert_has_role(sentinel_roles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');

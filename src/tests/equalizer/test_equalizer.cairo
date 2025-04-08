@@ -12,10 +12,10 @@ mod test_equalizer {
     use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
-    use snforge_std::{declare, start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
+    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_prank, stop_prank};
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, SignedWad, WAD_ONE, Wad};
 
     #[test]
     fn test_equalizer_deploy() {
@@ -57,7 +57,7 @@ mod test_equalizer {
         let expected_events = array![
             (
                 equalizer.contract_address,
-                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() })
+                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -128,8 +128,8 @@ mod test_equalizer {
                 (
                     equalizer.contract_address,
                     equalizer_contract::Event::Equalize(
-                        equalizer_contract::Equalize { yin_amt: expected_surplus.into() }
-                    )
+                        equalizer_contract::Equalize { yin_amt: expected_surplus.into() },
+                    ),
                 ),
             ];
             spy.assert_emitted(@expected_events);
@@ -179,7 +179,7 @@ mod test_equalizer {
 
                     allocated += expected_increment;
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
         assert(surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch');
@@ -188,8 +188,8 @@ mod test_equalizer {
             (
                 equalizer.contract_address,
                 equalizer_contract::Event::Allocate(
-                    equalizer_contract::Allocate { recipients, percentages, amount: allocated }
-                )
+                    equalizer_contract::Allocate { recipients, percentages, amount: allocated },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -214,7 +214,7 @@ mod test_equalizer {
             Zero::zero(),
             inject_amt - 1_u128.into(),
             inject_amt,
-            inject_amt.val + 1_u128.into(), // exceeds deficit, but should be capped in `normalize`
+            inject_amt.val + 1_u128.into() // exceeds deficit, but should be capped in `normalize`
         ]
             .span();
 
@@ -244,8 +244,8 @@ mod test_equalizer {
                             (
                                 equalizer.contract_address,
                                 equalizer_contract::Event::Normalize(
-                                    equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt }
-                                )
+                                    equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt },
+                                ),
                             ),
                         ];
                         spy.assert_emitted(@expected_events);
@@ -261,7 +261,7 @@ mod test_equalizer {
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }
@@ -287,9 +287,9 @@ mod test_equalizer {
                 equalizer.contract_address,
                 equalizer_contract::Event::AllocatorUpdated(
                     equalizer_contract::AllocatorUpdated {
-                        old_address: allocator.contract_address, new_address: new_allocator.contract_address
-                    }
-                )
+                        old_address: allocator.contract_address, new_address: new_allocator.contract_address,
+                    },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -301,7 +301,7 @@ mod test_equalizer {
         let allocator_class = Option::Some(declare("allocator").unwrap().contract_class());
         let EqualizerTestConfig { equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
         let new_allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class
+            equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class,
         );
 
         start_prank(CheatTarget::One(equalizer.contract_address), common::badguy());

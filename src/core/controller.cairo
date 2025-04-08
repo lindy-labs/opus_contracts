@@ -6,9 +6,9 @@ pub mod controller {
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
-    use starknet::{ContractAddress, get_block_timestamp};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use wadray::{Ray, RAY_ONE, Signed, SignedRay, Wad, wad_to_signed_ray};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{RAY_ONE, Ray, Signed, SignedRay, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -70,14 +70,14 @@ pub mod controller {
     pub struct ParameterUpdated {
         #[key]
         pub name: felt252,
-        pub value: u8
+        pub value: u8,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct GainUpdated {
         #[key]
         pub name: felt252,
-        pub value: Ray
+        pub value: Ray,
     }
 
     #[constructor]
@@ -159,7 +159,7 @@ pub mod controller {
         fn get_parameters(self: @ContractState) -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
             (
                 (self.p_gain.read(), self.i_gain.read()),
-                (self.alpha_p.read(), self.beta_p.read(), self.alpha_i.read(), self.beta_i.read())
+                (self.alpha_p.read(), self.beta_p.read(), self.alpha_i.read(), self.beta_i.read()),
             )
         }
 

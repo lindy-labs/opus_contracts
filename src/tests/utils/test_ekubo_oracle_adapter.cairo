@@ -2,17 +2,17 @@ mod test_ekubo_oracle_adapter {
     use core::num::traits::Zero;
     use opus::constants;
     use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices
+        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices,
     };
     use opus::tests::common;
     use opus::tests::utils::mock_ekubo_oracle_adapter::mock_ekubo_oracle_adapter;
     use opus::utils::ekubo_oracle_adapter::ekubo_oracle_adapter_component::{
-        EkuboOracleAdapterHelpers, MIN_TWAP_DURATION
+        EkuboOracleAdapterHelpers, MIN_TWAP_DURATION,
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{declare, ContractClass, spy_events, EventSpyAssertionsTrait, EventSpyTrait, test_address};
+    use snforge_std::{ContractClass, EventSpyAssertionsTrait, EventSpyTrait, declare, spy_events, test_address};
     use starknet::ContractAddress;
-    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
     fn state() -> mock_ekubo_oracle_adapter::ContractState {
         mock_ekubo_oracle_adapter::contract_state_for_testing()
@@ -32,7 +32,7 @@ mod test_ekubo_oracle_adapter {
         assert_eq!(
             state.ekubo_oracle_adapter.get_oracle_extension().contract_address,
             mock_ekubo.contract_address,
-            "wrong extension addr"
+            "wrong extension addr",
         );
     }
 
@@ -88,7 +88,7 @@ mod test_ekubo_oracle_adapter {
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
         let quote_tokens: Span<ContractAddress> = array![
-            *quote_tokens[0], *quote_tokens[1], *quote_tokens[2], invalid_token
+            *quote_tokens[0], *quote_tokens[1], *quote_tokens[2], invalid_token,
         ]
             .span();
         state.ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
@@ -156,13 +156,13 @@ mod test_ekubo_oracle_adapter {
         set_next_ekubo_prices(mock_ekubo, eth, quote_tokens, prices);
 
         let exact_eth_dai_price: Wad = convert_ekubo_oracle_price_to_wad(
-            eth_dai_x128_price, WAD_DECIMALS, constants::DAI_DECIMALS
+            eth_dai_x128_price, WAD_DECIMALS, constants::DAI_DECIMALS,
         );
         let exact_eth_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
-            eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS
+            eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS,
         );
         let exact_eth_usdt_price: Wad = convert_ekubo_oracle_price_to_wad(
-            eth_usdt_x128_price, WAD_DECIMALS, constants::USDT_DECIMALS
+            eth_usdt_x128_price, WAD_DECIMALS, constants::USDT_DECIMALS,
         );
         let expected_eth_quotes: Span<Wad> = array![exact_eth_dai_price, exact_eth_usdc_price, exact_eth_usdt_price]
             .span();
@@ -179,13 +179,13 @@ mod test_ekubo_oracle_adapter {
         set_next_ekubo_prices(mock_ekubo, wbtc, quote_tokens, prices);
 
         let exact_wbtc_dai_price: Wad = convert_ekubo_oracle_price_to_wad(
-            wbtc_dai_x128_price, constants::WBTC_DECIMALS, constants::DAI_DECIMALS
+            wbtc_dai_x128_price, constants::WBTC_DECIMALS, constants::DAI_DECIMALS,
         );
         let exact_wbtc_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
-            wbtc_usdc_x128_price, constants::WBTC_DECIMALS, constants::USDC_DECIMALS
+            wbtc_usdc_x128_price, constants::WBTC_DECIMALS, constants::USDC_DECIMALS,
         );
         let exact_wbtc_usdt_price: Wad = convert_ekubo_oracle_price_to_wad(
-            wbtc_usdt_x128_price, constants::WBTC_DECIMALS, constants::USDT_DECIMALS
+            wbtc_usdt_x128_price, constants::WBTC_DECIMALS, constants::USDT_DECIMALS,
         );
         let expected_wbtc_quotes: Span<Wad> = array![exact_wbtc_dai_price, exact_wbtc_usdc_price, exact_wbtc_usdt_price]
             .span();

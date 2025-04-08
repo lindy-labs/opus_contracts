@@ -7,10 +7,10 @@ pub mod receptor {
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::ekubo_oracle_adapter::{ekubo_oracle_adapter_component, IEkuboOracleAdapter};
+    use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapter, ekubo_oracle_adapter_component};
     use opus::utils::math::median_of_three;
-    use starknet::{ContractAddress, get_block_timestamp};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
     //
@@ -70,18 +70,18 @@ pub mod receptor {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct InvalidQuotes {
-        pub quotes: Span<Wad>
+        pub quotes: Span<Wad>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ValidQuotes {
-        pub quotes: Span<Wad>
+        pub quotes: Span<Wad>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct UpdateFrequencyUpdated {
         pub old_frequency: u64,
-        pub new_frequency: u64
+        pub new_frequency: u64,
     }
 
     //
@@ -96,7 +96,7 @@ pub mod receptor {
         oracle_extension: ContractAddress,
         update_frequency: u64,
         twap_duration: u64,
-        quote_tokens: Span<ContractAddress>
+        quote_tokens: Span<ContractAddress>,
     ) {
         self.access_control.initializer(admin, Option::Some(receptor_roles::default_admin_role()));
 
@@ -164,7 +164,7 @@ pub mod receptor {
             self.access_control.assert_has_role(receptor_roles::SET_UPDATE_FREQUENCY);
             assert(
                 LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
-                'REC: Frequency out of bounds'
+                'REC: Frequency out of bounds',
             );
 
             self.set_update_frequency_helper(new_frequency);
@@ -220,7 +220,7 @@ pub mod receptor {
 
                         self.emit(ValidQuotes { quotes });
                         break;
-                    }
+                    },
                 };
             };
         }

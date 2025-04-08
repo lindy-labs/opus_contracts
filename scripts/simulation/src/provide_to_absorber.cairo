@@ -1,14 +1,14 @@
-use core::integer::BoundedInt;
+use core::num::traits::Bounded;
 use scripts::addresses;
 use scripts::constants::MAX_FEE;
-use sncast_std::{invoke, InvokeResult, ScriptCommandError};
+use sncast_std::{InvokeResult, ScriptCommandError, invoke};
 use starknet::ContractAddress;
 use wadray::WAD_ONE;
 
 fn main() {
     let provide_amt: u128 = 1000 * WAD_ONE;
 
-    let max_u128: u128 = BoundedInt::max();
+    let max_u128: u128 = Bounded::MAX();
     invoke(
         addresses::devnet::shrine(),
         selector!("approve"),

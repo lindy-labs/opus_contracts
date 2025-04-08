@@ -10,9 +10,12 @@ pub mod shrine_utils {
     use opus::tests::common;
     use opus::types::Health;
     use opus::utils::exp::exp;
-    use snforge_std::{declare, DeclareResultTrait, ContractClass, ContractClassTrait, start_cheat_caller_address, stop_cheat_caller_address, start_cheat_block_timestamp_global};
+    use snforge_std::{
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, Wad};
+    use wadray::{RAY_ONE, Ray, Wad};
 
     //
     // Constants
@@ -157,10 +160,10 @@ pub mod shrine_utils {
     pub fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {
         let shrine_class = match shrine_class {
             Option::Some(class) => class,
-            Option::None => declare_shrine()
+            Option::None => declare_shrine(),
         };
 
-        let calldata: Array<felt252> = array![admin().into(), YIN_NAME, YIN_SYMBOL,];
+        let calldata: Array<felt252> = array![admin().into(), YIN_NAME, YIN_SYMBOL];
 
         start_cheat_block_timestamp_global(DEPLOYMENT_TIMESTAMP);
 
@@ -197,7 +200,7 @@ pub mod shrine_utils {
                 YANG1_THRESHOLD.into(),
                 YANG1_START_PRICE.into(),
                 YANG1_BASE_RATE.into(),
-                INITIAL_YANG_AMT.into()
+                INITIAL_YANG_AMT.into(),
             );
         shrine
             .add_yang(
@@ -205,7 +208,7 @@ pub mod shrine_utils {
                 YANG2_THRESHOLD.into(),
                 YANG2_START_PRICE.into(),
                 YANG2_BASE_RATE.into(),
-                INITIAL_YANG_AMT.into()
+                INITIAL_YANG_AMT.into(),
             );
         shrine
             .add_yang(
@@ -213,7 +216,7 @@ pub mod shrine_utils {
                 YANG3_THRESHOLD.into(),
                 YANG3_START_PRICE.into(),
                 YANG3_BASE_RATE.into(),
-                INITIAL_YANG_AMT.into()
+                INITIAL_YANG_AMT.into(),
             );
 
         // Set minimum trove value
@@ -223,7 +226,8 @@ pub mod shrine_utils {
         stop_cheat_caller_address(shrine_addr);
     }
 
-    // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
+    // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals`
+    // - 1
     pub fn advance_prices_and_set_multiplier(
         shrine: IShrineDispatcher, num_intervals: u64, yangs: Span<ContractAddress>, yang_prices: Span<Wad>,
     ) -> Span<Span<Wad>> {
@@ -323,7 +327,7 @@ pub mod shrine_utils {
     }
 
     // Helper function to advance prices and multiplier values for a given time by splitting
-    // it into multiple periods to avoid hitting the iteration limit when trying to retrieve 
+    // it into multiple periods to avoid hitting the iteration limit when trying to retrieve
     // the latest prices and multiplier after a prolonged period without updates
     pub fn advance_prices_periodically(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, total_time: u64) {
         let mut num_periods: u64 = 4;
@@ -345,7 +349,7 @@ pub mod shrine_utils {
                         let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                         shrine.advance(*yang, yang_price);
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 }
             };
 
@@ -373,7 +377,7 @@ pub mod shrine_utils {
     pub fn generate_yang_feed(mut price: Wad) -> Span<Wad> {
         let mut prices: Array<Wad> = ArrayTrait::new();
         let mut idx: u64 = 0;
-        
+
         let price_u128: u128 = price.into();
         let price_hash: felt252 = LegacyHash::hash(price_u128.into(), price_u128);
         let mut price_hash: u256 = price_hash.into();
@@ -416,7 +420,7 @@ pub mod shrine_utils {
     // 2. yang amounts
     // 3. yang thresholds
     pub fn calculate_max_forge(
-        mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>
+        mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>,
     ) -> Wad {
         let (threshold, value) = calculate_trove_threshold_and_value(yang_prices, yang_amts, yang_thresholds);
         wadray::rmul_wr(value, threshold)
@@ -427,7 +431,7 @@ pub mod shrine_utils {
     // 2. yang amounts
     // 3. yang thresholds
     pub fn calculate_trove_threshold_and_value(
-        mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>
+        mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>,
     ) -> (Ray, Wad) {
         let mut cumulative_value = Zero::zero();
         let mut cumulative_threshold = Zero::zero();
@@ -456,7 +460,8 @@ pub mod shrine_utils {
     ///    e.g. [[rate at update interval 1 for yang 1, ..., rate at update interval 1 for yang 2],
     ///          [rate at update interval n for yang 1, ..., rate at update interval n for yang 2]]`
     ///
-    /// * `yang_rate_update_intervals` - Ordered list of the intervals at which each of the updates to the base rates were made.
+    /// * `yang_rate_update_intervals` - Ordered list of the intervals at which each of the updates to the base rates
+    /// were made.
     ///    The first interval in this list should be <= `start_interval`.
     ///
     /// * `yang_amts` - Ordered list of the amounts of each Yang over the given time period
@@ -472,10 +477,12 @@ pub mod shrine_utils {
     ///    The first average multiplier should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
     ///
-    /// * `start_interval` - Start interval for the compounding period. This should be greater than or equal to the first interval
+    /// * `start_interval` - Start interval for the compounding period. This should be greater than or equal to the
+    /// first interval
     ///    in `yang_rate_update_intervals`.
     ///
-    /// * `end_interval` - End interval for the compounding period. This should be greater than or equal to the last interval
+    /// * `end_interval` - End interval for the compounding period. This should be greater than or equal to the last
+    /// interval
     ///    in  `yang_rate_update_intervals`.
     ///
     /// * `debt` - Amount of debt at `start_interval`
@@ -487,7 +494,7 @@ pub mod shrine_utils {
         mut avg_multipliers: Span<Ray>,
         start_interval: u64,
         end_interval: u64,
-        mut debt: Wad
+        mut debt: Wad,
     ) -> Wad {
         // Sanity check on input array lengths
         assert(yang_base_rates_history.len() == yang_rate_update_intervals.len(), 'array length mismatch');
@@ -501,10 +508,10 @@ pub mod shrine_utils {
                 Option::Some(base_rates_history) => {
                     assert(
                         (*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(),
-                        'array length mismatch'
+                        'array length mismatch',
                     );
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -575,7 +582,7 @@ pub mod shrine_utils {
 
     // Helper function to calculate average price of a yang over a period of intervals
     pub fn get_avg_yang_price(
-        shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64
+        shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64,
     ) -> Wad {
         let feed_len: u128 = (end_interval - start_interval).into();
         let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
@@ -607,10 +614,10 @@ pub mod shrine_utils {
     // Helper function to calculate the factor to be applied to the Shrine's threshold
     // in order to get the LTV that the Shrine should be at for the given test.
     // Since we are interested in testing the Shrine's behaviour when its LTV is at the boundaries
-    // of these different modes, an additional offset is used to adjust the factor to guarantee 
+    // of these different modes, an additional offset is used to adjust the factor to guarantee
     // that we are on the right side of the boundary even if there is some precision loss.
     pub fn get_recovery_mode_test_setup_threshold_factor(
-        rm_setup_type: common::RecoveryModeSetupType, offset: Ray
+        rm_setup_type: common::RecoveryModeSetupType, offset: Ray,
     ) -> Ray {
         match rm_setup_type {
             common::RecoveryModeSetupType::BeforeRecoveryMode => {
@@ -628,7 +635,7 @@ pub mod shrine_utils {
                 shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
                     + shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
                     + offset
-            }
+            },
         }
     }
 
@@ -643,7 +650,7 @@ pub mod shrine_utils {
     }
 
     pub fn recovery_mode_test_setup(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: common::RecoveryModeSetupType
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, rm_setup_type: common::RecoveryModeSetupType,
     ) {
         let shrine_health: Health = shrine.get_shrine_health();
         let offset: Ray = 100000000_u128.into();
@@ -660,7 +667,7 @@ pub mod shrine_utils {
                     let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
                     shrine.advance(*yang, new_price);
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -680,11 +687,11 @@ pub mod shrine_utils {
             },
             common::RecoveryModeSetupType::ExceedsBuffer => {
                 common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'recovery mode test setup #4');
-            }
+            },
         };
     }
 
-    // Helper to return a whether a trove's LTV is at or greater than its target recovery mode 
+    // Helper to return a whether a trove's LTV is at or greater than its target recovery mode
     // LTV when setting up recovery mode
     pub fn trove_ltv_ge_recovery_mode_target(shrine: IShrineDispatcher, trove_id: u64) -> bool {
         let trove_health: Health = shrine.get_trove_health(trove_id);
@@ -731,7 +738,7 @@ pub mod shrine_utils {
         };
     }
 
-    // Asserts that the total troves debt is less than the sum of all troves' debt, 
+    // Asserts that the total troves debt is less than the sum of all troves' debt,
     // including all unpulled redistributions.
     pub fn assert_total_troves_debt_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64,
@@ -766,7 +773,7 @@ pub mod shrine_utils {
         // there may be some precision loss when pulling redistributed debt
         let error_margin: Wad = 10_u128.into();
         common::assert_equalish(
-            cumulative_troves_debt_with_protocol_owned, shrine_health.debt, error_margin, 'debt invariant failed #2'
+            cumulative_troves_debt_with_protocol_owned, shrine_health.debt, error_margin, 'debt invariant failed #2',
         );
     }
 

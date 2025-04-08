@@ -2,10 +2,10 @@ mod test_address_registry {
     use core::num::traits::Zero;
     use opus::tests::common;
     use opus::tests::utils::mock_address_registry::mock_address_registry;
-    use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use opus::utils::address_registry::address_registry_component;
+    use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
     use snforge_std::cheatcodes::events::EventAssertions;
-    use snforge_std::{spy_events, EventSpyAssertionsTrait, EventSpyTrait, Event, test_address,};
+    use snforge_std::{Event, EventSpyAssertionsTrait, EventSpyTrait, spy_events, test_address};
     use starknet::ContractAddress;
 
     //
@@ -118,7 +118,7 @@ mod test_address_registry {
         let expected_entries: Span<ContractAddress> = array![entry1(), entry2(), entry3()].span();
         assert(state.address_registry.get_entries() == expected_entries, 'wrong entries #3');
 
-        // remove entry at last index 
+        // remove entry at last index
         // order: 1, 2, _
 
         let res = state.address_registry.remove_entry(entry3());

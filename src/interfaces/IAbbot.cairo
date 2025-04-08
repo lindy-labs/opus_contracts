@@ -11,7 +11,7 @@ pub trait IAbbot<TContractState> {
     fn get_trove_asset_balance(self: @TContractState, trove_id: u64, yang: ContractAddress) -> u128;
     // external
     fn open_trove(
-        ref self: TContractState, yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
+        ref self: TContractState, yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad,
     ) -> u64;
     fn close_trove(ref self: TContractState, trove_id: u64);
     fn deposit(ref self: TContractState, trove_id: u64, yang_asset: AssetBalance);

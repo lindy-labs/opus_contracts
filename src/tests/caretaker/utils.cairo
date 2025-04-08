@@ -11,7 +11,7 @@ pub mod caretaker_utils {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
     use starknet::ContractAddress;
 
     #[derive(Copy, Drop)]
@@ -21,7 +21,7 @@ pub mod caretaker_utils {
         pub sentinel: ISentinelDispatcher,
         pub shrine: IShrineDispatcher,
         pub yangs: Span<ContractAddress>,
-        pub gates: Span<IGateDispatcher>
+        pub gates: Span<IGateDispatcher>,
     }
 
     pub fn admin() -> ContractAddress {
@@ -31,13 +31,12 @@ pub mod caretaker_utils {
     pub fn caretaker_deploy() -> CaretakerTestConfig {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
-        let abbot_utils::AbbotTestConfig { shrine, sentinel, abbot, yangs, gates } = abbot_utils::abbot_deploy(
-            Option::None
-        );
-        let equalizer_utils::EqualizerTestConfig { shrine, equalizer, .. } =
-            equalizer_utils::equalizer_deploy_with_shrine(
-            shrine.contract_address, Option::None
-        );
+        let abbot_utils::AbbotTestConfig {
+            shrine, sentinel, abbot, yangs, gates,
+        } = abbot_utils::abbot_deploy(Option::None);
+        let equalizer_utils::EqualizerTestConfig {
+            shrine, equalizer, ..,
+        } = equalizer_utils::equalizer_deploy_with_shrine(shrine.contract_address, Option::None);
 
         let calldata: Array<felt252> = array![
             admin().into(),
@@ -68,7 +67,7 @@ pub mod caretaker_utils {
     }
 
     pub fn only_eth(
-        yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+        yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>,
     ) -> (Span<ContractAddress>, Span<IGateDispatcher>, Span<u128>) {
         let mut eth_yang = array![*yangs[0]];
         let mut eth_gate = array![*gates[0]];

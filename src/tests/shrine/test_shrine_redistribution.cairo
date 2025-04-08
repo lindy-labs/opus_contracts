@@ -6,10 +6,10 @@ mod test_shrine_redistribution {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, YangBalance, YangSuspensionStatus};
     use snforge_std::{
-        declare, ContractClass, ContractClassTrait, start_cheat_caller_address, spy_events, EventSpyAssertionsTrait
+        ContractClass, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, RAY_PERCENT, SignedWad, Wad, WAD_ONE};
+    use wadray::{RAY_ONE, RAY_PERCENT, Ray, SignedWad, WAD_ONE, Wad};
 
     //
     // Setup
@@ -77,7 +77,7 @@ mod test_shrine_redistribution {
     // Note that once the remaining redistribution value falls below the threshold, an early
     // return will be performed, so yangs with dust value of debt will not be included.
     fn preview_trove_redistribution(
-        shrine: IShrineDispatcher, mut yang_addrs: Span<ContractAddress>, trove: u64
+        shrine: IShrineDispatcher, mut yang_addrs: Span<ContractAddress>, trove: u64,
     ) -> (Span<Wad>, Span<Wad>, Span<Wad>, Wad) {
         let trove_health: Health = shrine.get_trove_health(trove);
 
@@ -125,7 +125,7 @@ mod test_shrine_redistribution {
                         break;
                     }
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
         (trove_yang_values.span(), expected_unit_debts.span(), expected_remaining_yangs.span(), cumulative_error)
@@ -160,9 +160,9 @@ mod test_shrine_redistribution {
                     // rounding threshold,
                     let mut expected_yang_debt = wadray::rmul_rw(
                         wadray::rdiv_ww(
-                            *redistributed_trove_yang_values.pop_front().unwrap(), redistributed_trove_value
+                            *redistributed_trove_yang_values.pop_front().unwrap(), redistributed_trove_value,
                         ),
-                        redistributed_trove_debt
+                        redistributed_trove_debt,
                     );
                     // Use a temporary variable for cumulative redistributed debt to check for rounding
                     let tmp_cumulative_redistributed_debt = cumulative_redistributed_debt + expected_yang_debt;
@@ -176,7 +176,7 @@ mod test_shrine_redistribution {
                         .get_redistribution_for_yang(*yang, expected_redistribution_id);
 
                     common::assert_equalish(
-                        expected_unit_debt, redistribution_unit_debt, 2_u128.into(), 'wrong unit debt'
+                        expected_unit_debt, redistribution_unit_debt, 2_u128.into(), 'wrong unit debt',
                     );
 
                     expected_recipient_trove_debt_increment += recipient_trove_yang_deposit * expected_unit_debt;
@@ -187,7 +187,7 @@ mod test_shrine_redistribution {
                     let expected_error = expected_yang_debt - expected_cumulative_increment;
                     cumulative_redistributed_debt += expected_error;
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
         (expected_recipient_trove_debt_increment, cumulative_redistributed_debt)
@@ -211,7 +211,7 @@ mod test_shrine_redistribution {
         let recipient_trove: u64 = common::TROVE_2;
         let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
         let (trove1_yang_values, _, expected_remaining_yangs, expected_error) = preview_trove_redistribution(
-            shrine, yangs, redistributed_trove
+            shrine, yangs, redistributed_trove,
         );
         let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
@@ -229,7 +229,7 @@ mod test_shrine_redistribution {
 
         let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
         assert_eq!(
-            after_protocol_owned_troves_debt, before_protocol_owned_troves_debt + expected_error, "wrong protocol debt"
+            after_protocol_owned_troves_debt, before_protocol_owned_troves_debt + expected_error, "wrong protocol debt",
         );
 
         let expected_redistribution_id: u32 = 1;
@@ -274,8 +274,8 @@ mod test_shrine_redistribution {
                         redistribution_id: expected_redistribution_id,
                         trove_id: redistributed_trove,
                         debt: trove1_health.debt,
-                    }
-                )
+                    },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -293,7 +293,7 @@ mod test_shrine_redistribution {
 
         let yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs_reversed();
         let (_, _, _, expected_redistributed_trove1_errors) = preview_trove_redistribution(
-            shrine, yangs, redistributed_trove1
+            shrine, yangs, redistributed_trove1,
         );
         let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
@@ -309,14 +309,14 @@ mod test_shrine_redistribution {
         assert_eq!(
             intermediate_protocol_owned_troves_debt,
             before_protocol_owned_troves_debt + expected_redistributed_trove1_errors,
-            "wrong protocol debt #1"
+            "wrong protocol debt #1",
         );
 
         let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
 
         let (mut redistributed_trove2_yang_values, _, expected_remaining_yangs, expected_redistributed_trove2_errors) =
             preview_trove_redistribution(
-            shrine, yangs, redistributed_trove2
+            shrine, yangs, redistributed_trove2,
         );
 
         // Perform second redistribution
@@ -332,7 +332,7 @@ mod test_shrine_redistribution {
             after_protocol_owned_troves_debt,
             intermediate_protocol_owned_troves_debt + expected_redistributed_trove2_errors,
             error_margin,
-            'wrong protocol debt #2'
+            'wrong protocol debt #2',
         );
 
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(redistributed_trove2);
@@ -365,7 +365,7 @@ mod test_shrine_redistribution {
             after_recipient_trove_health.debt,
             expected_recipient_trove_debt,
             10_u128.into(),
-            'wrong debt after redistribution'
+            'wrong debt after redistribution',
         );
 
         assert(shrine.get_trove_redistribution_id(recipient_trove) == 0, 'wrong redistribution id');
@@ -376,7 +376,7 @@ mod test_shrine_redistribution {
             - expected_redistributed_trove1_errors
             - expected_redistributed_trove2_errors;
         common::assert_equalish(
-            unpulled_debt, expected_recipient_trove_debt_total_increment, 10_u128.into(), 'wrong attributed debt'
+            unpulled_debt, expected_recipient_trove_debt_total_increment, 10_u128.into(), 'wrong attributed debt',
         );
 
         // Trigger an update in trove 3 with an empty melt
@@ -422,18 +422,18 @@ mod test_shrine_redistribution {
                                 let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
                                 let (_, _, _, expected_error) = preview_trove_redistribution(
-                                    shrine, yangs, redistributed_trove
+                                    shrine, yangs, redistributed_trove,
                                 );
 
                                 shrine.melt(trove1_owner, redistributed_trove, Zero::zero());
 
                                 assert(shrine.get_redistributions_count() == 0, 'wrong start state');
                                 let debt_to_redistribute: Wad = wadray::rmul_wr(
-                                    before_redistributed_trove_health.debt, *pct_debt_to_redistribute
+                                    before_redistributed_trove_health.debt, *pct_debt_to_redistribute,
                                 );
                                 shrine
                                     .redistribute(
-                                        redistributed_trove, debt_to_redistribute, *pct_value_to_redistribute
+                                        redistributed_trove, debt_to_redistribute, *pct_value_to_redistribute,
                                     );
 
                                 let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
@@ -444,7 +444,7 @@ mod test_shrine_redistribution {
                                     after_protocol_owned_troves_debt,
                                     expected_protocol_owned_troves_debt,
                                     error_margin,
-                                    'wrong protocol debt #1'
+                                    'wrong protocol debt #1',
                                 );
 
                                 let after_redistributed_trove_health: Health = shrine
@@ -452,7 +452,7 @@ mod test_shrine_redistribution {
                                 assert(
                                     after_redistributed_trove_health.debt == before_redistributed_trove_health.debt
                                         - debt_to_redistribute,
-                                    'wrong redistributed trove debt'
+                                    'wrong redistributed trove debt',
                                 );
 
                                 let recipient_trove1_health: Health = shrine.get_trove_health(recipient_trove1);
@@ -467,18 +467,16 @@ mod test_shrine_redistribution {
                                     + (updated_recipient_trove2_health.debt - recipient_trove2_health.debt);
                                 let before_budget: SignedWad = shrine.get_budget();
 
-                                // Sanity check that we accrued more interest than the protocol owned troves' debt 
+                                // Sanity check that we accrued more interest than the protocol owned troves' debt
                                 // for the next part of the test
-                                assert(
-                                    accrued_interest > after_protocol_owned_troves_debt, 'interest sanity check'
-                                );
+                                assert(accrued_interest > after_protocol_owned_troves_debt, 'interest sanity check');
 
                                 start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
                                 shrine.melt(trove1_owner, recipient_trove1, Zero::zero());
                                 shrine.melt(trove1_owner, recipient_trove2, Zero::zero());
 
                                 assert(
-                                    shrine.get_protocol_owned_troves_debt().is_zero(), 'wrong po debt after interest'
+                                    shrine.get_protocol_owned_troves_debt().is_zero(), 'wrong po debt after interest',
                                 );
 
                                 let excess: SignedWad = accrued_interest.into()
@@ -497,8 +495,8 @@ mod test_shrine_redistribution {
                                                 redistribution_id: expected_redistribution_id,
                                                 trove_id: redistributed_trove,
                                                 debt: debt_to_redistribute,
-                                            }
-                                        )
+                                            },
+                                        ),
                                     ),
                                 ];
                                 if after_protocol_owned_troves_debt.is_non_zero() {
@@ -509,10 +507,10 @@ mod test_shrine_redistribution {
                                                 shrine.contract_address,
                                                 shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                                     shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                                        total: after_protocol_owned_troves_debt
-                                                    }
-                                                )
-                                            )
+                                                        total: after_protocol_owned_troves_debt,
+                                                    },
+                                                ),
+                                            ),
                                         );
                                     expected_events
                                         .append(
@@ -521,9 +519,9 @@ mod test_shrine_redistribution {
                                                 shrine.contract_address,
                                                 shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                                     shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                                        total: Zero::zero()
-                                                    }
-                                                )
+                                                        total: Zero::zero(),
+                                                    },
+                                                ),
                                             ),
                                         );
                                 }
@@ -531,7 +529,7 @@ mod test_shrine_redistribution {
                                 spy.assert_emitted(@expected_events);
 
                                 shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
-                            // We are unable to test the trove value in a sensible way here because
+                                // We are unable to test the trove value in a sensible way here because
                             // the yang price has not been updated to reflect any rebasing of the
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
@@ -573,7 +571,7 @@ mod test_shrine_redistribution {
         let expected_yang2_redistributed_value = trove2_yang2_amt * yang2_price;
 
         let trove2_yang2_debt = wadray::rmul_rw(
-            wadray::rdiv_ww(expected_yang2_redistributed_value, trove2_health.value), trove2_health.debt
+            wadray::rdiv_ww(expected_yang2_redistributed_value, trove2_health.value), trove2_health.debt,
         );
         assert(trove2_yang2_debt < shrine_contract::ROUNDING_THRESHOLD.into(), 'not below rounding threshold');
 
@@ -588,7 +586,7 @@ mod test_shrine_redistribution {
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
         assert(
-            shrine.get_redistribution_for_yang(yang2_addr, expected_redistribution_id).is_zero(), 'should be skipped'
+            shrine.get_redistribution_for_yang(yang2_addr, expected_redistribution_id).is_zero(), 'should be skipped',
         );
 
         // Check trove 2 has no yang 1, and some amount of yang 2.
@@ -600,7 +598,7 @@ mod test_shrine_redistribution {
         let expected_unit_debt_for_yang2 = trove2_health.debt / expected_remaining_yang1;
         assert(
             shrine.get_redistribution_for_yang(yang1_addr, expected_redistribution_id) == expected_unit_debt_for_yang2,
-            'wrong unit debt'
+            'wrong unit debt',
         );
 
         shrine_utils::assert_shrine_invariants(shrine, shrine_utils::two_yang_addrs(), 3);
@@ -650,20 +648,20 @@ mod test_shrine_redistribution {
 
                     let before_redistributed_trove_health: Health = shrine.get_trove_health(redistributed_trove);
                     let expected_redistributed_value: Wad = wadray::rmul_wr(
-                        before_redistributed_trove_health.value, *pct_value_to_redistribute
+                        before_redistributed_trove_health.value, *pct_value_to_redistribute,
                     );
 
                     let before_recipient_trove1_health: Health = shrine.get_trove_health(recipient_trove1);
                     let before_recipient_trove2_health: Health = shrine.get_trove_health(recipient_trove2);
 
                     let before_redistributed_trove_yang1_amt: Wad = wadray::rmul_wr(
-                        shrine.get_deposit(yang1_addr, redistributed_trove), *pct_value_to_redistribute
+                        shrine.get_deposit(yang1_addr, redistributed_trove), *pct_value_to_redistribute,
                     );
                     let before_redistributed_trove_yang2_amt: Wad = wadray::rmul_wr(
-                        shrine.get_deposit(yang2_addr, redistributed_trove), *pct_value_to_redistribute
+                        shrine.get_deposit(yang2_addr, redistributed_trove), *pct_value_to_redistribute,
                     );
                     let before_redistributed_trove_yang3_amt: Wad = wadray::rmul_wr(
-                        shrine.get_deposit(yang3_addr, redistributed_trove), *pct_value_to_redistribute
+                        shrine.get_deposit(yang3_addr, redistributed_trove), *pct_value_to_redistribute,
                     );
 
                     let before_yang1_total: Wad = shrine.get_yang_total(yang1_addr);
@@ -676,7 +674,7 @@ mod test_shrine_redistribution {
 
                     let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
                     let redistributed_trove_yang2_value: Wad = wadray::rmul_wr(
-                        shrine.get_deposit(yang2_addr, redistributed_trove), *pct_value_to_redistribute
+                        shrine.get_deposit(yang2_addr, redistributed_trove), *pct_value_to_redistribute,
                     )
                         * yang2_price;
                     let expected_redistributed_trove_yang2_debt: Wad = (redistributed_trove_yang2_value
@@ -689,11 +687,11 @@ mod test_shrine_redistribution {
                     shrine.melt(trove1_owner, redistributed_trove, Zero::zero());
                     shrine
                         .redistribute(
-                            redistributed_trove, before_redistributed_trove_health.debt, *pct_value_to_redistribute
+                            redistributed_trove, before_redistributed_trove_health.debt, *pct_value_to_redistribute,
                         );
                     let expected_redistribution_id: u32 = 1;
                     assert(
-                        shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count'
+                        shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count',
                     );
 
                     // Check redistributions attributed to recipient troves
@@ -709,7 +707,7 @@ mod test_shrine_redistribution {
                         recipient_trove1_attr_debt,
                         expected_recipient_trove1_attr_debt,
                         (WAD_ONE / 100).into(),
-                        'wrong attributed debt #1'
+                        'wrong attributed debt #1',
                     );
 
                     let recipient_trove2_attr_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove2);
@@ -717,7 +715,7 @@ mod test_shrine_redistribution {
                         recipient_trove2_attr_debt,
                         expected_recipient_trove2_attr_debt,
                         (WAD_ONE / 100).into(),
-                        'wrong attributed debt #2'
+                        'wrong attributed debt #2',
                     );
 
                     // Check that each yang's total and initial yang amounts are correct
@@ -732,19 +730,19 @@ mod test_shrine_redistribution {
                     let after_yang3_protocol_owned_amt: Wad = shrine.get_protocol_owned_yang_amt(yang3_addr);
 
                     if *pct_value_to_redistribute == RAY_ONE.into() {
-                        // strict equality because there is no offset since redistributed trove 
+                        // strict equality because there is no offset since redistributed trove
                         // has no yang2 remaining
                         assert_eq!(
                             after_yang2_total,
                             before_yang2_total - before_redistributed_trove_yang2_amt,
-                            "wrong yang2 total"
+                            "wrong yang2 total",
                         );
                     } else {
                         // le because there is an offset to account for redistributed trove having
                         // yang2 remaining
                         assert(
                             after_yang2_total < before_yang2_total - before_redistributed_trove_yang2_amt,
-                            'wrong yang2 total'
+                            'wrong yang2 total',
                         );
                     }
                     assert_eq!(after_yang2_protocol_owned_amt, before_yang2_protocol_owned_amt, "wrong initial yang2");
@@ -753,13 +751,13 @@ mod test_shrine_redistribution {
                     assert_eq!(
                         after_yang1_protocol_owned_amt,
                         before_yang1_protocol_owned_amt + before_redistributed_trove_yang1_amt,
-                        "wrong initial yang1"
+                        "wrong initial yang1",
                     );
                     assert_eq!(after_yang3_total, before_yang3_total, "wrong yang3 total");
                     assert_eq!(
                         after_yang3_protocol_owned_amt,
                         before_yang3_protocol_owned_amt + before_redistributed_trove_yang3_amt,
-                        "wrong initial yang3"
+                        "wrong initial yang3",
                     );
 
                     // Check that the debt for yangs 1 and 3 have been added to the protocol owned' troves debt
@@ -770,7 +768,7 @@ mod test_shrine_redistribution {
                         after_protocol_owned_troves_debt,
                         expected_protocol_owned_troves_debt,
                         10000_u128.into(),
-                        'wrong protocol debt'
+                        'wrong protocol debt',
                     );
 
                     // Trigger an update in recipient troves with an empty melt
@@ -778,10 +776,10 @@ mod test_shrine_redistribution {
                     shrine.melt(trove1_owner, recipient_trove2, Zero::zero());
 
                     assert(
-                        shrine.get_trove_redistribution_id(recipient_trove1) == expected_redistribution_id, 'wrong id'
+                        shrine.get_trove_redistribution_id(recipient_trove1) == expected_redistribution_id, 'wrong id',
                     );
                     assert(
-                        shrine.get_trove_redistribution_id(recipient_trove2) == expected_redistribution_id, 'wrong id'
+                        shrine.get_trove_redistribution_id(recipient_trove2) == expected_redistribution_id, 'wrong id',
                     );
 
                     let after_recipient_trove1_health: Health = shrine.get_trove_health(recipient_trove1);
@@ -820,7 +818,7 @@ mod test_shrine_redistribution {
                     assert(
                         before_redistributed_trove_health.debt == actual_redistributed_debt
                             + protocol_owned_troves_debt_diff,
-                        'debt invariant failed'
+                        'debt invariant failed',
                     );
 
                     // Accrue some interest
@@ -838,7 +836,7 @@ mod test_shrine_redistribution {
                     assert_eq!(
                         accrued_protocol_owned_troves_debt,
                         expected_protocol_owned_troves_debt,
-                        "wrong po debt after interest"
+                        "wrong po debt after interest",
                     );
 
                     // Since the amount accrued should be less than the amount redistributed earlier, budget
@@ -854,41 +852,41 @@ mod test_shrine_redistribution {
                                     redistribution_id: expected_redistribution_id,
                                     trove_id: redistributed_trove,
                                     debt: before_redistributed_trove_health.debt,
-                                }
-                            )
+                                },
+                            ),
                         ),
                         // protocol owned troves' debt update for redistribution
                         (
                             shrine.contract_address,
                             shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                 shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                    total: after_protocol_owned_troves_debt
-                                }
-                            )
+                                    total: after_protocol_owned_troves_debt,
+                                },
+                            ),
                         ),
                         // protocol owned troves' debt update for interest accrual
                         (
                             shrine.contract_address,
                             shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                 shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                    total: accrued_protocol_owned_troves_debt
-                                }
-                            )
+                                    total: accrued_protocol_owned_troves_debt,
+                                },
+                            ),
                         ),
                     ];
                     spy.assert_emitted(@expected_events);
 
                     shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }
 
     // Redistribution with only 1 trove.
     // Since the trove's yangs are zeroed, the initial yang would essentially "receive"
-    // the trove's value via rebasing and all the debt would go to the protocol owned troves' debt. 
-    // The trove's debt would also be zeroed. However, the debt would still be backed by the 
+    // the trove's value via rebasing and all the debt would go to the protocol owned troves' debt.
+    // The trove's debt would also be zeroed. However, the debt would still be backed by the
     // initial yangs, and the value can be accessed in the event of a shutdown.
     #[test]
     fn test_shrine_redistribution_only_one_trove_remaining() {
@@ -1010,7 +1008,7 @@ mod test_shrine_redistribution {
         assert_eq!(
             after_protocol_owned_delisted_yang_amt,
             expected_protocol_owned_delisted_yang_amt,
-            "wrong protocol owned delisted yang amt"
+            "wrong protocol owned delisted yang amt",
         );
     }
 
@@ -1052,7 +1050,7 @@ mod test_shrine_redistribution {
         let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
         let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt + forge_amt;
         assert_eq!(
-            after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong protocol owned troves' debt"
+            after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong protocol owned troves' debt",
         );
 
         let after_protocol_owned_delisted_yang_amt: Wad = shrine.get_protocol_owned_yang_amt(yang_to_delist);
@@ -1061,7 +1059,7 @@ mod test_shrine_redistribution {
         assert_eq!(
             after_protocol_owned_delisted_yang_amt,
             expected_protocol_owned_delisted_yang_amt,
-            "wrong protocol owned delisted yang amt"
+            "wrong protocol owned delisted yang amt",
         );
     }
 
@@ -1124,7 +1122,7 @@ mod test_shrine_redistribution {
                     let expected_forge_fee: Wad = forge_fee_pct * *target_trove_forge_amt;
                     let expected_forge_fee_and_accrued_interest: Wad = expected_forge_fee + accrued_interest;
 
-                    // Create a trove with different yangs and with the amount of debt depending on the test case, 
+                    // Create a trove with different yangs and with the amount of debt depending on the test case,
                     // then immediately redistribute it
                     let protocol_owned_debt_amt: Wad = match idx {
                         0 => (expected_forge_fee_and_accrued_interest.into() * 2).into(),
@@ -1144,7 +1142,7 @@ mod test_shrine_redistribution {
                     assert_eq!(
                         protocol_owned_troves_debt,
                         protocol_owned_debt_amt,
-                        "setup: wrong protocol owned troves debt amt"
+                        "setup: wrong protocol owned troves debt amt",
                     );
 
                     let before_shrine_health: Health = shrine.get_shrine_health();
@@ -1163,7 +1161,7 @@ mod test_shrine_redistribution {
 
                     let protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
                     assert_eq!(
-                        protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong po troves' debt"
+                        protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong po troves' debt",
                     );
 
                     let after_budget: SignedWad = shrine.get_budget();
@@ -1184,21 +1182,21 @@ mod test_shrine_redistribution {
                             shrine.contract_address,
                             shrine_contract::Event::ProtocolOwnedTrovesDebtUpdated(
                                 shrine_contract::ProtocolOwnedTrovesDebtUpdated {
-                                    total: expected_protocol_owned_troves_debt
-                                }
-                            )
+                                    total: expected_protocol_owned_troves_debt,
+                                },
+                            ),
                         ),
                         (
                             shrine.contract_address,
                             shrine_contract::Event::TotalTrovesDebtUpdated(
-                                shrine_contract::TotalTrovesDebtUpdated { total: expected_total_troves_debt }
-                            )
+                                shrine_contract::TotalTrovesDebtUpdated { total: expected_total_troves_debt },
+                            ),
                         ),
                         (
                             shrine.contract_address,
                             shrine_contract::Event::BudgetAdjusted(
-                                shrine_contract::BudgetAdjusted { amount: excess_interest.into() }
-                            )
+                                shrine_contract::BudgetAdjusted { amount: excess_interest.into() },
+                            ),
                         ),
                     ];
 
@@ -1209,10 +1207,10 @@ mod test_shrine_redistribution {
                                     shrine.contract_address,
                                     shrine_contract::Event::ForgeFeePaid(
                                         shrine_contract::ForgeFeePaid {
-                                            trove_id: target_trove, fee: expected_forge_fee, fee_pct: forge_fee_pct
-                                        }
-                                    )
-                                )
+                                            trove_id: target_trove, fee: expected_forge_fee, fee_pct: forge_fee_pct,
+                                        },
+                                    ),
+                                ),
                             );
                     }
 

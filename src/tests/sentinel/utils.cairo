@@ -10,7 +10,10 @@ pub mod sentinel_utils {
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{declare, DeclareResultTrait, ContractClass, ContractClassTrait, start_cheat_caller_address, stop_cheat_caller_address};
+    use snforge_std::{
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
 
     // Struct to group together all contract classes
@@ -28,7 +31,7 @@ pub mod sentinel_utils {
         pub shrine: IShrineDispatcher,
         pub sentinel: ISentinelDispatcher,
         pub yangs: Span<ContractAddress>,
-        pub gates: Span<IGateDispatcher>
+        pub gates: Span<IGateDispatcher>,
     }
 
     //
@@ -125,7 +128,7 @@ pub mod sentinel_utils {
         let eth_vault: ContractAddress = common::eth_vault_deploy(vault_class, eth);
 
         let eth_vault_gate: ContractAddress = gate_utils::gate_deploy(
-            eth_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class)
+            eth_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class),
         );
 
         let eth_vault_erc20 = IERC20Dispatcher { contract_address: eth_vault };
@@ -147,7 +150,7 @@ pub mod sentinel_utils {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                eth_vault_gate
+                eth_vault_gate,
             );
 
         stop_cheat_caller_address(sentinel.contract_address);
@@ -164,7 +167,7 @@ pub mod sentinel_utils {
     ) -> (ContractAddress, IGateDispatcher) {
         let wbtc_vault: ContractAddress = common::wbtc_vault_deploy(vault_class, wbtc);
         let wbtc_vault_gate: ContractAddress = gate_utils::gate_deploy(
-            wbtc_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class)
+            wbtc_vault, shrine_addr, sentinel.contract_address, Option::Some(gate_class),
         );
 
         let wbtc_vault_erc20 = IERC20Dispatcher { contract_address: wbtc_vault };
@@ -186,7 +189,7 @@ pub mod sentinel_utils {
                 shrine_utils::YANG2_THRESHOLD.into(),
                 shrine_utils::YANG2_START_PRICE.into(),
                 shrine_utils::YANG2_BASE_RATE.into(),
-                wbtc_vault_gate
+                wbtc_vault_gate,
             );
         stop_cheat_caller_address(sentinel.contract_address);
 
@@ -199,20 +202,20 @@ pub mod sentinel_utils {
         gate_class: ContractClass,
         vault_class: Option<ContractClass>,
         eth: ContractAddress,
-        wbtc: ContractAddress
+        wbtc: ContractAddress,
     ) -> (Span<ContractAddress>, Span<IGateDispatcher>) {
         let vault_class = Option::Some(
             match vault_class {
                 Option::Some(class) => class,
-                Option::None => *declare("erc4626_mintable").unwrap().contract_class()
-            }
+                Option::None => *declare("erc4626_mintable").unwrap().contract_class(),
+            },
         );
 
         let (eth_vault, eth_vault_gate) = add_eth_vault_yang(
-            sentinel, shrine.contract_address, vault_class, gate_class, eth
+            sentinel, shrine.contract_address, vault_class, gate_class, eth,
         );
         let (wbtc_vault, wbtc_vault_gate) = add_wbtc_vault_yang(
-            sentinel, shrine.contract_address, vault_class, gate_class, wbtc
+            sentinel, shrine.contract_address, vault_class, gate_class, wbtc,
         );
 
         let vaults: Span<ContractAddress> = array![eth_vault, wbtc_vault].span();
@@ -234,7 +237,7 @@ pub mod sentinel_utils {
             sentinel,
             shrine: IShrineDispatcher { contract_address: shrine_addr },
             yangs: array![eth].span(),
-            gates: array![eth_gate].span()
+            gates: array![eth_gate].span(),
         }
     }
 
@@ -247,7 +250,7 @@ pub mod sentinel_utils {
         let eth: ContractAddress = common::eth_token_deploy(token_class);
 
         let eth_gate: ContractAddress = gate_utils::gate_deploy(
-            eth, shrine_addr, sentinel.contract_address, gate_class
+            eth, shrine_addr, sentinel.contract_address, gate_class,
         );
 
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
@@ -269,7 +272,7 @@ pub mod sentinel_utils {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                eth_gate
+                eth_gate,
             );
 
         stop_cheat_caller_address(sentinel.contract_address);
@@ -285,7 +288,7 @@ pub mod sentinel_utils {
     ) -> (ContractAddress, IGateDispatcher) {
         let wbtc: ContractAddress = common::wbtc_token_deploy(token_class);
         let wbtc_gate: ContractAddress = gate_utils::gate_deploy(
-            wbtc, shrine_addr, sentinel.contract_address, gate_class
+            wbtc, shrine_addr, sentinel.contract_address, gate_class,
         );
 
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
@@ -306,7 +309,7 @@ pub mod sentinel_utils {
                 shrine_utils::YANG2_THRESHOLD.into(),
                 shrine_utils::YANG2_START_PRICE.into(),
                 shrine_utils::YANG2_BASE_RATE.into(),
-                wbtc_gate
+                wbtc_gate,
             );
         stop_cheat_caller_address(sentinel.contract_address);
 

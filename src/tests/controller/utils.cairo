@@ -5,7 +5,7 @@ pub mod controller_utils {
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, SignedRay, Wad};
 
@@ -45,7 +45,7 @@ pub mod controller_utils {
             ALPHA_P.into(),
             BETA_P.into(),
             ALPHA_I.into(),
-            BETA_I.into()
+            BETA_I.into(),
         ];
 
         let controller_class = declare("controller").unwrap().contract_class();
@@ -59,7 +59,7 @@ pub mod controller_utils {
 
         ControllerTestConfig {
             controller: IControllerDispatcher { contract_address: controller_addr },
-            shrine: IShrineDispatcher { contract_address: shrine_addr }
+            shrine: IShrineDispatcher { contract_address: shrine_addr },
         }
     }
 

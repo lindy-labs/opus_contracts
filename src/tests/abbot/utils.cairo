@@ -10,7 +10,7 @@ pub mod abbot_utils {
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
     use starknet::ContractAddress;
     use wadray::Wad;
 
@@ -31,7 +31,7 @@ pub mod abbot_utils {
         pub sentinel: ISentinelDispatcher,
         pub shrine: IShrineDispatcher,
         pub yangs: Span<ContractAddress>,
-        pub gates: Span<IGateDispatcher>
+        pub gates: Span<IGateDispatcher>,
     }
 
     #[derive(Copy, Drop)]
@@ -58,7 +58,7 @@ pub mod abbot_utils {
     //
 
     pub fn initial_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10,];
+        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10];
         asset_amts.span()
     }
 
@@ -91,14 +91,16 @@ pub mod abbot_utils {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
         };
-        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+        let sentinel_utils::SentinelTestConfig {
+            sentinel, shrine, yangs, gates,
+        } =
             sentinel_utils::deploy_sentinel_with_gates(
-            Option::Some(
-                sentinel_utils::SentinelTestClasses {
-                    sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine
-                }
-            )
-        );
+                Option::Some(
+                    sentinel_utils::SentinelTestClasses {
+                        sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine,
+                    },
+                ),
+            );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into()];
@@ -135,7 +137,7 @@ pub mod abbot_utils {
             abbot_test_config.yangs,
             yang_asset_amts,
             abbot_test_config.gates,
-            forge_amt
+            forge_amt,
         );
 
         (abbot_test_config, AbbotTestTrove { trove_owner, trove_id, yang_asset_amts, forge_amt })

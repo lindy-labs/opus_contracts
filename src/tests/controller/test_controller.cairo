@@ -6,7 +6,7 @@ mod test_controller {
     use opus::tests::common;
     use opus::tests::controller::utils::{controller_utils, controller_utils::ControllerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, start_warp, CheatTarget, spy_events, EventSpyAssertionsTrait};
+    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, spy_events, start_prank, start_warp};
     use starknet::get_block_timestamp;
     use wadray::{Ray, SignedRay, Wad};
 
@@ -31,38 +31,38 @@ mod test_controller {
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'p_gain', value: controller_utils::P_GAIN.into() }
-                )
+                    controller_contract::GainUpdated { name: 'p_gain', value: controller_utils::P_GAIN.into() },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'i_gain', value: controller_utils::I_GAIN.into() }
-                )
+                    controller_contract::GainUpdated { name: 'i_gain', value: controller_utils::I_GAIN.into() },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'alpha_p', value: controller_utils::ALPHA_P }
-                )
+                    controller_contract::ParameterUpdated { name: 'alpha_p', value: controller_utils::ALPHA_P },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'alpha_i', value: controller_utils::ALPHA_I }
-                )
+                    controller_contract::ParameterUpdated { name: 'alpha_i', value: controller_utils::ALPHA_I },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'beta_p', value: controller_utils::BETA_P }
-                )
+                    controller_contract::ParameterUpdated { name: 'beta_p', value: controller_utils::BETA_P },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'beta_i', value: controller_utils::BETA_I }
-                )
+                    controller_contract::ParameterUpdated { name: 'beta_i', value: controller_utils::BETA_I },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -100,38 +100,38 @@ mod test_controller {
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
-                )
+                    controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
-                )
+                    controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
-                )
+                    controller_contract::ParameterUpdated { name: 'alpha_p', value: new_alpha_p },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
-                )
+                    controller_contract::ParameterUpdated { name: 'alpha_i', value: new_alpha_i },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p }
-                )
+                    controller_contract::ParameterUpdated { name: 'beta_p', value: new_beta_p },
+                ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::ParameterUpdated(
-                    controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i }
-                )
+                    controller_contract::ParameterUpdated { name: 'beta_i', value: new_beta_i },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -281,7 +281,7 @@ mod test_controller {
             999770911209658000_u128.into(),
             1000070231385980000_u128.into(),
             999765417689028000_u128.into(),
-            1000069974303700000_u128.into()
+            1000069974303700000_u128.into(),
         ];
 
         let mut expected_p_terms_for_update: Array<SignedRay> = array![
@@ -335,7 +335,7 @@ mod test_controller {
             12022963179793800000000_u128.into(),
             -(346412629582555000000.into()),
             12908797294632500000000_u128.into(),
-            -(342622403036553000000.into())
+            -(342622403036553000000.into()),
         ];
 
         let mut expected_i_terms_for_update: Array<SignedRay> = array![
@@ -389,7 +389,7 @@ mod test_controller {
             -(7474679419119640000000.into()),
             22908878433052100000000_u128.into(),
             -(7023138580674010000000.into()),
-            23458230451766600000000_u128.into()
+            23458230451766600000000_u128.into(),
         ];
 
         let mut expected_multipliers: Array<Ray> = array![
@@ -469,7 +469,7 @@ mod test_controller {
                     let (shrine_multiplier, _, _) = shrine.get_current_multiplier();
                     assert_eq!(multiplier, shrine_multiplier, "wrong multiplier in shrine");
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }
@@ -493,7 +493,7 @@ mod test_controller {
             998000000000000000_u128.into(),
             997000000000000000_u128.into(),
             996000000000000000_u128.into(),
-            995000000000000000_u128.into()
+            995000000000000000_u128.into(),
         ];
         let mut expected_p_terms_for_update: Array<SignedRay> = array![
             1000000000000000000000000_u128.into(),
@@ -505,7 +505,7 @@ mod test_controller {
             64000000000000200000000000_u128.into(),
             64000000000000200000000000_u128.into(),
             125000000000000000000000000_u128.into(),
-            125000000000000000000000000_u128.into()
+            125000000000000000000000000_u128.into(),
         ];
         let mut expected_i_terms_for_update: Array<SignedRay> = array![
             0_u128.into(),
@@ -517,7 +517,7 @@ mod test_controller {
             299998650009113000000000_u128.into(),
             399996800038400000000000_u128.into(),
             799993600076800000000000_u128.into(),
-            499993750117186000000000_u128.into()
+            499993750117186000000000_u128.into(),
         ];
         let mut expected_multipliers: Array<Ray> = array![
             1001000000000000000000000000_u128.into(),
@@ -529,7 +529,7 @@ mod test_controller {
             1064699997850011700000000000_u128.into(),
             1064699995450047700000000000_u128.into(),
             1126099992250086000000000000_u128.into(),
-            1126299987350194000000000000_u128.into()
+            1126299987350194000000000000_u128.into(),
         ];
         let mut update_intervals: Array<u64> = array![1, 4, 6, 7, 9];
 
@@ -602,7 +602,7 @@ mod test_controller {
             1000170338496500000_u128.into(),
             999281991878406000_u128.into(),
             999576275080028000_u128.into(),
-            999875348924666000_u128.into()
+            999875348924666000_u128.into(),
         ];
 
         let mut expected_p_terms_for_update: Array<SignedRay> = array![
@@ -626,7 +626,7 @@ mod test_controller {
             -(4942406121069110000000.into()),
             370158792771876000000000_u128.into(),
             76076761868840400000000_u128.into(),
-            1936814769458320000000_u128.into()
+            1936814769458320000000_u128.into(),
         ];
 
         let mut expected_i_terms_for_update: Array<SignedRay> = array![
@@ -650,7 +650,7 @@ mod test_controller {
             12370875261032900000000_u128.into(),
             -(17033849402874100000000.into()),
             71800793651462500000000_u128.into(),
-            42372488193362600000000_u128.into()
+            42372488193362600000000_u128.into(),
         ];
 
         let mut expected_multipliers: Array<Ray> = array![
@@ -697,7 +697,7 @@ mod test_controller {
 
                     controller.update_multiplier();
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }
@@ -792,7 +792,7 @@ mod test_controller {
 
                     controller.update_multiplier();
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }

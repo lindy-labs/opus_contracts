@@ -10,11 +10,11 @@ pub mod shrine {
     use opus::interfaces::IShrine::IShrine;
     use opus::types::{Health, HealthTrait, Trove, YangBalance, YangSuspensionStatus};
     use opus::utils::exp::{exp, neg_exp};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use wadray::{Ray, RAY_ONE, SignedWad, Wad, WAD_DECIMALS, WAD_ONE};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use wadray::{RAY_ONE, Ray, SignedWad, WAD_DECIMALS, WAD_ONE, Wad};
 
     //
     // Components
@@ -81,8 +81,8 @@ pub mod shrine {
     // Minimum (0.5) and maximum (1.0) factors to be applied to:
     // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
     // - a trove's threshold to determine its target recovery mode LTV.
-    // Note that if the factor is set to 1.0, it would be substantively the same as disabling recovery 
-    // mode because thresholds would only start to be scaled when the Shrine has more debt than value 
+    // Note that if the factor is set to 1.0, it would be substantively the same as disabling recovery
+    // mode because thresholds would only start to be scaled when the Shrine has more debt than value
     // i.e. it would be too late to "recover".
     pub const MIN_RECOVERY_MODE_TARGET_FACTOR: u128 = 500000000000000000000000000; // 0.5 (ray)
     pub const MAX_RECOVERY_MODE_TARGET_FACTOR: u128 = 10000000000000000000000000000; // 1.0 (ray)
@@ -90,7 +90,7 @@ pub mod shrine {
     // Initial target factor at deployment
     pub const INITIAL_RECOVERY_MODE_TARGET_FACTOR: u128 = 700000000000000000000000000; // 0.7 (ray)
 
-    // Minimum (0.01) and maximum (0.1) factor to be applied to the Shrine's LTV as a buffer before 
+    // Minimum (0.01) and maximum (0.1) factor to be applied to the Shrine's LTV as a buffer before
     // thresholds are scaled in recovery mode.
     pub const MIN_RECOVERY_MODE_BUFFER_FACTOR: u128 = 10000000000000000000000000; // 0.01 (ray)
     pub const MAX_RECOVERY_MODE_BUFFER_FACTOR: u128 = 100000000000000000000000000; // 0.1 (ray)
@@ -137,16 +137,16 @@ pub mod shrine {
         // Keeps track of how much of each yang has been deposited into each Trove - Wad
         // (yang_id, trove_id) -> (Amount Deposited)
         deposits: Map::<(u32, u64), Wad>,
-        // Total amount of debt accrued for troves. This includes any debt surplus 
+        // Total amount of debt accrued for troves. This includes any debt surplus
         // already accounted for in the budget.
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
         // `total_troves_debt` = `protocol_owned_troves_debt` + sum(trove.debt) for all troves
         total_troves_debt: Wad,
         // Amount of debt originating from troves that is owned by the protocol due to:
-        // 1. errors from ordinarily redistributed debt; and 
+        // 1. errors from ordinarily redistributed debt; and
         // 2. exceptionally redistributed trove's debt.
-        // 
-        // If this amount is greater than zero, the priority is to use any surplus from troves 
+        //
+        // If this amount is greater than zero, the priority is to use any surplus from troves
         // (i.e. interest and forge fees) to reduce it back to zero, before adding to the budget.
         protocol_owned_troves_debt: Wad,
         // Total amount of synthetic forged and injected
@@ -206,13 +206,13 @@ pub mod shrine {
         thresholds: Map::<u32, Ray>,
         // This factor is applied to:
         // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
-        // - a trove's threshold to determine its target recovery mode LTV, so `forge` and `withdraw` 
-        //   in recovery mode will revert if it would cause the trove's LTV to be greater than its 
-        //   target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted 
+        // - a trove's threshold to determine its target recovery mode LTV, so `forge` and `withdraw`
+        //   in recovery mode will revert if it would cause the trove's LTV to be greater than its
+        //   target LTV. The trove's threshold for liquidation in recovery mode is in turn adjusted
         //   based on how far the trove's LTV exceeds this target LTV.
         recovery_mode_target_factor: Ray,
         // An additional factor to be added to `recovery_mode_target_factor`
-        // before multiplying by the Shrine's threshold to return the Shrine's LTV at which 
+        // before multiplying by the Shrine's threshold to return the Shrine's LTV at which
         // thresholds start to be scaled in recovery mode.
         // This acts as a buffer from when recovery mode is triggered until thresholds
         // are adjusted to mitigate against a trove intentionally triggering recovery mode to
@@ -224,7 +224,7 @@ pub mod shrine {
         // Last redistribution accounted for a trove
         // (trove_id) -> (Last Redistribution ID)
         trove_redistribution_id: Map::<u64, u32>,
-        // Mapping of yang ID and redistribution ID to amount of debt in Wad to be redistributed 
+        // Mapping of yang ID and redistribution ID to amount of debt in Wad to be redistributed
         // to each Wad unit of yang
         // (yang_id, redistribution_id) -> debt_per_wad
         yang_redistributions: Map::<(u32, u32), Wad>,
@@ -278,22 +278,22 @@ pub mod shrine {
         pub yang: ContractAddress,
         pub yang_id: u32,
         pub start_price: Wad,
-        pub initial_rate: Ray
+        pub initial_rate: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TotalTrovesDebtUpdated {
-        pub total: Wad
+        pub total: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ProtocolOwnedTrovesDebtUpdated {
-        pub total: Wad
+        pub total: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct BudgetAdjusted {
-        pub amount: SignedWad
+        pub amount: SignedWad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -301,7 +301,7 @@ pub mod shrine {
         pub multiplier: Ray,
         pub cumulative_multiplier: Ray,
         #[key]
-        pub interval: u64
+        pub interval: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -310,24 +310,24 @@ pub mod shrine {
         pub rate_era: u64,
         pub current_interval: u64,
         pub yangs: Span<ContractAddress>,
-        pub new_rates: Span<Ray>
+        pub new_rates: Span<Ray>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ThresholdUpdated {
         #[key]
         pub yang: ContractAddress,
-        pub threshold: Ray
+        pub threshold: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct RecoveryModeTargetFactorUpdated {
-        pub factor: Ray
+        pub factor: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct RecoveryModeBufferFactorUpdated {
-        pub factor: Ray
+        pub factor: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -335,28 +335,28 @@ pub mod shrine {
         #[key]
         pub trove_id: u64,
         pub fee: Wad,
-        pub fee_pct: Wad
+        pub fee_pct: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Forge {
         #[key]
         pub trove_id: u64,
-        pub amount: Wad
+        pub amount: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Melt {
         #[key]
         pub trove_id: u64,
-        pub amount: Wad
+        pub amount: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Charge {
         #[key]
         pub trove_id: u64,
-        pub amount: Wad
+        pub amount: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -365,7 +365,7 @@ pub mod shrine {
         pub redistribution_id: u32,
         #[key]
         pub trove_id: u64,
-        pub debt: Wad
+        pub debt: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -375,37 +375,37 @@ pub mod shrine {
         pub price: Wad,
         pub cumulative_price: Wad,
         #[key]
-        pub interval: u64
+        pub interval: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct YinPriceUpdated {
         pub old_price: Wad,
-        pub new_price: Wad
+        pub new_price: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct MinimumTroveValueUpdated {
-        pub value: Wad
+        pub value: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct DebtCeilingUpdated {
-        pub ceiling: Wad
+        pub ceiling: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct YangSuspended {
         #[key]
         pub yang: ContractAddress,
-        pub timestamp: u64
+        pub timestamp: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct YangUnsuspended {
         #[key]
         pub yang: ContractAddress,
-        pub timestamp: u64
+        pub timestamp: u64,
     }
 
 
@@ -420,7 +420,7 @@ pub mod shrine {
         pub from: ContractAddress,
         #[key]
         pub to: ContractAddress,
-        pub value: u256
+        pub value: u256,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -429,7 +429,7 @@ pub mod shrine {
         pub owner: ContractAddress,
         #[key]
         pub spender: ContractAddress,
-        pub value: u256
+        pub value: u256,
     }
 
     //
@@ -464,8 +464,8 @@ pub mod shrine {
         self
             .emit(
                 MultiplierUpdated {
-                    multiplier: init_multiplier, cumulative_multiplier: init_multiplier, interval: prev_interval
-                }
+                    multiplier: init_multiplier, cumulative_multiplier: init_multiplier, interval: prev_interval,
+                },
             );
         self.emit(RecoveryModeTargetFactorUpdated { factor: init_target_factor });
         self.emit(RecoveryModeBufferFactorUpdated { factor: init_buffer_factor });
@@ -662,7 +662,7 @@ pub mod shrine {
             threshold: Ray,
             start_price: Wad,
             initial_rate: Ray,
-            initial_yang_amt: Wad
+            initial_yang_amt: Wad,
         ) {
             self.access_control.assert_has_role(shrine_roles::ADD_YANG);
 
@@ -685,7 +685,8 @@ pub mod shrine {
             self.yang_total.write(yang_id, initial_yang_amt);
             self.protocol_owned_yang_amts.write(yang_id, initial_yang_amt);
 
-            // Since `start_price` is the first price in the price history, the cumulative price is also set to `start_price`
+            // Since `start_price` is the first price in the price history, the cumulative price is also set to
+            // `start_price`
 
             let prev_interval: u64 = now() - 1;
             // seeding initial price to the previous interval to ensure `get_recent_price_from` terminates
@@ -730,7 +731,7 @@ pub mod shrine {
             self.access_control.assert_has_role(shrine_roles::UPDATE_YANG_SUSPENSION);
 
             assert(
-                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent, 'SH: Suspension is permanent'
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent, 'SH: Suspension is permanent',
             );
 
             self.yang_suspension.write(self.get_valid_yang_id(yang), 0);
@@ -782,14 +783,14 @@ pub mod shrine {
                                 .yang_rates
                                 .write(
                                     (current_yang_id, rate_era),
-                                    self_snap.yang_rates.read((current_yang_id, rate_era - 1))
+                                    self_snap.yang_rates.read((current_yang_id, rate_era - 1)),
                                 );
                         } else {
                             assert_rate_is_valid(*rate);
                             self.yang_rates.write((current_yang_id, rate_era), *rate);
                         }
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 
@@ -827,9 +828,7 @@ pub mod shrine {
             let (last_price, last_cumulative_price, last_interval) = self.get_recent_price_from(yang_id, interval - 1);
 
             let intermediate_cumulative: u128 = last_price.into() * (interval - last_interval - 1).into();
-            let cumulative_price: Wad = last_cumulative_price
-                + intermediate_cumulative.into()
-                + price;
+            let cumulative_price: Wad = last_cumulative_price + intermediate_cumulative.into() + price;
 
             self.yang_prices.write((yang_id, interval), (price, cumulative_price));
             self.emit(YangPriceUpdated { yang, price, cumulative_price, interval });
@@ -847,9 +846,7 @@ pub mod shrine {
                 .get_recent_multiplier_from(interval - 1);
 
             let intermediate_cumulative: u128 = (interval - last_interval - 1).into() * last_multiplier.into();
-            let cumulative_multiplier: Ray = last_cumulative_multiplier
-                + intermediate_cumulative.into()
-                + multiplier;
+            let cumulative_multiplier: Ray = last_cumulative_multiplier + intermediate_cumulative.into() + multiplier;
             self.multiplier.write(interval, (multiplier, cumulative_multiplier));
 
             self.emit(MultiplierUpdated { multiplier, cumulative_multiplier, interval });
@@ -893,7 +890,7 @@ pub mod shrine {
             self.access_control.assert_has_role(shrine_roles::KILL);
             self.is_live.write(false);
 
-            // Set protocol owned yangs to zero, thereby rebasing the amount of asset per yang to the benefit of 
+            // Set protocol owned yangs to zero, thereby rebasing the amount of asset per yang to the benefit of
             // all trove owners. Note that yin holders already benefitted from a proportional share of the protocol
             // owned yangs when the Caretaker transfers a proportion of all underlying yang assets to itself.
             let mut current_yang_id: u32 = START_YANG_IDX;
@@ -919,7 +916,7 @@ pub mod shrine {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
             assert(
                 MIN_RECOVERY_MODE_TARGET_FACTOR <= factor.into() && factor.into() <= MAX_RECOVERY_MODE_TARGET_FACTOR,
-                'SH: Invalid target LTV factor'
+                'SH: Invalid target LTV factor',
             );
             self.recovery_mode_target_factor.write(factor);
 
@@ -930,7 +927,7 @@ pub mod shrine {
             self.access_control.assert_has_role(shrine_roles::SET_RECOVERY_MODE_FACTORS);
             assert(
                 MIN_RECOVERY_MODE_BUFFER_FACTOR <= factor.into() && factor.into() <= MAX_RECOVERY_MODE_BUFFER_FACTOR,
-                'SH: Invalid buffer factor'
+                'SH: Invalid buffer factor',
             );
             self.recovery_mode_buffer_factor.write(factor);
 
@@ -1063,7 +1060,7 @@ pub mod shrine {
         }
 
         fn redistribute(
-            ref self: ContractState, trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray
+            ref self: ContractState, trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray,
         ) {
             self.access_control.assert_has_role(shrine_roles::REDISTRIBUTE);
             assert(pct_value_to_redistribute <= RAY_ONE.into(), 'SH: pct_val_to_redistribute > 1');
@@ -1081,7 +1078,7 @@ pub mod shrine {
             // Perform redistribution
             self
                 .redistribute_helper(
-                    redistribution_id, trove_id, debt_to_redistribute, pct_value_to_redistribute, current_interval
+                    redistribution_id, trove_id, debt_to_redistribute, pct_value_to_redistribute, current_interval,
                 );
 
             trove.charge_from = current_interval;
@@ -1183,7 +1180,7 @@ pub mod shrine {
             Zero::zero()
         }
 
-        // Returns a Health struct comprising the trove's applicable threshold based on current on-chain conditins, 
+        // Returns a Health struct comprising the trove's applicable threshold based on current on-chain conditins,
         // LTV based on compounded debt, trove value and compounded debt.
         fn get_trove_health(self: @ContractState, trove_id: u64) -> Health {
             let trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
@@ -1226,20 +1223,20 @@ pub mod shrine {
         // 3. if Shrine is in recovery mode:
         //    a. if the trove's LTV is greater than its target recovery mode LTV, the action
         //       does not worsen the trove LTV; or
-        //    b. if the trove's LTV is at or below its target recovery mode LTV, the action would not 
+        //    b. if the trove's LTV is at or below its target recovery mode LTV, the action would not
         //       cause the trove's LTV to be greater than its recovery mode target LTV.
         fn assert_valid_trove_action(
             self: @ContractState,
             start_shrine_health: Health,
             start_trove_health_with_base_threshold: Health,
-            trove_id: u64
+            trove_id: u64,
         ) {
             let end_trove_health_with_base_threshold: Health = self.get_trove_health_with_base_threshold(trove_id);
             // (1)
             if end_trove_health_with_base_threshold.debt.is_non_zero() {
                 assert(
                     end_trove_health_with_base_threshold.value >= self.minimum_trove_value.read(),
-                    'SH: Below minimum trove value'
+                    'SH: Below minimum trove value',
                 );
             }
 
@@ -1250,13 +1247,13 @@ pub mod shrine {
                     // (3a)
                     assert(
                         end_trove_health_with_base_threshold.ltv <= start_trove_health_with_base_threshold.ltv,
-                        'SH: Trove LTV is worse off (RM)'
+                        'SH: Trove LTV is worse off (RM)',
                     );
                 } else {
                     // (3b)
                     assert(
                         !self.exceeds_recovery_mode_ltv(end_trove_health_with_base_threshold),
-                        'SH: Trove LTV > target LTV (RM)'
+                        'SH: Trove LTV > target LTV (RM)',
                     )
                 }
             } else {
@@ -1273,7 +1270,7 @@ pub mod shrine {
         fn assert_le_debt_ceiling(self: @ContractState, new_total_yin: Wad, new_budget: SignedWad) {
             let budget_adjustment: Wad = match new_budget.try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { Zero::zero() }
+                Option::None => { Zero::zero() },
             };
             let new_total_debt: Wad = new_total_yin + budget_adjustment;
             assert(new_total_debt <= self.debt_ceiling.read(), 'SH: Debt ceiling reached');
@@ -1338,7 +1335,7 @@ pub mod shrine {
             self.get_recent_multiplier_from(interval - 1)
         }
 
-        // Returns a Health struct comprising the trove's base threshold, LTV based on compounded debt, trove value 
+        // Returns a Health struct comprising the trove's base threshold, LTV based on compounded debt, trove value
         // and compounded debt.
         fn get_trove_health_with_base_threshold(self: @ContractState, trove_id: u64) -> Health {
             let interval: u64 = now();
@@ -1356,7 +1353,8 @@ pub mod shrine {
                 // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of
                 //   of debt / value will run into a zero division error.
                 // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be
-                //   incorrectly set to 0 and `trove.is_healthy` will retrun true and fail to catch this illegal operation.
+                //   incorrectly set to 0 and `trove.is_healthy` will retrun true and fail to catch this illegal
+                //   operation.
                 let ltv: Ray = if trove.debt.is_non_zero() {
                     Bounded::MAX
                 } else {
@@ -1379,7 +1377,7 @@ pub mod shrine {
         // Helper function for applying the recovery mode threshold decrease to a base threshold.
         // The maximum threshold decrease is capped to 50% of the base threshold.
         fn scale_trove_threshold_for_recovery_mode(
-            self: @ContractState, trove_health_with_base_threshold: Health
+            self: @ContractState, trove_health_with_base_threshold: Health,
         ) -> Ray {
             // Early return if any of the following is true
             // 1. Trove has no debt
@@ -1399,7 +1397,7 @@ pub mod shrine {
                 trove_health_with_base_threshold.threshold
                     * THRESHOLD_DECREASE_FACTOR.into()
                     * (trove_recovery_mode_target_ltv / trove_health_with_base_threshold.ltv),
-                (trove_health_with_base_threshold.threshold.into() / 2_u128).into()
+                (trove_health_with_base_threshold.threshold.into() / 2_u128).into(),
             );
         }
 
@@ -1435,7 +1433,7 @@ pub mod shrine {
         // 2. the total value of the yangs, at a given interval
         // based on historical prices and the given yang balances.
         fn get_threshold_and_value(
-            self: @ContractState, mut yang_balances: Span<YangBalance>, interval: u64
+            self: @ContractState, mut yang_balances: Span<YangBalance>, interval: u64,
         ) -> (Ray, Wad) {
             let mut weighted_threshold_sum: Ray = Zero::zero();
             let mut total_value: Wad = Zero::zero();
@@ -1484,13 +1482,13 @@ pub mod shrine {
         //
 
         // Helper to use surplus from troves to first reduce any protocol owned troves' debt
-        // - When the protocol owned troves' debt is greater than zero, then the sum of all troves' debt is 
-        //   lower than `total_troves_debt`, because the yin corresponding to the difference has already been 
+        // - When the protocol owned troves' debt is greater than zero, then the sum of all troves' debt is
+        //   lower than `total_troves_debt`, because the yin corresponding to the difference has already been
         //   minted into circulation and is now owned by the protocol.
-        // - The effect of using a trove's surplus to reduce the protocol owned troves' debt is to transfer the 
-        //   backing for the protocol owned troves' debt from the protocol owned yang amounts to the trove that is 
+        // - The effect of using a trove's surplus to reduce the protocol owned troves' debt is to transfer the
+        //   backing for the protocol owned troves' debt from the protocol owned yang amounts to the trove that is
         //   incurring this surplus.
-        // - Once the protocol owned trove's debt reaches zero, the sum of all troves' debt will again be equal to 
+        // - Once the protocol owned trove's debt reaches zero, the sum of all troves' debt will again be equal to
         //   `total_troves_debt`.
         //
         // Returns the excess surplus for the caller to add to the budget.
@@ -1571,7 +1569,7 @@ pub mod shrine {
             let updated_trove: Trove = Trove {
                 charge_from: current_interval,
                 debt: compounded_trove_debt_with_redistributed_debt,
-                last_rate_era: self.rates_latest_era.read()
+                last_rate_era: self.rates_latest_era.read(),
             };
             self.troves.write(trove_id, updated_trove);
             self.trove_redistribution_id.write(trove_id, self.redistributions_count.read());
@@ -1634,7 +1632,7 @@ pub mod shrine {
 
                 let avg_base_rate: Ray = self
                     .get_avg_rate_over_era(
-                        trove_id, start_interval, next_rate_update_era_interval, trove_last_rate_era
+                        trove_id, start_interval, next_rate_update_era_interval, trove_last_rate_era,
                     );
                 let avg_rate: Ray = avg_base_rate
                     * self.get_avg_multiplier(start_interval, next_rate_update_era_interval);
@@ -1655,7 +1653,7 @@ pub mod shrine {
         // Also assumes that the trove's debt, and the trove's yang deposits
         // remain constant over the entire time period.
         fn get_avg_rate_over_era(
-            self: @ContractState, trove_id: u64, start_interval: u64, end_interval: u64, rate_era: u64
+            self: @ContractState, trove_id: u64, start_interval: u64, end_interval: u64, rate_era: u64,
         ) -> Ray {
             let mut cumulative_weighted_sum: Ray = Zero::zero();
             let mut cumulative_yang_value: Wad = Zero::zero();
@@ -1689,7 +1687,8 @@ pub mod shrine {
             }
         }
 
-        // Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
+        // Returns the average price for a yang between two intervals, including `end_interval` but NOT including
+        // `start_interval`
         // - If `start_interval` is the same as `end_interval`, return the price at that interval.
         // - If `start_interval` is different from `end_interval`, return the average price.
         fn get_avg_price(self: @ContractState, yang_id: u32, start_interval: u64, end_interval: u64) -> Wad {
@@ -1721,7 +1720,8 @@ pub mod shrine {
             // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
             // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
             if start_interval != available_start_interval {
-                let cumulative_offset: u128 = (start_interval - available_start_interval).into() * start_yang_price.into();
+                let cumulative_offset: u128 = (start_interval - available_start_interval).into()
+                    * start_yang_price.into();
                 cumulative_diff -= cumulative_offset.into();
             }
 
@@ -1736,7 +1736,8 @@ pub mod shrine {
             res.into()
         }
 
-        // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
+        // Returns the average multiplier over the specified time period, including `end_interval` but NOT including
+        // `start_interval`
         // - If `start_interval` is the same as `end_interval`, return the multiplier value at that interval.
         // - If `start_interval` is different from `end_interval`, return the average.
         // Return value is a tuple so that function can be modified as an external view for testing
@@ -1764,7 +1765,8 @@ pub mod shrine {
             // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
             // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
             if start_interval != available_start_interval {
-                let cumulative_offset: u128 = ((start_interval - available_start_interval).into() * start_multiplier.into());
+                let cumulative_offset: u128 = ((start_interval - available_start_interval).into()
+                    * start_multiplier.into());
                 cumulative_diff -= cumulative_offset.into();
             }
 
@@ -1785,17 +1787,17 @@ pub mod shrine {
         //
         // For yangs that can be ordinarily redistributed to other troves that have deposited the same
         // yang, decrement the trove's yang balance and total yang supply by the amount redistributed
-        // (including any adjustments if the trove has some amount of the redistributed yang remaining), 
-        // and divide the debt by the recipient amount of yang (i.e. excluding the initial yang amount 
+        // (including any adjustments if the trove has some amount of the redistributed yang remaining),
+        // and divide the debt by the recipient amount of yang (i.e. excluding the initial yang amount
         // and the redistributed trove's yang.
         //
-        // For yangs that (1) have not been deposited by any other troves; or (2) has been delisted 
-        // (i.e. exceptional redistribution), 
-        // - for both (1) and (2), we transfer the redistributed trove's yang to the protocol owned yang 
+        // For yangs that (1) have not been deposited by any other troves; or (2) has been delisted
+        // (i.e. exceptional redistribution),
+        // - for both (1) and (2), we transfer the redistributed trove's yang to the protocol owned yang
         //   amount;
-        // - for (1) only, add the debt to the protocol owned troves' debt. 
-        // This ensures that the redistributed debt can still be backed in the event of a shutdown, but 
-        // essentially locks the redistributed yang's value in Shrine, 
+        // - for (1) only, add the debt to the protocol owned troves' debt.
+        // This ensures that the redistributed debt can still be backed in the event of a shutdown, but
+        // essentially locks the redistributed yang's value in Shrine,
         //
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
         // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
@@ -1806,7 +1808,7 @@ pub mod shrine {
             trove_id: u64,
             debt_to_redistribute: Wad,
             pct_value_to_redistribute: Ray,
-            current_interval: u64
+            current_interval: u64,
         ) {
             // TODO: temporary workaround for issue with borrowing snapshots in loops
             let self_snap = @self;
@@ -1815,7 +1817,7 @@ pub mod shrine {
             let (_, trove_value) = self.get_threshold_and_value(trove_yang_balances, current_interval);
             let trove_value_to_redistribute: Wad = wadray::rmul_wr(trove_value, pct_value_to_redistribute);
 
-            // Keep track of the total debt redistributed, as well as the total amount of debt to be added 
+            // Keep track of the total debt redistributed, as well as the total amount of debt to be added
             // to the protocol owned troves' debt either from the errors of ordinary redistributions or the
             // debt from exceptional redistributions
             let mut redistributed_debt: Wad = Zero::zero();
@@ -1844,7 +1846,7 @@ pub mod shrine {
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
-                        // Note that if yang is delisted, its price will be zero, and therefore no debt will be 
+                        // Note that if yang is delisted, its price will be zero, and therefore no debt will be
                         // redistributed for this yang because it does not account for any of the trove's value.
                         let (redistributed_yang_price, _, _) = self_snap
                             .get_recent_price_from(yang_id_to_redistribute, current_interval);
@@ -1854,11 +1856,11 @@ pub mod shrine {
 
                         if trove_value_to_redistribute.is_non_zero() {
                             let yang_debt_pct: Ray = wadray::rdiv_ww(
-                                yang_amt_to_redistribute * redistributed_yang_price, trove_value_to_redistribute
+                                yang_amt_to_redistribute * redistributed_yang_price, trove_value_to_redistribute,
                             );
                             raw_debt_to_distribute_for_yang = wadray::rmul_rw(yang_debt_pct, debt_to_redistribute);
                             let (tmp_debt_to_distribute_for_yang, updated_redistributed_debt) = round_distributed_debt(
-                                debt_to_redistribute, raw_debt_to_distribute_for_yang, redistributed_debt
+                                debt_to_redistribute, raw_debt_to_distribute_for_yang, redistributed_debt,
                             );
 
                             redistributed_debt = updated_redistributed_debt;
@@ -1884,8 +1886,8 @@ pub mod shrine {
                         //
                         // This is expected to be the common case.
                         // Otherwise, redistribute by:
-                        // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial 
-                        //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown 
+                        // (1) decrementing the redistributed trove's yangs so that the value accrue to the initial
+                        //     yang amounts via rebasing (and will be locked up in Shrine until and if global shutdown
                         //     occurs);
                         // (2) adding the trove's debt to the protocol owned troves' debt
                         let is_ordinary_redistribution: bool = (recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into())
@@ -1896,34 +1898,39 @@ pub mod shrine {
 
                         if is_ordinary_redistribution {
                             // Since the amount of assets in the Gate remains constant, decrementing the system's yang
-                            // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating)
+                            // balance by the amount deposited in the trove has the effect of rebasing (i.e.
+                            // appreciating)
                             // the ratio of asset to yang for the remaining amount of that yang.
                             //
                             // Example:
-                            // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
+                            // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the
+                            // Gate.
                             //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
-                            // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
-                            //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
-                            //   in the Gate remains at 100 units.
+                            // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1
+                            // is
+                            //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of
+                            //   YANG_1_ASSET in the Gate remains at 100 units.
                             //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
                             //
-                            // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
-                            // this formula below to offset the appreciation from rebasing for the redistributed trove:
+                            // Therefore, we need to adjust the remainder yang amount of the redistributed trove
+                            // according to this formula below to offset the appreciation from rebasing for the
+                            // redistributed trove:
                             //
                             //                                        remaining_trove_yang
                             // adjusted_remaining_trove_yang = ----------------------------------
                             //                                 (1 + unit_yang_per_recipient_yang)
                             //
-                            // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be redistributed
-                            // to each Wad unit in `recipient_yang_amt + protocol_owned_yang_amt` - note
-                            // that the initial yang amount needs to be included because it also benefits from the rebasing:
+                            // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be
+                            // redistributed to each Wad unit in `recipient_yang_amt + protocol_owned_yang_amt` - note
+                            // that the initial yang amount needs to be included because it also benefits from the
+                            // rebasing:
                             //
                             //                                          yang_amt_to_redistribute
                             // unit_yang_per_recipient_yang = --------------------------------------------
                             //                                recipient_yang_amt + protocol_owned_yang_amt
 
                             let unit_yang_per_recipient_yang: Ray = wadray::rdiv_ww(
-                                yang_amt_to_redistribute, (recipient_yang_amt + protocol_owned_yang_amt)
+                                yang_amt_to_redistribute, (recipient_yang_amt + protocol_owned_yang_amt),
                             );
                             let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
                             updated_trove_yang_balance =
@@ -1942,7 +1949,7 @@ pub mod shrine {
                             let unit_debt: Wad = debt_to_distribute_for_yang / recipient_yang_amt;
                             self.yang_redistributions.write((yang_id_to_redistribute, redistribution_id), unit_debt);
 
-                            // Due to loss of precision from fixed point division, the actual debt distributed will be 
+                            // Due to loss of precision from fixed point division, the actual debt distributed will be
                             // less than or equal to the amount of debt to distribute.
                             let actual_debt_distributed_for_yang: Wad = unit_debt * recipient_yang_amt;
                             let debt_error: Wad = debt_to_distribute_for_yang - actual_debt_distributed_for_yang;
@@ -1958,8 +1965,8 @@ pub mod shrine {
                                         + yang_amt_to_redistribute,
                                 );
 
-                            // The redistributed debt should exclude any previous errors, which should be carried over to 
-                            // the next ordinary redistribution instead.
+                            // The redistributed debt should exclude any previous errors, which should be carried over
+                            // to the next ordinary redistribution instead.
                             cumulative_protocol_owned_troves_debt += debt_to_distribute_for_yang;
                         }
 
@@ -1979,7 +1986,7 @@ pub mod shrine {
             // If some debt remains undistributed, transfer it to the protocol.
             // This may happen due to:
             // 1. the amount of debt to be redistributed is very small e.g. 1 wei,
-            //    causing the debt for each yang to round down to zero due to loss of 
+            //    causing the debt for each yang to round down to zero due to loss of
             //    precision;
             // 2. the trove has deposited only delisted yangs.
             if redistributed_debt < debt_to_redistribute {
@@ -2056,7 +2063,7 @@ pub mod shrine {
     // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
     // of debt redistributed is equal to amount intended to be redistributed
     fn round_distributed_debt(
-        total_debt_to_distribute: Wad, debt_to_distribute: Wad, cumulative_redistributed_debt: Wad
+        total_debt_to_distribute: Wad, debt_to_distribute: Wad, cumulative_redistributed_debt: Wad,
     ) -> (Wad, Wad) {
         let updated_cumulative_redistributed_debt = cumulative_redistributed_debt + debt_to_distribute;
         let remaining_debt: Wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
@@ -2106,7 +2113,7 @@ pub mod shrine {
         }
 
         fn transfer_from(
-            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
         ) -> bool {
             self.spend_allowance_helper(sender, get_caller_address(), amount);
             self.transfer_helper(sender, recipient, amount);
@@ -2130,7 +2137,7 @@ pub mod shrine {
         }
 
         fn transferFrom(
-            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
         ) -> bool {
             self.transfer_from(sender, recipient, amount)
         }
@@ -2166,7 +2173,7 @@ pub mod shrine {
         }
 
         fn spend_allowance_helper(
-            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
+            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256,
         ) {
             let current_allowance: u256 = self.yin_allowances.read((owner, spender));
 

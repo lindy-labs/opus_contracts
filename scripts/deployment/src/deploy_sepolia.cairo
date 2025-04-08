@@ -4,8 +4,8 @@ use opus::core::roles;
 use scripts::addresses;
 use scripts::constants;
 use sncast_std::{
-    declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress, invoke, InvokeResult,
-    ScriptCommandError
+    DeclareResult, DeployResult, DisplayClassHash, DisplayContractAddress, InvokeResult, ScriptCommandError, declare,
+    deploy, invoke,
 };
 use starknet::{ClassHash, ContractAddress};
 
@@ -28,7 +28,7 @@ fn main() {
 
     // Deploy transmuter
     let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
-        admin, shrine, addresses::sepolia::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+        admin, shrine, addresses::sepolia::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING,
     );
 
     println!("Deploying gates");
@@ -45,7 +45,7 @@ fn main() {
         addresses::sepolia::pragma_spot_oracle(),
         addresses::sepolia::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
-        constants::PRAGMA_SOURCES_THRESHOLD
+        constants::PRAGMA_SOURCES_THRESHOLD,
     );
 
     utils::set_oracles_to_seer(seer, array![pragma].span());
@@ -100,7 +100,7 @@ fn main() {
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set debt ceiling failed');
 
@@ -112,7 +112,7 @@ fn main() {
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set minimum trove value failed');
 
@@ -126,7 +126,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::None, admin, shrine, sentinel, abbot, purger
+        Option::None, admin, shrine, sentinel, abbot, purger,
     );
 
     println!("-------------------------------------------------\n");

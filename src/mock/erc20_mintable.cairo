@@ -3,7 +3,7 @@ pub mod erc20_mintable {
     use core::num::traits::Zero;
     use opus::interfaces::IERC20::{IERC20, IMintable};
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address};
 
@@ -45,7 +45,7 @@ pub mod erc20_mintable {
         symbol_: felt252,
         decimals_: u8,
         initial_supply: u256,
-        recipient: ContractAddress
+        recipient: ContractAddress,
     ) {
         self.name.write(name_);
         self.symbol.write(symbol_);
@@ -89,7 +89,7 @@ pub mod erc20_mintable {
         }
 
         fn transfer_from(
-            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
         ) -> bool {
             let caller = get_caller_address();
             self.spend_allowance(sender, caller, amount);

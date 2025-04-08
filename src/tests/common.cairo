@@ -11,9 +11,12 @@ use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward};
 use opus::utils::math::pow;
-use snforge_std::{ContractClass, ContractClassTrait, declare, DeclareResultTrait, Event, start_cheat_caller_address, start_cheat_block_timestamp_global, stop_cheat_caller_address};
+use snforge_std::{
+    ContractClass, ContractClassTrait, DeclareResultTrait, Event, declare, start_cheat_block_timestamp_global,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
 use starknet::{ContractAddress, get_block_timestamp};
-use wadray::{Ray, Wad, WAD_ONE};
+use wadray::{Ray, WAD_ONE, Wad};
 
 //
 // Types
@@ -129,7 +132,7 @@ pub impl RewardPartialEq of PartialEq<Reward> {
 
 // Helper function to advance timestamp by the given intervals
 pub fn advance_intervals_and_refresh_prices_and_multiplier(
-    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64
+    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64,
 ) {
     // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
     let (current_multiplier, _, _) = shrine.get_current_multiplier();
@@ -143,7 +146,7 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
                 let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
                 yang_prices.append(current_yang_price);
             },
-            Option::None => { break; }
+            Option::None => { break; },
         };
     };
 
@@ -158,7 +161,7 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
                 let yang_price = yang_prices.pop_front().unwrap();
                 shrine.advance(*yang, yang_price);
             },
-            Option::None => { break; }
+            Option::None => { break; },
         };
     };
     stop_cheat_caller_address(shrine.contract_address);
@@ -198,12 +201,12 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => *declare("erc20_mintable").unwrap().contract_class()
+        Option::None => *declare("erc20_mintable").unwrap().contract_class(),
     };
     array![
         dai_token_deploy(Option::Some(token_class)),
         usdc_token_deploy(Option::Some(token_class)),
-        usdt_token_deploy(Option::Some(token_class))
+        usdt_token_deploy(Option::Some(token_class)),
     ]
         .span()
 }
@@ -289,7 +292,7 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
                 }
                 IMintableDispatcher { contract_address: *yang }.mint(user, amt.into());
             },
-            Option::None => { break; }
+            Option::None => { break; },
         };
     };
 }
@@ -297,7 +300,7 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
 // Mock Ekubo deployment helper
 
 pub fn mock_ekubo_oracle_extension_deploy(
-    mock_ekubo_oracle_extension_class: Option<ContractClass>
+    mock_ekubo_oracle_extension_class: Option<ContractClass>,
 ) -> IMockEkuboOracleExtensionDispatcher {
     let mut calldata: Array<felt252> = ArrayTrait::new();
 
@@ -320,7 +323,7 @@ pub fn open_trove_helper(
     yangs: Span<ContractAddress>,
     yang_asset_amts: Span<u128>,
     mut gates: Span<IGateDispatcher>,
-    forge_amt: Wad
+    forge_amt: Wad,
 ) -> u64 {
     let mut yangs_copy = yangs;
 
@@ -331,7 +334,7 @@ pub fn open_trove_helper(
                 let gate: IGateDispatcher = *gates.pop_front().unwrap();
                 sentinel_utils::approve_max(gate, *yang, user);
             },
-            Option::None => { break; }
+            Option::None => { break; },
         };
     };
 
@@ -366,12 +369,12 @@ pub fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<Con
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None => { break; }
+                        Option::None => { break; },
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None => { break balances.span(); }
+            Option::None => { break balances.span(); },
         };
     }
 }
@@ -388,7 +391,7 @@ pub fn get_erc20_bal_as_yang(gate: IGateDispatcher, asset: ContractAddress, owne
 //
 
 pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(
-    a: T, b: T, error: T, message: felt252
+    a: T, b: T, error: T, message: felt252,
 ) {
     if a >= b {
         assert(a - b <= error, message);
@@ -398,7 +401,7 @@ pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, im
 }
 
 pub fn assert_asset_balances_equalish(
-    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
+    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252,
 ) {
     assert(a.len() == b.len(), message);
 
@@ -409,7 +412,7 @@ pub fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
-            Option::None => { break; }
+            Option::None => { break; },
         };
     };
 }

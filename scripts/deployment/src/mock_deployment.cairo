@@ -1,5 +1,5 @@
 use scripts::constants::MAX_FEE;
-use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress};
+use sncast_std::{DeclareResult, DeployResult, DisplayClassHash, DisplayContractAddress, declare, deploy};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -12,7 +12,7 @@ pub fn deploy_mock_pragma() -> ContractAddress {
         .expect('failed mock_pragma declare');
 
     let deploy_mock_pragma = deploy(
-        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
+        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None,
     )
         .expect('failed mock pragma deploy');
 
@@ -29,7 +29,7 @@ pub fn deploy_erc20_mintable(
     symbol: felt252,
     decimals: u8,
     initial_supply: u128,
-    recipient: ContractAddress
+    recipient: ContractAddress,
 ) -> ContractAddress {
     let calldata: Array<felt252> = array![name, symbol, decimals.into(), initial_supply.into(), 0, recipient.into()];
     let declare_erc20_mintable = deploy(class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)

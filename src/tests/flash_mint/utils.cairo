@@ -6,9 +6,9 @@ pub mod flash_mint_utils {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_borrower::flash_borrower as flash_borrower_contract;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClassTrait, declare, start_prank, stop_prank};
     use starknet::{ContractAddress, SyscallResultTrait};
-    use wadray::{Wad, WAD_ONE};
+    use wadray::{WAD_ONE, Wad};
 
     pub const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
     pub const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE

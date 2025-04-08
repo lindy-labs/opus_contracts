@@ -40,7 +40,7 @@ pub mod mock_pragma {
         // Used in Pragma V1
         get_data_median_response: Map::<felt252, PragmaPricesResponseWrapper>,
         // Mapping from pair ID to TWAP price response for calculate_twap
-        calculate_twap_response: Map::<felt252, (u128, u32)>
+        calculate_twap_response: Map::<felt252, (u128, u32)>,
     }
 
     #[abi(embed_v0)]
@@ -55,7 +55,7 @@ pub mod mock_pragma {
                         decimals: response.decimals,
                         last_updated_timestamp: response.last_updated_timestamp,
                         num_sources_aggregated: response.num_sources_aggregated,
-                    }
+                    },
                 );
         }
 
@@ -69,7 +69,7 @@ pub mod mock_pragma {
                         decimals: PRAGMA_DECIMALS.into(),
                         last_updated_timestamp: get_block_timestamp(),
                         num_sources_aggregated: num_sources,
-                    }
+                    },
                 );
         }
 
@@ -84,7 +84,7 @@ pub mod mock_pragma {
                         decimals: response.decimals,
                         last_updated_timestamp: response.last_updated_timestamp,
                         num_sources_aggregated: response.num_sources_aggregated,
-                    }
+                    },
                 );
         }
 
@@ -98,7 +98,7 @@ pub mod mock_pragma {
                         decimals: PRAGMA_DECIMALS.into(),
                         last_updated_timestamp: get_block_timestamp(),
                         num_sources_aggregated: num_sources,
-                    }
+                    },
                 );
         }
 
@@ -110,7 +110,7 @@ pub mod mock_pragma {
     #[abi(embed_v0)]
     impl IPragmaSpotOracleImpl of IPragmaSpotOracle<ContractState> {
         fn get_data(
-            self: @ContractState, data_type: DataType, aggregation_mode: AggregationMode
+            self: @ContractState, data_type: DataType, aggregation_mode: AggregationMode,
         ) -> PragmaPricesResponse {
             match data_type {
                 DataType::SpotEntry(pair_id) => {
@@ -124,7 +124,7 @@ pub mod mock_pragma {
                         expiration_timestamp: Option::None,
                     }
                 },
-                _ => { core::panic_with_felt252('only spot') }
+                _ => { core::panic_with_felt252('only spot') },
             }
         }
 
@@ -142,7 +142,7 @@ pub mod mock_pragma {
                         expiration_timestamp: Option::None,
                     }
                 },
-                _ => { core::panic_with_felt252('only spot') }
+                _ => { core::panic_with_felt252('only spot') },
             }
         }
     }
@@ -150,11 +150,11 @@ pub mod mock_pragma {
     #[abi(embed_v0)]
     impl IPragmaTwapOracleImpl of IPragmaTwapOracle<ContractState> {
         fn calculate_twap(
-            self: @ContractState, data_type: DataType, aggregation_mode: AggregationMode, time: u64, start_time: u64
+            self: @ContractState, data_type: DataType, aggregation_mode: AggregationMode, time: u64, start_time: u64,
         ) -> (u128, u32) {
             match data_type {
                 DataType::SpotEntry(pair_id) => { self.calculate_twap_response.read(pair_id) },
-                _ => { core::panic_with_felt252('only spot') }
+                _ => { core::panic_with_felt252('only spot') },
             }
         }
     }

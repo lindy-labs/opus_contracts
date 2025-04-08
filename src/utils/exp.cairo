@@ -1,6 +1,7 @@
-use wadray::{Wad, WAD_ONE};
+use wadray::{WAD_ONE, Wad};
 
-// PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
+// PORTED FROM:
+// https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
 //
 // Constants

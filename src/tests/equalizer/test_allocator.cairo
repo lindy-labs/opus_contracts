@@ -6,7 +6,7 @@ mod test_allocator {
     use opus::tests::common;
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget, spy_events, EventSpyAssertionsTrait};
+    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, spy_events, start_prank, stop_prank};
     use starknet::ContractAddress;
     use wadray::Ray;
 
@@ -14,7 +14,7 @@ mod test_allocator {
     fn test_allocator_deploy() {
         let mut spy = spy_events();
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         let expected_recipients = equalizer_utils::initial_recipients();
@@ -26,8 +26,8 @@ mod test_allocator {
                 allocator_contract::Event::AllocationUpdated(
                     allocator_contract::AllocationUpdated {
                         recipients: expected_recipients, percentages: expected_percentages,
-                    }
-                )
+                    },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -68,14 +68,14 @@ mod test_allocator {
     #[should_panic(expected: ('failed allocator deploy',))]
     fn test_allocator_deploy_invalid_percentage_fail() {
         let _ = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages(), Option::None,
         );
     }
 
     #[test]
     fn test_set_allocation_pass() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         let mut spy = spy_events();
@@ -95,8 +95,8 @@ mod test_allocator {
             (
                 allocator.contract_address,
                 allocator_contract::Event::AllocationUpdated(
-                    allocator_contract::AllocationUpdated { recipients, percentages }
-                )
+                    allocator_contract::AllocationUpdated { recipients, percentages },
+                ),
             ),
         ];
 
@@ -107,7 +107,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: Duplicate address',))]
     fn test_set_allocation_duplicate_address_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -126,7 +126,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: Array lengths mismatch',))]
     fn test_set_allocation_arrays_mismatch_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -140,7 +140,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: No recipients',))]
     fn test_set_allocation_no_recipients_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -153,7 +153,7 @@ mod test_allocator {
     #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE',))]
     fn test_set_allocation_invalid_percentage_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), shrine_utils::admin());
@@ -168,7 +168,7 @@ mod test_allocator {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocation_unauthorized_fail() {
         let allocator = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None
+            equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
         start_prank(CheatTarget::One(allocator.contract_address), common::badguy());

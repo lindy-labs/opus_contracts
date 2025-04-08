@@ -34,7 +34,7 @@ mod blesser {
         admin: ContractAddress,
         asset: ContractAddress,
         absorber: ContractAddress,
-        bless_amt: u128
+        bless_amt: u128,
     ) {
         self.access_control.initializer(admin, Option::None);
         self.access_control.grant_role_helper(blesser_roles::default_admin_role(), absorber);

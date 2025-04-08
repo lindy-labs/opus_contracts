@@ -7,14 +7,14 @@ use wadray::{Ray, Wad};
 pub struct YinInfo {
     pub spot_price: Wad, // Spot price of yin
     pub total_supply: Wad, // Total supply of yin
-    pub ceiling: Wad, // Maximum amount of yin allowed
+    pub ceiling: Wad // Maximum amount of yin allowed
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
 pub struct RecoveryModeInfo {
     pub is_recovery_mode: bool,
     pub target_ltv: Ray, // Recovery mode is triggered once Shrine's LTV exceeds this
-    pub buffer_ltv: Ray, // Thresholds are scaled once Shrine's LTV exceeds this
+    pub buffer_ltv: Ray // Thresholds are scaled once Shrine's LTV exceeds this
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
@@ -32,7 +32,7 @@ pub struct TroveInfo {
 pub struct TroveAssetInfo {
     pub shrine_asset_info: ShrineAssetInfo,
     pub amount: u128, // Amount of the yang's asset in the asset's decimals for the trove
-    pub value: Wad, // Value of the yang in the trove
+    pub value: Wad // Value of the yang in the trove
 }
 
 #[derive(Copy, Debug, Drop, Serde)]

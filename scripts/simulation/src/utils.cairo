@@ -1,12 +1,12 @@
 use core::array::ArrayTrait;
-use core::integer::BoundedInt;
+use core::num::traits::Bounded;
 use scripts::constants::MAX_FEE;
-use sncast_std::{invoke, InvokeResult};
+use sncast_std::{InvokeResult, invoke};
 use starknet::ContractAddress;
 
 
 pub fn max_approve_token_for_gate(asset: ContractAddress, gate: ContractAddress) {
-    let max_u128: u128 = BoundedInt::max();
+    let max_u128: u128 = Bounded::MAX();
     invoke(
         asset,
         selector!("approve"),

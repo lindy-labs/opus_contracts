@@ -6,15 +6,15 @@ pub mod abbot {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
-    use starknet::{ContractAddress, get_caller_address};
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use starknet::{ContractAddress, get_caller_address};
     use wadray::Wad;
 
-    // 
-    // Components 
-    // 
+    //
+    // Components
+    //
 
     component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
@@ -72,7 +72,7 @@ pub mod abbot {
         #[key]
         pub yang: ContractAddress,
         pub yang_amt: Wad,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -84,7 +84,7 @@ pub mod abbot {
         #[key]
         pub yang: ContractAddress,
         pub yang_amt: Wad,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -92,13 +92,13 @@ pub mod abbot {
         #[key]
         pub user: ContractAddress,
         #[key]
-        pub trove_id: u64
+        pub trove_id: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TroveClosed {
         #[key]
-        pub trove_id: u64
+        pub trove_id: u64,
     }
 
     //
@@ -160,7 +160,7 @@ pub mod abbot {
         // Note that since the forge amount must be greater than zero, the Shrine would also enforce
         // that the minimum trove value has been deposited.
         fn open_trove(
-            ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
+            ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad,
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
             assert(forge_amount.is_non_zero(), 'ABB: No debt forged');
@@ -180,7 +180,7 @@ pub mod abbot {
             loop {
                 match yang_assets.pop_front() {
                     Option::Some(yang_asset) => { self.deposit_helper(new_trove_id, user, *yang_asset); },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 
@@ -212,7 +212,7 @@ pub mod abbot {
                         }
                         self.withdraw_helper(trove_id, user, *yang, yang_amount);
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 
@@ -282,7 +282,7 @@ pub mod abbot {
 
         #[inline(always)]
         fn withdraw_helper(
-            ref self: ContractState, trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad
+            ref self: ContractState, trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad,
         ) {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();

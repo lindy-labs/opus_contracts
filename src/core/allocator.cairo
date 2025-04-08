@@ -7,9 +7,9 @@ pub mod allocator {
     use opus::interfaces::IAllocator::IAllocator;
     use starknet::ContractAddress;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use wadray::{Ray, RAY_ONE};
+    use wadray::{RAY_ONE, Ray};
 
     //
     // Components
@@ -66,7 +66,7 @@ pub mod allocator {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct AllocationUpdated {
         pub recipients: Span<ContractAddress>,
-        pub percentages: Span<Ray>
+        pub percentages: Span<Ray>,
     }
 
     //
@@ -75,7 +75,7 @@ pub mod allocator {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
+        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>,
     ) {
         self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
 
@@ -156,7 +156,7 @@ pub mod allocator {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
                         let recipient_key: felt252 = (*recipient).into();
-                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address',);
+                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address');
                         recipients_dict.insert(recipient_key, idx);
 
                         self.recipients.write(idx, *recipient);
@@ -168,7 +168,7 @@ pub mod allocator {
 
                         idx += 1;
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 

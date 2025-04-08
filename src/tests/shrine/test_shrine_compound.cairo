@@ -6,9 +6,11 @@ mod test_shrine_compound {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, Trove, YangSuspensionStatus};
     use opus::utils::exp::exp;
-    use snforge_std::{EventSpyAssertionsTrait, EventsFilterTrait, spy_events, start_cheat_caller_address, start_cheat_block_timestamp};
+    use snforge_std::{
+        EventSpyAssertionsTrait, EventsFilterTrait, spy_events, start_cheat_block_timestamp, start_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RAY_SCALE, SignedWad, Wad, WAD_ONE};
+    use wadray::{RAY_SCALE, Ray, SignedWad, WAD_ONE, Wad};
 
     //
     // Tests - Trove estimate and charge
@@ -80,12 +82,12 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -180,12 +182,12 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -266,7 +268,7 @@ mod test_shrine_compound {
         let second_accrued_interest: Wad = estimated_trove_health.debt - trove_health.debt;
         assert(
             shrine.get_budget() == before_budget + first_accrued_interest.into() + second_accrued_interest.into(),
-            'wrong budget'
+            'wrong budget',
         );
 
         // Check events
@@ -280,16 +282,16 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest }),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -364,7 +366,7 @@ mod test_shrine_compound {
         let second_accrued_interest: Wad = estimated_trove_health.debt - trove_health.debt;
         assert(
             shrine.get_budget() == before_budget + first_accrued_interest.into() + second_accrued_interest.into(),
-            'wrong budget'
+            'wrong budget',
         );
 
         // Check events
@@ -378,16 +380,16 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: first_accrued_interest }),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: second_accrued_interest }),
             ),
         ];
 
@@ -471,12 +473,12 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
             ),
         ];
 
@@ -599,12 +601,12 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -709,12 +711,12 @@ mod test_shrine_compound {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
+                shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -808,7 +810,8 @@ mod test_shrine_compound {
         // The number of base rate updates
         let num_base_rate_updates: u64 = 3;
 
-        // The number of intervals actually between two base rate updates (not including the intervals on which the updates occur) will be this number minus one
+        // The number of intervals actually between two base rate updates (not including the intervals on which the
+        // updates occur) will be this number minus one
         let BASE_RATE_UPDATE_SPACING: u64 = 5;
 
         // The number of time periods where the base rates remain constant.
@@ -877,7 +880,7 @@ mod test_shrine_compound {
                 match yangs_copy.pop_front() {
                     Option::Some(yang) => {
                         let yang_avg_price: Wad = shrine_utils::get_avg_yang_price(
-                            shrine, *yang, era_start_interval, era_end_interval
+                            shrine, *yang, era_start_interval, era_end_interval,
                         );
                         avg_yang_prices_for_era.append(yang_avg_price);
                     },
@@ -927,9 +930,9 @@ mod test_shrine_compound {
                                     current_interval: era_end_interval,
                                     yangs: yangs,
                                     new_rates: yang_base_rates_to_update,
-                                }
-                            )
-                        )
+                                },
+                            ),
+                        ),
                     );
             }
 
@@ -974,16 +977,16 @@ mod test_shrine_compound {
                 (
                     shrine.contract_address,
                     shrine_contract::Event::TotalTrovesDebtUpdated(
-                        shrine_contract::TotalTrovesDebtUpdated { total: expected_debt }
-                    )
-                )
+                        shrine_contract::TotalTrovesDebtUpdated { total: expected_debt },
+                    ),
+                ),
             );
         expected_events
             .append(
                 (
                     shrine.contract_address,
-                    shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest })
-                )
+                    shrine_contract::Event::Charge(shrine_contract::Charge { trove_id, amount: interest }),
+                ),
             );
 
         spy.assert_emitted(@expected_events);
@@ -1045,7 +1048,7 @@ mod test_shrine_compound {
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: surplus.into() })
+                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: surplus.into() }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1058,7 +1061,7 @@ mod test_shrine_compound {
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: deficit })
+                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: deficit }),
             ),
         ];
 
@@ -1080,7 +1083,7 @@ mod test_shrine_compound {
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: deficit })
+                shrine_contract::Event::BudgetAdjusted(shrine_contract::BudgetAdjusted { amount: deficit }),
             ),
         ];
 

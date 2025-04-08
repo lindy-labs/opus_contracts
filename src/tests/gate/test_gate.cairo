@@ -10,7 +10,7 @@ mod test_gate {
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{start_prank, stop_prank, CheatTarget};
+    use snforge_std::{CheatTarget, start_prank, stop_prank};
     use starknet::ContractAddress;
     use wadray::{WAD_SCALE, Wad};
 

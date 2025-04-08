@@ -16,10 +16,10 @@ pub trait IAbsorber<TContractState> {
     fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
     fn get_asset_absorption(self: @TContractState, asset: ContractAddress, absorption_id: u32) -> u128;
     fn get_cumulative_reward_amt_by_epoch(
-        self: @TContractState, asset: ContractAddress, epoch: u32
+        self: @TContractState, asset: ContractAddress, epoch: u32,
     ) -> DistributionInfo;
     fn get_provider_last_reward_cumulative(
-        self: @TContractState, provider: ContractAddress, asset: ContractAddress
+        self: @TContractState, provider: ContractAddress, asset: ContractAddress,
     ) -> u128;
     fn get_live(self: @TContractState) -> bool;
     fn is_operational(self: @TContractState) -> bool;

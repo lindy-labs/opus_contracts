@@ -22,7 +22,7 @@ pub mod devnet {
         0x42044b3252fcdaeccfc2514c2b72107aed76855f7251469e2f105d97ec6b6e5.try_into().expect('invalid admin address')
     }
 
-    // these deployments are based on replaying the transactions in `scripts/devnet_dump.json` and should not be used 
+    // these deployments are based on replaying the transactions in `scripts/devnet_dump.json` and should not be used
     // in the deployment package
     pub fn abbot() -> ContractAddress {
         0x7f48497532c4ea819861437b7dde60af8bd32f2922ba8ae77ad1893960892b8.try_into().unwrap()

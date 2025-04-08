@@ -4,7 +4,7 @@ use opus::external::roles::pragma_roles;
 use opus::periphery::roles::frontend_data_provider_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{invoke, InvokeResult, DisplayContractAddress};
+use sncast_std::{DisplayContractAddress, InvokeResult, invoke};
 use starknet::ContractAddress;
 
 fn main() {
@@ -26,7 +26,7 @@ fn main() {
         addresses::sepolia::pragma_spot_oracle(),
         addresses::sepolia::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
-        constants::PRAGMA_SOURCES_THRESHOLD
+        constants::PRAGMA_SOURCES_THRESHOLD,
     );
     let seer: ContractAddress = core_deployment::deploy_seer_v2(deployment_addr, shrine, sentinel);
     let purger: ContractAddress = core_deployment::deploy_purger(admin, shrine, sentinel, absorber, seer);
@@ -68,14 +68,14 @@ fn main() {
     // Update prices
     println!("Updating prices");
     let _update_prices = invoke(
-        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
     )
         .expect('update prices failed');
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::Some(addresses::frontend_data_provider_class_hash()), admin, shrine, sentinel, abbot, purger
+        Option::Some(addresses::frontend_data_provider_class_hash()), admin, shrine, sentinel, abbot, purger,
     );
 
     // Transfer admin role to admin

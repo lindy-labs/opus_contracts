@@ -22,9 +22,9 @@ pub mod ekubo_oracle_adapter_component {
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use starknet::ContractAddress;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use wadray::{Wad, WAD_DECIMALS};
+    use wadray::{WAD_DECIMALS, Wad};
 
     //
     // Constants
@@ -48,7 +48,7 @@ pub mod ekubo_oracle_adapter_component {
         // (idx) -> (token to be quoted per yang)
         quote_tokens: Map<u32, QuoteTokenInfo>,
         // The duration in seconds for reading TWAP from Ekubo
-        twap_duration: u64
+        twap_duration: u64,
     }
 
     //
@@ -64,13 +64,13 @@ pub mod ekubo_oracle_adapter_component {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct QuoteTokensUpdated {
-        pub quote_tokens: Span<QuoteTokenInfo>
+        pub quote_tokens: Span<QuoteTokenInfo>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TwapDurationUpdated {
         pub old_duration: u64,
-        pub new_duration: u64
+        pub new_duration: u64,
     }
 
     //
@@ -79,7 +79,7 @@ pub mod ekubo_oracle_adapter_component {
 
     #[generate_trait]
     pub impl EkuboOracleAdapterHelpers<
-        TContractState, +HasComponent<TContractState>
+        TContractState, +HasComponent<TContractState>,
     > of EkuboOracleAdapterHelpersTrait<TContractState> {
         fn get_oracle_extension(self: @ComponentState<TContractState>) -> IEkuboOracleExtensionDispatcher {
             self.oracle_extension.read()
@@ -118,7 +118,7 @@ pub mod ekubo_oracle_adapter_component {
                         let scaled_quote: Wad = convert_ekubo_oracle_price_to_wad(quote, base_decimals, *info.decimals);
                         quotes.append(scaled_quote);
                     },
-                    Option::None => { break quotes.span(); }
+                    Option::None => { break quotes.span(); },
                 };
             }
         }
@@ -147,7 +147,7 @@ pub mod ekubo_oracle_adapter_component {
                         quote_tokens_info.append(quote_token_info);
                         index += 1;
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 }
             };
 

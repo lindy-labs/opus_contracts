@@ -3,20 +3,18 @@ mod test_shrine {
     use core::num::traits::{Bounded, Zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IERC20::{
-        IERC20Dispatcher, IERC20DispatcherTrait, IERC20CamelOnlyDispatcher
-    };
+    use opus::interfaces::IERC20::{IERC20CamelOnlyDispatcher, IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISRC5::{ISRC5Dispatcher, ISRC5DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{Health, HealthTrait, YangSuspensionStatus};
     use snforge_std::{
-        ContractClass, EventSpyAssertionsTrait, EventSpyTrait, spy_events, EventsFilterTrait, start_cheat_caller_address, start_cheat_block_timestamp,
-        stop_cheat_caller_address,
+        ContractClass, EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events,
+        start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, SignedWad, Wad, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE};
+    use wadray::{RAY_ONE, RAY_PERCENT, RAY_SCALE, Ray, SignedWad, WAD_DECIMALS, WAD_ONE, WAD_PERCENT, WAD_SCALE, Wad};
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -44,12 +42,12 @@ mod test_shrine {
         assert_eq!(
             shrine.get_recovery_mode_target_factor(),
             shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
-            "wrong target factor"
+            "wrong target factor",
         );
         assert_eq!(
             shrine.get_recovery_mode_buffer_factor(),
             shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
-            "wrong buffer factor"
+            "wrong buffer factor",
         );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
@@ -63,24 +61,24 @@ mod test_shrine {
                         multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
                         cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
                         interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-                    }
-                )
+                    },
+                ),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::RecoveryModeTargetFactorUpdated(
                     shrine_contract::RecoveryModeTargetFactorUpdated {
-                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
-                    }
-                )
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
+                    },
+                ),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::RecoveryModeBufferFactorUpdated(
                     shrine_contract::RecoveryModeBufferFactorUpdated {
-                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
-                    }
-                )
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
+                    },
+                ),
             ),
         ];
 
@@ -103,24 +101,24 @@ mod test_shrine {
                         multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
                         cumulative_multiplier: shrine_contract::INITIAL_MULTIPLIER.into(),
                         interval: shrine_utils::get_interval(shrine_utils::DEPLOYMENT_TIMESTAMP) - 1,
-                    }
-                )
+                    },
+                ),
             ),
             (
                 shrine_addr,
                 shrine_contract::Event::RecoveryModeTargetFactorUpdated(
                     shrine_contract::RecoveryModeTargetFactorUpdated {
-                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into()
-                    }
-                )
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
+                    },
+                ),
             ),
             (
                 shrine_addr,
                 shrine_contract::Event::RecoveryModeBufferFactorUpdated(
                     shrine_contract::RecoveryModeBufferFactorUpdated {
-                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into()
-                    }
-                )
+                        factor: shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
+                    },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -132,9 +130,9 @@ mod test_shrine {
             (
                 shrine_addr,
                 shrine_contract::Event::DebtCeilingUpdated(
-                    shrine_contract::DebtCeilingUpdated { ceiling: shrine_utils::DEBT_CEILING.into() }
-                )
-            )
+                    shrine_contract::DebtCeilingUpdated { ceiling: shrine_utils::DEBT_CEILING.into() },
+                ),
+            ),
         ];
         spy.assert_emitted(@expected_events);
 
@@ -181,7 +179,7 @@ mod test_shrine {
 
                     yang_id += 1;
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -226,10 +224,10 @@ mod test_shrine {
                     let (_, start_cumulative_price) = shrine.get_yang_price(*yang_addr, start_interval - 1);
                     assert(
                         start_cumulative_price == *exp_start_cumulative_prices_copy.pop_front().unwrap(),
-                        'wrong start cumulative price'
+                        'wrong start cumulative price',
                     );
                 },
-                Option::None => { break (); }
+                Option::None => { break (); },
             };
         };
 
@@ -276,8 +274,8 @@ mod test_shrine {
                                             yang: *yang_addr,
                                             price: expected_price,
                                             cumulative_price: expected_cumulative_price,
-                                            interval
-                                        }
+                                            interval,
+                                        },
                                     ),
                                 ),
                             );
@@ -301,8 +299,8 @@ mod test_shrine {
                             shrine_contract::MultiplierUpdated {
                                 multiplier: RAY_ONE.into(),
                                 cumulative_multiplier: expected_cumulative_multiplier,
-                                interval
-                            }
+                                interval,
+                            },
                         ),
                     ),
                 );
@@ -328,8 +326,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::MinimumTroveValueUpdated(
-                    shrine_contract::MinimumTroveValueUpdated { value: new_value }
-                )
+                    shrine_contract::MinimumTroveValueUpdated { value: new_value },
+                ),
             ),
         ];
 
@@ -384,8 +382,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::ThresholdUpdated(
-                    shrine_contract::ThresholdUpdated { yang: new_yang_address, threshold: new_yang_threshold }
-                )
+                    shrine_contract::ThresholdUpdated { yang: new_yang_address, threshold: new_yang_threshold },
+                ),
             ),
             (
                 shrine.contract_address,
@@ -394,9 +392,9 @@ mod test_shrine {
                         yang: new_yang_address,
                         yang_id: expected_yangs_count,
                         start_price: new_yang_start_price,
-                        initial_rate: new_yang_rate
-                    }
-                )
+                        initial_rate: new_yang_rate,
+                    },
+                ),
             ),
         ];
 
@@ -414,7 +412,7 @@ mod test_shrine {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                Zero::zero()
+                Zero::zero(),
             );
     }
 
@@ -429,7 +427,7 @@ mod test_shrine {
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
-                Zero::zero()
+                Zero::zero(),
             );
     }
 
@@ -450,8 +448,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::ThresholdUpdated(
-                    shrine_contract::ThresholdUpdated { yang: yang1_addr, threshold: new_threshold }
-                )
+                    shrine_contract::ThresholdUpdated { yang: yang1_addr, threshold: new_threshold },
+                ),
             ),
         ];
 
@@ -500,14 +498,14 @@ mod test_shrine {
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     RAY_ONE.into(),
                 ]
-                    .span()
+                    .span(),
             );
 
         let expected_rate_era: u64 = 2;
         assert(shrine.get_current_rate_era() == expected_rate_era, 'wrong rate era');
 
         let mut expected_rates: Span<Ray> = array![
-            shrine_utils::YANG1_BASE_RATE.into(), shrine_utils::YANG2_BASE_RATE.into(), RAY_ONE.into()
+            shrine_utils::YANG1_BASE_RATE.into(), shrine_utils::YANG2_BASE_RATE.into(), RAY_ONE.into(),
         ]
             .span();
 
@@ -518,7 +516,7 @@ mod test_shrine {
                     let expected_rate = *expected_rates.pop_front().unwrap();
                     assert(shrine.get_yang_rate(*yang, expected_rate_era) == expected_rate, 'wrong rate');
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }
@@ -536,7 +534,7 @@ mod test_shrine {
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                 ]
-                    .span()
+                    .span(),
             );
     }
 
@@ -553,7 +551,7 @@ mod test_shrine {
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     (RAY_ONE + 2).into(),
                 ]
-                    .span()
+                    .span(),
             );
     }
 
@@ -566,7 +564,7 @@ mod test_shrine {
             .update_rates(
                 shrine_utils::three_yang_addrs(),
                 array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
-                    .span()
+                    .span(),
             );
     }
 
@@ -579,7 +577,7 @@ mod test_shrine {
             .update_rates(
                 shrine_utils::two_yang_addrs_reversed(),
                 array![shrine_contract::USE_PREV_ERA_BASE_RATE.into(), shrine_contract::USE_PREV_ERA_BASE_RATE.into()]
-                    .span()
+                    .span(),
             );
     }
 
@@ -597,7 +595,7 @@ mod test_shrine {
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                 ]
-                    .span()
+                    .span(),
             );
     }
 
@@ -612,9 +610,9 @@ mod test_shrine {
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
-                    21000000000000000000000000_u128.into(), // 2.1% (Ray)
+                    21000000000000000000000000_u128.into() // 2.1% (Ray)
                 ]
-                    .span()
+                    .span(),
             );
     }
 
@@ -640,14 +638,14 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::RecoveryModeTargetFactorUpdated(
-                    shrine_contract::RecoveryModeTargetFactorUpdated { factor: target_factor }
-                )
+                    shrine_contract::RecoveryModeTargetFactorUpdated { factor: target_factor },
+                ),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::RecoveryModeBufferFactorUpdated(
-                    shrine_contract::RecoveryModeBufferFactorUpdated { factor: buffer_factor }
-                )
+                    shrine_contract::RecoveryModeBufferFactorUpdated { factor: buffer_factor },
+                ),
             ),
         ];
 
@@ -738,7 +736,7 @@ mod test_shrine {
                     expected_after_yang_total_amts
                         .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -761,12 +759,12 @@ mod test_shrine {
                     let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
                     assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
         let expected_events = array![
-            (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {}))
+            (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {})),
         ];
         spy.assert_emitted(@expected_events);
     }
@@ -868,7 +866,7 @@ mod test_shrine {
 
         assert(shrine.get_yang_total(yang) == shrine_utils::TROVE1_YANG1_DEPOSIT.into(), 'incorrect yang total');
         assert(
-            shrine.get_deposit(yang, trove_id) == shrine_utils::TROVE1_YANG1_DEPOSIT.into(), 'incorrect yang deposit'
+            shrine.get_deposit(yang, trove_id) == shrine_utils::TROVE1_YANG1_DEPOSIT.into(), 'incorrect yang deposit',
         );
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang);
@@ -879,7 +877,7 @@ mod test_shrine {
         let mut yang_thresholds: Array<Ray> = array![shrine_utils::YANG1_THRESHOLD.into()];
 
         let expected_max_forge: Wad = shrine_utils::calculate_max_forge(
-            yang_prices.span(), yang_amts.span(), yang_thresholds.span()
+            yang_prices.span(), yang_amts.span(), yang_thresholds.span(),
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
@@ -937,7 +935,7 @@ mod test_shrine {
         let mut yang_thresholds: Array<Ray> = array![shrine_utils::YANG1_THRESHOLD.into()];
 
         let expected_max_forge: Wad = shrine_utils::calculate_max_forge(
-            yang_prices.span(), yang_amts.span(), yang_thresholds.span()
+            yang_prices.span(), yang_amts.span(), yang_thresholds.span(),
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
@@ -1093,18 +1091,18 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: forge_amt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: forge_amt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Forge(shrine_contract::Forge { trove_id, amount: forge_amt })
+                shrine_contract::Event::Forge(shrine_contract::Forge { trove_id, amount: forge_amt }),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner_addr, value: forge_amt.into(), }
-                )
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner_addr, value: forge_amt.into() },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1181,8 +1179,7 @@ mod test_shrine {
 
         start_cheat_caller_address(shrine.contract_address, common::badguy());
 
-        shrine
-            .forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero(),);
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
     }
 
     #[test]
@@ -1236,8 +1233,8 @@ mod test_shrine {
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct })
-            )
+                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct }),
+            ),
         ];
         spy.assert_emitted(@expected_events);
 
@@ -1248,15 +1245,15 @@ mod test_shrine {
         let new_trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         let fee = new_trove_health.debt - trove_health.debt - forge_amt;
         assert(
-            new_trove_health.debt - trove_health.debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2'
+            new_trove_health.debt - trove_health.debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2',
         );
         assert(shrine.get_budget() == intermediate_budget + fee.into(), 'wrong budget #2');
 
         let expected_events = array![
             (
                 shrine.contract_address,
-                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct })
-            )
+                shrine_contract::Event::ForgeFeePaid(shrine_contract::ForgeFeePaid { trove_id, fee, fee_pct }),
+            ),
         ];
         spy.assert_emitted(@expected_events);
     }
@@ -1339,18 +1336,18 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::TotalTrovesDebtUpdated(
-                    shrine_contract::TotalTrovesDebtUpdated { total: after_trove_health.debt }
-                )
+                    shrine_contract::TotalTrovesDebtUpdated { total: after_trove_health.debt },
+                ),
             ),
             (
                 shrine.contract_address,
-                shrine_contract::Event::Melt(shrine_contract::Melt { trove_id, amount: melt_amt })
+                shrine_contract::Event::Melt(shrine_contract::Melt { trove_id, amount: melt_amt }),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: trove1_owner_addr, to: Zero::zero(), value: melt_amt.into(), }
-                )
+                    shrine_contract::Transfer { from: trove1_owner_addr, to: Zero::zero(), value: melt_amt.into() },
+                ),
             ),
         ];
 
@@ -1410,8 +1407,8 @@ mod test_shrine {
                 shrine_contract::Event::Transfer(
                     shrine_contract::Transfer {
                         from: trove1_owner, to: yin_user, value: shrine_utils::TROVE1_FORGE_AMT.into(),
-                    }
-                )
+                    },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1475,14 +1472,14 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Approval(
-                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
-                )
+                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt },
+                ),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
-                )
+                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt },
+                ),
             ),
         ];
 
@@ -1523,14 +1520,14 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Approval(
-                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
-                )
+                    shrine_contract::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt },
+                ),
             ),
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
-                )
+                    shrine_contract::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt },
+                ),
             ),
         ];
 
@@ -1730,7 +1727,7 @@ mod test_shrine {
                 shrine_contract::Event::YangPriceUpdated(
                     shrine_contract::YangPriceUpdated {
                         yang, price: zero_price, cumulative_price: prev_cumulative_price, interval: expected_interval,
-                    }
+                    },
                 ),
             ),
         ];
@@ -1802,8 +1799,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner, value: inject_amt.into() }
-                )
+                    shrine_contract::Transfer { from: Zero::zero(), to: trove1_owner, value: inject_amt.into() },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1823,8 +1820,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::Transfer(
-                    shrine_contract::Transfer { from: trove1_owner, to: Zero::zero(), value: inject_amt.into() }
-                )
+                    shrine_contract::Transfer { from: trove1_owner, to: Zero::zero(), value: inject_amt.into() },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -1941,7 +1938,7 @@ mod test_shrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => { break (); }
+                Option::None => { break (); },
             };
         };
         let mut yang_thresholds: Array<Ray> = array![
@@ -1949,7 +1946,7 @@ mod test_shrine {
         ];
 
         let (expected_threshold, expected_value) = shrine_utils::calculate_trove_threshold_and_value(
-            yang_prices.span(), yang_amts.span(), yang_thresholds.span()
+            yang_prices.span(), yang_amts.span(), yang_thresholds.span(),
         );
         let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         assert(trove_health.threshold == expected_threshold, 'wrong threshold');
@@ -2011,7 +2008,7 @@ mod test_shrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => { break (); }
+                Option::None => { break (); },
             };
         };
 
@@ -2025,7 +2022,7 @@ mod test_shrine {
         ];
 
         let (expected_threshold, expected_value) = shrine_utils::calculate_trove_threshold_and_value(
-            yang_prices.span(), yang_amts.span(), yang_thresholds.span()
+            yang_prices.span(), yang_amts.span(), yang_thresholds.span(),
         );
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.threshold == expected_threshold, 'wrong threshold');
@@ -2056,8 +2053,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price }
-                )
+                    shrine_contract::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -2069,8 +2066,8 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price }
-                )
+                    shrine_contract::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -2083,23 +2080,23 @@ mod test_shrine {
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price }
-                )
+                    shrine_contract::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
 
         shrine.update_yin_spot_price(fourth_yin_price);
         common::assert_equalish(
-            shrine.get_forge_fee_pct(), shrine_contract::FORGE_FEE_CAP_PCT.into(), error_margin, 'wrong forge fee #4'
+            shrine.get_forge_fee_pct(), shrine_contract::FORGE_FEE_CAP_PCT.into(), error_margin, 'wrong forge fee #4',
         );
 
         let expected_events = array![
             (
                 shrine.contract_address,
                 shrine_contract::Event::YinPriceUpdated(
-                    shrine_contract::YinPriceUpdated { old_price: third_yin_price, new_price: fourth_yin_price }
-                )
+                    shrine_contract::YinPriceUpdated { old_price: third_yin_price, new_price: fourth_yin_price },
+                ),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -2177,10 +2174,10 @@ mod test_shrine {
                     (
                         shrine_addr,
                         shrine_contract::Event::YangSuspended(
-                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
-                        )
+                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() },
+                        ),
                     ),
-                ]
+                ],
             );
 
         // setting block time to a second before the suspension would be permanent
@@ -2200,10 +2197,10 @@ mod test_shrine {
                     (
                         shrine_addr,
                         shrine_contract::Event::YangUnsuspended(
-                            shrine_contract::YangUnsuspended { yang, timestamp: get_block_timestamp() }
-                        )
+                            shrine_contract::YangUnsuspended { yang, timestamp: get_block_timestamp() },
+                        ),
                     ),
-                ]
+                ],
             );
     }
 
@@ -2265,10 +2262,10 @@ mod test_shrine {
                     (
                         shrine.contract_address,
                         shrine_contract::Event::YangSuspended(
-                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() }
-                        )
+                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() },
+                        ),
                     ),
-                ]
+                ],
             );
 
         // check threshold (should be the same at the beginning)
@@ -2297,13 +2294,13 @@ mod test_shrine {
                     let threshold = shrine.get_yang_threshold(yang);
                     assert(
                         threshold == (shrine_utils::YANG1_THRESHOLD / 100 * (100_u64 - *time_pct).into()).into(),
-                        'threshold 2'
+                        'threshold 2',
                     );
 
                     // intermediate price update to avoid iteration timeout
                     shrine.advance(yang, yang_price);
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -2320,7 +2317,7 @@ mod test_shrine {
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
         // that is about 0.0000050735 Ray, err buffer is 10^-12 Ray
         common::assert_equalish(
-            threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 3'
+            threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 3',
         );
 
         // move time forward to end of temp suspension, start of permanent one
@@ -2441,11 +2438,11 @@ mod test_shrine {
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
             );
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode,
         );
 
         assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
@@ -2469,11 +2466,11 @@ mod test_shrine {
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero()
+                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
             );
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BeforeRecoveryMode,
         );
 
         assert(!shrine.is_recovery_mode(), 'should not be recovery mode');
@@ -2481,7 +2478,7 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, WAD_ONE.into());
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, 
+    // If the Shrine's LTV is within the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, user cannot withdraw.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
@@ -2500,7 +2497,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2510,7 +2507,7 @@ mod test_shrine {
         shrine_utils::trove1_withdraw(shrine, (shrine_utils::TROVE1_YANG1_DEPOSIT / 100).into());
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, 
+    // If the Shrine's LTV is within the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, user cannot forge.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
@@ -2529,7 +2526,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2539,8 +2536,8 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, WAD_ONE.into());
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, 
-    // and the trove is already at or above its target recovery mode LTV, 
+    // If the Shrine's LTV is within the recovery mode buffer,
+    // and the trove is already at or above its target recovery mode LTV,
     // user can deposit and melt, and threshold has not been scaled.
     #[test]
     fn test_deposit_and_melt_within_recovery_mode_buffer_above_trove_rm_target_ltv_pass() {
@@ -2558,7 +2555,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2573,10 +2570,10 @@ mod test_shrine {
         assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, 
-    // and the trove is below its target recovery mode LTV, 
-    // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
-    // provided that the withdraw and forge does not result in the trove reaching its 
+    // If the Shrine's LTV is within the recovery mode buffer,
+    // and the trove is below its target recovery mode LTV,
+    // user can deposit, withdraw, forge and melt, and threshold has not been scaled,
+    // provided that the withdraw and forge does not result in the trove reaching its
     // target recovery mode LTV.
     #[test]
     fn test_actions_within_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
@@ -2594,7 +2591,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2616,8 +2613,8 @@ mod test_shrine {
         assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
-    // If the Shrine's LTV is within the recovery mode buffer, 
-    // and the trove is below its target recovery mode LTV, 
+    // If the Shrine's LTV is within the recovery mode buffer,
+    // and the trove is below its target recovery mode LTV,
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
@@ -2636,7 +2633,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2644,9 +2641,10 @@ mod test_shrine {
 
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer, which is
-        // slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove having ~8,035.71... value). 
-        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be the lower bound of the buffer,
+        // which is slightly lower than 56% (70% * 80%), the Shrine value will be around 16,071.42... (with each trove
+        // having ~8,035.71... value).
+        // This means that the maximum debt for each trove is around 56% of 8,035.71 = 4,500. Hence, another 1,500 yin
         // needs to be minted to exceed the target trove's recovery mode threshold.
         let expected_max_forge_amt: Wad = (1500 * WAD_ONE).into();
         let error_margin: Wad = 1000_u128.into();
@@ -2656,7 +2654,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
-    // and the trove is below its target recovery mode LTV, 
+    // and the trove is below its target recovery mode LTV,
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
@@ -2675,15 +2673,16 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be at the upper bound of the buffer, which is
-        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be at the upper bound of the buffer,
+        // which is slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having
+        // 7,500 value).
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818. We decrease it by an
         // additional yin to account for the offset when setting up the Shrine's LTV to be slightly below the buffer.
         let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
@@ -2694,7 +2693,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
-    // and the trove is already at or above its target recovery mode LTV, 
+    // and the trove is already at or above its target recovery mode LTV,
     // threshold has been scaled and user cannot withdraw.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
@@ -2713,7 +2712,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2746,7 +2745,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2773,7 +2772,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2788,9 +2787,9 @@ mod test_shrine {
         assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
-    // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV, 
-    // user can deposit, withdraw, forge and melt, and threshold has not been scaled, 
-    // provided that the withdraw and forge does not result in the trove reaching its 
+    // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV,
+    // user can deposit, withdraw, forge and melt, and threshold has not been scaled,
+    // provided that the withdraw and forge does not result in the trove reaching its
     // target recovery mode LTV.
     #[test]
     fn test_actions_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_pass() {
@@ -2808,7 +2807,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2830,8 +2829,8 @@ mod test_shrine {
         assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
     }
 
-    // If the Shrine's LTV has exceeded the recovery mode buffer, 
-    // and the trove is below its target recovery mode LTV, 
+    // If the Shrine's LTV has exceeded the recovery mode buffer,
+    // and the trove is below its target recovery mode LTV,
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
@@ -2850,7 +2849,7 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
@@ -2859,9 +2858,10 @@ mod test_shrine {
 
         let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
-        // slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
-        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer,
+        // which is slightly higher than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having
+        // 7,500 value).
+        // This means that the maximum debt for each trove is around 56% of 7,500 = 4,200. Hence, another 1,200 yin
         // needs to be minted to exceed the target trove's recovery mode threshold.
         let expected_max_forge_amt: Wad = (1200 * WAD_ONE).into();
         let error_margin: Wad = 1000_u128.into();
@@ -2871,7 +2871,7 @@ mod test_shrine {
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
-    // and the trove is below its target recovery mode LTV, 
+    // and the trove is below its target recovery mode LTV,
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
     #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
@@ -2890,15 +2890,16 @@ mod test_shrine {
         shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
-            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer
+            shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
         );
 
         assert(shrine.is_recovery_mode(), 'should be recovery mode');
 
         assert(!shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id), 'trove threshold above rm target');
 
-        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer, which is
-        // slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having 7,500 value). 
+        // Since the total debt is 9,000 and we are targeting the Shrine's LTV to be slightly exceeding the buffer,
+        // which is slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having
+        // 7,500 value).
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818.
         let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
         let value_to_withdraw: Wad = ((7500 - 6818) * WAD_ONE).into();
@@ -2954,7 +2955,7 @@ mod test_shrine {
                     let shrine_health: Health = shrine.get_shrine_health();
                     let unhealthy_value: Wad = wadray::rmul_wr(shrine_health.debt, (RAY_ONE.into() / *trove_ltv));
                     let decrease_pct: Ray = wadray::rdiv_ww(
-                        (shrine_health.value - unhealthy_value), shrine_health.value
+                        (shrine_health.value - unhealthy_value), shrine_health.value,
                     );
 
                     start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -2966,7 +2967,7 @@ mod test_shrine {
                                 let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
                                 shrine.advance(*yang, new_price);
                             },
-                            Option::None => { break; }
+                            Option::None => { break; },
                         };
                     };
                     stop_cheat_caller_address(shrine.contract_address);
@@ -2974,16 +2975,16 @@ mod test_shrine {
                     assert(shrine.is_recovery_mode(), 'should be recovery mode');
                     assert(
                         shrine_utils::trove_ltv_ge_recovery_mode_target(shrine, trove_id),
-                        'trove threshold above rm target'
+                        'trove threshold above rm target',
                     );
 
                     let trove_health: Health = shrine.get_trove_health(trove_id);
                     let expected_rm_threshold: Ray = *expected_rm_thresholds.pop_front().unwrap();
                     common::assert_equalish(
-                        trove_health.threshold, expected_rm_threshold, threshold_error_margin, 'wrong rm threshold'
+                        trove_health.threshold, expected_rm_threshold, threshold_error_margin, 'wrong rm threshold',
                     );
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
     }

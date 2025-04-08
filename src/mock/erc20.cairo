@@ -20,7 +20,7 @@ pub trait IERC20<TState> {
 pub mod erc20 {
     use core::num::traits::{Bounded, Zero};
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address};
 
@@ -47,7 +47,7 @@ pub mod erc20 {
         from: ContractAddress,
         #[key]
         to: ContractAddress,
-        value: u256
+        value: u256,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -56,7 +56,7 @@ pub mod erc20 {
         owner: ContractAddress,
         #[key]
         spender: ContractAddress,
-        value: u256
+        value: u256,
     }
 
     mod Errors {
@@ -75,7 +75,7 @@ pub mod erc20 {
         symbol: felt252,
         decimals: u8,
         initial_supply: u256,
-        recipient: ContractAddress
+        recipient: ContractAddress,
     ) {
         self.name.write(name);
         self.symbol.write(symbol);
@@ -119,7 +119,7 @@ pub mod erc20 {
         }
 
         fn transfer_from(
-            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
+            ref self: ContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
         ) -> bool {
             self._spend_allowance(sender, get_caller_address(), amount);
             self._transfer(sender, recipient, amount);

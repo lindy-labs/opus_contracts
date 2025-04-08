@@ -68,7 +68,7 @@ pub mod frontend_data_provider {
         shrine: ContractAddress,
         sentinel: ContractAddress,
         abbot: ContractAddress,
-        purger: ContractAddress
+        purger: ContractAddress,
     ) {
         self.access_control.initializer(admin, Option::Some(frontend_data_provider_roles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -152,7 +152,7 @@ pub mod frontend_data_provider {
                                 sentinel,
                                 yang,
                                 (*shrine_yang_balances.pop_front().unwrap()).amount,
-                                current_rate_era
+                                current_rate_era,
                             );
 
                         let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
@@ -169,9 +169,9 @@ pub mod frontend_data_provider {
                             is_liquidatable,
                             is_absorbable,
                             health,
-                            assets: asset_infos.span()
+                            assets: asset_infos.span(),
                         };
-                    }
+                    },
                 }
             }
         }
@@ -196,11 +196,11 @@ pub mod frontend_data_provider {
 
                         let (shrine_asset_info, _) = self
                             .get_shrine_asset_info_helper(
-                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era
+                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era,
                             );
                         asset_infos.append(shrine_asset_info);
                     },
-                    Option::None => { break asset_infos.span(); }
+                    Option::None => { break asset_infos.span(); },
                 }
             }
         }
@@ -220,7 +220,7 @@ pub mod frontend_data_provider {
             sentinel: ISentinelDispatcher,
             yang: ContractAddress,
             yang_amt: Wad,
-            current_rate_era: u64
+            current_rate_era: u64,
         ) -> (ShrineAssetInfo, Wad) {
             let gate = IGateDispatcher { contract_address: sentinel.get_gate_address(yang) };
             let deposited: u128 = gate.get_total_assets();
@@ -241,9 +241,9 @@ pub mod frontend_data_provider {
                     base_rate,
                     deposited,
                     ceiling,
-                    deposited_value: yang_value
+                    deposited_value: yang_value,
                 },
-                yang_price
+                yang_price,
             )
         }
     }

@@ -15,6 +15,6 @@ pub mod mock_ekubo_oracle_adapter {
     #[event]
     #[derive(Drop, starknet::Event)]
     pub enum Event {
-        EkuboOracleAdapterEvent: ekubo_oracle_adapter_component::Event
+        EkuboOracleAdapterEvent: ekubo_oracle_adapter_component::Event,
     }
 }

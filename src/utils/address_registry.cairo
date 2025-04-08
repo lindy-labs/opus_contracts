@@ -3,7 +3,7 @@ pub mod address_registry_component {
     use core::num::traits::Zero;
     use starknet::ContractAddress;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
 
     #[storage]
@@ -23,18 +23,18 @@ pub mod address_registry_component {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct EntryAdded {
         entry: ContractAddress,
-        entry_id: u32
+        entry_id: u32,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct EntryRemoved {
         entry: ContractAddress,
-        entry_id: u32
+        entry_id: u32,
     }
 
     #[generate_trait]
     pub impl AddressRegistryHelpers<
-        TContractState, +HasComponent<TContractState>
+        TContractState, +HasComponent<TContractState>,
     > of AddressRegistryHelpersTrait<TContractState> {
         //
         // getters
@@ -83,7 +83,7 @@ pub mod address_registry_component {
         }
 
         fn remove_entry(
-            ref self: ComponentState<TContractState>, entry: ContractAddress
+            ref self: ComponentState<TContractState>, entry: ContractAddress,
         ) -> Result<ContractAddress, felt252> {
             let entry_id: u32 = self.entry_ids.read(entry);
             if entry_id.is_zero() {

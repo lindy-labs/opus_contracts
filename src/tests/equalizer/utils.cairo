@@ -8,7 +8,7 @@ pub mod equalizer_utils {
     use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
     use starknet::ContractAddress;
     use wadray::Ray;
 
@@ -44,7 +44,7 @@ pub mod equalizer_utils {
         let mut percentages: Array<Ray> = array![
             150000000000000000000000000_u128.into(), // 15% (Ray)
             500000000000000000000000000_u128.into(), // 50% (Ray)
-            350000000000000000000000000_u128.into(), // 35% (Ray)
+            350000000000000000000000000_u128.into() // 35% (Ray)
         ];
         percentages.span()
     }
@@ -54,7 +54,7 @@ pub mod equalizer_utils {
             125000000000000000000000000_u128.into(), // 12.5% (Ray)
             372500000000000000000000000_u128.into(), // 37.25% (Ray)
             216350000000000000000000000_u128.into(), // 21.635% (Ray)
-            286150000000000000000000000_u128.into(), // 28.615% (Ray)
+            286150000000000000000000000_u128.into() // 28.615% (Ray)
         ];
         percentages.span()
     }
@@ -64,7 +64,7 @@ pub mod equalizer_utils {
         let mut percentages: Array<Ray> = array![
             150000000000000000000000000_u128.into(), // 15% (Ray)
             500000000000000000000000000_u128.into(), // 50% (Ray)
-            350000000000000000000000001_u128.into(), // (35 + 1E-27)% (Ray)
+            350000000000000000000000001_u128.into() // (35 + 1E-27)% (Ray)
         ];
         percentages.span()
     }
@@ -74,14 +74,14 @@ pub mod equalizer_utils {
     //
 
     pub fn allocator_deploy(
-        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>
+        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>,
     ) -> IAllocatorDispatcher {
         let mut calldata: Array<felt252> = array![shrine_utils::admin().into(), recipients.len().into()];
 
         loop {
             match recipients.pop_front() {
                 Option::Some(recipient) => { calldata.append((*recipient).into()); },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
@@ -92,13 +92,13 @@ pub mod equalizer_utils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None => { break; }
+                Option::None => { break; },
             };
         };
 
         let allocator_class = match allocator_class {
             Option::Some(class) => class,
-            Option::None => declare("allocator").unwrap()
+            Option::None => declare("allocator").unwrap(),
         };
         let (allocator_addr, _) = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
@@ -111,10 +111,10 @@ pub mod equalizer_utils {
     }
 
     pub fn equalizer_deploy_with_shrine(
-        shrine: ContractAddress, allocator_class: Option<ContractClass>
+        shrine: ContractAddress, allocator_class: Option<ContractClass>,
     ) -> EqualizerTestConfig {
         let allocator: IAllocatorDispatcher = allocator_deploy(
-            initial_recipients(), initial_percentages(), allocator_class
+            initial_recipients(), initial_percentages(), allocator_class,
         );
         let admin = shrine_utils::admin();
 
@@ -135,7 +135,7 @@ pub mod equalizer_utils {
         EqualizerTestConfig {
             shrine: IShrineDispatcher { contract_address: shrine },
             equalizer: IEqualizerDispatcher { contract_address: equalizer_addr },
-            allocator
+            allocator,
         }
     }
 }

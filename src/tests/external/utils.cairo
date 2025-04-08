@@ -19,31 +19,31 @@ pub mod pragma_utils {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{
-        IPragmaDispatcher, IPragmaDispatcherTrait, IPragmaV2Dispatcher, IPragmaV2DispatcherTrait
+        IPragmaDispatcher, IPragmaDispatcherTrait, IPragmaV2Dispatcher, IPragmaV2DispatcherTrait,
     };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_pragma::{
-        mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
+        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, mock_pragma as mock_pragma_contract,
     };
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct PragmaTestConfig {
         pub pragma: IPragmaDispatcher,
-        pub mock_pragma: IMockPragmaDispatcher
+        pub mock_pragma: IMockPragmaDispatcher,
     }
 
     #[derive(Copy, Drop)]
     pub struct PragmaV2TestConfig {
         pub pragma: IPragmaV2Dispatcher,
-        pub mock_pragma: IMockPragmaDispatcher
+        pub mock_pragma: IMockPragmaDispatcher,
     }
 
     //
@@ -83,7 +83,7 @@ pub mod pragma_utils {
     }
 
     pub fn pragma_deploy(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
     ) -> PragmaTestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
@@ -107,7 +107,7 @@ pub mod pragma_utils {
     }
 
     pub fn pragma_v2_deploy(
-        pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
+        pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
     ) -> PragmaV2TestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
@@ -200,7 +200,7 @@ pub mod pragma_utils {
     // for both `get_data_median()` (v1) and `get_data()` (v2)
     // using default values for decimals and number of sources.
     pub fn mock_valid_price_update(
-        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
+        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64,
     ) {
         let price = convert_price_to_pragma_scale(price);
         let response = PragmaPricesResponse {
@@ -229,23 +229,23 @@ pub mod ekubo_utils {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::{
-        mock_ekubo_oracle_extension as mock_ekubo_oracle_extension_contract, IMockEkuboOracleExtensionDispatcher,
-        IMockEkuboOracleExtensionDispatcherTrait
+        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait,
+        mock_ekubo_oracle_extension as mock_ekubo_oracle_extension_contract,
     };
     use opus::tests::common;
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct EkuboTestConfig {
         pub ekubo: IEkuboDispatcher,
         pub mock_ekubo: IMockEkuboOracleExtensionDispatcher,
-        pub quote_tokens: Span<ContractAddress>
+        pub quote_tokens: Span<ContractAddress>,
     }
 
     //
@@ -271,10 +271,10 @@ pub mod ekubo_utils {
     pub fn ekubo_deploy(
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
-        token_class: Option<ContractClass>
+        token_class: Option<ContractClass>,
     ) -> EkuboTestConfig {
         let mock_ekubo: IMockEkuboOracleExtensionDispatcher = common::mock_ekubo_oracle_extension_deploy(
-            mock_ekubo_oracle_extension_class
+            mock_ekubo_oracle_extension_class,
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
         let mut calldata: Array<felt252> = array![

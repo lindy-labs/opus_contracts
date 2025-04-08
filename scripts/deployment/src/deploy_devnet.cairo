@@ -1,13 +1,13 @@
 use deployment::{core_deployment, mock_deployment, periphery_deployment, utils};
 use opus::constants::{
-    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, USDC_DECIMALS, WBTC_DECIMALS, WBTC_USD_PAIR_ID
+    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, USDC_DECIMALS, WBTC_DECIMALS, WBTC_USD_PAIR_ID,
 };
-use opus::core::roles::{absorber_roles, sentinel_roles, seer_roles, shrine_roles};
+use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
 use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
 use scripts::constants;
 use scripts::mock_utils;
-use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
+use sncast_std::{CallResult, DisplayContractAddress, InvokeResult, call, invoke};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -35,15 +35,15 @@ fn main() {
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
     let usdc: ContractAddress = mock_deployment::deploy_erc20_mintable(
-        erc20_mintable_class_hash, 'USD Coin', 'USDC', USDC_DECIMALS, constants::USDC_INITIAL_SUPPLY, admin
+        erc20_mintable_class_hash, 'USD Coin', 'USDC', USDC_DECIMALS, constants::USDC_INITIAL_SUPPLY, admin,
     );
     let wbtc: ContractAddress = mock_deployment::deploy_erc20_mintable(
-        erc20_mintable_class_hash, 'Wrapped BTC', 'WBTC', WBTC_DECIMALS, constants::WBTC_INITIAL_SUPPLY, admin
+        erc20_mintable_class_hash, 'Wrapped BTC', 'WBTC', WBTC_DECIMALS, constants::WBTC_INITIAL_SUPPLY, admin,
     );
 
     // Deploy transmuter
     let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
-        admin, shrine, usdc, admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+        admin, shrine, usdc, admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING,
     );
 
     // Deploy gates
@@ -58,7 +58,7 @@ fn main() {
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
-        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD
+        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD,
     );
 
     utils::set_oracles_to_seer(seer, array![pragma].span());
@@ -128,7 +128,7 @@ fn main() {
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set debt ceiling failed');
 
@@ -140,7 +140,7 @@ fn main() {
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set minimum trove value failed');
 
@@ -160,7 +160,7 @@ fn main() {
             (strk_pragma_price, strk_pragma_price),
             (wbtc_pragma_price, wbtc_pragma_price),
         ]
-            .span()
+            .span(),
     );
 
     // Set up oracles
@@ -172,7 +172,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::None, admin, shrine, sentinel, abbot, purger
+        Option::None, admin, shrine, sentinel, abbot, purger,
     );
 
     // Transmute initial amount
@@ -190,7 +190,7 @@ fn main() {
         selector!("transmute"),
         array![transmute_amt.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('transmute failed');
 

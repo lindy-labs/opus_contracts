@@ -5,21 +5,21 @@ pub mod receptor_utils {
     use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait
+        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait,
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
     use starknet::ContractAddress;
-    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct ReceptorTestConfig {
         pub mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher,
         pub receptor: IReceptorDispatcher,
         pub shrine: IShrineDispatcher,
-        pub quote_tokens: Span<ContractAddress>
+        pub quote_tokens: Span<ContractAddress>,
     }
 
     //
@@ -31,7 +31,7 @@ pub mod receptor_utils {
 
     pub fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token(
-            'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+            'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class,
         )
     }
 
@@ -44,7 +44,7 @@ pub mod receptor_utils {
     //
 
     pub fn mock_ekubo_oracle_extension_deploy(
-        mock_ekubo_oracle_extension_class: Option<ContractClass>
+        mock_ekubo_oracle_extension_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = ArrayTrait::new();
 
@@ -61,7 +61,7 @@ pub mod receptor_utils {
     }
 
     pub fn receptor_deploy(
-        receptor_class: Option<ContractClass>, token_class: Option<ContractClass>
+        receptor_class: Option<ContractClass>, token_class: Option<ContractClass>,
     ) -> ReceptorTestConfig {
         start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
@@ -98,9 +98,9 @@ pub mod receptor_utils {
             shrine,
             receptor: IReceptorDispatcher { contract_address: receptor_addr },
             mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher {
-                contract_address: mock_ekubo_oracle_extension_addr
+                contract_address: mock_ekubo_oracle_extension_addr,
             },
-            quote_tokens
+            quote_tokens,
         }
     }
 }

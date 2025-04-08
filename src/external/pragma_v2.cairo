@@ -12,7 +12,7 @@ pub mod pragma_v2 {
     use core::num::traits::Zero;
     use opus::external::interfaces::{
         IPragmaSpotOracleDispatcher, IPragmaSpotOracleDispatcherTrait, IPragmaTwapOracleDispatcher,
-        IPragmaTwapOracleDispatcherTrait
+        IPragmaTwapOracleDispatcherTrait,
     };
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
@@ -20,7 +20,7 @@ pub mod pragma_v2 {
     use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::storage::{
-        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
@@ -101,13 +101,13 @@ pub mod pragma_v2 {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PriceValidityThresholdsUpdated {
         pub old_thresholds: PriceValidityThresholds,
-        pub new_thresholds: PriceValidityThresholds
+        pub new_thresholds: PriceValidityThresholds,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct YangPairSettingsUpdated {
         pub address: ContractAddress,
-        pub pair_settings: PairSettings
+        pub pair_settings: PairSettings,
     }
 
     //
@@ -121,7 +121,7 @@ pub mod pragma_v2 {
         spot_oracle: ContractAddress,
         twap_oracle: ContractAddress,
         freshness_threshold: u64,
-        sources_threshold: u32
+        sources_threshold: u32,
     ) {
         self.access_control.initializer(admin, Option::Some(pragma_roles::default_admin_role()));
 
@@ -134,8 +134,8 @@ pub mod pragma_v2 {
         self
             .emit(
                 PriceValidityThresholdsUpdated {
-                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 }, new_thresholds
-                }
+                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 }, new_thresholds,
+                },
             );
     }
 
@@ -169,7 +169,7 @@ pub mod pragma_v2 {
                     DataType::SpotEntry(pair_settings.pair_id),
                     pair_settings.aggregation_mode,
                     TWAP_DURATION,
-                    start_time
+                    start_time,
                 );
             assert(decimals.is_non_zero(), 'PGM: TWAP unknown pair ID');
             assert(decimals <= 18, 'PGM: TWAP too many decimals');
@@ -182,7 +182,8 @@ pub mod pragma_v2 {
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u32) {
             self.access_control.assert_has_role(pragma_roles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
-                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND, 'PGM: Freshness out of bounds'
+                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
+                'PGM: Freshness out of bounds',
             );
             assert(LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND, 'PGM: Sources out of bounds');
 
@@ -247,7 +248,7 @@ pub mod pragma_v2 {
                             price,
                             pragma_last_updated_ts: response.last_updated_timestamp,
                             pragma_num_sources: response.num_sources_aggregated,
-                        }
+                        },
                     );
                 Result::Err('PGM: Invalid price update')
             }
@@ -262,7 +263,7 @@ pub mod pragma_v2 {
                     DataType::SpotEntry(pair_settings.pair_id),
                     pair_settings.aggregation_mode,
                     TWAP_DURATION,
-                    start_time
+                    start_time,
                 );
             fixed_point_to_wad(twap, decimals.try_into().unwrap())
         }

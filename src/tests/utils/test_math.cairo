@@ -2,7 +2,7 @@ mod test_math {
     use core::num::traits::{Bounded, Zero};
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three, pow, sqrt};
-    use wadray::{Ray, RAY_ONE, Wad};
+    use wadray::{RAY_ONE, Ray, Wad};
 
     #[test]
     fn test_sqrt() {
@@ -17,7 +17,7 @@ mod test_math {
             sqrt(1000000000000000000000000000000_u128.into()),
             31622776601683793319988935444_u128.into(),
             ERROR_MARGIN,
-            'wrong sqrt #2'
+            'wrong sqrt #2',
         );
 
         // 6969
@@ -25,7 +25,7 @@ mod test_math {
             sqrt(6969000000000000000000000000000_u128.into()),
             83480536653761396384637711221_u128.into(),
             ERROR_MARGIN,
-            'wrong sqrt #3'
+            'wrong sqrt #3',
         );
 
         // pi
@@ -33,7 +33,7 @@ mod test_math {
             sqrt(3141592653589793238462643383_u128.into()),
             1772453850905516027298167483_u128.into(),
             ERROR_MARGIN,
-            'wrong sqrt #4'
+            'wrong sqrt #4',
         );
 
         // e
@@ -41,7 +41,7 @@ mod test_math {
             sqrt(2718281828459045235360287471_u128.into()),
             1648721270700128146848650787_u128.into(),
             ERROR_MARGIN,
-            'wrong sqrt #5'
+            'wrong sqrt #5',
         );
 
         // Testing the property x = sqrt(x)^2
@@ -57,7 +57,7 @@ mod test_math {
             6283185307179586476925286766_u128.into(),
             pow(sqrt(6283185307179586476925286766_u128.into()), 2),
             ERROR_MARGIN,
-            'wrong sqrt #8'
+            'wrong sqrt #8',
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
@@ -79,11 +79,11 @@ mod test_math {
             pow::<Ray>(3141592653589793238462643383_u128.into(), 2),
             9869604401089358618834490999_u128.into(),
             ERROR_MARGIN,
-            'wrong pow #5'
+            'wrong pow #5',
         );
 
         assert_equalish(
-            pow::<Ray>(1414213562373095048801688724_u128.into(), 4), (4 * RAY_ONE).into(), ERROR_MARGIN, 'wrong pow #6'
+            pow::<Ray>(1414213562373095048801688724_u128.into(), 4), (4 * RAY_ONE).into(), ERROR_MARGIN, 'wrong pow #6',
         );
     }
 

@@ -10,12 +10,12 @@ pub mod mock_address_registry {
     #[storage]
     struct Storage {
         #[substorage(v0)]
-        address_registry: address_registry_component::Storage
+        address_registry: address_registry_component::Storage,
     }
 
     #[event]
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub enum Event {
-        AddressRegistryEvent: address_registry_component::Event
+        AddressRegistryEvent: address_registry_component::Event,
     }
 }

@@ -16,17 +16,17 @@ mod test_exp {
 
         let res = exp((WAD_PERCENT * 2).into());
         assert_equalish(
-            res, 1020201340026755810_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
+            res, 1020201340026755810_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds',
         );
 
         let res = exp((WAD_ONE * 10).into());
         assert_equalish(
-            res, 22026465794806716516957_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
+            res, 22026465794806716516957_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds',
         );
 
         let res = exp((WAD_ONE * 20).into());
         assert_equalish(
-            res, 485165195409790277969106830_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds'
+            res, 485165195409790277969106830_u128.into(), ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds',
         );
 
         // Highest possible value the function will accept
