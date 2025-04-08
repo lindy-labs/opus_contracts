@@ -252,12 +252,12 @@ mod test_equalizer {
                     }
 
                     // Reset by normalizing all remaining deficit
-                    equalizer.normalize(Bounded::MAX());
+                    equalizer.normalize(Bounded::MAX);
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
                     // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(Bounded::MAX());
+                    equalizer.normalize(Bounded::MAX);
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },

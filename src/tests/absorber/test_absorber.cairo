@@ -181,7 +181,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
 
         // Loss of precision
         let error_margin: Wad = 10_u128.into();
@@ -508,7 +508,7 @@ mod test_absorber {
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-                        absorber.remove(Bounded::MAX());
+                        absorber.remove(Bounded::MAX);
                         remove_as_second_action = true;
                     } else {
                         absorber.reap();
@@ -743,7 +743,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
         let yin = shrine_utils::yin(shrine.contract_address);
-        yin.approve(absorber.contract_address, Bounded::MAX());
+        yin.approve(absorber.contract_address, Bounded::MAX);
         yin.transfer(provider, provider_amt.into());
 
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -769,7 +769,7 @@ mod test_absorber {
 
         // Provider provides a small amount
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        yin.approve(absorber.contract_address, Bounded::MAX());
+        yin.approve(absorber.contract_address, Bounded::MAX);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let provider_provide_amt: Wad = 1_u128.into();
@@ -1167,7 +1167,7 @@ mod test_absorber {
         let request_timestamp = get_block_timestamp();
         absorber.request();
         start_warp(CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1408,7 +1408,7 @@ mod test_absorber {
 
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1840,7 +1840,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
 
         // Loss of precision
         let error_margin: Wad = 1000_u128.into();
@@ -1873,7 +1873,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
     }
 
     #[test]
@@ -1884,7 +1884,7 @@ mod test_absorber {
         let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.remove(Bounded::MAX());
+        absorber.remove(Bounded::MAX);
     }
 
     #[test]
@@ -2002,7 +2002,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = shrine_utils::yin(shrine.contract_address);
-        yin.approve(absorber.contract_address, Bounded::MAX());
+        yin.approve(absorber.contract_address, Bounded::MAX);
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let insufficient_amt: Wad = provided_amt + 1_u128.into();

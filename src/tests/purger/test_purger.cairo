@@ -375,7 +375,7 @@ mod test_purger {
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![searcher].span());
 
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, Bounded::MAX(), searcher);
+        let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, Bounded::MAX, searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let shrine_health: Health = shrine.get_shrine_health();
@@ -603,7 +603,7 @@ mod test_purger {
 
                     let searcher: ContractAddress = purger_utils::searcher();
                     start_prank(CheatTarget::One(purger.contract_address), searcher);
-                    let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, Bounded::MAX(), searcher);
+                    let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, Bounded::MAX, searcher);
 
                     // Check that LTV is close to safety margin
                     let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
@@ -767,7 +767,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(healthy_trove, Bounded::MAX(), searcher);
+        purger.liquidate(healthy_trove, Bounded::MAX, searcher);
     }
 
     #[test]
@@ -796,7 +796,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(healthy_trove, Bounded::MAX(), searcher);
+        purger.liquidate(healthy_trove, Bounded::MAX, searcher);
     }
 
     #[test]
@@ -824,7 +824,7 @@ mod test_purger {
 
         let searcher: ContractAddress = purger_utils::searcher();
         start_prank(CheatTarget::One(purger.contract_address), searcher);
-        purger.liquidate(target_trove, Bounded::MAX(), searcher);
+        purger.liquidate(target_trove, Bounded::MAX, searcher);
     }
 
     //
@@ -4137,7 +4137,7 @@ mod test_purger {
                                 // Approve absorber for maximum yin
                                 start_prank(CheatTarget::One(shrine.contract_address), searcher);
                                 let yin_erc20 = shrine_utils::yin(shrine.contract_address);
-                                yin_erc20.approve(absorber.contract_address, Bounded::MAX());
+                                yin_erc20.approve(absorber.contract_address, Bounded::MAX);
 
                                 stop_prank(CheatTarget::One(shrine.contract_address));
 

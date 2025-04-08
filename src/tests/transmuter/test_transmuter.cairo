@@ -411,7 +411,7 @@ mod test_transmuter {
 
                     // approve Transmuter to transfer user's mock USD stable
                     start_prank(CheatTarget::One(asset.contract_address), user);
-                    asset.approve(transmuter.contract_address, Bounded::MAX());
+                    asset.approve(transmuter.contract_address, Bounded::MAX);
                     stop_prank(CheatTarget::One(asset.contract_address));
 
                     // Set up transmute amount to be equivalent to 1_000 (Wad) yin
@@ -596,7 +596,7 @@ mod test_transmuter {
 
                     // approve Transmuter to transfer user's mock USD stable
                     start_prank(CheatTarget::One(asset.contract_address), user);
-                    asset.approve(transmuter.contract_address, Bounded::MAX());
+                    asset.approve(transmuter.contract_address, Bounded::MAX);
                     stop_prank(CheatTarget::One(asset.contract_address));
 
                     // Transmute an amount of yin to set up Transmuter for reverse
@@ -833,7 +833,7 @@ mod test_transmuter {
                                             }
 
                                             // reset by sweeping all remaining amount
-                                            transmuter.sweep(Bounded::MAX());
+                                            transmuter.sweep(Bounded::MAX);
                                             assert(
                                                 asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check'
                                             );
@@ -961,7 +961,7 @@ mod test_transmuter {
                                             }
 
                                             // reset by sweeping all remaining amount
-                                            transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX());
+                                            transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX);
                                             assert(
                                                 secondary_asset_erc20.balance_of(transmuter.contract_address).is_zero(),
                                                 'sanity check'
@@ -995,7 +995,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
-        transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX());
+        transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX);
     }
 
     #[test]
@@ -1012,7 +1012,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
-        transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, Bounded::MAX());
+        transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, Bounded::MAX);
     }
 
     //
@@ -1199,7 +1199,7 @@ mod test_transmuter {
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.settle();
 
-        transmuter.sweep(Bounded::MAX());
+        transmuter.sweep(Bounded::MAX);
     }
 
     #[test]
@@ -1210,7 +1210,7 @@ mod test_transmuter {
         );
 
         start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
-        transmuter.sweep(Bounded::MAX());
+        transmuter.sweep(Bounded::MAX);
     }
 
     //
@@ -1438,7 +1438,7 @@ mod test_transmuter {
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
-        transmuter.sweep(Bounded::MAX());
+        transmuter.sweep(Bounded::MAX);
     }
 
     #[test]
@@ -1451,7 +1451,7 @@ mod test_transmuter {
         start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
         transmuter.kill();
 
-        transmuter.reclaim(Bounded::MAX());
+        transmuter.reclaim(Bounded::MAX);
     }
 
     #[test]

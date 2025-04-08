@@ -1,19 +1,17 @@
 pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::{Bounded, Zero};
+    use core::num::traits::Bounded;
     use opus::core::roles::{sentinel_roles, shrine_roles};
-    use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_caller_address};
-    use wadray::{Wad, Ray};
+    use snforge_std::{declare, DeclareResultTrait, ContractClass, ContractClassTrait, start_cheat_caller_address, stop_cheat_caller_address};
+    use starknet::ContractAddress;
 
     // Struct to group together all contract classes
     // needed for abbot tests
@@ -66,10 +64,10 @@ pub mod sentinel_utils {
 
     pub fn declare_contracts() -> SentinelTestClasses {
         SentinelTestClasses {
-            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
-            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
-            gate: Option::Some(declare("gate").unwrap().contract_class()),
-            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
+            sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(*declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(*declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
         }
     }
 
@@ -86,16 +84,17 @@ pub mod sentinel_utils {
         let (sentinel_addr, _) = classes.sentinel.unwrap().deploy(@calldata).expect('sentinel deploy failed');
 
         // Grant `abbot` role to `mock_abbot`
-        start_prank(CheatTarget::One(sentinel_addr), admin());
+        start_cheat_caller_address(sentinel_addr, admin());
         IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), mock_abbot());
+        stop_cheat_caller_address(sentinel_addr);
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        start_prank(CheatTarget::One(shrine_addr), shrine_utils::admin());
+        start_cheat_caller_address(shrine_addr, shrine_utils::admin());
 
         shrine_ac.grant_role(shrine_roles::sentinel(), sentinel_addr);
         shrine_ac.grant_role(shrine_roles::abbot(), mock_abbot());
 
-        stop_prank(CheatTarget::Multiple(array![shrine_addr, sentinel_addr]));
+        stop_cheat_caller_address(shrine_addr);
 
         (ISentinelDispatcher { contract_address: sentinel_addr }, shrine_addr)
     }
@@ -133,12 +132,12 @@ pub mod sentinel_utils {
         let initial_deposit_amt: u128 = get_initial_asset_amt(eth_vault);
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(eth_vault), common::eth_hoarder());
+        start_cheat_caller_address(eth_vault, common::eth_hoarder());
         eth_vault_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_prank(CheatTarget::One(eth_vault), admin());
+        start_cheat_caller_address(eth_vault, admin());
         eth_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
-        stop_prank(CheatTarget::One(eth_vault));
-        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+        stop_cheat_caller_address(eth_vault);
+        start_cheat_caller_address(sentinel.contract_address, admin());
 
         sentinel
             .add_yang(
@@ -151,7 +150,7 @@ pub mod sentinel_utils {
                 eth_vault_gate
             );
 
-        stop_prank(CheatTarget::One(sentinel.contract_address));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         (eth_vault, IGateDispatcher { contract_address: eth_vault_gate })
     }
@@ -172,13 +171,13 @@ pub mod sentinel_utils {
         let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc_vault);
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(wbtc_vault), common::wbtc_hoarder());
+        start_cheat_caller_address(wbtc_vault, common::wbtc_hoarder());
         wbtc_vault_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_prank(CheatTarget::One(wbtc_vault), admin());
+        start_cheat_caller_address(wbtc_vault, admin());
         wbtc_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
-        stop_prank(CheatTarget::One(wbtc_vault));
+        stop_cheat_caller_address(wbtc_vault);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+        start_cheat_caller_address(sentinel.contract_address, admin());
         sentinel
             .add_yang(
                 wbtc_vault,
@@ -189,7 +188,7 @@ pub mod sentinel_utils {
                 shrine_utils::YANG2_BASE_RATE.into(),
                 wbtc_vault_gate
             );
-        stop_prank(CheatTarget::Multiple(array![sentinel.contract_address, wbtc_vault]));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         (wbtc_vault, IGateDispatcher { contract_address: wbtc_vault_gate })
     }
@@ -205,7 +204,7 @@ pub mod sentinel_utils {
         let vault_class = Option::Some(
             match vault_class {
                 Option::Some(class) => class,
-                Option::None => declare("erc4626_mintable").unwrap().contract_class()
+                Option::None => *declare("erc4626_mintable").unwrap().contract_class()
             }
         );
 
@@ -255,13 +254,13 @@ pub mod sentinel_utils {
         let initial_deposit_amt: u128 = get_initial_asset_amt(eth);
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(eth), common::eth_hoarder());
+        start_cheat_caller_address(eth, common::eth_hoarder());
         eth_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_prank(CheatTarget::One(eth), admin());
+        start_cheat_caller_address(eth, admin());
         eth_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
-        stop_prank(CheatTarget::One(eth));
+        stop_cheat_caller_address(eth);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+        start_cheat_caller_address(sentinel.contract_address, admin());
 
         sentinel
             .add_yang(
@@ -273,7 +272,7 @@ pub mod sentinel_utils {
                 eth_gate
             );
 
-        stop_prank(CheatTarget::One(sentinel.contract_address));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         (eth, IGateDispatcher { contract_address: eth_gate })
     }
@@ -293,13 +292,13 @@ pub mod sentinel_utils {
         let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc);
 
         // Transferring the initial deposit amounts to `admin()`
-        start_prank(CheatTarget::One(wbtc), common::wbtc_hoarder());
+        start_cheat_caller_address(wbtc, common::wbtc_hoarder());
         wbtc_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_prank(CheatTarget::One(wbtc), admin());
+        start_cheat_caller_address(wbtc, admin());
         wbtc_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
-        stop_prank(CheatTarget::One(wbtc));
+        stop_cheat_caller_address(wbtc);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), admin());
+        start_cheat_caller_address(sentinel.contract_address, admin());
         sentinel
             .add_yang(
                 wbtc,
@@ -309,16 +308,16 @@ pub mod sentinel_utils {
                 shrine_utils::YANG2_BASE_RATE.into(),
                 wbtc_gate
             );
-        stop_prank(CheatTarget::Multiple(array![sentinel.contract_address, wbtc]));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         (wbtc, IGateDispatcher { contract_address: wbtc_gate })
     }
 
     pub fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
-        start_prank(CheatTarget::One(token), user);
-        token_erc20.approve(gate.contract_address, Bounded::MAX());
-        stop_prank(CheatTarget::One(token));
+        start_cheat_caller_address(token, user);
+        token_erc20.approve(gate.contract_address, Bounded::MAX);
+        stop_cheat_caller_address(token);
     }
 
     pub fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {

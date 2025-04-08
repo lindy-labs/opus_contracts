@@ -9,10 +9,9 @@ use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626Dispatche
 use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher;
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
-use opus::types::{AssetBalance, Reward, YangBalance};
+use opus::types::{AssetBalance, Reward};
 use opus::utils::math::pow;
-use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, DeclareResultTrait, Event, start_prank, start_warp, stop_prank};
-use starknet::testing::{pop_log_raw};
+use snforge_std::{ContractClass, ContractClassTrait, declare, DeclareResultTrait, Event, start_cheat_caller_address, start_cheat_block_timestamp_global, stop_cheat_caller_address};
 use starknet::{ContractAddress, get_block_timestamp};
 use wadray::{Ray, Wad, WAD_ONE};
 
@@ -148,10 +147,10 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
         };
     };
 
-    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+    start_cheat_block_timestamp_global(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 
     // Updating prices and multiplier
-    start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+    start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
     shrine.set_multiplier(current_multiplier);
     loop {
         match yangs.pop_front() {
@@ -162,11 +161,11 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
             Option::None => { break; }
         };
     };
-    stop_prank(CheatTarget::One(shrine.contract_address));
+    stop_cheat_caller_address(shrine.contract_address);
 }
 
 pub fn advance_intervals(intervals: u64) {
-    start_warp(CheatTarget::All, get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
+    start_cheat_block_timestamp_global(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 }
 
 
@@ -199,7 +198,7 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable").unwrap().contract_class()
+        Option::None => *declare("erc20_mintable").unwrap().contract_class()
     };
     array![
         dai_token_deploy(Option::Some(token_class)),
@@ -238,7 +237,7 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable").unwrap().contract_class(),
+        Option::None => *declare("erc20_mintable").unwrap().contract_class(),
     };
 
     let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
@@ -267,7 +266,7 @@ pub fn deploy_vault(
 
     let vault_class = match vault_class {
         Option::Some(class) => class,
-        Option::None => declare("erc4626_mintable").unwrap().contract_class(),
+        Option::None => *declare("erc4626_mintable").unwrap().contract_class(),
     };
 
     let (vault_addr, _) = vault_class.deploy(@calldata).expect('erc4626 deploy failed');
@@ -304,7 +303,7 @@ pub fn mock_ekubo_oracle_extension_deploy(
 
     let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
         Option::Some(class) => class,
-        Option::None => declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
+        Option::None => *declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
     };
 
     let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
@@ -336,10 +335,10 @@ pub fn open_trove_helper(
         };
     };
 
-    start_prank(CheatTarget::One(abbot.contract_address), user);
+    start_cheat_caller_address(abbot.contract_address, user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
     let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, 1_u128.into());
-    stop_prank(CheatTarget::One(abbot.contract_address));
+    stop_cheat_caller_address(abbot.contract_address);
 
     trove_id
 }

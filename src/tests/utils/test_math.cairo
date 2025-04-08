@@ -61,7 +61,7 @@ mod test_math {
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
-        sqrt(Bounded::MAX());
+        sqrt(Bounded::MAX);
     }
 
     #[test]

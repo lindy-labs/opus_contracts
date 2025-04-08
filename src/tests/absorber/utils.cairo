@@ -309,7 +309,7 @@ pub mod absorber_utils {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = shrine_utils::yin(shrine.contract_address);
-        yin.approve(absorber.contract_address, Bounded::MAX());
+        yin.approve(absorber.contract_address, Bounded::MAX);
         stop_prank(CheatTarget::One(shrine.contract_address));
         absorber.provide(amt);
         stop_prank(CheatTarget::One(absorber.contract_address));
