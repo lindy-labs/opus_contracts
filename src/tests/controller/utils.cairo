@@ -48,7 +48,7 @@ pub mod controller_utils {
             BETA_I.into()
         ];
 
-        let controller_class = declare("controller").unwrap();
+        let controller_class = declare("controller").unwrap().contract_class();
         let (controller_addr, _) = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };

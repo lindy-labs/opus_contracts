@@ -84,7 +84,7 @@ mod test_ekubo_oracle_adapter {
     fn test_set_quote_tokens_too_many_tokens() {
         let mut state = state();
 
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
         let quote_tokens: Span<ContractAddress> = array![
@@ -99,7 +99,7 @@ mod test_ekubo_oracle_adapter {
     fn test_set_quote_tokens_too_many_decimals() {
         let mut state = state();
 
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
 
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
@@ -141,7 +141,7 @@ mod test_ekubo_oracle_adapter {
         let mock_ekubo = common::mock_ekubo_oracle_extension_deploy(Option::None);
         state.ekubo_oracle_adapter.set_oracle_extension(mock_ekubo.contract_address);
 
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         state.ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
 

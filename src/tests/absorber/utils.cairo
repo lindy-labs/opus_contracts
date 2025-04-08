@@ -116,13 +116,13 @@ pub mod absorber_utils {
 
     pub fn declare_contracts() -> AbsorberTestClasses {
         AbsorberTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
-            absorber: Option::Some(declare("absorber").unwrap()),
-            blesser: Option::Some(declare("blesser").unwrap()),
+            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
+            absorber: Option::Some(declare("absorber").unwrap().contract_class()),
+            blesser: Option::Some(declare("blesser").unwrap().contract_class()),
         }
     }
 

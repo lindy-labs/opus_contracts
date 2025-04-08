@@ -74,7 +74,7 @@ pub mod pragma_utils {
 
         let mock_pragma_class = match mock_pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_pragma").unwrap(),
+            Option::None => declare("mock_pragma").unwrap().contract_class(),
         };
 
         let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('mock pragma deploy failed');
@@ -96,7 +96,7 @@ pub mod pragma_utils {
 
         let pragma_class = match pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("pragma").unwrap(),
+            Option::None => declare("pragma").unwrap().contract_class(),
         };
 
         let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma deploy failed');
@@ -120,7 +120,7 @@ pub mod pragma_utils {
 
         let pragma_v2_class = match pragma_v2_class {
             Option::Some(class) => class,
-            Option::None => declare("pragma_v2").unwrap(),
+            Option::None => declare("pragma_v2").unwrap().contract_class(),
         };
 
         let (pragma_v2_addr, _) = pragma_v2_class.deploy(@calldata).expect('pragma v2 deploy failed');
@@ -289,7 +289,7 @@ pub mod ekubo_utils {
 
         let ekubo_class = match ekubo_class {
             Option::Some(class) => class,
-            Option::None => declare("ekubo").unwrap(),
+            Option::None => declare("ekubo").unwrap().contract_class(),
         };
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
         let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };

@@ -364,7 +364,7 @@ mod test_transmuter {
     #[test]
     fn test_transmute_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
         );
@@ -558,7 +558,7 @@ mod test_transmuter {
     #[test]
     fn test_reverse_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let TransmuterTestConfig { shrine, transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::Some(transmuter_class), Option::Some(token_class)
@@ -749,7 +749,7 @@ mod test_transmuter {
     fn test_sweep_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -861,7 +861,7 @@ mod test_transmuter {
     fn test_withdraw_secondary_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -985,7 +985,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_withdraw_secondary_asset_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let TransmuterTestConfig { transmuter, .. } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::Some(token_class)
         );
@@ -1001,7 +1001,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Primary asset',))]
     fn test_withdraw_primary_asset_as_secondary_asset_fail() {
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let TransmuterTestConfig { transmuter, wad_usd_stable, .. } =
             transmuter_utils::shrine_with_wad_usd_stable_transmuter(
             Option::None, Option::Some(token_class)
@@ -1023,7 +1023,7 @@ mod test_transmuter {
     fn test_settle(transmuter_id: u32) {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let transmuter_admin: ContractAddress = transmuter_utils::admin();
         let shrine_admin: ContractAddress = shrine_utils::admin();
@@ -1221,7 +1221,7 @@ mod test_transmuter {
     fn test_kill_and_reclaim_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();

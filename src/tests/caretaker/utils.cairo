@@ -47,7 +47,7 @@ pub mod caretaker_utils {
             equalizer.contract_address.into(),
         ];
 
-        let caretaker_class = declare("caretaker").unwrap();
+        let caretaker_class = declare("caretaker").unwrap().contract_class();
         let (caretaker, _) = caretaker_class.deploy(@calldata).expect('caretaker deploy failed');
 
         // allow Caretaker to do its business with Shrine

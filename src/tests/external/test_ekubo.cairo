@@ -83,7 +83,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_pass() {
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );
@@ -136,7 +136,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_more_than_one_invalid_price_fail() {
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
         let EkuboTestConfig { ekubo, mock_ekubo, quote_tokens } = ekubo_utils::ekubo_deploy(
             Option::None, Option::None, Option::Some(token_class)
         );

@@ -78,11 +78,11 @@ pub mod abbot_utils {
 
     pub fn declare_contracts() -> AbbotTestClasses {
         AbbotTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
+            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
         }
     }
 

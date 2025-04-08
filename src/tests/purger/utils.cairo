@@ -330,19 +330,19 @@ pub mod purger_utils {
 
     pub fn declare_contracts() -> PurgerTestClasses {
         PurgerTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
-            absorber: Option::Some(declare("absorber").unwrap()),
-            blesser: declare("blesser").unwrap(),
-            purger: declare("purger").unwrap(),
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
-            ekubo: Option::Some(declare("ekubo").unwrap()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
-            seer: Option::Some(declare("seer").unwrap()),
+            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
+            absorber: Option::Some(declare("absorber").unwrap().contract_class()),
+            blesser: declare("blesser").unwrap().contract_class(),
+            purger: declare("purger").unwrap().contract_class(),
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap().contract_class()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap().contract_class()),
+            ekubo: Option::Some(declare("ekubo").unwrap().contract_class()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
+            seer: Option::Some(declare("seer").unwrap().contract_class()),
         }
     }
 
@@ -453,7 +453,7 @@ pub mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare("flash_liquidator").unwrap(),
+            Option::None => declare("flash_liquidator").unwrap().contract_class(),
         };
 
         let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');

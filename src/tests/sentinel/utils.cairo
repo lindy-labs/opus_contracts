@@ -66,10 +66,10 @@ pub mod sentinel_utils {
 
     pub fn declare_contracts() -> SentinelTestClasses {
         SentinelTestClasses {
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
+            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
         }
     }
 
@@ -205,7 +205,7 @@ pub mod sentinel_utils {
         let vault_class = Option::Some(
             match vault_class {
                 Option::Some(class) => class,
-                Option::None => declare("erc4626_mintable").unwrap()
+                Option::None => declare("erc4626_mintable").unwrap().contract_class()
             }
         );
 

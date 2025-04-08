@@ -151,7 +151,7 @@ pub mod shrine_utils {
     }
 
     pub fn declare_shrine() -> ContractClass {
-        declare("shrine").unwrap()
+        declare("shrine").unwrap().contract_class()
     }
 
     pub fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {

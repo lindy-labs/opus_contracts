@@ -63,10 +63,10 @@ pub mod seer_utils {
 
     pub fn declare_oracles() -> OracleTestClasses {
         OracleTestClasses {
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap()),
-            ekubo: Option::Some(declare("ekubo").unwrap()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap()),
+            pragma_v2: Option::Some(declare("pragma_v2").unwrap().contract_class()),
+            mock_pragma: Option::Some(declare("mock_pragma").unwrap().contract_class()),
+            ekubo: Option::Some(declare("ekubo").unwrap().contract_class()),
+            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
         }
     }
 
@@ -80,7 +80,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer_v2").unwrap()
+            Option::None => declare("seer_v2").unwrap().contract_class()
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -107,7 +107,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer_v2").unwrap()
+            Option::None => declare("seer_v2").unwrap().contract_class()
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');

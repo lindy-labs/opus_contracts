@@ -20,7 +20,7 @@ pub mod flash_mint_utils {
     }
 
     pub fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
-        let flashmint_class = declare("flash_mint").unwrap();
+        let flashmint_class = declare("flash_mint").unwrap().contract_class();
         let (flashmint_addr, _) = flashmint_class.deploy(@array![shrine.into()]).expect('flashmint deploy failed');
 
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
@@ -54,7 +54,7 @@ pub mod flash_mint_utils {
     }
 
     pub fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
-        let flash_borrower_class = declare("flash_borrower").unwrap();
+        let flash_borrower_class = declare("flash_borrower").unwrap().contract_class();
         let (flash_borrower_addr, _) = flash_borrower_class
             .deploy(@array![flashmint.into()])
             .expect('flsh brrwr deploy failed');

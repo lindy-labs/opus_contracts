@@ -32,7 +32,7 @@ pub mod gate_utils {
 
         let gate_class = match gate_class {
             Option::Some(class) => class,
-            Option::None => declare("gate").unwrap(),
+            Option::None => declare("gate").unwrap().contract_class(),
         };
         let (gate_addr, _) = gate_class.deploy(@calldata).expect('gate deploy failed');
         gate_addr

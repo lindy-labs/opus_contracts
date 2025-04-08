@@ -120,7 +120,7 @@ pub mod equalizer_utils {
 
         let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into()];
 
-        let equalizer_class = declare("equalizer").unwrap();
+        let equalizer_class = declare("equalizer").unwrap().contract_class();
         let (equalizer_addr, _) = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
 
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };

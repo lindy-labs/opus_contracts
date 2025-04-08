@@ -36,7 +36,7 @@ mod test_transmuter_registry {
     #[test]
     fn test_add_and_remove_transmuters() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = declare("erc20_mintable").unwrap().contract_class();
 
         let registry = transmuter_utils::transmuter_registry_deploy();
 

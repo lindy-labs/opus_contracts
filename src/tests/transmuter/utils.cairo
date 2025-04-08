@@ -55,7 +55,7 @@ pub mod transmuter_utils {
     //
 
     pub fn declare_transmuter() -> ContractClass {
-        declare("transmuter_v2").unwrap()
+        declare("transmuter_v2").unwrap().contract_class()
     }
 
     pub fn transmuter_deploy(
@@ -141,7 +141,7 @@ pub mod transmuter_utils {
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
         let mut calldata: Array<felt252> = array![admin().into()];
 
-        let transmuter_registry_class = declare("transmuter_registry").unwrap();
+        let transmuter_registry_class = declare("transmuter_registry").unwrap().contract_class();
         let (transmuter_registry_addr, _) = transmuter_registry_class
             .deploy(@calldata)
             .expect('TR registry deploy failed');

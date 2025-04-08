@@ -50,7 +50,7 @@ pub mod receptor_utils {
 
         let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
+            Option::None => declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
         };
 
         let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
@@ -84,7 +84,7 @@ pub mod receptor_utils {
 
         let receptor_class = match receptor_class {
             Option::Some(class) => class,
-            Option::None => declare("receptor").unwrap(),
+            Option::None => declare("receptor").unwrap().contract_class(),
         };
         let (receptor_addr, _) = receptor_class.deploy(@calldata).expect('receptor deploy failed');
 

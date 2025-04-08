@@ -199,7 +199,7 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable").unwrap()
+        Option::None => declare("erc20_mintable").unwrap().contract_class()
     };
     array![
         dai_token_deploy(Option::Some(token_class)),
@@ -238,7 +238,7 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => declare("erc20_mintable").unwrap(),
+        Option::None => declare("erc20_mintable").unwrap().contract_class(),
     };
 
     let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
@@ -267,7 +267,7 @@ pub fn deploy_vault(
 
     let vault_class = match vault_class {
         Option::Some(class) => class,
-        Option::None => declare("erc4626_mintable").unwrap(),
+        Option::None => declare("erc4626_mintable").unwrap().contract_class(),
     };
 
     let (vault_addr, _) = vault_class.deploy(@calldata).expect('erc4626 deploy failed');
@@ -304,7 +304,7 @@ pub fn mock_ekubo_oracle_extension_deploy(
 
     let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
         Option::Some(class) => class,
-        Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
+        Option::None => declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
     };
 
     let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
