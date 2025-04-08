@@ -25,6 +25,7 @@ access_control = { git = "https://github.com/lindy-labs/access_control.git", tag
 
 [dev-dependencies]
 snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.38.0" }
+assert_macros = ">= 2.10.0"
 
 [scripts]
 restart_devnet = "rm devnet_dump.json 2> /dev/null; starknet-devnet --seed 1087810753 --gas-price 1000 --dump-on exit --dump-path devnet_dump.json"
