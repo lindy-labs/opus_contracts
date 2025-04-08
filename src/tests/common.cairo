@@ -11,7 +11,7 @@ use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward, YangBalance};
 use opus::utils::math::pow;
-use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, Event, start_prank, start_warp, stop_prank};
+use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, DeclareResultTrait, Event, start_prank, start_warp, stop_prank};
 use starknet::testing::{pop_log_raw};
 use starknet::{ContractAddress, get_block_timestamp};
 use wadray::{Ray, Wad, WAD_ONE};
@@ -460,7 +460,7 @@ pub fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
             Option::Some(asset_amt) => {
                 // Convert to Wad for fixed point operations
                 let asset_amt: Wad = (*asset_amt).into();
-                split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
+                split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).into());
             },
             Option::None => { break; },
         };

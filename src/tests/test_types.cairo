@@ -1,6 +1,6 @@
 use opus::types::{DistributionInfo, Health, HealthTrait, Provision, Request, Trove, YangBalance};
 use starknet::storage_access::StorePacking;
-use wadray::{Wad, Ray};
+use wadray::Wad;
 
 #[test]
 fn test_display_and_debug() {
