@@ -471,7 +471,7 @@ mod test_shrine_redistribution {
                                 // Sanity check that we accrued more interest than the protocol owned troves' debt 
                                 // for the next part of the test
                                 assert(
-                                    accrued_interest.val > after_protocol_owned_troves_debt.val, 'interest sanity check'
+                                    accrued_interest > after_protocol_owned_troves_debt, 'interest sanity check'
                                 );
 
                                 start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
@@ -1128,10 +1128,10 @@ mod test_shrine_redistribution {
                     // Create a trove with different yangs and with the amount of debt depending on the test case, 
                     // then immediately redistribute it
                     let protocol_owned_debt_amt: Wad = match idx {
-                        0 => (expected_forge_fee_and_accrued_interest.val * 2).into(),
-                        1 => (expected_forge_fee_and_accrued_interest.val + 1).into(),
+                        0 => (expected_forge_fee_and_accrued_interest.into() * 2).into(),
+                        1 => (expected_forge_fee_and_accrued_interest.into() + 1).into(),
                         2 => expected_forge_fee_and_accrued_interest,
-                        3 => (expected_forge_fee_and_accrued_interest.val - 1).into(),
+                        3 => (expected_forge_fee_and_accrued_interest.into() - 1).into(),
                         _ => panic!("invalid idx"),
                     };
 

@@ -66,7 +66,7 @@ mod test_gate {
         let eth = IERC20Dispatcher { contract_address: eth };
 
         // check exchange rate and gate asset balance
-        assert(enter_yang_amt.val == asset_amt, 'enter amount');
+        assert(enter_yang_amt.into() == asset_amt, 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }
@@ -91,7 +91,7 @@ mod test_gate {
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
         // check exchange rate and gate asset balance
-        assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / common::WBTC_SCALE), 'enter amount');
+        assert(enter_yang_amt.into() == asset_amt * (WAD_SCALE / common::WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }

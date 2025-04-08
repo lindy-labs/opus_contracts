@@ -581,7 +581,7 @@ pub mod shrine_utils {
         let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
         let (_, end_cumulative_price) = shrine.get_yang_price(yang_addr, end_interval);
 
-        ((end_cumulative_price - start_cumulative_price).val / feed_len).into()
+        ((end_cumulative_price - start_cumulative_price).into() / feed_len).into()
     }
 
     // Helper function to calculate the average multiplier over a period of intervals
@@ -592,7 +592,7 @@ pub mod shrine_utils {
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
-        ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+        ((end_cumulative_multiplier - start_cumulative_multiplier).into() / feed_len).into()
     }
 
     pub fn create_whale_trove(shrine: IShrineDispatcher) {

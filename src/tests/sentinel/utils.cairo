@@ -1,7 +1,6 @@
 pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -318,7 +317,7 @@ pub mod sentinel_utils {
     pub fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
         let token_erc20 = IERC20Dispatcher { contract_address: token };
         start_prank(CheatTarget::One(token), user);
-        token_erc20.approve(gate.contract_address, BoundedInt::max());
+        token_erc20.approve(gate.contract_address, Bounded::MAX());
         stop_prank(CheatTarget::One(token));
     }
 

@@ -1,6 +1,5 @@
 pub mod gate_utils {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::gate::gate as gate_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
@@ -86,7 +85,7 @@ pub mod gate_utils {
     pub fn approve_gate_for_token(gate: ContractAddress, token: ContractAddress, user: ContractAddress) {
         // user no-limit approves gate to handle their share of token
         start_prank(CheatTarget::One(token), user);
-        IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());
+        IERC20Dispatcher { contract_address: token }.approve(gate, Bounded::MAX());
         stop_prank(CheatTarget::One(token));
     }
 

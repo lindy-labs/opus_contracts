@@ -1,6 +1,6 @@
 pub mod transmuter_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::integer::BoundedInt;
+    use core::num::traits::Bounded;
     use opus::core::roles::shrine_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
@@ -117,7 +117,7 @@ pub mod transmuter_utils {
         // approve transmuter to deal with user's tokens
         let asset: ContractAddress = transmuter.get_asset();
         start_prank(CheatTarget::One(asset), user);
-        IERC20Dispatcher { contract_address: asset }.approve(transmuter.contract_address, BoundedInt::max());
+        IERC20Dispatcher { contract_address: asset }.approve(transmuter.contract_address, Bounded::MAX());
         stop_prank(CheatTarget::One(asset));
     }
 

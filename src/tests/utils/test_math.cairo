@@ -1,15 +1,14 @@
 mod test_math {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::tests::common::assert_equalish;
     use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three, pow, sqrt};
     use wadray::{Ray, RAY_ONE, Wad};
 
     #[test]
     fn test_sqrt() {
-        let ERROR_MARGIN = Ray { val: 1 };
+        let ERROR_MARGIN: Ray = 1_u128.into();
 
-        assert(sqrt(0_u128.into()).val == Zero::zero(), 'wrong sqrt #1');
+        assert(sqrt(0_u128.into()) == Zero::zero(), 'wrong sqrt #1');
 
         // Ground truth tests
 
@@ -47,7 +46,7 @@ mod test_math {
 
         // Testing the property x = sqrt(x)^2
 
-        let ERROR_MARGIN = Ray { val: 1000 };
+        let ERROR_MARGIN = 1000_u128.into();
 
         assert_equalish((4 * RAY_ONE).into(), pow(sqrt((4 * RAY_ONE).into()), 2), ERROR_MARGIN, 'wrong sqrt #6');
 
@@ -62,7 +61,7 @@ mod test_math {
         );
 
         // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
-        sqrt(BoundedInt::max());
+        sqrt(Bounded::MAX());
     }
 
     #[test]
@@ -74,7 +73,7 @@ mod test_math {
         assert(pow(5_u128, 2) == 25_u128, 'wrong pow #4');
 
         // Ray tests
-        let ERROR_MARGIN = Ray { val: 1000 };
+        let ERROR_MARGIN = 1000_u128.into();
 
         assert_equalish(
             pow::<Ray>(3141592653589793238462643383_u128.into(), 2),

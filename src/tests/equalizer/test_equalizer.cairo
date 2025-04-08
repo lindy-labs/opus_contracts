@@ -1,8 +1,7 @@
 mod test_equalizer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
     use opus::core::shrine::shrine;
@@ -67,7 +66,7 @@ mod test_equalizer {
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
 
         // Create a deficit
-        let deficit = SignedWad { val: (500 * WAD_ONE), sign: true };
+        let deficit = -((500 * WAD_ONE).into());
         shrine.adjust_budget(deficit);
 
         assert(equalizer.equalize().is_zero(), 'minted surplus should be zero');
@@ -213,9 +212,9 @@ mod test_equalizer {
         let inject_amt: Wad = (5000 * WAD_ONE).into();
         let mut normalize_amts: Span<Wad> = array![
             Zero::zero(),
-            (inject_amt.val - 1).into(),
+            inject_amt - 1_u128.into(),
             inject_amt,
-            (inject_amt.val + 1).into(), // exceeds deficit, but should be capped in `normalize`
+            inject_amt.val + 1_u128.into(), // exceeds deficit, but should be capped in `normalize`
         ]
             .span();
 
@@ -226,7 +225,7 @@ mod test_equalizer {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
                     // Create the deficit
-                    let deficit = SignedWad { val: inject_amt.val, sign: true };
+                    let deficit = -(inject_amt.into());
                     shrine.adjust_budget(deficit);
                     assert(shrine.get_budget() == deficit, 'sanity check #1');
 
@@ -253,12 +252,12 @@ mod test_equalizer {
                     }
 
                     // Reset by normalizing all remaining deficit
-                    equalizer.normalize(BoundedInt::max());
+                    equalizer.normalize(Bounded::MAX());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
                     // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(BoundedInt::max());
+                    equalizer.normalize(Bounded::MAX());
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
                 },

@@ -1,8 +1,7 @@
 mod test_absorber {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -182,7 +181,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
 
         // Loss of precision
         let error_margin: Wad = 10_u128.into();
@@ -509,7 +508,7 @@ mod test_absorber {
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-                        absorber.remove(BoundedInt::max());
+                        absorber.remove(Bounded::MAX());
                         remove_as_second_action = true;
                     } else {
                         absorber.reap();
@@ -744,7 +743,7 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor);
         let yin = shrine_utils::yin(shrine.contract_address);
-        yin.approve(absorber.contract_address, BoundedInt::max());
+        yin.approve(absorber.contract_address, Bounded::MAX());
         yin.transfer(provider, provider_amt.into());
 
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -770,7 +769,7 @@ mod test_absorber {
 
         // Provider provides a small amount
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
-        yin.approve(absorber.contract_address, BoundedInt::max());
+        yin.approve(absorber.contract_address, Bounded::MAX());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
         let provider_provide_amt: Wad = 1_u128.into();
@@ -1168,7 +1167,7 @@ mod test_absorber {
         let request_timestamp = get_block_timestamp();
         absorber.request();
         start_warp(CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1409,7 +1408,7 @@ mod test_absorber {
 
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
 
         assert(absorber.is_operational(), 'should be operational');
 
@@ -1684,7 +1683,7 @@ mod test_absorber {
         );
 
         // First provider receives 2 full rounds and 2 partial rounds of rewards.
-        let expected_first_provider_partial_multiplier: Ray = (expected_first_provider_pct.val * 2).into();
+        let expected_first_provider_partial_multiplier: Ray = (expected_first_provider_pct.into() * 2_u128).into();
         let expected_first_provider_blessings_multiplier: Ray = (RAY_SCALE * 2).into()
             + expected_first_provider_partial_multiplier;
         absorber_utils::assert_provider_received_rewards(
@@ -1743,7 +1742,7 @@ mod test_absorber {
         );
 
         // Second provider should receive 3 partial rounds of rewards.
-        let expected_second_provider_blessings_multiplier: Ray = (expected_second_provider_pct.val * 3).into();
+        let expected_second_provider_blessings_multiplier: Ray = (expected_second_provider_pct.into() * 3_u128).into();
         absorber_utils::assert_provider_received_rewards(
             absorber,
             second_provider,
@@ -1841,7 +1840,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
 
         // Loss of precision
         let error_margin: Wad = 1000_u128.into();
@@ -1865,7 +1864,7 @@ mod test_absorber {
         // Change ETH price to make Shrine's LTV to threshold above the limit
         let eth_addr: ContractAddress = *yangs.at(0);
         let (eth_yang_price, _, _) = shrine.get_current_yang_price(eth_addr);
-        let new_eth_yang_price: Wad = (eth_yang_price.val / 5).into(); // 80% drop in price
+        let new_eth_yang_price: Wad = (eth_yang_price.into() / 5_u128).into(); // 80% drop in price
         start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
         shrine.advance(eth_addr, new_eth_yang_price);
         stop_prank(CheatTarget::One(shrine.contract_address));
@@ -1874,7 +1873,7 @@ mod test_absorber {
         start_prank(CheatTarget::One(absorber.contract_address), provider);
         absorber.request();
         start_warp(CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
     }
 
     #[test]
@@ -1885,7 +1884,7 @@ mod test_absorber {
         let provider = rewards_config.provider;
 
         start_prank(CheatTarget::One(absorber.contract_address), provider);
-        absorber.remove(BoundedInt::max());
+        absorber.remove(Bounded::MAX());
     }
 
     #[test]
@@ -2003,10 +2002,10 @@ mod test_absorber {
 
         start_prank(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider);
         let yin = shrine_utils::yin(shrine.contract_address);
-        yin.approve(absorber.contract_address, BoundedInt::max());
+        yin.approve(absorber.contract_address, Bounded::MAX());
         stop_prank(CheatTarget::One(shrine.contract_address));
 
-        let insufficient_amt: Wad = (provided_amt.val + 1).into();
+        let insufficient_amt: Wad = provided_amt + 1_u128.into();
         absorber.provide(insufficient_amt);
     }
 

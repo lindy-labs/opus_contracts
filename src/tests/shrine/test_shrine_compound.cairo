@@ -1050,7 +1050,7 @@ mod test_shrine_compound {
         ];
         spy.assert_emitted(@expected_events);
 
-        let deficit = SignedWad { val: surplus.val, sign: true };
+        let deficit = -(surplus.into());
         shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget().is_zero(), 'wrong budget #2');
@@ -1065,7 +1065,7 @@ mod test_shrine_compound {
         spy.assert_emitted(@expected_events);
 
         // Adjust budget into a deficit
-        let deficit = SignedWad { val: (1234 * WAD_ONE), sign: true };
+        let deficit = -((1234 * WAD_ONE).into());
         shrine.adjust_budget(deficit);
 
         assert(shrine.get_budget() == deficit, 'wrong budget #3');

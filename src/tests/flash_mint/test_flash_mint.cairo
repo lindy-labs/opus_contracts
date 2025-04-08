@@ -25,10 +25,9 @@ mod test_flash_mint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine);
-        let expected_max_loan: u256 = (Wad { val: flash_mint_utils::YIN_TOTAL_SUPPLY }
-            * Wad { val: flash_mint_contract::FLASH_MINT_AMOUNT_PCT })
-            .into();
-        assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
+        let expected_max_loan: Wad = flash_mint_utils::YIN_TOTAL_SUPPLY.into()
+            * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into();
+        assert(max_loan == expected_max_loan.into(), 'Incorrect max flash loan');
     }
 
     #[test]
@@ -118,7 +117,7 @@ mod test_flash_mint {
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a deficit
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
-        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (1000 * WAD_ONE).into(), sign: true });
+        shrine_utils::shrine(shrine).adjust_budget((1000 * WAD_ONE).into());
         stop_prank(CheatTarget::One(shrine));
 
         start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
@@ -129,7 +128,7 @@ mod test_flash_mint {
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a surplus
         start_prank(CheatTarget::One(shrine), shrine_utils::admin());
-        shrine_utils::shrine(shrine).adjust_budget(SignedWad { val: (2000 * WAD_ONE).into(), sign: false });
+        shrine_utils::shrine(shrine).adjust_budget((2000 * WAD_ONE).into());
         stop_prank(CheatTarget::One(shrine));
 
         let sixth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();

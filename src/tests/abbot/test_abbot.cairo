@@ -660,7 +660,8 @@ mod test_abbot {
         let before_trove_health: Health = shrine.get_trove_health(trove_id);
         let before_yin: Wad = shrine.get_yin(trove_owner);
 
-        let melt_amt: Wad = (before_yin.val / 2).into();
+        let melt_amt: u128 = before_yin.into() / 2;
+        let melt_amt: Wad = melt_amt.into();
         start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
         abbot.melt(trove_id, melt_amt);
 

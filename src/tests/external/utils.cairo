@@ -178,7 +178,7 @@ pub mod pragma_utils {
 
     pub fn convert_price_to_pragma_scale(price: Wad) -> u128 {
         let scale: u128 = pow(10_u128, WAD_DECIMALS - PRAGMA_DECIMALS);
-        price.val / scale
+        price.into() / scale
     }
 
     pub fn get_pair_id_for_yang(yang: ContractAddress) -> felt252 {

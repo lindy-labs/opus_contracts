@@ -334,7 +334,7 @@ mod test_sentinel {
         assert(eth_amt == WAD_ONE, 'Wrong yang bal after exit');
         assert(
             eth_erc20
-                .balance_of(eth_gate.contract_address) == (expected_initial_eth_amt + deposit_amt.val - WAD_ONE)
+                .balance_of(eth_gate.contract_address) == (expected_initial_eth_amt + deposit_amt.into() - WAD_ONE)
                 .into(),
             'Wrong eth bal after exit'
         );
@@ -401,7 +401,7 @@ mod test_sentinel {
 
         // Reduce user's balance to below the deposit amount
         start_prank(CheatTarget::One(eth), user);
-        eth_erc20.transfer(common::non_zero_address(), eth_erc20.balance_of(user) - (deposit_amt.val - 1).into());
+        eth_erc20.transfer(common::non_zero_address(), eth_erc20.balance_of(user) - deposit_amt.into() - 1);
 
         start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
 

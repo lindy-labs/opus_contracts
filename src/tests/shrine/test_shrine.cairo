@@ -1,7 +1,6 @@
 mod test_shrine {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::interfaces::IERC20::{
@@ -191,7 +190,7 @@ mod test_shrine {
         // recovery mode threshold will be zero if threshold is zero
         assert(shrine_health.threshold.is_zero(), 'wrong shrine threshold');
         assert(shrine_health.value.is_zero(), 'wrong shrine value');
-        assert(shrine_health.ltv == BoundedInt::max(), 'wrong shrine LTV');
+        assert(shrine_health.ltv == Bounded::MAX(), 'wrong shrine LTV');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -235,7 +234,7 @@ mod test_shrine {
         };
 
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
-        assert(start_cumulative_multiplier == Ray { val: RAY_ONE }, 'wrong start cumulative mul');
+        assert(start_cumulative_multiplier == RAY_ONE.into(), 'wrong start cumulative mul');
         let mut expected_cumulative_multiplier = start_cumulative_multiplier;
 
         let yang_feed_len = (*yang_feeds.at(0)).len();
@@ -291,7 +290,7 @@ mod test_shrine {
 
             expected_cumulative_multiplier += RAY_ONE.into();
             let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
-            assert(multiplier == Ray { val: RAY_ONE }, 'wrong multiplier in feed');
+            assert(multiplier == RAY_ONE.into(), 'wrong multiplier in feed');
             assert(cumulative_multiplier == expected_cumulative_multiplier, 'wrong cumulative mul in feed');
 
             expected_events
@@ -1153,7 +1152,7 @@ mod test_shrine {
         assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
-        let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
+        let unsafe_forge_amt: Wad = (max_forge_amt.into() + 1).into();
 
         shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, Zero::zero());
     }
@@ -1589,7 +1588,7 @@ mod test_shrine {
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedInt::max());
+        yin.approve(yin_user, Bounded::MAX());
 
         start_prank(CheatTarget::All, yin_user);
         yin.transfer_from(trove1_owner, yin_user, (shrine_utils::TROVE1_FORGE_AMT + 1).into());
@@ -1610,7 +1609,7 @@ mod test_shrine {
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         start_prank(CheatTarget::All, trove1_owner);
-        yin.approve(yin_user, BoundedInt::max());
+        yin.approve(yin_user, Bounded::MAX());
 
         start_prank(CheatTarget::All, yin_user);
         yin.transfer_from(trove1_owner, Zero::zero(), 1_u256);
@@ -1630,8 +1629,8 @@ mod test_shrine {
 
         start_prank(CheatTarget::All, trove1_owner);
 
-        let transfer_amt: Wad = (forge_amt.val / 2).into();
-        yin.transfer(yin_user, transfer_amt.val.into());
+        let transfer_amt: Wad = (forge_amt.into() / 2).into();
+        yin.transfer(yin_user, transfer_amt.into());
 
         let melt_amt: Wad = forge_amt - transfer_amt;
 
@@ -1855,7 +1854,7 @@ mod test_shrine {
         shrine.inject(trove1_owner, inject_amt);
         assert(shrine.get_total_yin() == inject_amt, 'sanity check #1');
 
-        let deficit: SignedWad = SignedWad { val: 1, sign: true };
+        let deficit: SignedWad = -(1_u128.into();
         shrine.adjust_budget(deficit);
         assert(shrine.get_budget() == deficit, 'sanity check #2');
 
@@ -2008,7 +2007,7 @@ mod test_shrine {
                     let yang: ContractAddress = *yangs_copy.pop_front().unwrap();
                     shrine.deposit(yang, common::TROVE_1, *yang_amt);
                     // Deposit twice the amount into trove 2
-                    shrine.deposit(yang, common::TROVE_2, (*yang_amt.val * 2).into());
+                    shrine.deposit(yang, common::TROVE_2, (*yang_amt.into() * 2).into());
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
@@ -2653,7 +2652,7 @@ mod test_shrine {
         let error_margin: Wad = 1000_u128.into();
         common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
 
-        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.into() + 1).into());
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
@@ -2868,7 +2867,7 @@ mod test_shrine {
         let error_margin: Wad = 1000_u128.into();
         common::assert_equalish(max_forge_amt, expected_max_forge_amt, error_margin, 'wrong max forge');
 
-        shrine_utils::trove1_forge(shrine, (max_forge_amt.val + 1).into());
+        shrine_utils::trove1_forge(shrine, (max_forge_amt.into() + 1).into());
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,

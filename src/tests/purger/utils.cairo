@@ -293,10 +293,10 @@ pub mod purger_utils {
         array![
             // smallest possible amount of yin in Absorber based on initial shares
             (absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES).into(),
-            (trove_debt.val / 3).into(),
-            (trove_debt.val - 1000).into(),
+            (trove_debt.into() / 3_u128).into(),
+            (trove_debt.into() - 1000_u128).into(),
             // trove's debt minus the smallest unit of Wad
-            (trove_debt.val - 1).into()
+            (trove_debt.into() - 1_u128).into()
         ]
             .span()
     }
