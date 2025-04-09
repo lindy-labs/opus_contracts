@@ -19,7 +19,7 @@ Users can stake their CASH/USDC liquidity positions on Ekubo and receive a porti
 
 1. `stake`: Transfers an Ekubo liquidity position NFT with the accepted parameters from the caller to the Stabilizer.
 2. `unstake`: Transfers an Ekubo liquidity position NFT that was `stake` d by the caller previously from the Stabilizer to the caller, and withdraws all accrued yield.
-3. `harvest`: Withdraw accrued yield for a staked Ekubo liquidity position NFT.
+3. `claim`: Withdraw accrued yield for a staked Ekubo liquidity position NFT.
 
 ## Calculation of accrued yield
 
