@@ -3,7 +3,7 @@ mod test_shrine {
     use core::num::traits::{Bounded, Zero};
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IERC20::{IERC20CamelOnlyDispatcher, IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20CamelOnlyDispatcher, IERC20CamelOnlyDispatcherTrait, IERC20DispatcherTrait};
     use opus::interfaces::ISRC5::{ISRC5Dispatcher, ISRC5DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;

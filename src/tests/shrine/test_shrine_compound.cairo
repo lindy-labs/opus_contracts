@@ -4,10 +4,10 @@ mod test_shrine_compound {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, Trove, YangSuspensionStatus};
-    use opus::utils::exp::exp;
+    use opus::types::{Health, YangSuspensionStatus};
     use snforge_std::{
-        EventSpyAssertionsTrait, EventsFilterTrait, spy_events, start_cheat_block_timestamp, start_cheat_caller_address,
+        EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events, start_cheat_block_timestamp_global,
+        start_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_SCALE, Ray, SignedWad, WAD_ONE, Wad};
@@ -72,11 +72,13 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        let shrine_events = spy.get_events().emitted_by(shrine.contract_address).events;
+        let shrine_events = spy.get_events().emitted_by(shrine.contract_address);
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(shrine_events, selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(
+            shrine_events.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"),
+        );
 
         let expected_events = array![
             (
@@ -172,11 +174,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -218,7 +220,7 @@ mod test_shrine_compound {
         // Advance timestamp by 2 intervals and set price for interval - `T+LAST_UPDATED`
         let time_to_skip: u64 = 2 * shrine_contract::TIME_INTERVAL;
         let last_updated_timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, last_updated_timestamp);
+        start_cheat_block_timestamp_global(last_updated_timestamp);
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -231,7 +233,7 @@ mod test_shrine_compound {
         let time_to_skip: u64 = intervals_after_last_update * shrine_contract::TIME_INTERVAL;
         let start_timestamp: u64 = last_updated_timestamp + time_to_skip;
         let start_interval: u64 = shrine_utils::get_interval(start_timestamp);
-        start_cheat_block_timestamp(shrine.contract_address, start_timestamp);
+        start_cheat_block_timestamp_global(start_timestamp);
 
         shrine.deposit(yang1_addr, trove_id, Zero::zero());
 
@@ -249,7 +251,7 @@ mod test_shrine_compound {
         // No need for offset here because we are incrementing the intervals directly
         // instead of via `advance_prices_and_set_multiplier`
         let end_interval: u64 = start_interval + intervals_after_last_charge;
-        start_cheat_block_timestamp(shrine.contract_address, end_timestamp);
+        start_cheat_block_timestamp_global(end_timestamp);
 
         shrine.withdraw(yang1_addr, trove_id, Zero::zero());
 
@@ -272,11 +274,11 @@ mod test_shrine_compound {
         );
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -323,7 +325,7 @@ mod test_shrine_compound {
         let time_to_skip: u64 = 2 * shrine_contract::TIME_INTERVAL;
         let start_timestamp: u64 = get_block_timestamp() + time_to_skip;
         let start_interval: u64 = shrine_utils::get_interval(start_timestamp);
-        start_cheat_block_timestamp(shrine.contract_address, start_timestamp);
+        start_cheat_block_timestamp_global(start_timestamp);
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -346,7 +348,7 @@ mod test_shrine_compound {
         // No need for offset here because we are incrementing the intervals directly
         // instead of via `advance_prices_and_set_multiplier`
         let end_interval: u64 = start_interval + intervals_after_last_update;
-        start_cheat_block_timestamp(shrine.contract_address, end_timestamp);
+        start_cheat_block_timestamp_global(end_timestamp);
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
         shrine.withdraw(yang1_addr, trove_id, Zero::zero());
@@ -370,11 +372,11 @@ mod test_shrine_compound {
         );
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -436,7 +438,7 @@ mod test_shrine_compound {
         let end_timestamp: u64 = get_block_timestamp() + time_to_skip;
 
         let end_interval: u64 = start_interval + intervals_to_skip + intervals_after_last_update;
-        start_cheat_block_timestamp(shrine.contract_address, end_timestamp);
+        start_cheat_block_timestamp_global(end_timestamp);
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -463,11 +465,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -514,7 +516,7 @@ mod test_shrine_compound {
         let intervals_without_update_before_start: u64 = 10;
         let time_to_skip: u64 = intervals_without_update_before_start * shrine_contract::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, timestamp);
+        start_cheat_block_timestamp_global(timestamp);
         let start_interval: u64 = shrine_utils::current_interval();
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -529,7 +531,7 @@ mod test_shrine_compound {
         let intervals_to_last_update_after_start: u64 = 5;
         let time_to_skip: u64 = intervals_to_last_update_after_start * shrine_contract::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, timestamp);
+        start_cheat_block_timestamp_global(timestamp);
         let last_updated_interval_after_start: u64 = shrine_utils::current_interval();
 
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
@@ -542,7 +544,7 @@ mod test_shrine_compound {
         let intervals_from_last_update_to_end: u64 = 10;
         let time_to_skip: u64 = intervals_from_last_update_to_end * shrine_contract::TIME_INTERVAL;
         let end_timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, end_timestamp);
+        start_cheat_block_timestamp_global(end_timestamp);
         let end_interval: u64 = start_interval
             + intervals_to_last_update_after_start
             + intervals_from_last_update_to_end;
@@ -561,14 +563,14 @@ mod test_shrine_compound {
             - last_updated_cumulative_price_before_start;
 
         // Next, we deduct the cumulative price from `T+LAST_UPDATED_BEFORE_START` to `T+START`
-        cumulative_diff -=
-            ((start_interval - last_updated_interval_before_start).into() * last_updated_price_before_start.val)
-            .into();
+        let interval_diff: u128 = (start_interval - last_updated_interval_before_start).into();
+        let amount: u128 = interval_diff * last_updated_price_before_start.into();
+        cumulative_diff -= amount.into();
 
         // Finally, we add the cumulative price from `T+LAST_UPDATED_AFTER_START` to `T+END`.
-        cumulative_diff +=
-            ((end_interval - last_updated_interval_after_start).into() * last_updated_price_after_start.val)
-            .into();
+        let interval_diff: u128 = (end_interval - last_updated_interval_after_start).into();
+        let amount: u128 = interval_diff * last_updated_price_after_start.into();
+        cumulative_diff += amount.into();
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
@@ -591,11 +593,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -630,7 +632,7 @@ mod test_shrine_compound {
         let intervals_to_skip: u64 = 5;
         let time_to_skip: u64 = intervals_to_skip * shrine_contract::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, timestamp);
+        start_cheat_block_timestamp_global(timestamp);
         let last_updated_interval: u64 = shrine_utils::current_interval();
 
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
@@ -643,7 +645,7 @@ mod test_shrine_compound {
         let intervals_after_last_update_to_start: u64 = 5;
         let time_to_skip: u64 = intervals_after_last_update_to_start * shrine_contract::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, timestamp);
+        start_cheat_block_timestamp_global(timestamp);
         let start_interval: u64 = shrine_utils::current_interval();
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -658,7 +660,7 @@ mod test_shrine_compound {
         let intervals_from_start_to_end: u64 = 13;
         let time_to_skip: u64 = intervals_from_start_to_end * shrine_contract::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
-        start_cheat_block_timestamp(shrine.contract_address, timestamp);
+        start_cheat_block_timestamp_global(timestamp);
         let end_interval: u64 = start_interval + intervals_from_start_to_end;
         assert(shrine_utils::current_interval() == end_interval, 'wrong end interval'); // sanity check
 
@@ -677,7 +679,9 @@ mod test_shrine_compound {
         let mut cumulative_diff: Wad = end_cumulative_price - last_updated_cumulative_price;
 
         // Deduct the cumulative price from `T+LAST_UPDATED_BEFORE_START` to `T+START`
-        cumulative_diff -= ((start_interval - last_updated_interval).into() * last_updated_price.val).into();
+        let interval_diff: u128 = (start_interval - last_updated_interval).into();
+        let amount: u128 = interval_diff * last_updated_price.into();
+        cumulative_diff -= amount.into();
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
@@ -701,11 +705,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
@@ -966,11 +970,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == before_budget + interest.into(), 'wrong budget');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         expected_events
             .append(
@@ -1074,11 +1078,11 @@ mod test_shrine_compound {
         assert(shrine.get_budget() == deficit, 'wrong budget #3');
 
         // Check events
-        spy.get_events();
+        let events = spy.get_events().events;
 
         // Since protocol owned troves' debt is zero, the `ProtocolOwnedTrovesDebtUpdated` event
         // should not be emitted
-        common::assert_event_not_emitted_by_name(spy.events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("ProtocolOwnedTrovesDebtUpdated"));
 
         let expected_events = array![
             (
