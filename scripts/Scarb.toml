@@ -7,12 +7,12 @@ edition = "2024_07"
 members = ["deployment", "simulation"]
 
 [dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.38.0" }
+sncast_std = ">=0.38.0"
 starknet = ">=2.10.0"
 opus = { path = "../" }
 
 [workspace.dependencies]
-sncast_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.38.0" }
+sncast_std = ">=0.38.0"
 starknet = ">=2.10.0"
 opus = { path = "../" }
 scripts = { path = "./" }
