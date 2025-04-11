@@ -32,6 +32,9 @@ restart_devnet = "rm devnet_dump.json 2> /dev/null; starknet-devnet --seed 10878
 load_devnet = "starknet-devnet --seed 1087810753 --gas-price 1000 --dump-path devnet_dump.json"
 test = "snforge test"
 
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]
+
 [tool.fmt]
 sort-module-level-items = true
 max-line-length = 120
