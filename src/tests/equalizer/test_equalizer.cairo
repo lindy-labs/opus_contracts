@@ -11,8 +11,8 @@ mod test_equalizer {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use snforge_std::{
-        CheatSpan, DeclareResultTrait, EventSpyAssertionsTrait, cheat_caller_address, declare, spy_events,
-        start_cheat_caller_address, stop_cheat_caller_address,
+        DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
     use wadray::{WAD_ONE, Wad};
@@ -217,20 +217,21 @@ mod test_equalizer {
             .span();
 
         let admin: ContractAddress = shrine_utils::admin();
-        start_cheat_caller_address(equalizer.contract_address, admin);
 
         loop {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
                     // Create the deficit
                     let deficit = -(inject_amt.into());
-                    cheat_caller_address(shrine.contract_address, admin, CheatSpan::TargetCalls(2));
+                    start_cheat_caller_address(shrine.contract_address, admin);
                     shrine.adjust_budget(deficit);
                     assert(shrine.get_budget() == deficit, 'sanity check #1');
 
                     // Mint the deficit amount to the admin
                     shrine.inject(admin, inject_amt);
+                    stop_cheat_caller_address(shrine.contract_address);
 
+                    start_cheat_caller_address(equalizer.contract_address, admin);
                     let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
                     let expected_normalized_amt: Wad = min(inject_amt, *normalize_amt);
@@ -259,6 +260,7 @@ mod test_equalizer {
                     equalizer.normalize(Bounded::MAX);
 
                     assert(shrine.get_budget().is_zero(), 'sanity check #3');
+                    stop_cheat_caller_address(equalizer.contract_address);
                 },
                 Option::None => { break; },
             };
