@@ -4,11 +4,9 @@ mod test_shrine_redistribution {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{Health, YangBalance, YangSuspensionStatus};
-    use snforge_std::{
-        ContractClass, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address,
-    };
-    use starknet::{ContractAddress, get_block_timestamp};
+    use opus::types::{Health, YangSuspensionStatus};
+    use snforge_std::{ContractClass, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address};
+    use starknet::ContractAddress;
     use wadray::{RAY_ONE, RAY_PERCENT, Ray, SignedWad, WAD_ONE, Wad};
 
     //
@@ -812,9 +810,7 @@ mod test_shrine_redistribution {
                         .get_redistribution_for_yang(yang2_addr, expected_redistribution_id);
                     let actual_redistributed_debt: Wad = recipient_troves_yang2_amt * yang2_redistribution_unit_debt;
                     let protocol_owned_troves_debt_diff: Wad = (after_protocol_owned_troves_debt
-                        - before_protocol_owned_troves_debt)
-                        .val
-                        .into();
+                        - before_protocol_owned_troves_debt);
                     assert(
                         before_redistributed_trove_health.debt == actual_redistributed_debt
                             + protocol_owned_troves_debt_diff,
@@ -1125,10 +1121,10 @@ mod test_shrine_redistribution {
                     // Create a trove with different yangs and with the amount of debt depending on the test case,
                     // then immediately redistribute it
                     let protocol_owned_debt_amt: Wad = match idx {
-                        0 => (expected_forge_fee_and_accrued_interest.into() * 2).into(),
-                        1 => (expected_forge_fee_and_accrued_interest.into() + 1).into(),
+                        0 => expected_forge_fee_and_accrued_interest * (2 * WAD_ONE).into(),
+                        1 => expected_forge_fee_and_accrued_interest + 1_u128.into(),
                         2 => expected_forge_fee_and_accrued_interest,
-                        3 => (expected_forge_fee_and_accrued_interest.into() - 1).into(),
+                        3 => expected_forge_fee_and_accrued_interest - 1_u128.into(),
                         _ => panic!("invalid idx"),
                     };
 
