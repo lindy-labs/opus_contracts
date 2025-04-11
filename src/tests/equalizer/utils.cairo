@@ -1,15 +1,13 @@
 pub mod equalizer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
-    use opus::core::allocator::allocator as allocator_contract;
-    use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::{equalizer_roles, shrine_roles};
-    use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IAllocator::IAllocatorDispatcher;
+    use opus::interfaces::IEqualizer::IEqualizerDispatcher;
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
     use wadray::Ray;
@@ -91,8 +89,8 @@ pub mod equalizer_utils {
         loop {
             match percentages.pop_front() {
                 Option::Some(percentage) => {
-                    let val: felt252 = (*percentage.val).into();
-                    calldata.append(val);
+                    let val: u128 = (*percentage).into();
+                    calldata.append(val.into());
                 },
                 Option::None => { break; },
             };
@@ -100,7 +98,7 @@ pub mod equalizer_utils {
 
         let allocator_class = match allocator_class {
             Option::Some(class) => class,
-            Option::None => declare("allocator").unwrap(),
+            Option::None => *declare("allocator").unwrap().contract_class(),
         };
         let (allocator_addr, _) = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
@@ -126,13 +124,14 @@ pub mod equalizer_utils {
         let (equalizer_addr, _) = equalizer_class.deploy(@calldata).expect('failed equalizer deploy');
 
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };
-        start_cheat_caller_address(CheatTarget::Multiple(array![equalizer_addr, shrine]), admin);
+        start_cheat_caller_address(equalizer_addr, admin);
         equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
+        stop_cheat_caller_address(equalizer_addr);
 
+        start_cheat_caller_address(shrine, admin);
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
-
-        stop_cheat_caller_address(CheatTarget::Multiple(array![equalizer_addr, shrine]));
+        stop_cheat_caller_address(shrine);
 
         EqualizerTestConfig {
             shrine: IShrineDispatcher { contract_address: shrine },

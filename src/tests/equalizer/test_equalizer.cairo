@@ -4,21 +4,18 @@ mod test_equalizer {
     use core::num::traits::{Bounded, Zero};
     use opus::core::equalizer::equalizer as equalizer_contract;
     use opus::core::roles::equalizer_roles;
-    use opus::core::shrine::shrine;
-    use opus::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
-    use opus::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IEqualizer::IEqualizerDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
     use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use snforge_std::{
-        CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address,
-        stop_cheat_caller_address,
+        CheatSpan, DeclareResultTrait, EventSpyAssertionsTrait, cheat_caller_address, declare, spy_events,
+        start_cheat_caller_address, stop_cheat_caller_address,
     };
-    use starknet::testing::{set_block_timestamp};
-    use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, SignedWad, WAD_ONE, Wad};
+    use starknet::ContractAddress;
+    use wadray::{WAD_ONE, Wad};
 
     #[test]
     fn test_equalizer_deploy() {
@@ -60,7 +57,7 @@ mod test_equalizer {
         let expected_events = array![
             (
                 equalizer.contract_address,
-                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus.into() }),
+                equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: surplus }),
             ),
         ];
         spy.assert_emitted(@expected_events);
@@ -130,9 +127,7 @@ mod test_equalizer {
             let expected_events = array![
                 (
                     equalizer.contract_address,
-                    equalizer_contract::Event::Equalize(
-                        equalizer_contract::Equalize { yin_amt: expected_surplus.into() },
-                    ),
+                    equalizer_contract::Event::Equalize(equalizer_contract::Equalize { yin_amt: expected_surplus }),
                 ),
             ];
             spy.assert_emitted(@expected_events);
@@ -149,7 +144,7 @@ mod test_equalizer {
         let mut spy = spy_events();
 
         // Simulate minted surplus by injecting to Equalizer directly
-        start_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let surplus: Wad = (1000 * WAD_ONE + 123).into();
         shrine.inject(equalizer.contract_address, surplus);
 
@@ -178,7 +173,7 @@ mod test_equalizer {
 
                     let before_yin_bal = *before_yin_balances.pop_front().unwrap();
                     let after_yin_bal = *after_yin_balances.pop_front().unwrap();
-                    assert(after_yin_bal == before_yin_bal + expected_increment.val, 'wrong recipient balance');
+                    assert(after_yin_bal == before_yin_bal + expected_increment.into(), 'wrong recipient balance');
 
                     allocated += expected_increment;
                 },
@@ -217,20 +212,19 @@ mod test_equalizer {
             Zero::zero(),
             inject_amt - 1_u128.into(),
             inject_amt,
-            inject_amt.val + 1_u128.into() // exceeds deficit, but should be capped in `normalize`
+            inject_amt + 1_u128.into() // exceeds deficit, but should be capped in `normalize`
         ]
             .span();
 
         let admin: ContractAddress = shrine_utils::admin();
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, equalizer.contract_address]), admin,
-        );
+        start_cheat_caller_address(equalizer.contract_address, admin);
 
         loop {
             match normalize_amts.pop_front() {
                 Option::Some(normalize_amt) => {
                     // Create the deficit
                     let deficit = -(inject_amt.into());
+                    cheat_caller_address(shrine.contract_address, admin, CheatSpan::TargetCalls(2));
                     shrine.adjust_budget(deficit);
                     assert(shrine.get_budget() == deficit, 'sanity check #1');
 
@@ -239,7 +233,7 @@ mod test_equalizer {
 
                     let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
-                    let expected_normalized_amt: Wad = min(deficit.val.into(), *normalize_amt);
+                    let expected_normalized_amt: Wad = min(inject_amt, *normalize_amt);
                     assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
                     assert(shrine.get_budget() == deficit + expected_normalized_amt.into(), 'wrong remaining deficit');
 
@@ -273,7 +267,7 @@ mod test_equalizer {
 
     #[test]
     fn test_set_allocator_pass() {
-        let allocator_class = Option::Some(declare("allocator").unwrap().contract_class());
+        let allocator_class = Option::Some(*declare("allocator").unwrap().contract_class());
         let EqualizerTestConfig { allocator, equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
         let mut spy = spy_events();
 
@@ -303,7 +297,7 @@ mod test_equalizer {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_allocator_fail() {
-        let allocator_class = Option::Some(declare("allocator").unwrap().contract_class());
+        let allocator_class = Option::Some(*declare("allocator").unwrap().contract_class());
         let EqualizerTestConfig { equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);
         let new_allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class,
