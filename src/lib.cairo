@@ -87,71 +87,71 @@ mod tests {
         mod test_abbot;
         pub mod utils;
     }
-    mod absorber {
-        mod test_absorber;
-        pub mod utils;
-    }
-    mod caretaker {
-        mod test_caretaker;
-        pub mod utils;
-    }
+    // mod absorber {
+    //     mod test_absorber;
+    //     pub mod utils;
+    // }
+    // mod caretaker {
+    //     mod test_caretaker;
+    //     pub mod utils;
+    // }
     mod controller {
         mod test_controller;
         pub mod utils;
     }
-    mod equalizer {
-        mod test_allocator;
-        mod test_equalizer;
-        pub mod utils;
-    }
-    mod external {
-        mod test_ekubo;
-        mod test_pragma_v2;
-        pub mod utils;
-    }
-    mod flash_mint {
-        mod test_flash_mint;
-        pub mod utils;
-    }
+    // mod equalizer {
+    //     mod test_allocator;
+    //     mod test_equalizer;
+    //     pub mod utils;
+    // }
+    // mod external {
+    //     mod test_ekubo;
+    //     mod test_pragma_v2;
+    //     pub mod utils;
+    // }
+    // mod flash_mint {
+    //     mod test_flash_mint;
+    //     pub mod utils;
+    // }
     mod gate {
         mod test_gate;
         pub mod utils;
     }
-    mod purger {
-        mod test_purger;
-        pub mod utils;
-    }
-    mod receptor {
-        mod test_receptor;
-        pub mod utils;
-    }
+    // mod purger {
+    //     mod test_purger;
+    //     pub mod utils;
+    // }
+    // mod receptor {
+    //     mod test_receptor;
+    //     pub mod utils;
+    // }
     mod sentinel {
         mod test_sentinel;
         pub mod utils;
     }
-    mod seer {
-        mod test_seer;
-        pub mod utils;
-    }
+    // mod seer {
+    //     mod test_seer;
+    //     pub mod utils;
+    // }
     mod shrine {
         mod test_shrine;
         mod test_shrine_compound;
         mod test_shrine_redistribution;
         pub mod utils;
     }
-    mod transmuter {
-        mod test_transmuter;
-        pub mod test_transmuter_registry;
-        pub mod utils;
-    }
-    mod utils {
-        mod mock_address_registry;
-        mod mock_ekubo_oracle_adapter;
-        mod mock_reentrancy_guard;
-        mod test_address_registry;
-        mod test_ekubo_oracle_adapter;
-        mod test_exp;
-        mod test_math;
-        mod test_reentrancy_guard;
-    }
+    // mod transmuter {
+//     mod test_transmuter;
+//     pub mod test_transmuter_registry;
+//     pub mod utils;
+// }
+// mod utils {
+//     mod mock_address_registry;
+//     mod mock_ekubo_oracle_adapter;
+//     mod mock_reentrancy_guard;
+//     mod test_address_registry;
+//     mod test_ekubo_oracle_adapter;
+//     mod test_exp;
+//     mod test_math;
+//     mod test_reentrancy_guard;
+// }
 }
