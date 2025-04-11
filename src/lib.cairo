@@ -104,11 +104,11 @@ mod tests {
         mod test_equalizer;
         pub mod utils;
     }
-    // mod external {
-    //     mod test_ekubo;
-    //     mod test_pragma_v2;
-    //     pub mod utils;
-    // }
+    mod external {
+        mod test_ekubo;
+        mod test_pragma_v2;
+        pub mod utils;
+    }
     mod flash_mint {
         mod test_flash_mint;
         pub mod utils;
@@ -129,10 +129,10 @@ mod tests {
         mod test_sentinel;
         pub mod utils;
     }
-    // mod seer {
-    //     mod test_seer;
-    //     pub mod utils;
-    // }
+    mod seer {
+        mod test_seer;
+        pub mod utils;
+    }
     mod shrine {
         mod test_shrine;
         mod test_shrine_compound;
