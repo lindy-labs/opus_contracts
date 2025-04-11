@@ -12,7 +12,10 @@ mod test_equalizer {
     use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::testing::{set_block_timestamp};
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{Ray, SignedWad, WAD_ONE, Wad};
@@ -36,7 +39,7 @@ mod test_equalizer {
         let mut spy = spy_events();
 
         let surplus: Wad = (500 * WAD_ONE).into();
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.adjust_budget(surplus.into());
         assert(shrine.get_budget() == surplus.into(), 'sanity check');
 
@@ -97,9 +100,9 @@ mod test_equalizer {
             common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
 
             // update price to speed up calculation
-            start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+            start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
             shrine.advance(eth, eth_price);
-            stop_prank(CheatTarget::One(shrine.contract_address));
+            stop_cheat_caller_address(shrine.contract_address);
 
             shrine_utils::trove1_deposit(shrine, Zero::zero());
             let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
@@ -146,7 +149,7 @@ mod test_equalizer {
         let mut spy = spy_events();
 
         // Simulate minted surplus by injecting to Equalizer directly
-        start_prank(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
+        start_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address]), shrine_utils::admin());
         let surplus: Wad = (1000 * WAD_ONE + 123).into();
         shrine.inject(equalizer.contract_address, surplus);
 
@@ -157,7 +160,7 @@ mod test_equalizer {
         let mut before_balances = common::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         equalizer.allocate();
 
@@ -219,7 +222,9 @@ mod test_equalizer {
             .span();
 
         let admin: ContractAddress = shrine_utils::admin();
-        start_prank(CheatTarget::Multiple(array![shrine.contract_address, equalizer.contract_address]), admin);
+        start_cheat_caller_address(
+            CheatTarget::Multiple(array![shrine.contract_address, equalizer.contract_address]), admin,
+        );
 
         loop {
             match normalize_amts.pop_front() {
@@ -276,7 +281,7 @@ mod test_equalizer {
         let mut new_percentages = equalizer_utils::new_percentages();
         let new_allocator = equalizer_utils::allocator_deploy(new_recipients, new_percentages, allocator_class);
 
-        start_prank(CheatTarget::One(equalizer.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(equalizer.contract_address, shrine_utils::admin());
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated
@@ -304,7 +309,7 @@ mod test_equalizer {
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class,
         );
 
-        start_prank(CheatTarget::One(equalizer.contract_address), common::badguy());
+        start_cheat_caller_address(equalizer.contract_address, common::badguy());
         equalizer.set_allocator(new_allocator.contract_address);
     }
 }

@@ -23,7 +23,10 @@ pub mod purger_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, Event, declare, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, Event, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_DECIMALS, WAD_ONE, Wad};
 
@@ -387,9 +390,9 @@ pub mod purger_utils {
         );
         pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
 
-        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        start_cheat_caller_address(seer.contract_address, seer_utils::admin());
         seer.update_prices();
-        stop_prank(CheatTarget::One(seer.contract_address));
+        stop_cheat_caller_address(seer.contract_address);
 
         let admin: ContractAddress = admin();
 
@@ -407,29 +410,29 @@ pub mod purger_utils {
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
 
         // Approve Purger in Seer
         let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
-        start_prank(CheatTarget::One(seer.contract_address), seer_utils::admin());
+        start_cheat_caller_address(seer.contract_address, seer_utils::admin());
         oracle_ac.grant_role(seer_roles::purger(), purger_addr);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        start_prank(CheatTarget::One(absorber.contract_address), absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
 
         // Increase debt ceiling
         let debt_ceiling: Wad = (100000 * WAD_ONE).into();
         shrine.set_debt_ceiling(debt_ceiling);
 
-        stop_prank(CheatTarget::All);
+        stop_cheat_caller_address(CheatTarget::All);
 
         PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates }
     }
@@ -505,21 +508,21 @@ pub mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     pub fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
         };
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
     }
 
     // Helper function to decrease yang prices by the given percentage
     pub fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher, seer: ISeerV2Dispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -531,7 +534,7 @@ pub mod purger_utils {
                 Option::None => { break; },
             };
         };
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
     }
 
     // Helper function to adjust a trove's LTV to the target by manipulating the

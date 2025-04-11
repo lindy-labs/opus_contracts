@@ -14,8 +14,8 @@ mod test_transmuter {
     use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events, start_prank,
-        stop_prank,
+        CheatTarget, ContractClass, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events,
+        start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
     use wadray::{RAY_ONE, RAY_PERCENT, Ray, Signed, SignedWad, WAD_ONE, Wad};
@@ -94,7 +94,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
@@ -121,7 +121,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
@@ -135,7 +135,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
@@ -158,7 +158,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 100% + 1E-27 (Ray)
         let cap: Ray = (transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND + 1).into();
         transmuter.set_percentage_cap(cap);
@@ -171,7 +171,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
@@ -185,7 +185,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
 
@@ -209,7 +209,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.set_receiver(Zero::zero());
     }
 
@@ -220,7 +220,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
     }
@@ -233,7 +233,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
 
@@ -275,7 +275,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_transmute_fee(new_fee);
@@ -288,7 +288,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
         transmuter.set_transmute_fee(new_fee);
@@ -301,7 +301,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_reverse_fee(new_fee);
@@ -314,7 +314,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
         transmuter.set_reverse_fee(new_fee);
@@ -328,7 +328,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'reversible');
 
@@ -412,9 +412,9 @@ mod test_transmuter {
                     let mut spy = spy_events();
 
                     // approve Transmuter to transfer user's mock USD stable
-                    start_prank(CheatTarget::One(asset.contract_address), user);
+                    start_cheat_caller_address(asset.contract_address, user);
                     asset.approve(transmuter.contract_address, Bounded::MAX);
-                    stop_prank(CheatTarget::One(asset.contract_address));
+                    stop_cheat_caller_address(asset.contract_address);
 
                     // Set up transmute amount to be equivalent to 1_000 (Wad) yin
                     let asset_decimals: u8 = asset.decimals();
@@ -426,10 +426,10 @@ mod test_transmuter {
                     loop {
                         match transmute_fees_copy.pop_front() {
                             Option::Some(transmute_fee) => {
-                                start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
                                 transmuter.set_transmute_fee(*transmute_fee);
 
-                                start_prank(CheatTarget::One(transmuter.contract_address), user);
+                                start_cheat_caller_address(transmuter.contract_address, user);
 
                                 // check preview
                                 let preview: Wad = transmuter.preview_transmute(transmute_amt);
@@ -495,7 +495,7 @@ mod test_transmuter {
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
         let user: ContractAddress = transmuter_utils::user();
 
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
         shrine.inject(user, debt_ceiling);
 
@@ -509,7 +509,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
 
         let ceiling: Wad = transmuter.get_ceiling();
         transmuter.transmute(ceiling.val);
@@ -525,17 +525,17 @@ mod test_transmuter {
             shrine, transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
 
         // reduce total supply to 1m yin
         let target_total_yin: Wad = 1000000000000000000000000_u128.into();
         shrine.eject(transmuter_utils::receiver(), transmuter_utils::START_TOTAL_YIN.into() - target_total_yin);
         assert(shrine.get_total_yin() == target_total_yin, 'sanity check #1');
 
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         // now, the cap is at 100_000
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         let expected_cap: u128 = 100000 * WAD_ONE;
         transmuter.transmute(expected_cap + 1);
     }
@@ -547,7 +547,7 @@ mod test_transmuter {
             shrine, transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.update_yin_spot_price((WAD_ONE - 1).into());
 
         transmuter.transmute(1_u128.into());
@@ -600,9 +600,9 @@ mod test_transmuter {
                     let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
                     // approve Transmuter to transfer user's mock USD stable
-                    start_prank(CheatTarget::One(asset.contract_address), user);
+                    start_cheat_caller_address(asset.contract_address, user);
                     asset.approve(transmuter.contract_address, Bounded::MAX);
-                    stop_prank(CheatTarget::One(asset.contract_address));
+                    stop_cheat_caller_address(asset.contract_address);
 
                     // Transmute an amount of yin to set up Transmuter for reverse
                     let asset_decimals: u8 = asset.decimals();
@@ -610,9 +610,9 @@ mod test_transmuter {
                     let asset_decimal_scale: u128 = pow(10, asset_decimals);
                     let transmute_amt: u128 = real_transmute_amt * asset_decimal_scale;
 
-                    start_prank(CheatTarget::One(transmuter.contract_address), user);
+                    start_cheat_caller_address(transmuter.contract_address, user);
                     transmuter.transmute(transmute_amt);
-                    stop_prank(CheatTarget::One(transmuter.contract_address));
+                    stop_cheat_caller_address(transmuter.contract_address);
 
                     let mut expected_reversed_asset_amts: Span<u128> = array![
                         wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
@@ -634,11 +634,11 @@ mod test_transmuter {
                             Option::Some(reverse_fee) => {
                                 let mut spy = spy_events();
 
-                                start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
                                 transmuter.set_reverse_fee(*reverse_fee);
-                                stop_prank(CheatTarget::One(transmuter.contract_address));
+                                stop_cheat_caller_address(transmuter.contract_address);
 
-                                start_prank(CheatTarget::One(transmuter.contract_address), user);
+                                start_cheat_caller_address(transmuter.contract_address, user);
 
                                 // check preview
                                 let preview: u128 = transmuter.preview_reverse(reverse_yin_amt);
@@ -692,7 +692,7 @@ mod test_transmuter {
                                 cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale) - preview;
                                 cumulative_yin_fees += expected_fee;
 
-                                stop_prank(CheatTarget::One(transmuter.contract_address));
+                                stop_cheat_caller_address(transmuter.contract_address);
                             },
                             Option::None => { break; },
                         };
@@ -716,11 +716,11 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'sanity check');
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         let transmute_amt: u128 = 1000 * WAD_ONE;
         transmuter.transmute(transmute_amt);
 
@@ -736,13 +736,13 @@ mod test_transmuter {
 
         let user: ContractAddress = transmuter_utils::user();
         let asset_amt: u128 = WAD_ONE;
-        start_prank(CheatTarget::One(transmuter.contract_address), user);
+        start_cheat_caller_address(transmuter.contract_address, user);
         transmuter.transmute(asset_amt.into());
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.sweep(asset_amt);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), user);
+        start_cheat_caller_address(transmuter.contract_address, user);
         transmuter.reverse(1_u128.into());
     }
 
@@ -807,12 +807,12 @@ mod test_transmuter {
                                 loop {
                                     match sweep_amts.pop_front() {
                                         Option::Some(sweep_amt) => {
-                                            start_prank(CheatTarget::One(transmuter.contract_address), user);
+                                            start_cheat_caller_address(transmuter.contract_address, user);
                                             transmuter.transmute(*transmute_asset_amt);
 
                                             let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
 
-                                            start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                                            start_cheat_caller_address(transmuter.contract_address, admin);
                                             transmuter.sweep(*sweep_amt);
 
                                             let adjusted_sweep_amt: u128 = min(*transmute_asset_amt, *sweep_amt);
@@ -843,7 +843,7 @@ mod test_transmuter {
                                                 asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check',
                                             );
 
-                                            stop_prank(CheatTarget::One(transmuter.contract_address));
+                                            stop_cheat_caller_address(transmuter.contract_address);
                                         },
                                         Option::None => { break; },
                                     };
@@ -919,9 +919,9 @@ mod test_transmuter {
                                     .span();
 
                                 if *kill_transmuter {
-                                    start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                                    start_cheat_caller_address(transmuter.contract_address, admin);
                                     transmuter.kill();
-                                    stop_prank(CheatTarget::One(transmuter.contract_address));
+                                    stop_cheat_caller_address(transmuter.contract_address);
                                 }
 
                                 loop {
@@ -930,12 +930,12 @@ mod test_transmuter {
                                             IMintableDispatcher { contract_address: secondary_asset }
                                                 .mint(transmuter.contract_address, secondary_asset_amt.into());
 
-                                            start_prank(CheatTarget::One(transmuter.contract_address), user);
+                                            start_cheat_caller_address(transmuter.contract_address, user);
 
                                             let before_receiver_asset_bal: u256 = secondary_asset_erc20
                                                 .balance_of(receiver);
 
-                                            start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                                            start_cheat_caller_address(transmuter.contract_address, admin);
                                             transmuter
                                                 .withdraw_secondary_asset(secondary_asset, *withdraw_secondary_amt);
 
@@ -972,7 +972,7 @@ mod test_transmuter {
                                                 'sanity check',
                                             );
 
-                                            stop_prank(CheatTarget::One(transmuter.contract_address));
+                                            stop_cheat_caller_address(transmuter.contract_address);
                                         },
                                         Option::None => { break; },
                                     };
@@ -999,7 +999,7 @@ mod test_transmuter {
             'Secondary Asset', 'sASSET', 18, WAD_ONE.into(), transmuter.contract_address, Option::Some(token_class),
         );
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX);
     }
 
@@ -1015,7 +1015,7 @@ mod test_transmuter {
             'Secondary Asset', 'sASSET', 18, WAD_ONE.into(), transmuter.contract_address, Option::Some(token_class),
         );
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, Bounded::MAX);
     }
 
@@ -1084,24 +1084,24 @@ mod test_transmuter {
                                     shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
                                 );
 
-                                start_prank(CheatTarget::One(transmuter.contract_address), user);
+                                start_cheat_caller_address(transmuter.contract_address, user);
 
                                 // transmute some amount
                                 transmuter.transmute(*transmute_asset_amt);
                                 let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
-                                stop_prank(CheatTarget::One(transmuter.contract_address));
+                                stop_cheat_caller_address(transmuter.contract_address);
 
                                 // set up the transmuter with the necessary yin amt
-                                start_prank(CheatTarget::One(shrine.contract_address), shrine_admin);
+                                start_cheat_caller_address(shrine.contract_address, shrine_admin);
                                 shrine.inject(transmuter.contract_address, *transmuter_yin_amt);
-                                stop_prank(CheatTarget::One(shrine.contract_address));
+                                stop_cheat_caller_address(shrine.contract_address);
 
                                 let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
                                 let before_receiver_yin_bal: Wad = shrine.get_yin(receiver);
                                 let before_budget: SignedWad = shrine.get_budget();
 
-                                start_prank(CheatTarget::One(transmuter.contract_address), transmuter_admin);
+                                start_cheat_caller_address(transmuter.contract_address, transmuter_admin);
                                 transmuter.settle();
 
                                 let mut expected_budget_adjustment = Zero::zero();
@@ -1143,7 +1143,7 @@ mod test_transmuter {
                                 ];
                                 spy.assert_emitted(@expected_events);
 
-                                stop_prank(CheatTarget::One(transmuter.contract_address));
+                                stop_cheat_caller_address(transmuter.contract_address);
                             },
                             Option::None => { break; },
                         };
@@ -1171,10 +1171,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.settle();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         transmuter.transmute(1_u128);
     }
 
@@ -1185,10 +1185,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.settle();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         transmuter.reverse(1_u128.into());
     }
 
@@ -1199,7 +1199,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.settle();
 
         transmuter.sweep(Bounded::MAX);
@@ -1212,7 +1212,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         transmuter.sweep(Bounded::MAX);
     }
 
@@ -1260,13 +1260,13 @@ mod test_transmuter {
 
                     let mut spy = spy_events();
 
-                    start_prank(CheatTarget::One(transmuter.contract_address), user);
+                    start_cheat_caller_address(transmuter.contract_address, user);
 
                     // transmute some amount
                     transmuter.transmute(transmute_asset_amt);
                     let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
-                    start_prank(CheatTarget::One(transmuter.contract_address), admin);
+                    start_cheat_caller_address(transmuter.contract_address, admin);
                     transmuter.kill();
 
                     assert(!transmuter.get_live(), 'not killed');
@@ -1281,7 +1281,7 @@ mod test_transmuter {
 
                     transmuter.enable_reclaim();
 
-                    start_prank(CheatTarget::One(transmuter.contract_address), user);
+                    start_cheat_caller_address(transmuter.contract_address, user);
 
                     let asset_error_margin: u128 = asset_decimal_scale / 100;
                     let mut expected_events = ArrayTrait::new();
@@ -1385,7 +1385,7 @@ mod test_transmuter {
                     // preview reclaim when transmuter has no assets
                     assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
 
-                    stop_prank(CheatTarget::One(transmuter.contract_address));
+                    stop_cheat_caller_address(transmuter.contract_address);
                 },
                 Option::None => { break; },
             };
@@ -1399,7 +1399,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         transmuter.kill();
     }
 
@@ -1410,10 +1410,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.kill();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         transmuter.transmute(1_u128);
     }
 
@@ -1424,10 +1424,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.kill();
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
         transmuter.transmute(1_u128.into());
     }
 
@@ -1438,7 +1438,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.sweep(Bounded::MAX);
@@ -1451,7 +1451,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.kill();
 
         transmuter.reclaim(Bounded::MAX);
@@ -1464,7 +1464,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
         transmuter.enable_reclaim();
     }
 
@@ -1475,7 +1475,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(transmuter.contract_address), common::badguy());
+        start_cheat_caller_address(transmuter.contract_address, common::badguy());
         transmuter.enable_reclaim();
     }
 }

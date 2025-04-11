@@ -13,7 +13,9 @@ pub mod seer_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::PriceType;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -87,9 +89,9 @@ pub mod seer_utils {
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
-        stop_prank(CheatTarget::One(shrine));
+        stop_cheat_caller_address(shrine);
 
         SeerTestConfig {
             seer: ISeerV2Dispatcher { contract_address: seer_addr },
@@ -114,22 +116,22 @@ pub mod seer_utils {
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
-        stop_prank(CheatTarget::One(shrine));
+        stop_cheat_caller_address(shrine);
 
         ISeerV2Dispatcher { contract_address: seer_addr }
     }
 
     pub fn set_price_types_to_vault(seer: ISeerV2Dispatcher, mut vaults: Span<ContractAddress>) {
-        start_prank(CheatTarget::One(seer.contract_address), admin());
+        start_cheat_caller_address(seer.contract_address, admin());
         loop {
             match vaults.pop_front() {
                 Option::Some(vault) => { seer.set_yang_price_type(*vault, PriceType::Vault); },
                 Option::None => { break; },
             };
         };
-        stop_prank(CheatTarget::One(seer.contract_address));
+        stop_cheat_caller_address(seer.contract_address);
     }
 
     pub fn add_oracles(
@@ -152,9 +154,9 @@ pub mod seer_utils {
         } = ekubo_utils::ekubo_deploy(oracle_classes.ekubo, oracle_classes.mock_ekubo, token_class);
         oracles.append(ekubo.contract_address);
 
-        start_prank(CheatTarget::One(seer.contract_address), admin());
+        start_cheat_caller_address(seer.contract_address, admin());
         seer.set_oracles(oracles.span());
-        stop_prank(CheatTarget::One(seer.contract_address));
+        stop_cheat_caller_address(seer.contract_address);
 
         oracles.span()
     }

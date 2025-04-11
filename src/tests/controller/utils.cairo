@@ -1,13 +1,15 @@
 pub mod controller_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
-    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
+    use opus::interfaces::IController::IControllerDispatcher;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{CheatTarget, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
+    use snforge_std::{
+        ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Ray, SignedRay, Wad};
+    use wadray::Wad;
 
     #[derive(Copy, Drop)]
     pub struct ControllerTestConfig {
@@ -48,14 +50,13 @@ pub mod controller_utils {
             BETA_I.into(),
         ];
 
-        let controller_class = declare("controller").unwrap().contract_class();
+        let controller_class = *declare("controller").unwrap().contract_class();
         let (controller_addr, _) = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        start_prank(CheatTarget::All, shrine_utils::admin());
+        start_cheat_caller_address(shrine_addr, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
-
-        start_prank(CheatTarget::All, Zero::zero());
+        stop_cheat_caller_address(shrine_addr);
 
         ControllerTestConfig {
             controller: IControllerDispatcher { contract_address: controller_addr },
@@ -65,18 +66,18 @@ pub mod controller_utils {
 
     #[inline(always)]
     pub fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.update_yin_spot_price(spot_price);
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
     }
 
     #[inline(always)]
     pub fn fast_forward_1_hour() {
-        start_warp(CheatTarget::All, get_block_timestamp() + ONE_HOUR);
+        start_cheat_block_timestamp_global(get_block_timestamp() + ONE_HOUR);
     }
 
     #[inline(always)]
     pub fn fast_forward_by_x_minutes(x: u64) {
-        start_warp(CheatTarget::All, get_block_timestamp() + x * 60);
+        start_cheat_block_timestamp_global(get_block_timestamp() + x * 60);
     }
 }

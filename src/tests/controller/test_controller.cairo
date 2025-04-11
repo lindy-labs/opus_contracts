@@ -1,12 +1,13 @@
 mod test_controller {
     use core::num::traits::Zero;
     use opus::core::controller::controller as controller_contract;
-    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IController::IControllerDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
     use opus::tests::controller::utils::{controller_utils, controller_utils::ControllerTestConfig};
-    use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, spy_events, start_prank, start_warp};
+    use snforge_std::{
+        EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
+    };
     use starknet::get_block_timestamp;
     use wadray::{Ray, SignedRay, Wad};
 
@@ -73,7 +74,7 @@ mod test_controller {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         let mut spy = spy_events();
 
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         let new_p_gain: Ray = 1_u128.into();
         let new_i_gain: Ray = 2_u128.into();
@@ -100,13 +101,13 @@ mod test_controller {
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain.into() },
+                    controller_contract::GainUpdated { name: 'p_gain', value: new_p_gain },
                 ),
             ),
             (
                 controller.contract_address,
                 controller_contract::Event::GainUpdated(
-                    controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain.into() },
+                    controller_contract::GainUpdated { name: 'i_gain', value: new_i_gain },
                 ),
             ),
             (
@@ -143,7 +144,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_p_gain_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_p_gain(1_u128.into());
     }
 
@@ -151,7 +152,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_i_gain_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_i_gain(1_u128.into());
     }
 
@@ -159,7 +160,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_p_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_alpha_p(1);
     }
 
@@ -167,7 +168,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_alpha_i_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_alpha_i(1);
     }
 
@@ -175,7 +176,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_p_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_beta_p(1);
     }
 
@@ -183,7 +184,7 @@ mod test_controller {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_beta_i_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::All, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::badguy());
         controller.set_beta_i(1);
     }
 
@@ -191,7 +192,7 @@ mod test_controller {
     fn test_against_ground_truth1() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
@@ -223,7 +224,7 @@ mod test_controller {
     fn test_against_ground_truth2() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -313,29 +314,29 @@ mod test_controller {
             580077744495632000000000_u128.into(),
             149299065094574000000000_u128.into(),
             11771833128759300000000_u128.into(),
-            -(454868699272035000000.into()),
+            -(454868699272035000000_u128.into()),
             10137648168311100000000_u128.into(),
-            -(556094500630732000000.into()),
+            -(556094500630732000000_u128.into()),
             10318737437826600000000_u128.into(),
-            -(601597192058065000000.into()),
+            -(601597192058065000000_u128.into()),
             11443607803861600000000_u128.into(),
-            -(444309924236667000000.into()),
+            -(444309924236667000000_u128.into()),
             12884852286878500000000_u128.into(),
-            -(307254269060489000000.into()),
+            -(307254269060489000000_u128.into()),
             11694088217369400000000_u128.into(),
-            -(434714972222878000000.into()),
+            -(434714972222878000000_u128.into()),
             11899277040145300000000_u128.into(),
-            -(414014311714013000000.into()),
+            -(414014311714013000000_u128.into()),
             11702480865749300000000_u128.into(),
-            -(384014080753663000000.into()),
+            -(384014080753663000000_u128.into()),
             12195217294123800000000_u128.into(),
-            -(395708534452025000000.into()),
+            -(395708534452025000000_u128.into()),
             11651447644382300000000_u128.into(),
-            -(417616564708359000000.into()),
+            -(417616564708359000000_u128.into()),
             12022963179793800000000_u128.into(),
-            -(346412629582555000000.into()),
+            -(346412629582555000000_u128.into()),
             12908797294632500000000_u128.into(),
-            -(342622403036553000000.into()),
+            -(342622403036553000000_u128.into()),
         ];
 
         let mut expected_i_terms_for_update: Array<SignedRay> = array![
@@ -368,27 +369,27 @@ mod test_controller {
             83399206157124800000000_u128.into(),
             53050030136946600000000_u128.into(),
             22748251503505800000000_u128.into(),
-            -(7690631746253880000000.into()),
+            -(7690631746253880000000_u128.into()),
             21642747603124400000000_u128.into(),
-            -(8223364333188300000000.into()),
+            -(8223364333188300000000_u128.into()),
             21770856255759900000000_u128.into(),
-            -(8441804013921670000000.into()),
+            -(8441804013921670000000_u128.into()),
             22534831274218800000000_u128.into(),
-            -(7630658247792590000000.into()),
+            -(7630658247792590000000_u128.into()),
             23443716960556000000000_u128.into(),
-            -(6747858612635160000000.into()),
+            -(6747858612635160000000_u128.into()),
             22698061970200100000000_u128.into(),
-            -(7575329563260990000000.into()),
+            -(7575329563260990000000_u128.into()),
             22830049195037500000000_u128.into(),
-            -(7453125774297640000000.into()),
+            -(7453125774297640000000_u128.into()),
             22703490675876200000000_u128.into(),
-            -(7268571192803940000000.into()),
+            -(7268571192803940000000_u128.into()),
             23017765936335400000000_u128.into(),
-            -(7341618355226480000000.into()),
+            -(7341618355226480000000_u128.into()),
             22670440119227300000000_u128.into(),
-            -(7474679419119640000000.into()),
+            -(7474679419119640000000_u128.into()),
             22908878433052100000000_u128.into(),
-            -(7023138580674010000000.into()),
+            -(7023138580674010000000_u128.into()),
             23458230451766600000000_u128.into(),
         ];
 
@@ -481,7 +482,7 @@ mod test_controller {
     fn test_against_ground_truth3() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_prank(CheatTarget::All, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -574,7 +575,7 @@ mod test_controller {
     fn test_against_ground_truth4() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -606,24 +607,24 @@ mod test_controller {
         ];
 
         let mut expected_p_terms_for_update: Array<SignedRay> = array![
-            -(1000000000000000000000000000.into()),
-            -(746195479083163000000000000.into()),
-            -(539523383475842000000000000.into()),
-            -(495564327004783000000000000.into()),
-            -(422207524564506000000000000.into()),
-            -(350809670272374000000000000.into()),
-            -(279021745992382000000000000.into()),
-            -(211084503271561000000000000.into()),
-            -(150007593859528000000000000.into()),
-            -(98033733163741300000000000.into()),
-            -(57236566790689500000000000.into()),
-            -(28386114337710200000000000.into()),
-            -(10809080591526600000000000.into()),
-            -(2448543705060000000000000.into()),
-            -(101940531608629000000000.into()),
+            -(1000000000000000000000000000_u128.into()),
+            -(746195479083163000000000000_u128.into()),
+            -(539523383475842000000000000_u128.into()),
+            -(495564327004783000000000000_u128.into()),
+            -(422207524564506000000000000_u128.into()),
+            -(350809670272374000000000000_u128.into()),
+            -(279021745992382000000000000_u128.into()),
+            -(211084503271561000000000000_u128.into()),
+            -(150007593859528000000000000_u128.into()),
+            -(98033733163741300000000000_u128.into()),
+            -(57236566790689500000000000_u128.into()),
+            -(28386114337710200000000000_u128.into()),
+            -(10809080591526600000000000_u128.into()),
+            -(2448543705060000000000000_u128.into()),
+            -(101940531608629000000000_u128.into()),
             74475965338492500000000_u128.into(),
             1893220914080160000000_u128.into(),
-            -(4942406121069110000000.into()),
+            -(4942406121069110000000_u128.into()),
             370158792771876000000000_u128.into(),
             76076761868840400000000_u128.into(),
             1936814769458320000000_u128.into(),
@@ -631,24 +632,24 @@ mod test_controller {
 
         let mut expected_i_terms_for_update: Array<SignedRay> = array![
             0_u128.into(),
-            -(999950003749689000000000.into()),
-            -(906984100943969000000000.into()),
-            -(814058658834616000000000.into()),
-            -(791321709989352000000000.into()),
-            -(750175890358791000000000.into()),
-            -(705255342325826000000000.into()),
-            -(653436533401461000000000.into()),
-            -(595403091779449000000000.into()),
-            -(531330750530118000000000.into()),
-            -(461091621053498000000000.into()),
-            -(385378930245532000000000.into()),
-            -(305046908933185000000000.into()),
-            -(221103282454939000000000.into()),
-            -(134783136643973000000000.into()),
-            -(46714200163985700000000.into()),
+            -(999950003749689000000000_u128.into()),
+            -(906984100943969000000000_u128.into()),
+            -(814058658834616000000000_u128.into()),
+            -(791321709989352000000000_u128.into()),
+            -(750175890358791000000000_u128.into()),
+            -(705255342325826000000000_u128.into()),
+            -(653436533401461000000000_u128.into()),
+            -(595403091779449000000000_u128.into()),
+            -(531330750530118000000000_u128.into()),
+            -(461091621053498000000000_u128.into()),
+            -(385378930245532000000000_u128.into()),
+            -(305046908933185000000000_u128.into()),
+            -(221103282454939000000000_u128.into()),
+            -(134783136643973000000000_u128.into()),
+            -(46714200163985700000000_u128.into()),
             42073180346892300000000_u128.into(),
             12370875261032900000000_u128.into(),
-            -(17033849402874100000000.into()),
+            -(17033849402874100000000_u128.into()),
             71800793651462500000000_u128.into(),
             42372488193362600000000_u128.into(),
         ];
@@ -707,7 +708,7 @@ mod test_controller {
     fn test_against_ground_truth5() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -773,7 +774,7 @@ mod test_controller {
         loop {
             match seconds_since_last_update_arr.pop_front() {
                 Option::Some(seconds_since_last_update) => {
-                    start_warp(CheatTarget::All, get_block_timestamp() + seconds_since_last_update);
+                    start_cheat_block_timestamp_global(get_block_timestamp() + seconds_since_last_update);
 
                     let price: Wad = prices.pop_front().unwrap();
                     controller_utils::set_yin_spot_price(shrine, price);
@@ -800,7 +801,7 @@ mod test_controller {
     #[test]
     fn test_frequent_updates() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
-        start_prank(CheatTarget::One(controller.contract_address), controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
         // Ensuring the integral gain is non-zero
         controller.set_i_gain(100000000000000000000000_u128.into()); // 0.0001
 

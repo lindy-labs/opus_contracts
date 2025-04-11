@@ -30,7 +30,9 @@ pub mod pragma_utils {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
     use opus::utils::math::pow;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
 
@@ -143,11 +145,11 @@ pub mod pragma_utils {
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma), admin());
+        start_cheat_caller_address(pragma, admin());
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
         pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
         pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-        stop_prank(CheatTarget::One(pragma));
+        stop_cheat_caller_address(pragma);
     }
 
     pub fn add_yangs_v2(pragma: ContractAddress, yangs: Span<ContractAddress>) {
@@ -163,13 +165,13 @@ pub mod pragma_utils {
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma), admin());
+        start_cheat_caller_address(pragma, admin());
         let pragma_dispatcher = IPragmaV2Dispatcher { contract_address: pragma };
         let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
         pragma_dispatcher.set_yang_pair_settings(wbtc_yang, wbtc_pair_settings);
-        stop_prank(CheatTarget::One(pragma));
+        stop_cheat_caller_address(pragma);
     }
 
     //
@@ -237,7 +239,9 @@ pub mod ekubo_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::utils::math::pow;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
 

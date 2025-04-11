@@ -7,7 +7,9 @@ mod test_transmuter_registry {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
 
     //
@@ -55,7 +57,7 @@ mod test_transmuter_registry {
             transmuter_utils::receiver(),
         );
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::admin());
         registry.add_transmuter(first_transmuter.contract_address);
 
         assert(registry.get_transmuters() == array![first_transmuter.contract_address].span(), 'wrong transmuters #1');
@@ -96,7 +98,7 @@ mod test_transmuter_registry {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::admin());
         registry.add_transmuter(transmuter.contract_address);
         registry.add_transmuter(transmuter.contract_address);
     }
@@ -110,7 +112,7 @@ mod test_transmuter_registry {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::admin());
         registry.remove_transmuter(transmuter.contract_address);
     }
 }

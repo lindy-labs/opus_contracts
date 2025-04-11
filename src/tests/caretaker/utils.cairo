@@ -11,7 +11,10 @@ pub mod caretaker_utils {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
 
     #[derive(Copy, Drop)]
@@ -29,7 +32,7 @@ pub mod caretaker_utils {
     }
 
     pub fn caretaker_deploy() -> CaretakerTestConfig {
-        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_cheat_block_timestamp_global(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let abbot_utils::AbbotTestConfig {
             shrine, sentinel, abbot, yangs, gates,
@@ -50,16 +53,16 @@ pub mod caretaker_utils {
         let (caretaker, _) = caretaker_class.deploy(@calldata).expect('caretaker deploy failed');
 
         // allow Caretaker to do its business with Shrine
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         IAccessControlDispatcher { contract_address: shrine.contract_address }
             .grant_role(shrine_roles::caretaker(), caretaker);
 
         // allow Caretaker to call exit in Sentinel during shut
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
 
-        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
+        stop_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 

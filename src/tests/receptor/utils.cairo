@@ -10,7 +10,10 @@ pub mod receptor_utils {
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, start_warp, stop_prank};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
     use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
@@ -63,7 +66,7 @@ pub mod receptor_utils {
     pub fn receptor_deploy(
         receptor_class: Option<ContractClass>, token_class: Option<ContractClass>,
     ) -> ReceptorTestConfig {
-        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_cheat_block_timestamp_global(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let quote_tokens = common::quote_tokens(token_class);
 
@@ -89,10 +92,10 @@ pub mod receptor_utils {
         let (receptor_addr, _) = receptor_class.deploy(@calldata).expect('receptor deploy failed');
 
         // Grant UPDATE_YIN_SPOT_PRICE role to receptor contract
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_accesscontrol.grant_role(shrine_roles::receptor(), receptor_addr);
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         ReceptorTestConfig {
             shrine,

@@ -11,7 +11,9 @@ mod test_flash_mint {
     use opus::tests::equalizer::utils::equalizer_utils;
     use opus::tests::flash_mint::utils::flash_mint_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, spy_events, start_prank, stop_prank};
+    use snforge_std::{
+        CheatTarget, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
     use wadray::{SignedWad, WAD_ONE, Wad};
 
@@ -49,9 +51,9 @@ mod test_flash_mint {
         common::advance_intervals(1000);
 
         // update price to speed up calculation
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.advance(eth, eth_price);
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         shrine_utils::trove1_deposit(shrine, Zero::zero());
 
@@ -88,7 +90,7 @@ mod test_flash_mint {
         // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
         let flash_mint_caller: ContractAddress = common::non_zero_address();
-        start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
+        start_cheat_caller_address(flashmint.contract_address, flash_mint_caller);
 
         let first_loan_amt: u256 = 1;
         flashmint.flash_loan(borrower, shrine, first_loan_amt, calldata);
@@ -104,32 +106,32 @@ mod test_flash_mint {
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         let debt_ceiling: Wad = shrine_utils::shrine(shrine).get_debt_ceiling();
         let debt_to_ceiling: Wad = debt_ceiling - shrine_utils::shrine(shrine).get_total_yin();
         shrine_utils::shrine(shrine).inject(common::non_zero_address(), debt_to_ceiling);
 
-        start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
+        start_cheat_caller_address(flashmint.contract_address, flash_mint_caller);
         let fourth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fourth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 4');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a deficit
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         shrine_utils::shrine(shrine).adjust_budget((1000 * WAD_ONE).into());
-        stop_prank(CheatTarget::One(shrine));
+        stop_cheat_caller_address(shrine);
 
-        start_prank(CheatTarget::One(flashmint.contract_address), flash_mint_caller);
+        start_cheat_caller_address(flashmint.contract_address, flash_mint_caller);
         let fifth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, fifth_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 5');
 
         // check that flash loan still functions normally when yin supply is at debt ceiling
         // and the budget has a surplus
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         shrine_utils::shrine(shrine).adjust_budget((2000 * WAD_ONE).into());
-        stop_prank(CheatTarget::One(shrine));
+        stop_cheat_caller_address(shrine);
 
         let sixth_loan_amt: u256 = (debt_ceiling * flash_mint_contract::FLASH_MINT_AMOUNT_PCT.into()).into();
         flashmint.flash_loan(borrower, shrine, sixth_loan_amt, calldata);

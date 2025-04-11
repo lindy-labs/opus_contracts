@@ -15,7 +15,10 @@ mod test_receptor {
     use opus::utils::ekubo_oracle_adapter::{
         IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait, ekubo_oracle_adapter_component,
     };
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_prank, start_warp, stop_prank};
+    use snforge_std::{
+        CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
 
@@ -58,7 +61,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::badguy());
         ekubo_oracle_adapter.set_oracle_extension(receptor_utils::mock_oracle_extension());
     }
 
@@ -70,7 +73,7 @@ mod test_receptor {
         } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::badguy());
         ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
     }
 
@@ -80,7 +83,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::badguy());
         ekubo_oracle_adapter.set_twap_duration(receptor_utils::INITIAL_TWAP_DURATION + 1);
     }
 
@@ -91,7 +94,7 @@ mod test_receptor {
 
         let old_frequency: u64 = receptor_utils::INITIAL_UPDATE_FREQUENCY;
         let new_frequency: u64 = old_frequency + 1;
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
         receptor.set_update_frequency(new_frequency);
 
         assert_eq!(receptor.get_update_frequency(), new_frequency, "wrong update frequency");
@@ -112,7 +115,7 @@ mod test_receptor {
     #[should_panic(expected: ('Caller missing role',))]
     fn test_set_update_frequency_unauthorized() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
-        start_prank(CheatTarget::One(receptor.contract_address), common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::badguy());
         receptor.set_update_frequency(receptor_utils::INITIAL_UPDATE_FREQUENCY - 1);
     }
 
@@ -122,7 +125,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
         receptor.set_update_frequency(new_frequency);
     }
 
@@ -132,7 +135,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
         receptor.set_update_frequency(new_frequency);
     }
 
@@ -159,7 +162,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_warp(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
 
         let quotes: Span<Wad> = receptor.get_quotes();
         let expected_yin_spot_price: Wad = *quotes[2];
@@ -182,7 +185,7 @@ mod test_receptor {
             };
         };
 
-        start_prank(CheatTarget::One(receptor.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
         receptor.update_yin_price();
 
         let after_yin_spot_price: Wad = shrine.get_yin_spot_price();
@@ -218,7 +221,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_warp(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
 
         let quotes: Span<Wad> = receptor.get_quotes();
 
@@ -252,7 +255,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_warp(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
 
         ITaskDispatcher { contract_address: receptor.contract_address }.execute_task();
 
@@ -285,10 +288,12 @@ mod test_receptor {
         task.execute_task();
         assert(!task.probe_task(), 'should not be ready 1');
 
-        start_warp(CheatTarget::All, get_block_timestamp() + receptor.get_update_frequency() - 1);
+        start_cheat_block_timestamp_global(
+            CheatTarget::All, get_block_timestamp() + receptor.get_update_frequency() - 1,
+        );
         assert(!task.probe_task(), 'should not be ready 2');
 
-        start_warp(CheatTarget::All, get_block_timestamp() + 1);
+        start_cheat_block_timestamp_global(CheatTarget::All, get_block_timestamp() + 1);
         assert(task.probe_task(), 'should be ready 2');
     }
 }
