@@ -11,7 +11,7 @@ mod test_shrine {
     use opus::types::{Health, HealthTrait, YangSuspensionStatus};
     use snforge_std::{
         ContractClass, EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events,
-        start_cheat_block_timestamp, start_cheat_caller_address, stop_cheat_caller_address,
+        start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_ONE, RAY_PERCENT, RAY_SCALE, Ray, SignedWad, WAD_DECIMALS, WAD_ONE, WAD_PERCENT, WAD_SCALE, Wad};
@@ -2157,7 +2157,7 @@ mod test_shrine {
         let yang = shrine_utils::yang1_addr();
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
-        start_cheat_block_timestamp(shrine.contract_address, start_ts);
+        start_cheat_block_timestamp_global(start_ts);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
 
         // initiate yang's suspension, starting now
@@ -2167,21 +2167,9 @@ mod test_shrine {
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Temporary, 'status 1');
 
-        // check event emission
-        spy
-            .assert_emitted(
-                @array![
-                    (
-                        shrine_addr,
-                        shrine_contract::Event::YangSuspended(
-                            shrine_contract::YangSuspended { yang, timestamp: get_block_timestamp() },
-                        ),
-                    ),
-                ],
-            );
-
         // setting block time to a second before the suspension would be permanent
-        start_cheat_block_timestamp(shrine.contract_address, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
+        let next_ts = start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1;
+        start_cheat_block_timestamp_global(next_ts);
 
         // reset the suspension by setting yang's ts to 0
         shrine.unsuspend_yang(yang);
@@ -2191,17 +2179,17 @@ mod test_shrine {
         assert(status == YangSuspensionStatus::None, 'status 2');
 
         // check event emission
-        spy
-            .assert_emitted(
-                @array![
-                    (
-                        shrine_addr,
-                        shrine_contract::Event::YangUnsuspended(
-                            shrine_contract::YangUnsuspended { yang, timestamp: get_block_timestamp() },
-                        ),
-                    ),
-                ],
-            );
+        let expected_events = array![
+            (
+                shrine_addr,
+                shrine_contract::Event::YangSuspended(shrine_contract::YangSuspended { yang, timestamp: start_ts }),
+            ),
+            (
+                shrine_addr,
+                shrine_contract::Event::YangUnsuspended(shrine_contract::YangUnsuspended { yang, timestamp: next_ts }),
+            ),
+        ];
+        spy.assert_emitted(@expected_events);
     }
 
     #[test]
@@ -2284,7 +2272,7 @@ mod test_shrine {
             match time_pcts.pop_front() {
                 Option::Some(time_pct) => {
                     // move time forward
-                    start_cheat_block_timestamp(shrine.contract_address, start_ts + (one_pct * *time_pct));
+                    start_cheat_block_timestamp_global(start_ts + (one_pct * *time_pct));
 
                     // check suspension status
                     let status = shrine.get_yang_suspension_status(yang);
@@ -2305,7 +2293,7 @@ mod test_shrine {
         };
 
         // move time forward to a second before permanent suspension
-        start_cheat_block_timestamp(shrine.contract_address, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
+        start_cheat_block_timestamp_global(start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
         shrine.advance(yang, yang_price);
 
         // check suspension status
@@ -2321,7 +2309,7 @@ mod test_shrine {
         );
 
         // move time forward to end of temp suspension, start of permanent one
-        start_cheat_block_timestamp(shrine.contract_address, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
+        start_cheat_block_timestamp_global(start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
         shrine.advance(yang, yang_price);
 
         // check suspension status
@@ -2351,12 +2339,12 @@ mod test_shrine {
         let yang = shrine_utils::yang1_addr();
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
-        start_cheat_block_timestamp(shrine.contract_address, start_ts);
+        start_cheat_block_timestamp_global(start_ts);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
 
         // mark permanent
         shrine.suspend_yang(yang);
-        start_cheat_block_timestamp(shrine.contract_address, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
+        start_cheat_block_timestamp_global(start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
 
         // sanity check
         let status = shrine.get_yang_suspension_status(yang);
@@ -2376,7 +2364,7 @@ mod test_shrine {
         let yang = shrine_utils::yang1_addr();
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
-        start_cheat_block_timestamp(shrine.contract_address, start_ts);
+        start_cheat_block_timestamp_global(start_ts);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
 
         // suspend yang
@@ -2400,14 +2388,14 @@ mod test_shrine {
         let yang = shrine_utils::yang1_addr();
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
-        start_cheat_block_timestamp(shrine.contract_address, start_ts);
+        start_cheat_block_timestamp_global(start_ts);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
 
         // suspend yang
         shrine.suspend_yang(yang);
 
         // make permanent
-        start_cheat_block_timestamp(shrine.contract_address, start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
+        start_cheat_block_timestamp_global(start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD);
 
         // sanity check
         let status = shrine.get_yang_suspension_status(yang);
