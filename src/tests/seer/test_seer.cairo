@@ -12,24 +12,22 @@ mod test_seer {
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::mock::erc4626_mintable::{IMockERC4626Dispatcher, IMockERC4626DispatcherTrait};
-    use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices,
-    };
+    use opus::mock::mock_ekubo_oracle_extension::{IMockEkuboOracleExtensionDispatcher, set_next_ekubo_prices};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
-    use opus::tests::external::utils::{ekubo_utils, pragma_utils};
+    use opus::tests::external::utils::pragma_utils;
     use opus::tests::seer::utils::{seer_utils, seer_utils::SeerTestConfig};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PragmaPricesResponse;
-    use opus::types::{ConversionRateInfo, PriceType, YangSuspensionStatus};
+    use opus::types::{PriceType, YangSuspensionStatus};
     use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait};
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use snforge_std::{
-        CheatTarget, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events,
-        start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
+        EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
@@ -376,7 +374,7 @@ mod test_seer {
             .set_convert_to_assets_per_wad_scale(new_wbtc_vault_conversion_rate);
 
         let mut next_ts = get_block_timestamp() + shrine_contract::TIME_INTERVAL;
-        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(next_ts);
         eth_price += (100 * WAD_SCALE).into();
         wbtc_price += (1000 * WAD_SCALE).into();
         let pragma = IOracleDispatcher { contract_address: *oracles[0] };
@@ -414,7 +412,7 @@ mod test_seer {
             }
 
             next_ts += suspension_grace_period_quarter;
-            start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
+            start_cheat_block_timestamp_global(next_ts);
 
             pragma_utils::mock_valid_price_update(mock_pragma, eth_addr, eth_price, next_ts);
             pragma_utils::mock_valid_price_update(mock_pragma, wbtc_addr, wbtc_price, next_ts);
@@ -765,10 +763,10 @@ mod test_seer {
 
         assert(!task.probe_task(), 'should not be ready 1');
 
-        start_cheat_block_timestamp_global(CheatTarget::All, get_block_timestamp() + seer.get_update_frequency() - 1);
+        start_cheat_block_timestamp_global(get_block_timestamp() + seer.get_update_frequency() - 1);
         assert(!task.probe_task(), 'should not be ready 2');
 
-        start_cheat_block_timestamp_global(CheatTarget::All, get_block_timestamp() + 1);
+        start_cheat_block_timestamp_global(get_block_timestamp() + 1);
         assert(task.probe_task(), 'should be ready 2');
     }
 }

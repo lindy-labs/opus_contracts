@@ -1,20 +1,18 @@
 pub mod seer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
     use opus::core::roles::shrine_roles;
-    use opus::core::seer::seer as seer_contract;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IPragma::{IPragmaV2Dispatcher, IPragmaV2DispatcherTrait};
     use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
-    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::mock_pragma::IMockPragmaDispatcher;
     use opus::tests::external::utils::{ekubo_utils, pragma_utils};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::PriceType;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::Wad;
@@ -65,10 +63,10 @@ pub mod seer_utils {
 
     pub fn declare_oracles() -> OracleTestClasses {
         OracleTestClasses {
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap().contract_class()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap().contract_class()),
-            ekubo: Option::Some(declare("ekubo").unwrap().contract_class()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
+            pragma_v2: Option::Some(*declare("pragma_v2").unwrap().contract_class()),
+            mock_pragma: Option::Some(*declare("mock_pragma").unwrap().contract_class()),
+            ekubo: Option::Some(*declare("ekubo").unwrap().contract_class()),
+            mock_ekubo: Option::Some(*declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
         }
     }
 
@@ -82,7 +80,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer_v2").unwrap().contract_class(),
+            Option::None => *declare("seer_v2").unwrap().contract_class(),
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -109,7 +107,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => declare("seer_v2").unwrap().contract_class(),
+            Option::None => *declare("seer_v2").unwrap().contract_class(),
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
