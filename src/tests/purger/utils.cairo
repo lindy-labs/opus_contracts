@@ -24,7 +24,7 @@ pub mod purger_utils {
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::pow;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, Event, declare, start_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, Event, declare, start_cheat_caller_address,
         stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
@@ -413,26 +413,29 @@ pub mod purger_utils {
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
+        // Increase debt ceiling
+        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
+        shrine.set_debt_ceiling(debt_ceiling);
+
+        stop_cheat_caller_address(shrine.contract_address);
+
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
+        stop_cheat_caller_address(sentinel.contract_address);
 
         // Approve Purger in Seer
         let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
         start_cheat_caller_address(seer.contract_address, seer_utils::admin());
         oracle_ac.grant_role(seer_roles::purger(), purger_addr);
+        stop_cheat_caller_address(seer.contract_address);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
         start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
-
-        // Increase debt ceiling
-        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
-        shrine.set_debt_ceiling(debt_ceiling);
-
-        stop_cheat_caller_address(CheatTarget::All);
+        stop_cheat_caller_address(absorber.contract_address);
 
         PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates }
     }

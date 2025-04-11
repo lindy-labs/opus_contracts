@@ -1,26 +1,22 @@
 pub mod absorber_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::cmp::min;
     use core::num::traits::{Bounded, Zero};
-    use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IAbsorber::{
-        IAbsorberDispatcher, IAbsorberDispatcherTrait, IBlesserDispatcher, IBlesserDispatcherTrait,
-    };
+    use opus::interfaces::IAbbot::IAbbotDispatcher;
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait,
     };
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::erc20_mintable::erc20_mintable;
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, DistributionInfo, Reward};
+    use opus::types::{AssetBalance, DistributionInfo};
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
     use wadray::{Ray, WAD_ONE, WAD_SCALE, Wad};
@@ -118,13 +114,13 @@ pub mod absorber_utils {
 
     pub fn declare_contracts() -> AbsorberTestClasses {
         AbsorberTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
-            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
-            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
-            gate: Option::Some(declare("gate").unwrap().contract_class()),
-            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
-            absorber: Option::Some(declare("absorber").unwrap().contract_class()),
-            blesser: Option::Some(declare("blesser").unwrap().contract_class()),
+            abbot: Option::Some(*declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(*declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(*declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
+            absorber: Option::Some(*declare("absorber").unwrap().contract_class()),
+            blesser: Option::Some(*declare("blesser").unwrap().contract_class()),
         }
     }
 
@@ -204,7 +200,7 @@ pub mod absorber_utils {
 
         let blesser_class = match blesser_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_blesser").unwrap(),
+            Option::None => *declare("mock_blesser").unwrap().contract_class(),
         };
 
         let (mock_blesser_addr, _) = blesser_class.deploy(@calldata).expect('blesser deploy failed');
@@ -312,12 +308,12 @@ pub mod absorber_utils {
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into(),
         );
 
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider,
-        );
         let yin = shrine_utils::yin(shrine.contract_address);
+        start_cheat_caller_address(shrine.contract_address, provider);
         yin.approve(absorber.contract_address, Bounded::MAX);
         stop_cheat_caller_address(shrine.contract_address);
+
+        start_cheat_caller_address(absorber.contract_address, provider);
         absorber.provide(amt);
         stop_cheat_caller_address(absorber.contract_address);
 
@@ -523,13 +519,13 @@ pub mod absorber_utils {
                         .try_into()
                         .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into() + blessed_amt.val;
+                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into() + blessed_amt.into();
 
                     common::assert_equalish(after_provider_bal, expected_bal, error_margin, 'wrong reward balance');
 
                     // Check preview amounts are equal
                     common::assert_equalish(
-                        blessed_amt.val, *asset.amount, error_margin, 'wrong preview rewarded amount',
+                        blessed_amt.into(), *asset.amount, error_margin, 'wrong preview rewarded amount',
                     );
                 },
                 Option::None => { break; },
@@ -604,7 +600,7 @@ pub mod absorber_utils {
                     let expected_amt_per_share: Wad = expected_blessed_amt / recipient_shares;
 
                     assert(
-                        reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
+                        reward_distribution_info.asset_amt_per_share == expected_amt_per_share.into(),
                         'wrong reward cumulative',
                     );
                 },
@@ -658,7 +654,7 @@ pub mod absorber_utils {
                     let actual_asset_amt_per_share: u128 = absorber.get_asset_absorption(*yang, absorption_id);
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
-                    let expected_asset_amt_per_share: u128 = (asset_amt / recipient_shares).val;
+                    let expected_asset_amt_per_share: u128 = (asset_amt / recipient_shares).into();
 
                     // Check asset amt per share is correct
                     assert(

@@ -17,8 +17,8 @@ mod test_absorber {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
-        CheatTarget, Event, EventSpyAssertionsTrait, EventSpyTrait, declare, spy_events,
-        start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
+        Event, EventSpyAssertionsTrait, EventSpyTrait, declare, spy_events, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_ONE, RAY_SCALE, Ray, WAD_ONE, WAD_SCALE, Wad};
@@ -180,9 +180,7 @@ mod test_absorber {
         let before_provider_yin_bal: Wad = shrine.get_yin(provider);
         start_cheat_caller_address(absorber.contract_address, provider);
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         // Loss of precision
@@ -512,7 +510,7 @@ mod test_absorber {
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         start_cheat_block_timestamp_global(
-                            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
+                            get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
                         );
                         absorber.remove(Bounded::MAX);
                         remove_as_second_action = true;
@@ -750,18 +748,17 @@ mod test_absorber {
         common::fund_user(donor, yangs, yang_asset_amts);
         common::open_trove_helper(abbot, donor, yangs, yang_asset_amts, gates, provided_amt);
 
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), donor,
-        );
         let yin = shrine_utils::yin(shrine.contract_address);
+        start_cheat_caller_address(shrine.contract_address, donor);
         yin.approve(absorber.contract_address, Bounded::MAX);
         yin.transfer(provider, provider_amt.into());
-
         stop_cheat_caller_address(shrine.contract_address);
 
         // Donor provides INITIAL_SHARES amount of yin
+        start_cheat_caller_address(absorber.contract_address, donor);
         let initial_shares_amt: Wad = absorber_contract::INITIAL_SHARES.into();
         absorber.provide(initial_shares_amt);
+        stop_cheat_caller_address(absorber.contract_address);
 
         let donor_provision: Provision = absorber.get_provision(donor);
         assert(donor_provision.shares.is_zero(), 'donor shares not zero');
@@ -770,7 +767,7 @@ mod test_absorber {
         let donation_amt: Wad = (1000 * WAD_ONE).into();
         start_cheat_caller_address(shrine.contract_address, donor);
         yin.transfer(absorber.contract_address, donation_amt.into());
-        stop_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]));
+        stop_cheat_caller_address(shrine.contract_address);
 
         assert_eq!(
             yin.balance_of(absorber.contract_address),
@@ -779,12 +776,11 @@ mod test_absorber {
         );
 
         // Provider provides a small amount
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider,
-        );
+        start_cheat_caller_address(shrine.contract_address, provider);
         yin.approve(absorber.contract_address, Bounded::MAX);
         stop_cheat_caller_address(shrine.contract_address);
 
+        start_cheat_caller_address(absorber.contract_address, provider);
         let provider_provide_amt: Wad = 1_u128.into();
         absorber.provide(provider_provide_amt);
     }
@@ -813,7 +809,7 @@ mod test_absorber {
         );
         let first_provider = provider;
 
-        let mut spy = spy_events();
+        let mut first_spy = spy_events();
 
         let first_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
@@ -894,11 +890,11 @@ mod test_absorber {
                 ),
             ),
         ];
-        spy.assert_emitted(@expected_events);
+        first_spy.assert_emitted(@expected_events);
 
         // Step 5
         // Reset the event spy so all previous unchecked events are dropped
-        spy.events = array![];
+        let mut second_spy = spy_events();
 
         let first_provider_before_reward_bals = common::get_token_balances(reward_tokens, first_provider.into());
         let first_provider_before_absorbed_bals = common::get_token_balances(yangs, first_provider.into());
@@ -957,17 +953,17 @@ mod test_absorber {
             ),
         ];
 
-        let events = spy.get_events().events;
+        let events = second_spy.get_events().events;
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name(events, selector!("Bestow"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("Bestow"));
 
-        spy.assert_emitted(@expected_events);
+        second_spy.assert_emitted(@expected_events);
 
         // Step 6
         // Reset the event spy so all previous unchecked events are dropped
-        spy.events = array![];
+        let mut third_spy = spy_events();
 
         let second_provider_before_reward_bals = common::get_token_balances(reward_tokens, second_provider.into());
         let second_provider_before_absorbed_bals = common::get_token_balances(yangs, second_provider.into());
@@ -1024,13 +1020,13 @@ mod test_absorber {
             ),
         ];
 
-        let events = spy.get_events().events;
+        let events = third_spy.get_events().events;
 
         // No rewards should be bestowed because Absorber is inoperational
         // after second absorption.
-        common::assert_event_not_emitted_by_name(events, selector!("Bestow"));
+        common::assert_event_not_emitted_by_name(events.span(), selector!("Bestow"));
 
-        spy.assert_emitted(@expected_events);
+        third_spy.assert_emitted(@expected_events);
     }
 
 
@@ -1185,9 +1181,7 @@ mod test_absorber {
 
         let request_timestamp = get_block_timestamp();
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1434,9 +1428,7 @@ mod test_absorber {
         let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(first_provider);
 
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1705,7 +1697,7 @@ mod test_absorber {
         let expected_opus_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
         let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment / total_recipient_shares;
         let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
-            + expected_opus_reward_cumulative_increment.val;
+            + expected_opus_reward_cumulative_increment.into();
         let updated_opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), absorber_contract::FIRST_EPOCH);
         assert(
@@ -1764,7 +1756,7 @@ mod test_absorber {
             + opus_reward_distribution.error.into();
         let expected_opus_reward_cumulative_increment: Wad = expected_opus_reward_increment / total_recipient_shares;
         let expected_opus_reward_cumulative: u128 = opus_reward_distribution.asset_amt_per_share
-            + expected_opus_reward_cumulative_increment.val;
+            + expected_opus_reward_cumulative_increment.into();
         let updated_opus_reward_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), absorber_contract::FIRST_EPOCH);
         assert(
@@ -1820,7 +1812,7 @@ mod test_absorber {
             assert(request.timelock == expected_timelock, 'wrong timelock');
 
             let removal_ts = current_ts + expected_timelock;
-            start_cheat_block_timestamp_global(CheatTarget::All, removal_ts);
+            start_cheat_block_timestamp_global(removal_ts);
 
             // This should not revert
             if idx % 2 == 0 {
@@ -1874,9 +1866,7 @@ mod test_absorber {
         let before_provider_yin_bal: Wad = shrine.get_yin(provider);
         start_cheat_caller_address(absorber.contract_address, provider);
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         // Loss of precision
@@ -1909,9 +1899,7 @@ mod test_absorber {
 
         start_cheat_caller_address(absorber.contract_address, provider);
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
     }
 
@@ -1935,9 +1923,7 @@ mod test_absorber {
 
         start_cheat_caller_address(absorber.contract_address, provider);
         absorber.request();
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         // This should succeed
         absorber.remove(1_u128.into());
 
@@ -1955,9 +1941,7 @@ mod test_absorber {
         start_cheat_caller_address(absorber.contract_address, provider);
         absorber.request();
         // Early by 1 second
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK - 1,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK - 1);
         absorber.remove(1_u128.into());
     }
 
@@ -1972,7 +1956,6 @@ mod test_absorber {
         absorber.request();
         // 1 second after validity period
         start_cheat_block_timestamp_global(
-            CheatTarget::All,
             get_block_timestamp()
                 + absorber_contract::REQUEST_BASE_TIMELOCK
                 + absorber_contract::REQUEST_WITHDRAWAL_PERIOD
@@ -2043,13 +2026,12 @@ mod test_absorber {
         common::fund_user(provider, yangs, yang_asset_amts);
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), provider,
-        );
+        start_cheat_caller_address(shrine.contract_address, provider);
         let yin = shrine_utils::yin(shrine.contract_address);
         yin.approve(absorber.contract_address, Bounded::MAX);
         stop_cheat_caller_address(shrine.contract_address);
 
+        start_cheat_caller_address(absorber.contract_address, provider);
         let insufficient_amt: Wad = provided_amt + 1_u128.into();
         absorber.provide(insufficient_amt);
     }
