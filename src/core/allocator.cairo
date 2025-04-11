@@ -1,11 +1,15 @@
 #[starknet::contract]
 pub mod allocator {
     use access_control::access_control_component;
+    use core::dict::Felt252Dict;
     use core::num::traits::Zero;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
     use starknet::ContractAddress;
-    use wadray::{Ray, RAY_ONE};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use wadray::{RAY_ONE, Ray};
 
     //
     // Components
@@ -42,10 +46,10 @@ pub mod allocator {
         // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
-        recipients: LegacyMap::<u32, ContractAddress>,
+        recipients: Map::<u32, ContractAddress>,
         // Keeps track of the percentage for each recipient by address
         // (Recipient Address) -> (percentage)
-        percentages: LegacyMap::<ContractAddress, Ray>,
+        percentages: Map::<ContractAddress, Ray>,
     }
 
     //
@@ -62,7 +66,7 @@ pub mod allocator {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct AllocationUpdated {
         pub recipients: Span<ContractAddress>,
-        pub percentages: Span<Ray>
+        pub percentages: Span<Ray>,
     }
 
     //
@@ -71,7 +75,7 @@ pub mod allocator {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
+        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>,
     ) {
         self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
 
@@ -152,7 +156,7 @@ pub mod allocator {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
                         let recipient_key: felt252 = (*recipient).into();
-                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address',);
+                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address');
                         recipients_dict.insert(recipient_key, idx);
 
                         self.recipients.write(idx, *recipient);
@@ -164,7 +168,7 @@ pub mod allocator {
 
                         idx += 1;
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 

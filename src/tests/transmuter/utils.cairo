@@ -1,18 +1,20 @@
 pub mod transmuter_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::integer::BoundedInt;
+    use core::num::traits::Bounded;
     use opus::core::roles::shrine_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::{
-        ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait, ITransmuterRegistryDispatcher,
-        ITransmuterRegistryDispatcherTrait
+        ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait, ITransmuterV2Dispatcher,
+        ITransmuterV2DispatcherTrait,
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
     use wadray::Wad;
 
@@ -55,17 +57,17 @@ pub mod transmuter_utils {
     //
 
     pub fn declare_transmuter() -> ContractClass {
-        declare("transmuter_v2").unwrap()
+        declare("transmuter_v2").unwrap().contract_class()
     }
 
     pub fn transmuter_deploy(
         transmuter_class: Option<ContractClass>,
         shrine: ContractAddress,
         asset: ContractAddress,
-        receiver: ContractAddress
+        receiver: ContractAddress,
     ) -> ITransmuterV2Dispatcher {
         let mut calldata: Array<felt252> = array![
-            admin().into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into()
+            admin().into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into(),
         ];
 
         let transmuter_class = match transmuter_class {
@@ -75,7 +77,7 @@ pub mod transmuter_utils {
 
         let (transmuter_addr, _) = transmuter_class.deploy(@calldata).expect('transmuter deploy failed');
 
-        start_prank(CheatTarget::One(shrine), shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::admin());
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::transmuter(), transmuter_addr);
 
@@ -86,8 +88,8 @@ pub mod transmuter_utils {
     pub fn wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
-                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class
-            )
+                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class,
+            ),
         }
     }
 
@@ -95,8 +97,8 @@ pub mod transmuter_utils {
     pub fn nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
-                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class
-            )
+                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class,
+            ),
         }
     }
 
@@ -106,29 +108,29 @@ pub mod transmuter_utils {
         shrine_ceiling: Wad,
         shrine_start_yin: Wad,
         start_yin_recipient: ContractAddress,
-        user: ContractAddress
+        user: ContractAddress,
     ) {
         // set debt ceiling to 30m
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.set_debt_ceiling(shrine_ceiling);
         shrine.inject(start_yin_recipient, shrine_start_yin);
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         // approve transmuter to deal with user's tokens
         let asset: ContractAddress = transmuter.get_asset();
-        start_prank(CheatTarget::One(asset), user);
-        IERC20Dispatcher { contract_address: asset }.approve(transmuter.contract_address, BoundedInt::max());
-        stop_prank(CheatTarget::One(asset));
+        start_cheat_caller_address(asset, user);
+        IERC20Dispatcher { contract_address: asset }.approve(transmuter.contract_address, Bounded::MAX);
+        stop_cheat_caller_address(asset);
     }
 
     pub fn shrine_with_wad_usd_stable_transmuter(
-        transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>
+        transmuter_class: Option<ContractClass>, token_class: Option<ContractClass>,
     ) -> TransmuterTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let wad_usd_stable = wad_usd_stable_deploy(token_class);
 
         let transmuter: ITransmuterV2Dispatcher = transmuter_deploy(
-            transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver()
+            transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver(),
         );
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
@@ -141,7 +143,7 @@ pub mod transmuter_utils {
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
         let mut calldata: Array<felt252> = array![admin().into()];
 
-        let transmuter_registry_class = declare("transmuter_registry").unwrap();
+        let transmuter_registry_class = declare("transmuter_registry").unwrap().contract_class();
         let (transmuter_registry_addr, _) = transmuter_registry_class
             .deploy(@calldata)
             .expect('TR registry deploy failed');

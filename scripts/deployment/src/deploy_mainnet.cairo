@@ -2,12 +2,12 @@ use deployment::{core_deployment, periphery_deployment, utils};
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
 use opus::core::roles::{
     absorber_roles, allocator_roles, caretaker_roles, controller_roles, equalizer_roles, purger_roles, seer_roles,
-    sentinel_roles, shrine_roles, transmuter_roles
+    sentinel_roles, shrine_roles, transmuter_roles,
 };
 use opus::external::roles::pragma_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{call, CallResult, invoke, InvokeResult, DisplayContractAddress};
+use sncast_std::{CallResult, DisplayContractAddress, InvokeResult, call, invoke};
 use starknet::{ClassHash, ContractAddress};
 use wadray::RAY_PERCENT;
 
@@ -35,7 +35,7 @@ fn main() {
 
     // Deploy transmuter
     let usdc_transmuter_restricted: ContractAddress = core_deployment::deploy_transmuter_restricted(
-        admin, shrine, addresses::mainnet::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING
+        admin, shrine, addresses::mainnet::usdc(), admin, constants::USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING,
     );
 
     // Deploy gates
@@ -53,12 +53,12 @@ fn main() {
     let strk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, strk, sentinel, "STRK");
     let wbtc_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, wbtc, sentinel, "WBTC");
     let wsteth_gate: ContractAddress = core_deployment::deploy_gate(
-        gate_class_hash, shrine, wsteth, sentinel, "WSTETH"
+        gate_class_hash, shrine, wsteth, sentinel, "WSTETH",
     );
     let xstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, xstrk, sentinel, "xSTRK");
     let sstrk_gate: ContractAddress = core_deployment::deploy_gate(gate_class_hash, shrine, sstrk, sentinel, "sSTRK");
     let wsteth_canonical_gate: ContractAddress = core_deployment::deploy_gate(
-        gate_class_hash, shrine, wsteth_canonical, sentinel, "WSTETH"
+        gate_class_hash, shrine, wsteth_canonical, sentinel, "WSTETH",
     );
 
     println!("Deploying oracles");
@@ -67,7 +67,7 @@ fn main() {
         addresses::mainnet::pragma_spot_oracle(),
         addresses::mainnet::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
-        constants::PRAGMA_SOURCES_THRESHOLD
+        constants::PRAGMA_SOURCES_THRESHOLD,
     );
     utils::set_oracles_to_seer(seer, array![pragma].span());
 
@@ -91,7 +91,7 @@ fn main() {
     utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH, STRK, WBTC and WSTETH yangs
-    // The admin role has been transferred to the multisig so any new collateral needs to 
+    // The admin role has been transferred to the multisig so any new collateral needs to
     // be added with the multisig.
     println!("Setting up Shrine");
 
@@ -150,7 +150,7 @@ fn main() {
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set debt ceiling failed');
 
@@ -162,7 +162,7 @@ fn main() {
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set minimum trove value failed');
 
@@ -175,7 +175,7 @@ fn main() {
     utils::set_yang_pair_id_for_oracle(pragma, wbtc, WBTC_USD_PAIR_ID);
     utils::set_yang_pair_id_for_oracle(pragma, wsteth, WSTETH_USD_PAIR_ID);
 
-    // The admin role has been transferred to the multisig so any new pair IDs 
+    // The admin role has been transferred to the multisig so any new pair IDs
     // need to be added with the multisig.
 
     // Set initial allocation
@@ -186,7 +186,7 @@ fn main() {
         selector!("set_allocation"),
         array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, twenty_pct, eighty_pct],
         Option::Some(constants::MAX_FEE),
-        Option::None
+        Option::None,
     )
         .expect('set allocation failed');
     println!("Allocation updated");
@@ -194,14 +194,14 @@ fn main() {
     // Update prices
     println!("Updating prices");
     let _update_prices = invoke(
-        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
     )
         .expect('update prices failed');
 
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::None, admin, shrine, sentinel, abbot, purger
+        Option::None, admin, shrine, sentinel, abbot, purger,
     );
 
     // Transfer admin role to multisig
@@ -217,7 +217,7 @@ fn main() {
     utils::transfer_admin_and_role(sentinel, multisig, sentinel_roles::default_admin_role(), "Sentinel");
     utils::transfer_admin_and_role(shrine, multisig, shrine_roles::default_admin_role(), "Shrine");
     utils::transfer_admin_and_role(
-        usdc_transmuter_restricted, multisig, transmuter_roles::default_admin_role(), "Transmuter[USDC] (R)"
+        usdc_transmuter_restricted, multisig, transmuter_roles::default_admin_role(), "Transmuter[USDC] (R)",
     );
 
     // Print summary table of deployed contracts

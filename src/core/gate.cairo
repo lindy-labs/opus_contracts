@@ -5,8 +5,9 @@ pub mod gate {
     use opus::interfaces::IGate::IGate;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math::{fixed_point_to_wad, pow};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -31,7 +32,7 @@ pub mod gate {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress
+        ref self: ContractState, shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress,
     ) {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
@@ -164,7 +165,7 @@ pub mod gate {
                 // Scale `yang_amt` down by the difference to match the decimal
                 // precision of the asset. If asset is of `Wad` precision, then
                 // the same value is returned
-                yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
+                yang_amt.into() / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
                 // use u256 to avoid precision loss from Wad multiplication
                 let res: u256 = (yang_amt.into() * get_total_assets_helper(asset).into()) / total_yang.into();

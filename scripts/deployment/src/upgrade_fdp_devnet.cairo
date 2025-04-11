@@ -1,6 +1,6 @@
 use scripts::addresses;
 use scripts::constants::MAX_FEE;
-use sncast_std::{declare, DeclareResult, invoke, InvokeResult, DisplayContractAddress};
+use sncast_std::{DeclareResult, DisplayContractAddress, InvokeResult, declare, invoke};
 use starknet::{ClassHash, ContractAddress};
 
 fn main() {

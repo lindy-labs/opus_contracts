@@ -4,7 +4,7 @@ use opus::external::roles::pragma_roles;
 use opus::periphery::roles::frontend_data_provider_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{deploy, DeployResult, invoke, InvokeResult, DisplayContractAddress};
+use sncast_std::{DeployResult, DisplayContractAddress, InvokeResult, deploy, invoke};
 use starknet::{ClassHash, ContractAddress};
 
 fn main() {
@@ -25,7 +25,7 @@ fn main() {
         addresses::mainnet::pragma_spot_oracle(),
         addresses::mainnet::pragma_twap_oracle(),
         constants::PRAGMA_FRESHNESS_THRESHOLD,
-        constants::PRAGMA_SOURCES_THRESHOLD
+        constants::PRAGMA_SOURCES_THRESHOLD,
     );
     let seer: ContractAddress = core_deployment::deploy_seer_v2(deployment_addr, shrine, sentinel);
 
@@ -33,10 +33,10 @@ fn main() {
         .try_into()
         .unwrap();
     let purger_calldata: Array<felt252> = array![
-        multisig.into(), shrine.into(), sentinel.into(), absorber.into(), seer.into()
+        multisig.into(), shrine.into(), sentinel.into(), absorber.into(), seer.into(),
     ];
     let purger = deploy(
-        purger_class_hash, purger_calldata, Option::None, true, Option::Some(constants::MAX_FEE), Option::None
+        purger_class_hash, purger_calldata, Option::None, true, Option::Some(constants::MAX_FEE), Option::None,
     )
         .expect('failed purger deploy')
         .contract_address;
@@ -83,7 +83,7 @@ fn main() {
     // Peripheral deployment
     println!("Deploying periphery contracts");
     let frontend_data_provider: ContractAddress = periphery_deployment::deploy_frontend_data_provider(
-        Option::Some(addresses::frontend_data_provider_class_hash()), multisig, shrine, sentinel, abbot, purger
+        Option::Some(addresses::frontend_data_provider_class_hash()), multisig, shrine, sentinel, abbot, purger,
     );
 
     // Transfer admin role to multisig

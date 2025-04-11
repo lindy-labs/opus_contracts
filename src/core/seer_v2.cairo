@@ -12,8 +12,11 @@ pub mod seer_v2 {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ConversionRateInfo, InternalPriceType, PriceType, YangSuspensionStatus};
     use opus::utils::math::pow;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
     //
     // Components
@@ -47,11 +50,11 @@ pub mod seer_v2 {
         // Sentinel associated with the Shrine and this module
         sentinel: ISentinelDispatcher,
         // Mapping of a yang to its price type
-        yang_price_types: LegacyMap<ContractAddress, InternalPriceType>,
+        yang_price_types: Map<ContractAddress, InternalPriceType>,
         // Collection of oracles, ordered by priority,
         // starting from 1 as the key.
         // (key) -> (oracle)
-        oracles: LegacyMap<u32, IOracleDispatcher>,
+        oracles: Map<u32, IOracleDispatcher>,
         // Block timestamp of the last `update_prices_internal` execution
         last_update_prices_call_timestamp: u64,
         // The minimal time difference in seconds of how often we
@@ -71,25 +74,25 @@ pub mod seer_v2 {
         PriceUpdateMissed: PriceUpdateMissed,
         UpdateFrequencyUpdated: UpdateFrequencyUpdated,
         UpdatePricesDone: UpdatePricesDone,
-        YangPriceTypeUpdated: YangPriceTypeUpdated
+        YangPriceTypeUpdated: YangPriceTypeUpdated,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PriceUpdate {
         pub oracle: ContractAddress,
         pub yang: ContractAddress,
-        pub price: Wad
+        pub price: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PriceUpdateMissed {
-        pub yang: ContractAddress
+        pub yang: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct UpdateFrequencyUpdated {
         pub old_frequency: u64,
-        pub new_frequency: u64
+        pub new_frequency: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -99,7 +102,7 @@ pub mod seer_v2 {
     pub struct YangPriceTypeUpdated {
         #[key]
         pub yang: ContractAddress,
-        pub price_type: PriceType
+        pub price_type: PriceType,
     }
 
     //
@@ -112,7 +115,7 @@ pub mod seer_v2 {
         admin: ContractAddress,
         shrine: ContractAddress,
         sentinel: ContractAddress,
-        update_frequency: u64
+        update_frequency: u64,
     ) {
         self.access_control.initializer(admin, Option::Some(seer_roles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -148,7 +151,7 @@ pub mod seer_v2 {
         fn get_yang_price_type(self: @ContractState, yang: ContractAddress) -> PriceType {
             match self.yang_price_types.read(yang) {
                 InternalPriceType::Direct => PriceType::Direct,
-                InternalPriceType::Vault(_) => PriceType::Vault
+                InternalPriceType::Vault(_) => PriceType::Vault,
             }
         }
 
@@ -166,7 +169,7 @@ pub mod seer_v2 {
                         // setting the terminating condition for looping
                         self.oracles.write(index, IOracleDispatcher { contract_address: Zero::zero() });
                         break;
-                    }
+                    },
                 }
             };
         }
@@ -175,7 +178,7 @@ pub mod seer_v2 {
             self.access_control.assert_has_role(seer_roles::SET_UPDATE_FREQUENCY);
             assert(
                 LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
-                'SEER: Frequency out of bounds'
+                'SEER: Frequency out of bounds',
             );
 
             let old_frequency: u64 = self.update_frequency.read();
@@ -191,7 +194,7 @@ pub mod seer_v2 {
                 PriceType::Direct => { InternalPriceType::Direct },
                 PriceType::Vault => {
                     assert(
-                        IERC20Dispatcher { contract_address: yang }.decimals() == WAD_DECIMALS, 'SEER: Not wad scale'
+                        IERC20Dispatcher { contract_address: yang }.decimals() == WAD_DECIMALS, 'SEER: Not wad scale',
                     );
 
                     let vault = IERC4626Dispatcher { contract_address: yang };
@@ -281,7 +284,7 @@ pub mod seer_v2 {
                                         InternalPriceType::Direct => oracle_price,
                                         InternalPriceType::Vault(info) => {
                                             let unscaled_conversion_rate: u128 = IERC4626Dispatcher {
-                                                contract_address: *yang
+                                                contract_address: *yang,
                                             }
                                                 .convert_to_assets(WAD_ONE.into())
                                                 .try_into()
@@ -299,11 +302,11 @@ pub mod seer_v2 {
                                     break;
                                 },
                                 // try next oracle for this yang
-                                Result::Err(_) => { oracle_index += 1; }
+                                Result::Err(_) => { oracle_index += 1; },
                             }
                         };
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
             };
 

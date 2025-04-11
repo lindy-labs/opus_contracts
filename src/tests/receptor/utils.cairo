@@ -5,21 +5,24 @@ pub mod receptor_utils {
     use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait
+        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait,
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, start_warp, CheatTarget};
+    use snforge_std::{
+        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
-    use wadray::{Wad, WAD_DECIMALS, WAD_ONE};
+    use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct ReceptorTestConfig {
         pub mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher,
         pub receptor: IReceptorDispatcher,
         pub shrine: IShrineDispatcher,
-        pub quote_tokens: Span<ContractAddress>
+        pub quote_tokens: Span<ContractAddress>,
     }
 
     //
@@ -31,7 +34,7 @@ pub mod receptor_utils {
 
     pub fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token(
-            'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class
+            'Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), shrine_utils::admin(), token_class,
         )
     }
 
@@ -44,13 +47,13 @@ pub mod receptor_utils {
     //
 
     pub fn mock_ekubo_oracle_extension_deploy(
-        mock_ekubo_oracle_extension_class: Option<ContractClass>
+        mock_ekubo_oracle_extension_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = ArrayTrait::new();
 
         let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_ekubo_oracle_extension").unwrap(),
+            Option::None => declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
         };
 
         let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
@@ -61,9 +64,9 @@ pub mod receptor_utils {
     }
 
     pub fn receptor_deploy(
-        receptor_class: Option<ContractClass>, token_class: Option<ContractClass>
+        receptor_class: Option<ContractClass>, token_class: Option<ContractClass>,
     ) -> ReceptorTestConfig {
-        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_cheat_block_timestamp_global(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let quote_tokens = common::quote_tokens(token_class);
 
@@ -84,23 +87,23 @@ pub mod receptor_utils {
 
         let receptor_class = match receptor_class {
             Option::Some(class) => class,
-            Option::None => declare("receptor").unwrap(),
+            Option::None => declare("receptor").unwrap().contract_class(),
         };
         let (receptor_addr, _) = receptor_class.deploy(@calldata).expect('receptor deploy failed');
 
         // Grant UPDATE_YIN_SPOT_PRICE role to receptor contract
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_accesscontrol.grant_role(shrine_roles::receptor(), receptor_addr);
-        stop_prank(CheatTarget::One(shrine.contract_address));
+        stop_cheat_caller_address(shrine.contract_address);
 
         ReceptorTestConfig {
             shrine,
             receptor: IReceptorDispatcher { contract_address: receptor_addr },
             mock_ekubo_oracle_extension: IMockEkuboOracleExtensionDispatcher {
-                contract_address: mock_ekubo_oracle_extension_addr
+                contract_address: mock_ekubo_oracle_extension_addr,
             },
-            quote_tokens
+            quote_tokens,
         }
     }
 }

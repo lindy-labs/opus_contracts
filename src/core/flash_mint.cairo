@@ -21,6 +21,7 @@ pub mod flash_mint {
     use opus::interfaces::IFlashMint::IFlashMint;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address};
     use wadray::Wad;
 
@@ -38,10 +39,10 @@ pub mod flash_mint {
 
     #[storage]
     struct Storage {
-        shrine: IShrineDispatcher,
         // components
         #[substorage(v0)]
         reentrancy_guard: reentrancy_guard_component::Storage,
+        shrine: IShrineDispatcher,
     }
 
 
@@ -50,7 +51,7 @@ pub mod flash_mint {
     pub enum Event {
         FlashMint: FlashMint,
         // Component events
-        ReentrancyGuardEvent: reentrancy_guard_component::Event
+        ReentrancyGuardEvent: reentrancy_guard_component::Event,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -60,7 +61,7 @@ pub mod flash_mint {
         #[key]
         pub receiver: ContractAddress,
         pub token: ContractAddress,
-        pub amount: u256
+        pub amount: u256,
     }
 
     #[constructor]
@@ -80,7 +81,7 @@ pub mod flash_mint {
             // Can only flash mint our own synthetic
             if token == shrine.contract_address {
                 let supply: Wad = shrine.get_total_yin();
-                return (supply * FLASH_MINT_AMOUNT_PCT.into()).val.into();
+                return (supply * FLASH_MINT_AMOUNT_PCT.into()).into();
             }
 
             0_u256
@@ -103,7 +104,7 @@ pub mod flash_mint {
             receiver: ContractAddress,
             token: ContractAddress,
             amount: u256,
-            call_data: Span<felt252>
+            call_data: Span<felt252>,
         ) -> bool {
             // prevents looping which would lead to excessive minting
             // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
@@ -122,7 +123,7 @@ pub mod flash_mint {
             let total_yin: Wad = shrine.get_total_yin();
             let budget_adjustment: Wad = match shrine.get_budget().try_into() {
                 Option::Some(surplus) => { surplus },
-                Option::None => { Zero::zero() }
+                Option::None => { Zero::zero() },
             };
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {

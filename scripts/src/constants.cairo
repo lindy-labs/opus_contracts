@@ -1,6 +1,6 @@
 use opus::constants::{
-    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID, XSTRK_USD_PAIR_ID,
-    SSTRK_USD_PAIR_ID
+    ETH_USD_PAIR_ID, PRAGMA_DECIMALS, SSTRK_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID,
+    XSTRK_USD_PAIR_ID,
 };
 use opus::types::pragma::{AggregationMode, PairSettings};
 use starknet::ClassHash;

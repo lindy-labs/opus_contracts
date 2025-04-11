@@ -1,12 +1,12 @@
 use core::array::ArrayTrait;
 use opus::types::pragma::PairSettings;
 use scripts::constants::MAX_FEE;
-use sncast_std::{DisplayContractAddress, invoke, InvokeResult};
+use sncast_std::{DisplayContractAddress, InvokeResult, invoke};
 use starknet::ContractAddress;
 
 pub fn grant_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
-        target, selector!("grant_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("grant_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None,
     )
         .expect('grant role failed');
 
@@ -15,7 +15,7 @@ pub fn grant_role(target: ContractAddress, account: ContractAddress, role: u128,
 
 pub fn revoke_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
-        target, selector!("revoke_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("revoke_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None,
     )
         .expect('revoke role failed');
 
@@ -23,20 +23,20 @@ pub fn revoke_role(target: ContractAddress, account: ContractAddress, role: u128
 }
 
 pub fn transfer_admin_and_role(
-    target: ContractAddress, new_admin: ContractAddress, role: u128, module_name: ByteArray
+    target: ContractAddress, new_admin: ContractAddress, role: u128, module_name: ByteArray,
 ) {
     let _grant_admin_role = invoke(
-        target, selector!("grant_role"), array![role.into(), new_admin.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("grant_role"), array![role.into(), new_admin.into()], Option::Some(MAX_FEE), Option::None,
     )
         .expect('grant role to new admin failed');
 
     let _renounce_admin_role = invoke(
-        target, selector!("renounce_role"), array![role.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("renounce_role"), array![role.into()], Option::Some(MAX_FEE), Option::None,
     )
         .expect('renounce role failed');
 
     let _transfer_admin = invoke(
-        target, selector!("set_pending_admin"), array![new_admin.into()], Option::Some(MAX_FEE), Option::None
+        target, selector!("set_pending_admin"), array![new_admin.into()], Option::Some(MAX_FEE), Option::None,
     )
         .expect('set pending admin failed');
 

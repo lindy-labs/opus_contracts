@@ -21,7 +21,7 @@ pub impl DislayUsingDebug<T, impl TDebug: Debug<T>> of Display<T> {
 pub enum YangSuspensionStatus {
     None,
     Temporary,
-    Permanent
+    Permanent,
 }
 
 #[derive(Copy, Debug, Drop, Serde)]
@@ -51,20 +51,20 @@ pub impl HealthImpl of HealthTrait {
 #[derive(Copy, Debug, Drop, Serde)]
 pub struct YangBalance {
     pub yang_id: u32, //  ID of yang in Shrine
-    pub amount: Wad, // Amount of yang in Wad
+    pub amount: Wad // Amount of yang in Wad
 }
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 pub struct AssetBalance {
     pub address: ContractAddress, // Address of the ERC-20 asset
-    pub amount: u128, // Amount of the asset in the asset's decimals
+    pub amount: u128 // Amount of the asset in the asset's decimals
 }
 
 #[derive(Copy, Debug, Drop, PartialEq, Serde)]
 pub struct Trove {
     pub charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     pub last_rate_era: u64,
-    pub debt: Wad, // Normalized debt
+    pub debt: Wad // Normalized debt
 }
 
 impl TroveStorePacking of StorePacking<Trove, u256> {
@@ -122,7 +122,7 @@ impl DistributionInfoStorePacking of StorePacking<DistributionInfo, felt252> {
         let (error, asset_amt_per_share) = DivRem::div_rem(value, shift);
 
         DistributionInfo {
-            asset_amt_per_share: asset_amt_per_share.try_into().unwrap(), error: error.try_into().unwrap()
+            asset_amt_per_share: asset_amt_per_share.try_into().unwrap(), error: error.try_into().unwrap(),
         }
     }
 }
@@ -131,13 +131,13 @@ impl DistributionInfoStorePacking of StorePacking<DistributionInfo, felt252> {
 pub struct Reward {
     pub asset: ContractAddress, // ERC20 address of token
     pub blesser: IBlesserDispatcher, // Address of contract implementing `IBlesser` for distributing the token to the absorber
-    pub is_active: bool, // Whether the blesser (vesting contract) should be called
+    pub is_active: bool // Whether the blesser (vesting contract) should be called
 }
 
 #[derive(Copy, Debug, Drop, PartialEq, Serde)]
 pub struct Provision {
     pub epoch: u32, // Epoch in which shares are issued
-    pub shares: Wad, // Amount of shares for provider in the above epoch
+    pub shares: Wad // Amount of shares for provider in the above epoch
 }
 
 impl ProvisionStorePacking of StorePacking<Provision, felt252> {
@@ -159,7 +159,7 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
 pub struct Request {
     pub timestamp: u64, // Timestamp of request
     pub timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
-    pub is_valid: bool, // Whether the request is still valid i.e. provider has not called `remove` or `provide`
+    pub is_valid: bool // Whether the request is still valid i.e. provider has not called `remove` or `provide`
 }
 
 impl RequestStorePacking of StorePacking<Request, felt252> {
@@ -175,7 +175,7 @@ impl RequestStorePacking of StorePacking<Request, felt252> {
         let (is_valid, timelock) = DivRem::div_rem(rest, shift);
 
         Request {
-            timestamp: timestamp.try_into().unwrap(), timelock: timelock.try_into().unwrap(), is_valid: is_valid == 1
+            timestamp: timestamp.try_into().unwrap(), timelock: timelock.try_into().unwrap(), is_valid: is_valid == 1,
         }
     }
 }
@@ -201,7 +201,7 @@ pub mod pragma {
         Median,
         Mean,
         ConversionRate,
-        Error
+        Error,
     }
 
     #[derive(Copy, Drop, Serde)]
@@ -246,14 +246,14 @@ pub mod pragma {
 pub enum PriceType {
     #[default]
     Direct,
-    Vault
+    Vault,
 }
 
 #[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]
 pub enum InternalPriceType {
     #[default]
     Direct,
-    Vault: ConversionRateInfo
+    Vault: ConversionRateInfo,
 }
 
 
@@ -264,7 +264,7 @@ pub struct ConversionRateInfo {
     // Address of the underlying asset
     pub asset: ContractAddress,
     // Scale that must be multiplied with the conversion rate to assets
-    // to get wad precision. 
-    pub conversion_rate_scale: u128
+    // to get wad precision.
+    pub conversion_rate_scale: u128,
 }
 
