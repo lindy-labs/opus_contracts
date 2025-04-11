@@ -5,18 +5,18 @@ mod test_sentinel {
     use opus::core::sentinel::sentinel as sentinel_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::ISentinel::ISentinelDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
     use opus::tests::sentinel::utils::{sentinel_utils, sentinel_utils::SentinelTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
-    use opus::utils::math::{fixed_point_to_wad, pow};
+    use opus::utils::math::fixed_point_to_wad;
     use snforge_std::{
-        CheatTarget, ContractClass, EventSpyAssertionsTrait, declare, spy_events, start_prank, start_warp,
+        EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
     };
     use starknet::ContractAddress;
-    use wadray::{Ray, WAD_ONE, Wad};
+    use wadray::{WAD_ONE, Wad};
 
     #[test]
     fn test_deploy_sentinel_and_add_yang() {
@@ -133,7 +133,7 @@ mod test_sentinel {
     #[should_panic(expected: ('SE: Yang cannot be zero address',))]
     fn test_add_yang_yang_zero_addr() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel
             .add_yang(
                 Zero::zero(),
@@ -149,7 +149,7 @@ mod test_sentinel {
     #[should_panic(expected: ('SE: Gate cannot be zero address',))]
     fn test_add_yang_gate_zero_addr() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel
             .add_yang(
                 sentinel_utils::dummy_yang_addr(),
@@ -165,7 +165,7 @@ mod test_sentinel {
     #[should_panic(expected: ('SE: Start price cannot be zero',))]
     fn test_add_yang_zero_price() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel
             .add_yang(
                 sentinel_utils::dummy_yang_addr(),
@@ -186,7 +186,7 @@ mod test_sentinel {
         let eth = *yangs[0];
         let eth_gate = *gates[0];
 
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel
             .add_yang(
                 eth,
@@ -208,7 +208,7 @@ mod test_sentinel {
         let eth_gate = *gates[0];
         let wbtc: ContractAddress = common::wbtc_token_deploy(classes.token);
 
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel
             .add_yang(
                 wbtc,
@@ -228,7 +228,7 @@ mod test_sentinel {
 
         let new_asset_max = sentinel_utils::ETH_ASSET_MAX * 2;
 
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
 
         // Test increasing the max
         sentinel.set_yang_asset_max(eth, new_asset_max);
@@ -278,7 +278,7 @@ mod test_sentinel {
     fn test_set_yang_asset_max_non_existent_yang() {
         let SentinelTestConfig { sentinel, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
 
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.set_yang_asset_max(sentinel_utils::dummy_yang_addr(), sentinel_utils::ETH_ASSET_MAX);
     }
 
@@ -287,7 +287,7 @@ mod test_sentinel {
     fn test_set_yang_asset_max_unauthed() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
+        start_cheat_caller_address(sentinel.contract_address, common::badguy());
         sentinel.set_yang_asset_max(eth, sentinel_utils::ETH_ASSET_MAX);
     }
 
@@ -307,13 +307,11 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_prank(
-            CheatTarget::Multiple(array![sentinel.contract_address, shrine.contract_address]),
-            sentinel_utils::mock_abbot(),
-        );
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        start_cheat_caller_address(shrine.contract_address, sentinel_utils::mock_abbot());
 
-        let preview_yang_amt: Wad = sentinel.convert_to_yang(eth, deposit_amt.val);
-        let yang_amt: Wad = sentinel.enter(eth, user, deposit_amt.val);
+        let preview_yang_amt: Wad = sentinel.convert_to_yang(eth, deposit_amt.into());
+        let yang_amt: Wad = sentinel.enter(eth, user, deposit_amt.into());
         shrine.deposit(eth, trove_id, yang_amt);
 
         let expected_initial_eth_amt: u128 = sentinel_utils::get_initial_asset_amt(eth);
@@ -321,7 +319,7 @@ mod test_sentinel {
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
         assert(
-            eth_erc20.balance_of(eth_gate.contract_address) == (expected_initial_eth_amt + deposit_amt.val).into(),
+            eth_erc20.balance_of(eth_gate.contract_address) == expected_initial_eth_amt.into() + deposit_amt.into(),
             'Wrong eth bal after enter',
         );
         assert(shrine.get_deposit(eth, trove_id) == yang_amt, 'Wrong yang bal in shrine');
@@ -359,10 +357,8 @@ mod test_sentinel {
         // Deposit a very small amount of WBTC
         let deposit_amt: u128 = 9_u128;
 
-        start_prank(
-            CheatTarget::Multiple(array![sentinel.contract_address, shrine.contract_address]),
-            sentinel_utils::mock_abbot(),
-        );
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        start_cheat_caller_address(shrine.contract_address, sentinel_utils::mock_abbot());
 
         let preview_yang_amt: Wad = sentinel.convert_to_yang(wbtc, deposit_amt);
         let yang_amt: Wad = sentinel.enter(wbtc, user, deposit_amt);
@@ -400,12 +396,12 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Reduce user's balance to below the deposit amount
-        start_prank(CheatTarget::One(eth), user);
+        start_cheat_caller_address(eth, user);
         eth_erc20.transfer(common::non_zero_address(), eth_erc20.balance_of(user) - deposit_amt.into() - 1);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
 
-        sentinel.enter(eth, user, deposit_amt.val);
+        sentinel.enter(eth, user, deposit_amt.into());
     }
 
     #[test]
@@ -416,9 +412,9 @@ mod test_sentinel {
         let user: ContractAddress = common::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
 
-        sentinel.enter(sentinel_utils::dummy_yang_addr(), user, deposit_amt.val);
+        sentinel.enter(sentinel_utils::dummy_yang_addr(), user, deposit_amt.into());
     }
 
     #[test]
@@ -430,9 +426,9 @@ mod test_sentinel {
         let user: ContractAddress = common::eth_hoarder();
         let deposit_amt: Wad = (sentinel_utils::ETH_ASSET_MAX + 1).into(); // Deposit amount exceeds max deposit
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
 
-        sentinel.enter(eth, user, deposit_amt.val);
+        sentinel.enter(eth, user, deposit_amt.into());
     }
 
     #[test]
@@ -442,7 +438,7 @@ mod test_sentinel {
 
         let user: ContractAddress = common::eth_hoarder();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
 
         sentinel.exit(sentinel_utils::dummy_yang_addr(), user, WAD_ONE.into());
     }
@@ -455,7 +451,7 @@ mod test_sentinel {
 
         let user: ContractAddress = common::eth_hoarder();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
 
         sentinel.exit(eth, user, WAD_ONE.into()); // User does not have any yang to exit
     }
@@ -470,8 +466,8 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
-        sentinel.enter(eth, user, deposit_amt.val);
+        start_cheat_caller_address(sentinel.contract_address, common::badguy());
+        sentinel.enter(eth, user, deposit_amt.into());
     }
 
     #[test]
@@ -482,7 +478,7 @@ mod test_sentinel {
 
         let user: ContractAddress = common::eth_hoarder();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
+        start_cheat_caller_address(sentinel.contract_address, common::badguy());
         sentinel.exit(eth, user, WAD_ONE.into());
     }
 
@@ -497,14 +493,14 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Kill the gate
-        start_prank(CheatTarget::All, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         assert(!sentinel.get_gate_live(eth), 'Gate should be killed');
 
         // Attempt to enter a killed gate should fail
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
-        sentinel.enter(eth, user, deposit_amt.val);
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        sentinel.enter(eth, user, deposit_amt.into());
     }
 
     #[test]
@@ -523,20 +519,18 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_prank(
-            CheatTarget::Multiple(array![sentinel.contract_address, shrine.contract_address]),
-            sentinel_utils::mock_abbot(),
-        );
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        start_cheat_caller_address(shrine.contract_address, sentinel_utils::mock_abbot());
 
-        let yang_amt: Wad = sentinel.enter(eth, user, deposit_amt.val);
+        let yang_amt: Wad = sentinel.enter(eth, user, deposit_amt.into());
         shrine.deposit(eth, trove_id, yang_amt);
 
         // Killing the gate
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         // Exiting
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
         sentinel.exit(eth, user, yang_amt);
     }
 
@@ -549,12 +543,12 @@ mod test_sentinel {
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Kill the gate
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.kill_gate(eth);
 
         // Attempt to enter a killed gate should fail
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
-        sentinel.convert_to_yang(eth, deposit_amt.val);
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        sentinel.convert_to_yang(eth, deposit_amt.into());
     }
 
     #[test]
@@ -563,8 +557,8 @@ mod test_sentinel {
             sentinel, shrine, yangs, ..,
         } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
-        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
+        start_cheat_block_timestamp_global(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let status = shrine.get_yang_suspension_status(eth);
         assert(status == YangSuspensionStatus::None, 'status 1');
@@ -574,7 +568,7 @@ mod test_sentinel {
         assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
         // move time forward by 1 day
-        start_warp(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP + 86400);
+        start_cheat_block_timestamp_global(shrine_utils::DEPLOYMENT_TIMESTAMP + 86400);
 
         sentinel.unsuspend_yang(eth);
         let status = shrine.get_yang_suspension_status(eth);
@@ -586,14 +580,14 @@ mod test_sentinel {
     fn test_try_enter_when_yang_suspended() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.suspend_yang(eth);
 
         let user: ContractAddress = common::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::mock_abbot());
-        sentinel.enter(eth, user, deposit_amt.val);
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::mock_abbot());
+        sentinel.enter(eth, user, deposit_amt.into());
     }
 
     #[test]
@@ -601,7 +595,7 @@ mod test_sentinel {
     fn test_try_suspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
+        start_cheat_caller_address(sentinel.contract_address, common::badguy());
         sentinel.suspend_yang(eth);
     }
 
@@ -610,7 +604,7 @@ mod test_sentinel {
     fn test_try_unsuspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_prank(CheatTarget::One(sentinel.contract_address), common::badguy());
+        start_cheat_caller_address(sentinel.contract_address, common::badguy());
         sentinel.unsuspend_yang(eth);
     }
 }
