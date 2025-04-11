@@ -3,24 +3,19 @@ mod test_ekubo {
     use core::num::traits::Zero;
     use core::result::ResultTrait;
     use opus::constants;
-    use opus::core::shrine::shrine;
     use opus::external::ekubo::ekubo as ekubo_contract;
-    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices,
-    };
+    use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
-    use opus::tests::external::utils::{ekubo_utils, ekubo_utils::EkuboTestConfig, mock_eth_token_addr};
+    use opus::tests::external::utils::{ekubo_utils, ekubo_utils::EkuboTestConfig};
     use opus::utils::ekubo_oracle_adapter::{
         IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait, ekubo_oracle_adapter_component,
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address};
+    use snforge_std::{DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address};
     use starknet::ContractAddress;
-    use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
+    use wadray::{WAD_DECIMALS, Wad};
 
     //
     // Tests - Deployment and setters
@@ -83,7 +78,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_pass() {
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = *declare("erc20_mintable").unwrap().contract_class();
         let EkuboTestConfig {
             ekubo, mock_ekubo, quote_tokens,
         } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::Some(token_class));
@@ -136,7 +131,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_more_than_one_invalid_price_fail() {
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = *declare("erc20_mintable").unwrap().contract_class();
         let EkuboTestConfig {
             ekubo, mock_ekubo, quote_tokens,
         } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::Some(token_class));

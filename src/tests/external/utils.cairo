@@ -9,32 +9,23 @@ pub fn pepe_token_addr() -> ContractAddress {
 }
 
 pub mod pragma_utils {
-    use core::num::traits::Zero;
     use core::traits::Into;
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
-    use opus::core::roles::shrine_roles;
-    use opus::external::pragma::pragma as pragma_contract;
-    use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::interfaces::IPragma::{
         IPragmaDispatcher, IPragmaDispatcherTrait, IPragmaV2Dispatcher, IPragmaV2DispatcherTrait,
     };
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::mock_pragma::{
-        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, mock_pragma as mock_pragma_contract,
-    };
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
-    use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
     use opus::utils::math::pow;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
+    use wadray::{WAD_DECIMALS, Wad};
 
     #[derive(Copy, Drop)]
     pub struct PragmaTestConfig {
@@ -76,36 +67,12 @@ pub mod pragma_utils {
 
         let mock_pragma_class = match mock_pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_pragma").unwrap().contract_class(),
+            Option::None => *declare("mock_pragma").unwrap().contract_class(),
         };
 
         let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('mock pragma deploy failed');
 
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
-    }
-
-    pub fn pragma_deploy(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
-    ) -> PragmaTestConfig {
-        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
-        let mut calldata: Array<felt252> = array![
-            admin().into(),
-            mock_pragma.contract_address.into(),
-            mock_pragma.contract_address.into(),
-            FRESHNESS_THRESHOLD.into(),
-            SOURCES_THRESHOLD.into(),
-        ];
-
-        let pragma_class = match pragma_class {
-            Option::Some(class) => class,
-            Option::None => declare("pragma").unwrap().contract_class(),
-        };
-
-        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma deploy failed');
-
-        let pragma = IPragmaDispatcher { contract_address: pragma_addr };
-
-        PragmaTestConfig { pragma, mock_pragma }
     }
 
     pub fn pragma_v2_deploy(
@@ -122,7 +89,7 @@ pub mod pragma_utils {
 
         let pragma_v2_class = match pragma_v2_class {
             Option::Some(class) => class,
-            Option::None => declare("pragma_v2").unwrap().contract_class(),
+            Option::None => *declare("pragma_v2").unwrap().contract_class(),
         };
 
         let (pragma_v2_addr, _) = pragma_v2_class.deploy(@calldata).expect('pragma v2 deploy failed');
@@ -220,30 +187,11 @@ pub mod pragma_utils {
 }
 
 pub mod ekubo_utils {
-    use core::num::traits::Zero;
-    use core::traits::Into;
-    use opus::core::roles::shrine_roles;
-    use opus::external::ekubo::ekubo as ekubo_contract;
-    use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait,
-        mock_ekubo_oracle_extension as mock_ekubo_oracle_extension_contract,
-    };
+    use opus::interfaces::IEkubo::IEkuboDispatcher;
+    use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher;
     use opus::tests::common;
-    use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
-    use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::math::pow;
-    use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
-    };
-    use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
+    use snforge_std::{ContractClass, ContractClassTrait, DeclareResultTrait, declare};
+    use starknet::ContractAddress;
 
     #[derive(Copy, Drop)]
     pub struct EkuboTestConfig {
@@ -293,7 +241,7 @@ pub mod ekubo_utils {
 
         let ekubo_class = match ekubo_class {
             Option::Some(class) => class,
-            Option::None => declare("ekubo").unwrap().contract_class(),
+            Option::None => *declare("ekubo").unwrap().contract_class(),
         };
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
         let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };
