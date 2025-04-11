@@ -6,14 +6,13 @@ mod test_purger {
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcherTrait;
+    use opus::interfaces::IAbsorber::IAbsorberDispatcherTrait;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::flash_liquidator::{IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
+    use opus::interfaces::IPurger::IPurgerDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
+    use opus::mock::flash_liquidator::IFlashLiquidatorDispatcherTrait;
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::flash_mint::utils::flash_mint_utils;
@@ -22,8 +21,8 @@ mod test_purger {
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::{pow, scale_u128_by_ray};
     use snforge_std::{
-        CheatTarget, Event, EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events,
-        start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_caller_address,
+        EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events, start_cheat_block_timestamp_global,
+        start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_ONE, Wad};
@@ -1084,7 +1083,7 @@ mod test_purger {
             'wrong absorber asset balance',
         );
 
-        let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
+        let mut purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
         let (_, raw_purged_event) = purger_events.pop_front().unwrap();
         let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
@@ -1406,9 +1405,10 @@ mod test_purger {
                                                             }
 
                                                             // Check Purger events
-                                                            let purger_events = spy
+                                                            let mut purger_events = spy
                                                                 .get_events()
-                                                                .emitted_by(purger.contract_address);
+                                                                .emitted_by(purger.contract_address)
+                                                                .events;
 
                                                             let (_, raw_purged_event) = purger_events
                                                                 .pop_front()
@@ -1860,8 +1860,8 @@ mod test_purger {
 
                     // Check Purger events
 
-                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
-                    let (_, raw_purged_event) = events.pop_front().unwrap();
+                    let mut purger_events = spy.get_events().emitted_by(purger.contract_address).events;
+                    let (_, raw_purged_event) = purger_events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
                     common::assert_asset_balances_equalish(
@@ -3007,7 +3007,7 @@ mod test_purger {
                                                         .events;
 
                                                     common::assert_event_not_emitted_by_name(
-                                                        purger_events, selector!("Purged"),
+                                                        purger_events.span(), selector!("Purged"),
                                                     );
 
                                                     let expected_events = array![
@@ -3188,7 +3188,7 @@ mod test_purger {
                         yangs, expected_freed_amts,
                     );
 
-                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
+                    let mut purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
                     let (_, raw_purged_event) = purger_events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
@@ -3463,9 +3463,9 @@ mod test_purger {
                         yangs, expected_freed_asset_amts,
                     );
 
-                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
+                    let mut purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
-                    let (_, raw_purged_event) = events.pop_front().unwrap();
+                    let (_, raw_purged_event) = purger_events.pop_front().unwrap();
                     let purged_event = purger_utils::deserialize_purged_event(raw_purged_event);
 
                     assert(purged_event.trove_id == target_trove, 'wrong Purged trove ID');
@@ -3868,7 +3868,7 @@ mod test_purger {
 
         // Adding one to offset any precision loss
         let new_timestamp: u64 = current_timestamp + ts_diff + 1;
-        start_cheat_block_timestamp_global(CheatTarget::All, new_timestamp);
+        start_cheat_block_timestamp_global(new_timestamp);
 
         assert(!shrine.is_healthy(target_trove), 'should be unhealthy');
 
@@ -3926,12 +3926,11 @@ mod test_purger {
         let searcher_yin: Wad = (purger_utils::SEARCHER_YIN / 2).into();
         let yin_erc20 = shrine_utils::yin(shrine.contract_address);
 
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, absorber.contract_address]), searcher,
-        );
+        start_cheat_caller_address(shrine.contract_address, searcher);
         yin_erc20.approve(absorber.contract_address, searcher_yin.into());
         stop_cheat_caller_address(shrine.contract_address);
 
+        start_cheat_caller_address(absorber.contract_address, searcher);
         absorber.provide(searcher_yin);
         stop_cheat_caller_address(absorber.contract_address);
 

@@ -1,20 +1,16 @@
 pub mod purger_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::cmp::min;
     use core::num::traits::Zero;
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
-    use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcher;
+    use opus::interfaces::IAbsorber::IAbsorberDispatcher;
+    use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::flash_liquidator::{IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait, flash_liquidator};
-    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
+    use opus::mock::flash_liquidator::IFlashLiquidatorDispatcher;
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::external::utils::pragma_utils;
@@ -22,13 +18,12 @@ pub mod purger_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
-    use opus::utils::math::pow;
     use snforge_std::{
         ContractClass, ContractClassTrait, DeclareResultTrait, Event, declare, start_cheat_caller_address,
         stop_cheat_caller_address,
     };
-    use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_DECIMALS, WAD_ONE, Wad};
+    use starknet::ContractAddress;
+    use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_ONE, Wad};
 
     // Struct to group together all contract classes
     // needed for purger tests
@@ -333,19 +328,19 @@ pub mod purger_utils {
 
     pub fn declare_contracts() -> PurgerTestClasses {
         PurgerTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
-            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
-            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
-            gate: Option::Some(declare("gate").unwrap().contract_class()),
-            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
-            absorber: Option::Some(declare("absorber").unwrap().contract_class()),
-            blesser: declare("blesser").unwrap().contract_class(),
-            purger: declare("purger").unwrap().contract_class(),
-            pragma_v2: Option::Some(declare("pragma_v2").unwrap().contract_class()),
-            mock_pragma: Option::Some(declare("mock_pragma").unwrap().contract_class()),
-            ekubo: Option::Some(declare("ekubo").unwrap().contract_class()),
-            mock_ekubo: Option::Some(declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
-            seer: Option::Some(declare("seer").unwrap().contract_class()),
+            abbot: Option::Some(*declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(*declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(*declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
+            absorber: Option::Some(*declare("absorber").unwrap().contract_class()),
+            blesser: *declare("blesser").unwrap().contract_class(),
+            purger: *declare("purger").unwrap().contract_class(),
+            pragma_v2: Option::Some(*declare("pragma_v2").unwrap().contract_class()),
+            mock_pragma: Option::Some(*declare("mock_pragma").unwrap().contract_class()),
+            ekubo: Option::Some(*declare("ekubo").unwrap().contract_class()),
+            mock_ekubo: Option::Some(*declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
+            seer: Option::Some(*declare("seer").unwrap().contract_class()),
         }
     }
 
@@ -458,7 +453,7 @@ pub mod purger_utils {
 
         let fl_class = match fl_class {
             Option::Some(class) => class,
-            Option::None => declare("flash_liquidator").unwrap().contract_class(),
+            Option::None => *declare("flash_liquidator").unwrap().contract_class(),
         };
 
         let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');

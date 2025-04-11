@@ -4,20 +4,16 @@ mod test_absorber {
     use core::num::traits::{Bounded, Zero};
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IAbsorber::{
-        IAbsorberDispatcher, IAbsorberDispatcherTrait, IBlesserDispatcher, IBlesserDispatcherTrait,
-    };
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcherTrait, IBlesserDispatcher};
+    use opus::interfaces::IERC20::IERC20DispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::absorber::utils::{absorber_utils, absorber_utils::{AbsorberRewardsTestConfig, AbsorberTestConfig}};
     use opus::tests::common;
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
-    use opus::tests::purger::utils::purger_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use snforge_std::{
-        Event, EventSpyAssertionsTrait, EventSpyTrait, declare, spy_events, start_cheat_block_timestamp_global,
+        EventSpyAssertionsTrait, EventSpyTrait, spy_events, start_cheat_block_timestamp_global,
         start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};

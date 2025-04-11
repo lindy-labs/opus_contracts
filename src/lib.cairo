@@ -87,10 +87,10 @@ mod tests {
         mod test_abbot;
         pub mod utils;
     }
-    // mod absorber {
-    //     mod test_absorber;
-    //     pub mod utils;
-    // }
+    mod absorber {
+        mod test_absorber;
+        pub mod utils;
+    }
     // mod caretaker {
     //     mod test_caretaker;
     //     pub mod utils;
@@ -117,10 +117,10 @@ mod tests {
         mod test_gate;
         pub mod utils;
     }
-    // mod purger {
-    //     mod test_purger;
-    //     pub mod utils;
-    // }
+    mod purger {
+        mod test_purger;
+        pub mod utils;
+    }
     // mod receptor {
     //     mod test_receptor;
     //     pub mod utils;
