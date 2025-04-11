@@ -1,16 +1,17 @@
 pub mod abbot_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
-    use opus::core::abbot::abbot as abbot_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcher;
+    use opus::interfaces::IGate::IGateDispatcher;
+    use opus::interfaces::ISentinel::ISentinelDispatcher;
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{CheatTarget, ContractClass, ContractClassTrait, declare, start_prank, stop_prank};
+    use snforge_std::{
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
     use wadray::Wad;
 
@@ -78,11 +79,11 @@ pub mod abbot_utils {
 
     pub fn declare_contracts() -> AbbotTestClasses {
         AbbotTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap().contract_class()),
-            sentinel: Option::Some(declare("sentinel").unwrap().contract_class()),
-            token: Option::Some(declare("erc20_mintable").unwrap().contract_class()),
-            gate: Option::Some(declare("gate").unwrap().contract_class()),
-            shrine: Option::Some(declare("shrine").unwrap().contract_class()),
+            abbot: Option::Some(*declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(*declare("erc20_mintable").unwrap().contract_class()),
+            gate: Option::Some(*declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
         }
     }
 
@@ -110,16 +111,16 @@ pub mod abbot_utils {
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
+        stop_cheat_caller_address(shrine.contract_address);
 
         // Grant Sentinel roles to Abbot
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
-
-        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         AbbotTestConfig { shrine, sentinel, abbot, yangs, gates }
     }

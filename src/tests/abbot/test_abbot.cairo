@@ -1,21 +1,20 @@
 mod test_abbot {
     use core::num::traits::Zero;
     use opus::core::abbot::abbot as abbot_contract;
-    use opus::core::sentinel::sentinel as sentinel_contract;
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcherTrait;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IGate::IGateDispatcher;
+    use opus::interfaces::ISentinel::ISentinelDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::abbot::utils::{abbot_utils, abbot_utils::{AbbotTestConfig, AbbotTestTrove}};
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, YangBalance};
     use opus::utils::math::fixed_point_to_wad;
-    use snforge_std::{CheatTarget, EventSpyAssertionsTrait, spy_events, start_prank, stop_prank};
+    use snforge_std::{EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address};
     use starknet::ContractAddress;
-    use wadray::{WAD_ONE, WAD_SCALE, Wad};
+    use wadray::{WAD_SCALE, Wad};
 
     //
     // Tests
@@ -198,7 +197,7 @@ mod test_abbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = Zero::zero();
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs.span(), yang_amts.span());
         abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
     }
@@ -233,7 +232,7 @@ mod test_abbot {
         );
         let mut trove_yang_deposits: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.close_trove(trove_id);
 
         let mut after_trove_owner_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -295,7 +294,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        start_cheat_caller_address(abbot.contract_address, common::badguy());
         abbot.close_trove(trove_id);
     }
 
@@ -311,7 +310,7 @@ mod test_abbot {
         let mut spy = spy_events();
         let mut expected_events = ArrayTrait::new();
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         let mut yangs_copy = yangs;
         let mut deposited_amts_copy = yang_asset_amts;
         loop {
@@ -365,7 +364,7 @@ mod test_abbot {
         let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -379,7 +378,7 @@ mod test_abbot {
         let invalid_trove_id: u64 = 0;
         let amount: u128 = 1;
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.deposit(invalid_trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -394,7 +393,7 @@ mod test_abbot {
         let asset_addr = *yangs.at(0);
         let amount: u128 = 1;
 
-        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        start_cheat_caller_address(abbot.contract_address, common::badguy());
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -406,7 +405,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
 
         let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
@@ -426,13 +425,13 @@ mod test_abbot {
         let gate_addr: ContractAddress = *gates.at(0).contract_address;
         let gate_bal = IERC20Dispatcher { contract_address: asset_addr }.balance_of(gate_addr);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         let new_asset_max: u128 = gate_bal.try_into().unwrap();
         sentinel.set_yang_asset_max(asset_addr, new_asset_max);
-        stop_prank(CheatTarget::One(sentinel.contract_address));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         let amount: u128 = 1;
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -447,7 +446,7 @@ mod test_abbot {
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
 
         let expected_events = array![
@@ -509,7 +508,7 @@ mod test_abbot {
         );
 
         // Withdraw all ETH and WBTC
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.melt(trove_id, forge_amt);
         abbot.withdraw(trove_id, AssetBalance { address: eth, amount: deposit_eth_amt });
         abbot.withdraw(trove_id, AssetBalance { address: wbtc, amount: deposit_wbtc_amt });
@@ -538,15 +537,15 @@ mod test_abbot {
             abbot, trove_owner, deposit_yangs, deposit_amts, array![*gates[0]].span(), forge_amt,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.melt(trove_id, forge_amt);
-        stop_prank(CheatTarget::One(abbot.contract_address));
+        stop_cheat_caller_address(abbot.contract_address);
 
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         sentinel.suspend_yang(eth);
-        stop_prank(CheatTarget::One(sentinel.contract_address));
+        stop_cheat_caller_address(sentinel.contract_address);
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: eth, amount: eth_deposit_amt });
 
         assert(shrine.get_deposit(eth, trove_id).is_zero(), 'wrong yang amount');
@@ -563,7 +562,7 @@ mod test_abbot {
         let asset_addr = Zero::zero();
         let amount: u128 = 1;
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -575,7 +574,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
 
         let asset_addr = sentinel_utils::dummy_yang_addr();
         let amount: u128 = 0;
@@ -591,7 +590,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        start_cheat_caller_address(abbot.contract_address, common::badguy());
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;
@@ -607,7 +606,7 @@ mod test_abbot {
         );
 
         let additional_forge_amt: Wad = abbot_utils::OPEN_TROVE_FORGE_AMT.into();
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.forge(trove_id, additional_forge_amt, Zero::zero());
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
@@ -633,7 +632,7 @@ mod test_abbot {
         assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.forge(trove_id, unsafe_forge_amt, Zero::zero());
     }
 
@@ -644,7 +643,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), common::badguy());
+        start_cheat_caller_address(abbot.contract_address, common::badguy());
         abbot.forge(trove_id, Zero::zero(), Zero::zero());
     }
 
@@ -666,7 +665,7 @@ mod test_abbot {
 
         let melt_amt: u128 = before_yin.into() / 2;
         let melt_amt: Wad = melt_amt.into();
-        start_prank(CheatTarget::One(abbot.contract_address), trove_owner);
+        start_cheat_caller_address(abbot.contract_address, trove_owner);
         abbot.melt(trove_id, melt_amt);
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
@@ -681,7 +680,7 @@ mod test_abbot {
             abbot, non_owner, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, non_owner_forge_amt,
         );
 
-        start_prank(CheatTarget::One(abbot.contract_address), non_owner);
+        start_cheat_caller_address(abbot.contract_address, non_owner);
         abbot.melt(trove_id, after_trove_health.debt);
 
         let final_trove_health: Health = shrine.get_trove_health(trove_id);
