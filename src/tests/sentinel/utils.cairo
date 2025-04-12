@@ -68,7 +68,7 @@ pub mod sentinel_utils {
     pub fn declare_contracts() -> SentinelTestClasses {
         SentinelTestClasses {
             sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
-            token: Option::Some(*declare("erc20_mintable").unwrap().contract_class()),
+            token: Option::Some(common::declare_token()),
             gate: Option::Some(*declare("gate").unwrap().contract_class()),
             shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
         }

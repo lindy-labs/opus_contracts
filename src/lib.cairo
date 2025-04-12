@@ -139,12 +139,12 @@ mod tests {
         mod test_shrine_redistribution;
         pub mod utils;
     }
-    // mod transmuter {
-//     mod test_transmuter;
-//     pub mod test_transmuter_registry;
-//     pub mod utils;
-// }
-// mod utils {
+    mod transmuter {
+        mod test_transmuter;
+        pub mod test_transmuter_registry;
+        pub mod utils;
+    }
+    // mod utils {
 //     mod mock_address_registry;
 //     mod mock_ekubo_oracle_adapter;
 //     mod mock_reentrancy_guard;

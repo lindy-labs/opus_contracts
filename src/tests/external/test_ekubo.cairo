@@ -13,7 +13,7 @@ mod test_ekubo {
         IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait, ekubo_oracle_adapter_component,
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events, start_cheat_caller_address};
+    use snforge_std::{EventSpyAssertionsTrait, spy_events, start_cheat_caller_address};
     use starknet::ContractAddress;
     use wadray::{WAD_DECIMALS, Wad};
 
@@ -78,7 +78,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_pass() {
-        let token_class = *declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let EkuboTestConfig {
             ekubo, mock_ekubo, quote_tokens,
         } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::Some(token_class));
@@ -131,7 +131,7 @@ mod test_ekubo {
 
     #[test]
     fn test_fetch_price_more_than_one_invalid_price_fail() {
-        let token_class = *declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let EkuboTestConfig {
             ekubo, mock_ekubo, quote_tokens,
         } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::Some(token_class));

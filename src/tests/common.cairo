@@ -219,6 +219,9 @@ pub fn wbtc_vault_deploy(vault_class: Option<ContractClass>, wbtc: ContractAddre
     deploy_vault('Bitcoin Vault', 'vWBTC', 18, WBTC_TOTAL.into(), wbtc_hoarder(), wbtc, vault_class)
 }
 
+pub fn declare_token() -> ContractClass {
+    *declare("erc20_mintable").unwrap().contract_class()
+}
 
 // Helper function to deploy a token
 pub fn deploy_token(
@@ -240,7 +243,7 @@ pub fn deploy_token(
 
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => *declare("erc20_mintable").unwrap().contract_class(),
+        Option::None => declare_token(),
     };
 
     let (token_addr, _) = token_class.deploy(@calldata).expect('erc20 deploy failed');
