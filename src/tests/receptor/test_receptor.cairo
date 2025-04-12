@@ -53,7 +53,7 @@ mod test_receptor {
     // Parameters
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_oracle_extension_unauthorized() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
@@ -63,7 +63,7 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_quote_tokens_unauthorized() {
         let ReceptorTestConfig {
             receptor, quote_tokens, ..,
@@ -75,7 +75,7 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_twap_duration_unauthorized_fail() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
@@ -109,7 +109,7 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_update_frequency_unauthorized() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         start_cheat_caller_address(receptor.contract_address, common::badguy());
@@ -117,7 +117,7 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('REC: Frequency out of bounds',))]
+    #[should_panic(expected: 'REC: Frequency out of bounds')]
     fn test_set_update_frequency_oob_lower() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
@@ -127,7 +127,7 @@ mod test_receptor {
     }
 
     #[test]
-    #[should_panic(expected: ('REC: Frequency out of bounds',))]
+    #[should_panic(expected: 'REC: Frequency out of bounds')]
     fn test_set_update_frequency_oob_higher() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 

@@ -175,7 +175,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: No debt forged',))]
+    #[should_panic(expected: 'ABB: No debt forged')]
     fn test_open_trove_zero_forge_amt_fail() {
         let AbbotTestConfig { abbot, yangs, gates, .. } = abbot_utils::abbot_deploy(Option::None);
 
@@ -187,7 +187,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: No yangs',))]
+    #[should_panic(expected: 'ABB: No yangs')]
     fn test_open_trove_no_yangs_fail() {
         let AbbotTestConfig { abbot, .. } = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
@@ -203,7 +203,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_open_trove_invalid_yang_fail() {
         let AbbotTestConfig { abbot, .. } = abbot_utils::abbot_deploy(Option::None);
 
@@ -288,7 +288,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Not trove owner',))]
+    #[should_panic(expected: 'ABB: Not trove owner')]
     fn test_close_non_owner_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_id, .. }) = abbot_utils::deploy_abbot_and_open_trove(
             Option::None,
@@ -354,7 +354,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_deposit_zero_address_yang_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -369,7 +369,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Not trove owner',))]
+    #[should_panic(expected: 'ABB: Not trove owner')]
     fn test_deposit_zero_trove_id_fail() {
         let AbbotTestConfig { abbot, yangs, .. } = abbot_utils::abbot_deploy(Option::None);
         let trove_owner: ContractAddress = common::trove1_owner_addr();
@@ -383,7 +383,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Not trove owner',))]
+    #[should_panic(expected: 'ABB: Not trove owner')]
     fn test_deposit_not_trove_owner_fail() {
         let (AbbotTestConfig { abbot, yangs, .. }, AbbotTestTrove { trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -398,7 +398,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_deposit_invalid_yang_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -414,7 +414,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Exceeds max amount allowed',))]
+    #[should_panic(expected: 'SE: Exceeds max amount allowed')]
     fn test_deposit_exceeds_asset_cap_fail() {
         let (AbbotTestConfig { sentinel, abbot, yangs, gates, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -552,7 +552,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_withdraw_zero_address_yang_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -567,7 +567,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_withdraw_invalid_yang_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -583,7 +583,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Not trove owner',))]
+    #[should_panic(expected: 'ABB: Not trove owner')]
     fn test_withdraw_non_owner_fail() {
         let (AbbotTestConfig { abbot, yangs, .. }, AbbotTestTrove { trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -617,7 +617,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
+    #[should_panic(expected: 'SH: Trove LTV > threshold')]
     fn test_forge_ltv_unsafe_fail() {
         let (AbbotTestConfig { shrine, abbot, yangs, gates, .. }, AbbotTestTrove { trove_owner, trove_id, .. }) =
             abbot_utils::deploy_abbot_and_open_trove(
@@ -637,7 +637,7 @@ mod test_abbot {
     }
 
     #[test]
-    #[should_panic(expected: ('ABB: Not trove owner',))]
+    #[should_panic(expected: 'ABB: Not trove owner')]
     fn test_forge_non_owner_fail() {
         let (AbbotTestConfig { abbot, .. }, AbbotTestTrove { trove_id, .. }) = abbot_utils::deploy_abbot_and_open_trove(
             Option::None,

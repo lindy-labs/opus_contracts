@@ -41,7 +41,7 @@ mod test_ekubo {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_oracle_extension_unauthorized() {
         let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
@@ -51,7 +51,7 @@ mod test_ekubo {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_quote_tokens_unauthorized() {
         let EkuboTestConfig {
             ekubo, quote_tokens, ..,
@@ -63,7 +63,7 @@ mod test_ekubo {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_twap_duration_unauthorized() {
         let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };

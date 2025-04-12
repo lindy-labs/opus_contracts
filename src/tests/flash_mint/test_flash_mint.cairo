@@ -243,7 +243,7 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[should_panic(expected: ('FM: amount exceeds maximum',))]
+    #[should_panic(expected: 'FM: amount exceeds maximum')]
     fn test_flashmint_excess_minting() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint
@@ -256,7 +256,7 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[should_panic(expected: ('FM: on_flash_loan failed',))]
+    #[should_panic(expected: 'FM: on_flash_loan failed')]
     fn test_flashmint_incorrect_return() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint
@@ -269,7 +269,7 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint
@@ -282,7 +282,7 @@ mod test_flash_mint {
     }
 
     #[test]
-    #[should_panic(expected: ('RG: reentrant call',))]
+    #[should_panic(expected: 'RG: reentrant call')]
     fn test_flashmint_reenter() {
         let (shrine, flashmint, borrower) = flash_mint_utils::flash_borrower_setup();
         flashmint

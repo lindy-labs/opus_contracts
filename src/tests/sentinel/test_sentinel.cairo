@@ -114,7 +114,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_add_yang_unauthorized() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
@@ -130,7 +130,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang cannot be zero address',))]
+    #[should_panic(expected: 'SE: Yang cannot be zero address')]
     fn test_add_yang_yang_zero_addr() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
@@ -146,7 +146,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Gate cannot be zero address',))]
+    #[should_panic(expected: 'SE: Gate cannot be zero address')]
     fn test_add_yang_gate_zero_addr() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
@@ -162,7 +162,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Start price cannot be zero',))]
+    #[should_panic(expected: 'SE: Start price cannot be zero')]
     fn test_add_yang_zero_price() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
@@ -178,7 +178,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang already added',))]
+    #[should_panic(expected: 'SE: Yang already added')]
     fn test_add_yang_yang_already_added() {
         let SentinelTestConfig {
             sentinel, yangs, gates, ..,
@@ -199,7 +199,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Asset of gate is not yang',))]
+    #[should_panic(expected: 'SE: Asset of gate is not yang')]
     fn test_add_yang_gate_yang_mismatch() {
         let classes = sentinel_utils::declare_contracts();
         let SentinelTestConfig {
@@ -274,7 +274,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_set_yang_asset_max_non_existent_yang() {
         let SentinelTestConfig { sentinel, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
 
@@ -283,7 +283,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_yang_asset_max_unauthed() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -385,7 +385,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('u256_sub Overflow',))]
+    #[should_panic(expected: 'u256_sub Overflow')]
     fn test_enter_insufficient_balance() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -405,7 +405,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_enter_yang_not_added() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
@@ -418,7 +418,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Exceeds max amount allowed',))]
+    #[should_panic(expected: 'SE: Exceeds max amount allowed')]
     fn test_enter_exceeds_max_deposit() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -432,7 +432,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang not added',))]
+    #[should_panic(expected: 'SE: Yang not added')]
     fn test_exit_yang_not_added() {
         let (sentinel, _) = sentinel_utils::deploy_sentinel(Option::None);
 
@@ -444,7 +444,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('u256_sub Overflow',))]
+    #[should_panic(expected: 'u256_sub Overflow')]
     fn test_exit_insufficient_balance() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -457,7 +457,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_enter_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -471,7 +471,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_exit_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -484,7 +484,7 @@ mod test_sentinel {
 
 
     #[test]
-    #[should_panic(expected: ('SE: Gate is not live',))]
+    #[should_panic(expected: 'SE: Gate is not live')]
     fn test_kill_gate_and_enter() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -535,7 +535,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Gate is not live',))]
+    #[should_panic(expected: 'SE: Gate is not live')]
     fn test_kill_gate_and_preview_enter() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -576,7 +576,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('SE: Yang suspended',))]
+    #[should_panic(expected: 'SE: Yang suspended')]
     fn test_try_enter_when_yang_suspended() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -591,7 +591,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_try_suspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
@@ -600,7 +600,7 @@ mod test_sentinel {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_try_unsuspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];

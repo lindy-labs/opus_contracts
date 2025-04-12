@@ -57,7 +57,7 @@ mod test_exp {
 
 
     #[test]
-    #[should_panic(expected: ('exp: x is out of bounds',))]
+    #[should_panic(expected: 'exp: x is out of bounds')]
     fn test_exp_fail() {
         let _ = exp(42600000000000000001_u128.into());
     }

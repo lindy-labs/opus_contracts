@@ -70,7 +70,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_oracles_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
@@ -108,7 +108,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_update_frequency_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
@@ -117,7 +117,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('SEER: Frequency out of bounds',))]
+    #[should_panic(expected: 'SEER: Frequency out of bounds')]
     fn test_set_update_frequency_oob_lower() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
@@ -127,7 +127,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('SEER: Frequency out of bounds',))]
+    #[should_panic(expected: 'SEER: Frequency out of bounds')]
     fn test_set_update_frequency_oob_higher() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
@@ -192,7 +192,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_yang_price_type_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
@@ -202,7 +202,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('SEER: Not wad scale',))]
+    #[should_panic(expected: 'SEER: Not wad scale')]
     fn test_set_yang_price_type_to_vault_not_wad_decimals() {
         let classes = sentinel_utils::declare_contracts();
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
@@ -218,7 +218,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('SEER: Zero conversion rate',))]
+    #[should_panic(expected: 'SEER: Zero conversion rate')]
     fn test_set_yang_price_type_to_vault_zero_conversion_rate() {
         let classes = sentinel_utils::declare_contracts();
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
@@ -236,7 +236,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('SEER: Too many decimals',))]
+    #[should_panic(expected: 'SEER: Too many decimals')]
     fn test_set_yang_price_type_to_vault_asset_too_many_decimals() {
         let classes = sentinel_utils::declare_contracts();
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::Some(classes));
@@ -630,7 +630,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('PGM: Unknown yang',))]
+    #[should_panic(expected: 'PGM: Unknown yang')]
     fn test_update_prices_fails_with_no_yangs_in_seer() {
         let classes = sentinel_utils::declare_contracts();
         let sentinel_utils::SentinelTestConfig {
@@ -664,7 +664,7 @@ mod test_seer {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_update_prices_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 

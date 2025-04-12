@@ -1095,7 +1095,7 @@ mod test_shrine_compound {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_adjust_budget_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, common::badguy());

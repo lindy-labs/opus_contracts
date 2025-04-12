@@ -29,21 +29,21 @@ mod test_caretaker {
     }
 
     #[test]
-    #[should_panic(expected: ('CA: System is live',))]
+    #[should_panic(expected: 'CA: System is live')]
     fn test_caretaker_setup_preview_release_throws() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         caretaker.preview_release(1);
     }
 
     #[test]
-    #[should_panic(expected: ('CA: System is live',))]
+    #[should_panic(expected: 'CA: System is live')]
     fn test_caretaker_setup_preview_reclaim_throws() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         caretaker.preview_reclaim(WAD_ONE.into());
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_shut_by_badguy_throws() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_cheat_caller_address(caretaker.contract_address, common::badguy());
@@ -487,7 +487,7 @@ mod test_caretaker {
 
 
     #[test]
-    #[should_panic(expected: ('CA: System is live',))]
+    #[should_panic(expected: 'CA: System is live')]
     fn test_release_when_system_live_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
@@ -495,7 +495,7 @@ mod test_caretaker {
     }
 
     #[test]
-    #[should_panic(expected: ('CA: Owner should not be zero',))]
+    #[should_panic(expected: 'CA: Owner should not be zero')]
     fn test_release_foreign_trove_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
@@ -504,7 +504,7 @@ mod test_caretaker {
     }
 
     #[test]
-    #[should_panic(expected: ('CA: System is live',))]
+    #[should_panic(expected: 'CA: System is live')]
     fn test_reclaim_when_system_live_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
         start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
@@ -512,7 +512,7 @@ mod test_caretaker {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_reclaim_insufficient_yin() {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
 

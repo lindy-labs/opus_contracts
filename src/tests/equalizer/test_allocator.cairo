@@ -47,7 +47,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('failed allocator deploy',))]
+    #[should_panic(expected: 'failed allocator deploy')]
     fn test_allocator_deploy_input_arrays_mismatch_fail() {
         let mut recipients = equalizer_utils::initial_recipients();
         let _ = recipients.pop_front();
@@ -56,7 +56,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('failed allocator deploy',))]
+    #[should_panic(expected: 'failed allocator deploy')]
     fn test_allocator_deploy_no_recipients_fail() {
         let recipients: Array<ContractAddress> = ArrayTrait::new();
         let percentages: Array<Ray> = ArrayTrait::new();
@@ -65,7 +65,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('failed allocator deploy',))]
+    #[should_panic(expected: 'failed allocator deploy')]
     fn test_allocator_deploy_invalid_percentage_fail() {
         let _ = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages(), Option::None,
@@ -104,7 +104,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('AL: Duplicate address',))]
+    #[should_panic(expected: 'AL: Duplicate address')]
     fn test_set_allocation_duplicate_address_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
@@ -123,7 +123,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('AL: Array lengths mismatch',))]
+    #[should_panic(expected: 'AL: Array lengths mismatch')]
     fn test_set_allocation_arrays_mismatch_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
@@ -137,7 +137,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('AL: No recipients',))]
+    #[should_panic(expected: 'AL: No recipients')]
     fn test_set_allocation_no_recipients_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
@@ -150,7 +150,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE',))]
+    #[should_panic(expected: 'AL: sum(percentages) != RAY_ONE')]
     fn test_set_allocation_invalid_percentage_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
@@ -165,7 +165,7 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_allocation_unauthorized_fail() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,

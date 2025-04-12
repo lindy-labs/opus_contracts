@@ -131,7 +131,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Address cannot be 0',))]
+    #[should_panic(expected: 'ABS: Address cannot be 0')]
     fn test_set_reward_blesser_zero_address_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -143,7 +143,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Address cannot be 0',))]
+    #[should_panic(expected: 'ABS: Address cannot be 0')]
     fn test_set_reward_token_zero_address_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -322,7 +322,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_kill_unauthorized_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -331,7 +331,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Not live',))]
+    #[should_panic(expected: 'ABS: Not live')]
     fn test_provide_after_kill_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -603,7 +603,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_update_unauthorized_fail() {
         let classes = absorber_utils::declare_contracts();
         let (AbsorberTestConfig { absorber, yangs, .. }, _) = absorber_utils::absorber_with_rewards_and_first_provider(
@@ -728,7 +728,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Amount too low',))]
+    #[should_panic(expected: 'ABS: Amount too low')]
     fn test_provide_amount_too_low_zero_shares_fail() {
         let AbsorberTestConfig {
             shrine, abbot, absorber, yangs, gates, ..,
@@ -1876,7 +1876,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Recovery Mode active',))]
+    #[should_panic(expected: 'ABS: Recovery Mode active')]
     fn test_remove_exceeds_limit_fail() {
         let classes = absorber_utils::declare_contracts();
         let (AbsorberTestConfig { shrine, absorber, yangs, .. }, AbsorberRewardsTestConfig { provider, .. }) =
@@ -1900,7 +1900,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: No request found',))]
+    #[should_panic(expected: 'ABS: No request found')]
     fn test_remove_no_request_fail() {
         let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
         let absorber = config.absorber;
@@ -1911,7 +1911,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Request is no longer valid',))]
+    #[should_panic(expected: 'ABS: Request is no longer valid')]
     fn test_remove_fulfilled_request_fail() {
         let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
         let absorber = config.absorber;
@@ -1928,7 +1928,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Before withdrawal period',))]
+    #[should_panic(expected: 'ABS: Before withdrawal period')]
     fn test_remove_request_not_valid_yet_fail() {
         let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
         let absorber = config.absorber;
@@ -1942,7 +1942,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Withdrawal period elapsed',))]
+    #[should_panic(expected: 'ABS: Withdrawal period elapsed')]
     fn test_remove_request_expired_fail() {
         let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
         let absorber = config.absorber;
@@ -1961,7 +1961,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Not a provider',))]
+    #[should_panic(expected: 'ABS: Not a provider')]
     fn test_non_provider_request_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -1970,7 +1970,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Not a provider',))]
+    #[should_panic(expected: 'ABS: Not a provider')]
     fn test_non_provider_remove_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -1979,7 +1979,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: Not a provider',))]
+    #[should_panic(expected: 'ABS: Not a provider')]
     fn test_non_provider_reap_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
@@ -1988,7 +1988,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('ABS: provision < minimum',))]
+    #[should_panic(expected: 'ABS: provision < minimum')]
     fn test_provide_less_than_initial_shares_fail() {
         let AbsorberTestConfig {
             shrine, abbot, absorber, yangs, gates, ..,
@@ -2009,7 +2009,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_provide_insufficient_yin_fail() {
         let AbsorberTestConfig {
             shrine, abbot, absorber, yangs, gates, ..,
@@ -2033,7 +2033,7 @@ mod test_absorber {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin allowance',))]
+    #[should_panic(expected: 'SH: Insufficient yin allowance')]
     fn test_provide_insufficient_allowance_fail() {
         let AbsorberTestConfig { abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(Option::None);
 

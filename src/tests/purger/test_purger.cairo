@@ -196,7 +196,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Invalid scalar',))]
+    #[should_panic(expected: 'PU: Invalid scalar')]
     fn test_set_penalty_scalar_too_low_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
@@ -205,7 +205,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Invalid scalar',))]
+    #[should_panic(expected: 'PU: Invalid scalar')]
     fn test_set_penalty_scalar_too_high_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
@@ -214,7 +214,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_penalty_scalar_unauthorized_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
@@ -750,7 +750,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not liquidatable',))]
+    #[should_panic(expected: 'PU: Not liquidatable')]
     fn test_liquidate_trove_healthy_fail() {
         let PurgerTestConfig {
             shrine, abbot, purger, yangs, gates, ..,
@@ -767,7 +767,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not liquidatable',))]
+    #[should_panic(expected: 'PU: Not liquidatable')]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
         let PurgerTestConfig {
             shrine, abbot, purger, yangs, gates, ..,
@@ -796,7 +796,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_liquidate_insufficient_yin_fail() {
         let target_trove_yin: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.into() / 10_u128).into();
@@ -3711,7 +3711,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not absorbable',))]
+    #[should_panic(expected: 'PU: Not absorbable')]
     fn test_absorb_trove_healthy_fail() {
         let PurgerTestConfig {
             shrine, abbot, absorber, purger, yangs, gates, ..,
@@ -3729,7 +3729,7 @@ mod test_purger {
     }
 
     #[test]
-    #[should_panic(expected: ('PU: Not absorbable',))]
+    #[should_panic(expected: 'PU: Not absorbable')]
     fn test_absorb_below_absorbable_ltv_fail() {
         let PurgerTestConfig {
             shrine, abbot, seer, absorber, purger, yangs, gates,

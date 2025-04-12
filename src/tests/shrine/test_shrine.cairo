@@ -335,7 +335,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_trove_minimum_value_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -402,7 +402,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang already exists',))]
+    #[should_panic(expected: 'SH: Yang already exists')]
     fn test_add_yang_duplicate_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -417,7 +417,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_add_yang_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, common::badguy());
@@ -457,7 +457,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Threshold > max',))]
+    #[should_panic(expected: 'SH: Threshold > max')]
     fn test_set_threshold_exceeds_max() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_threshold: Ray = (RAY_SCALE + 1).into();
@@ -467,7 +467,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_threshold_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
@@ -477,7 +477,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_set_threshold_invalid_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -522,7 +522,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_update_rates_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, common::badguy());
@@ -539,7 +539,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Rate out of bounds',))]
+    #[should_panic(expected: 'SH: Rate out of bounds')]
     fn test_update_rates_exceed_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -556,7 +556,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: yangs.len != new_rates.len',))]
+    #[should_panic(expected: 'SH: yangs.len != new_rates.len')]
     fn test_update_rates_array_length_mismatch() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -569,7 +569,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Too few yangs',))]
+    #[should_panic(expected: 'SH: Too few yangs')]
     fn test_update_rates_too_few_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -582,7 +582,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_update_rates_invalid_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -600,7 +600,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Incorrect rate update',))]
+    #[should_panic(expected: 'SH: Incorrect rate update')]
     fn test_update_rates_not_all_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -653,7 +653,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    #[should_panic(expected: 'SH: Invalid target LTV factor')]
     fn test_set_recovery_mode_target_factor_exceeds_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_target_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_TARGET_FACTOR + 1).into();
@@ -663,7 +663,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Invalid target LTV factor',))]
+    #[should_panic(expected: 'SH: Invalid target LTV factor')]
     fn test_set_recovery_mode_target_factor_below_min_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_target_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_TARGET_FACTOR - 1).into();
@@ -673,7 +673,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_recovery_mode_target_factor_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let target_factor: Ray = (50 * RAY_PERCENT).into();
@@ -683,7 +683,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    #[should_panic(expected: 'SH: Invalid buffer factor')]
     fn test_set_recovery_mode_buffer_factor_below_min_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_buffer_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_BUFFER_FACTOR - 1).into();
@@ -693,7 +693,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Invalid buffer factor',))]
+    #[should_panic(expected: 'SH: Invalid buffer factor')]
     fn test_set_recovery_mode_buffer_factor_exceeds_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_buffer_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_BUFFER_FACTOR + 1).into();
@@ -703,7 +703,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_recovery_mode_buffer_factor_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let buffer_factor: Ray = (2 * RAY_PERCENT).into();
@@ -770,7 +770,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: System is not live',))]
+    #[should_panic(expected: 'SH: System is not live')]
     fn test_killed_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -783,7 +783,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: System is not live',))]
+    #[should_panic(expected: 'SH: System is not live')]
     fn test_killed_withdraw_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -797,7 +797,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: System is not live',))]
+    #[should_panic(expected: 'SH: System is not live')]
     fn test_killed_forge_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -812,7 +812,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: System is not live',))]
+    #[should_panic(expected: 'SH: System is not live')]
     fn test_killed_melt_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -827,7 +827,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: System is not live',))]
+    #[should_panic(expected: 'SH: System is not live')]
     fn test_killed_inject_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -840,7 +840,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_kill_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
@@ -885,7 +885,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_shrine_deposit_invalid_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -894,7 +894,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_shrine_deposit_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, common::badguy());
@@ -964,7 +964,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Below minimum trove value',))]
+    #[should_panic(expected: 'SH: Below minimum trove value')]
     fn test_shrine_withdraw_trove_below_min_value_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -984,7 +984,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_shrine_withdraw_invalid_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -993,7 +993,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_shrine_withdraw_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1004,7 +1004,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yang balance',))]
+    #[should_panic(expected: 'SH: Insufficient yang balance')]
     fn test_shrine_withdraw_insufficient_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1015,7 +1015,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yang balance',))]
+    #[should_panic(expected: 'SH: Insufficient yang balance')]
     fn test_shrine_withdraw_zero_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
@@ -1024,7 +1024,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
+    #[should_panic(expected: 'SH: Trove LTV > threshold')]
     fn test_shrine_withdraw_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1109,7 +1109,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Below minimum trove value',))]
+    #[should_panic(expected: 'SH: Below minimum trove value')]
     fn test_shrine_forge_trove_below_min_value_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1126,7 +1126,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Below minimum trove value',))]
+    #[should_panic(expected: 'SH: Below minimum trove value')]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1138,7 +1138,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > threshold',))]
+    #[should_panic(expected: 'SH: Trove LTV > threshold')]
     fn test_shrine_forge_unsafe_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1156,7 +1156,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Debt ceiling reached',))]
+    #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_shrine_forge_ceiling_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1172,7 +1172,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_shrine_forge_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1259,7 +1259,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: forge_fee% > max_forge_fee%',))]
+    #[should_panic(expected: 'SH: forge_fee% > max_forge_fee%')]
     fn test_shrine_forge_fee_exceeds_max() {
         let yin_price1: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let yin_price2: Wad = 970000000000000000_u128.into(); // 0.985 (wad)
@@ -1355,7 +1355,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_shrine_melt_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1366,7 +1366,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_shrine_melt_insufficient_yin() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -1415,7 +1415,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_yin_transfer_fail_insufficient() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1432,7 +1432,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_yin_transfer_fail_zero_bal() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1535,7 +1535,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin allowance',))]
+    #[should_panic(expected: 'SH: Insufficient yin allowance')]
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1549,7 +1549,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin allowance',))]
+    #[should_panic(expected: 'SH: Insufficient yin allowance')]
     fn test_yin_transfer_from_insufficient_allowance_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1571,7 +1571,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Insufficient yin balance',))]
+    #[should_panic(expected: 'SH: Insufficient yin balance')]
     fn test_yin_transfer_from_insufficient_balance_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1592,7 +1592,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: No transfer to 0 address',))]
+    #[should_panic(expected: 'SH: No transfer to 0 address')]
     fn test_yin_transfer_zero_address_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1674,7 +1674,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_revoke_role() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
 
@@ -1747,7 +1747,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_advance_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1756,7 +1756,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_advance_invalid_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1765,7 +1765,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_multiplier_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1828,7 +1828,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Debt ceiling reached',))]
+    #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_shrine_inject_exceeds_debt_ceiling_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove1_owner = common::trove1_owner_addr();
@@ -1840,7 +1840,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Debt ceiling reached',))]
+    #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_shrine_inject_exceeds_debt_ceiling_neg_budget_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let trove1_owner = common::trove1_owner_addr();
@@ -1863,7 +1863,7 @@ mod test_shrine {
     //
 
     #[test]
-    #[should_panic(expected: ('SH: Multiplier cannot be 0',))]
+    #[should_panic(expected: 'SH: Multiplier cannot be 0')]
     fn test_shrine_set_multiplier_zero_value_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -1872,7 +1872,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Multiplier exceeds maximum',))]
+    #[should_panic(expected: 'SH: Multiplier exceeds maximum')]
     fn test_shrine_set_multiplier_exceeds_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
@@ -2121,14 +2121,14 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_get_yang_suspension_status_nonexisting_yang() {
         let shrine = shrine_utils::shrine(shrine_utils::shrine_deploy(Option::None));
         shrine.get_yang_suspension_status(shrine_utils::invalid_yang_addr());
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_suspend_yang_non_existing_yang() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2138,7 +2138,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Yang does not exist',))]
+    #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_unsuspend_yang_non_existing_yang() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2193,7 +2193,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_suspend_yang_not_authorized() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2205,7 +2205,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_unsuspend_yang_not_authorized() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2330,7 +2330,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Suspension is permanent',))]
+    #[should_panic(expected: 'SH: Suspension is permanent')]
     fn test_yang_suspension_cannot_reset_after_permanent() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2355,7 +2355,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Already suspended',))]
+    #[should_panic(expected: 'SH: Already suspended')]
     fn test_yang_already_suspended_temporary() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2379,7 +2379,7 @@ mod test_shrine {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Already suspended',))]
+    #[should_panic(expected: 'SH: Already suspended')]
     fn test_yang_already_suspended_permanent() {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
@@ -2412,7 +2412,7 @@ mod test_shrine {
 
     // User cannot withdraw if it triggers recovery mode
     #[test]
-    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    #[should_panic(expected: 'SH: Will trigger recovery mode')]
     fn test_withdraw_trigger_recovery_mode_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2440,7 +2440,7 @@ mod test_shrine {
 
     // User cannot forge if it triggers recovery mode
     #[test]
-    #[should_panic(expected: ('SH: Will trigger recovery mode',))]
+    #[should_panic(expected: 'SH: Will trigger recovery mode')]
     fn test_forge_trigger_recovery_mode_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2469,7 +2469,7 @@ mod test_shrine {
     // If the Shrine's LTV is within the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, user cannot withdraw.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV is worse off (RM)')]
     fn test_withdraw_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2498,7 +2498,7 @@ mod test_shrine {
     // If the Shrine's LTV is within the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, user cannot forge.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV is worse off (RM)')]
     fn test_forge_within_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2605,7 +2605,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV,
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV > target LTV (RM)')]
     fn test_forge_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2645,7 +2645,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV,
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV > target LTV (RM)')]
     fn test_withdraw_within_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2684,7 +2684,7 @@ mod test_shrine {
     // and the trove is already at or above its target recovery mode LTV,
     // threshold has been scaled and user cannot withdraw.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV is worse off (RM)')]
     fn test_withdraw_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2717,7 +2717,7 @@ mod test_shrine {
     // If the Shrine's LTV has exceeded the recovery mode buffer,
     // and the trove is already at or above its target recovery mode LTV, user cannot forge.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV is worse off (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV is worse off (RM)')]
     fn test_forge_exceeded_recovery_mode_buffer_above_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2821,7 +2821,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV,
     // user cannot forge if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV > target LTV (RM)')]
     fn test_forge_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 
@@ -2862,7 +2862,7 @@ mod test_shrine {
     // and the trove is below its target recovery mode LTV,
     // user cannot withdraw if it causes the trove's LTV to exceed its target recovery mode LTV.
     #[test]
-    #[should_panic(expected: ('SH: Trove LTV > target LTV (RM)',))]
+    #[should_panic(expected: 'SH: Trove LTV > target LTV (RM)')]
     fn test_withdraw_exceeded_recovery_mode_buffer_below_trove_rm_target_ltv_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_deploy_and_setup(Option::None);
 

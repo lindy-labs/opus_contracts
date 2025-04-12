@@ -85,7 +85,7 @@ mod test_transmuter_registry {
     }
 
     #[test]
-    #[should_panic(expected: ('TRR: Transmuter already exists',))]
+    #[should_panic(expected: 'TRR: Transmuter already exists')]
     fn test_add_duplicate_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
@@ -99,7 +99,7 @@ mod test_transmuter_registry {
     }
 
     #[test]
-    #[should_panic(expected: ('TRR: Transmuter does not exist',))]
+    #[should_panic(expected: 'TRR: Transmuter does not exist')]
     fn test_remove_nonexistent_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 

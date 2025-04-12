@@ -35,7 +35,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     #[test]
-    #[should_panic(expected: ('EOC: Zero address for extension',))]
+    #[should_panic(expected: 'EOC: Zero address for extension')]
     fn test_set_oracle_extension_zero_address() {
         let mut state = state();
 
@@ -68,7 +68,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     #[test]
-    #[should_panic(expected: ('EOC: Not 3 quote tokens',))]
+    #[should_panic(expected: 'EOC: Not 3 quote tokens')]
     fn test_set_quote_tokens_too_few_tokens() {
         let mut state = state();
 
@@ -78,7 +78,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     #[test]
-    #[should_panic(expected: ('EOC: Not 3 quote tokens',))]
+    #[should_panic(expected: 'EOC: Not 3 quote tokens')]
     fn test_set_quote_tokens_too_many_tokens() {
         let mut state = state();
 
@@ -93,7 +93,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     #[test]
-    #[should_panic(expected: ('EOC: Too many decimals',))]
+    #[should_panic(expected: 'EOC: Too many decimals')]
     fn test_set_quote_tokens_too_many_decimals() {
         let mut state = state();
 
@@ -125,7 +125,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     #[test]
-    #[should_panic(expected: ('EOC: TWAP duration too low',))]
+    #[should_panic(expected: 'EOC: TWAP duration too low')]
     fn test_set_twap_duration_zero_fail() {
         let mut state = state();
 

@@ -114,7 +114,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_ceiling_unauthorized() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -151,7 +151,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Exceeds upper bound',))]
+    #[should_panic(expected: 'TR: Exceeds upper bound')]
     fn test_set_percentage_cap_too_high_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -164,7 +164,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_percentage_cap_unauthorized_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -202,7 +202,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Zero address',))]
+    #[should_panic(expected: 'TR: Zero address')]
     fn test_set_receiver_zero_addr_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -213,7 +213,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_receiver_unauthorized_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -268,7 +268,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Exceeds max fee',))]
+    #[should_panic(expected: 'TR: Exceeds max fee')]
     fn test_set_transmute_fee_exceeds_max_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -281,7 +281,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_transmute_fee_unauthorized_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -294,7 +294,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Exceeds max fee',))]
+    #[should_panic(expected: 'TR: Exceeds max fee')]
     fn test_set_reverse_fee_exceeds_max_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -307,7 +307,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_reverse_fee_unauthorized_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -487,7 +487,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: Debt ceiling reached',))]
+    #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_transmute_exceeds_shrine_ceiling_fail() {
         let TransmuterTestConfig {
             shrine, transmuter, ..,
@@ -502,7 +502,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmute is paused',))]
+    #[should_panic(expected: 'TR: Transmute is paused')]
     fn test_transmute_exceeds_transmuter_ceiling_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -518,7 +518,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmute is paused',))]
+    #[should_panic(expected: 'TR: Transmute is paused')]
     fn test_transmute_exceeds_percentage_cap_fail() {
         let TransmuterTestConfig {
             shrine, transmuter, ..,
@@ -540,7 +540,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmute is paused',))]
+    #[should_panic(expected: 'TR: Transmute is paused')]
     fn test_transmute_yin_spot_price_too_low_fail() {
         let TransmuterTestConfig {
             shrine, transmuter, ..,
@@ -709,7 +709,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Reverse is paused',))]
+    #[should_panic(expected: 'TR: Reverse is paused')]
     fn test_reverse_disabled_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -727,7 +727,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Insufficient assets',))]
+    #[should_panic(expected: 'TR: Insufficient assets')]
     fn test_reverse_zero_assets_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -987,7 +987,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_withdraw_secondary_asset_unauthorized() {
         let token_class = common::declare_token();
         let TransmuterTestConfig {
@@ -1003,7 +1003,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Primary asset',))]
+    #[should_panic(expected: 'TR: Primary asset')]
     fn test_withdraw_primary_asset_as_secondary_asset_fail() {
         let token_class = common::declare_token();
         let TransmuterTestConfig {
@@ -1163,7 +1163,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_transmute_after_settle_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1177,7 +1177,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_reverse_after_settle_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1191,7 +1191,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_sweep_after_settle_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1204,7 +1204,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_sweep_unauthorized() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1391,7 +1391,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_kill_unauthorized() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1402,7 +1402,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_transmute_after_kill_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1416,7 +1416,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_reverse_after_kill_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1430,7 +1430,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is not live',))]
+    #[should_panic(expected: 'TR: Transmuter is not live')]
     fn test_sweep_after_kill_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1443,7 +1443,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Reclaim unavailable',))]
+    #[should_panic(expected: 'TR: Reclaim unavailable')]
     fn test_reclaim_disabled_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1456,7 +1456,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('TR: Transmuter is live',))]
+    #[should_panic(expected: 'TR: Transmuter is live')]
     fn test_enable_reclaim_while_live_fail() {
         let TransmuterTestConfig {
             transmuter, ..,
@@ -1467,7 +1467,7 @@ mod test_transmuter {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_enable_reclaim_unauthorized() {
         let TransmuterTestConfig {
             transmuter, ..,

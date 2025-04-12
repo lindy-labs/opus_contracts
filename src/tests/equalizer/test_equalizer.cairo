@@ -297,7 +297,7 @@ mod test_equalizer {
     }
 
     #[test]
-    #[should_panic(expected: ('Caller missing role',))]
+    #[should_panic(expected: 'Caller missing role')]
     fn test_set_allocator_fail() {
         let allocator_class = Option::Some(*declare("allocator").unwrap().contract_class());
         let EqualizerTestConfig { equalizer, .. } = equalizer_utils::equalizer_deploy(allocator_class);

@@ -17,7 +17,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('RG: reentrant call',))]
+    #[should_panic(expected: 'RG: reentrant call')]
     fn test_reentrancy_guard_fail() {
         let mut state = state();
         // Calling the guarded function from inside itself should fail.

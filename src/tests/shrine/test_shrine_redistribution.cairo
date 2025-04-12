@@ -1060,7 +1060,7 @@ mod test_shrine_redistribution {
     }
 
     #[test]
-    #[should_panic(expected: ('SH: pct_val_to_redistribute > 1',))]
+    #[should_panic(expected: 'SH: pct_val_to_redistribute > 1')]
     fn test_shrine_redistribution_gt_one_ray_pct_value_to_redistribute_fail() {
         let shrine: IShrineDispatcher = redistribution_setup(Option::None);
 

@@ -123,7 +123,7 @@ mod test_gate {
     }
 
     #[test]
-    #[should_panic(expected: ('GA: Caller is not authorized',))]
+    #[should_panic(expected: 'GA: Caller is not authorized')]
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
@@ -131,7 +131,7 @@ mod test_gate {
     }
 
     #[test]
-    #[should_panic(expected: ('GA: Caller is not authorized',))]
+    #[should_panic(expected: 'GA: Caller is not authorized')]
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
@@ -302,7 +302,7 @@ mod test_gate {
     }
 
     #[test]
-    #[should_panic(expected: ('u256_sub Overflow',))]
+    #[should_panic(expected: 'u256_sub Overflow')]
     fn test_gate_enter_insufficient_bags() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
@@ -326,7 +326,7 @@ mod test_gate {
     }
 
     #[test]
-    #[should_panic(expected: ('u256_sub Overflow',))]
+    #[should_panic(expected: 'u256_sub Overflow')]
     fn test_gate_exit_insufficient_bags() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
