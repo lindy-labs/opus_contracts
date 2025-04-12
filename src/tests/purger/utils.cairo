@@ -339,7 +339,7 @@ pub mod purger_utils {
             pragma_v2: Option::Some(*declare("pragma_v2").unwrap().contract_class()),
             mock_pragma: Option::Some(*declare("mock_pragma").unwrap().contract_class()),
             ekubo: Option::Some(*declare("ekubo").unwrap().contract_class()),
-            mock_ekubo: Option::Some(*declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
+            mock_ekubo: Option::Some(common::declare_mock_ekubo_oracle_extension()),
             seer: Option::Some(*declare("seer_v2").unwrap().contract_class()),
         }
     }

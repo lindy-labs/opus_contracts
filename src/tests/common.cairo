@@ -201,7 +201,7 @@ pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
     let token_class = match token_class {
         Option::Some(class) => class,
-        Option::None => *declare("erc20_mintable").unwrap().contract_class(),
+        Option::None => declare_token(),
     };
     array![
         dai_token_deploy(Option::Some(token_class)),
@@ -302,6 +302,10 @@ pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut as
 
 // Mock Ekubo deployment helper
 
+pub fn declare_mock_ekubo_oracle_extension() -> ContractClass {
+    *declare("mock_ekubo_oracle_extension").unwrap().contract_class()
+}
+
 pub fn mock_ekubo_oracle_extension_deploy(
     mock_ekubo_oracle_extension_class: Option<ContractClass>,
 ) -> IMockEkuboOracleExtensionDispatcher {
@@ -309,7 +313,7 @@ pub fn mock_ekubo_oracle_extension_deploy(
 
     let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
         Option::Some(class) => class,
-        Option::None => *declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
+        Option::None => declare_mock_ekubo_oracle_extension(),
     };
 
     let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class

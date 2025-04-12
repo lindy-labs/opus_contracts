@@ -49,7 +49,7 @@ pub mod receptor_utils {
 
         let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
             Option::Some(class) => class,
-            Option::None => *declare("mock_ekubo_oracle_extension").unwrap().contract_class(),
+            Option::None => common::declare_mock_ekubo_oracle_extension(),
         };
 
         let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
