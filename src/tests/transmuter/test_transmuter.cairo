@@ -14,11 +14,10 @@ mod test_transmuter {
     use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, EventSpyAssertionsTrait, declare, spy_events,
-        start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
-    use wadray::{RAY_ONE, RAY_PERCENT, Ray, Signed, SignedWad, WAD_ONE, Wad};
+    use wadray::{RAY_PERCENT, Ray, Signed, SignedWad, WAD_ONE, Wad};
 
     //
     // Tests - Deployment
@@ -363,7 +362,7 @@ mod test_transmuter {
     #[test]
     fn test_transmute_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let TransmuterTestConfig {
             shrine, transmuter, ..,
         } =
@@ -393,8 +392,8 @@ mod test_transmuter {
         let real_transmute_amt: u128 = 1000;
         let transmute_amt_wad: Wad = (real_transmute_amt * WAD_ONE).into();
         let expected_wad_transmuted_amts: Span<Wad> = array![
-            transmute_amt_wad.into(), // 0% fee, 1000
-            transmute_amt_wad.into(), // 1E-27% fee (loss of precision), 1000
+            transmute_amt_wad, // 0% fee, 1000
+            transmute_amt_wad, // 1E-27% fee (loss of precision), 1000
             999000000000000000000_u128.into(), // 0.1% fee, 999.00
             997655000000000000137_u128.into(), // 0.2345% fee, 997.655...
             990000000000000000000_u128.into() // 1% fee, 990.00
@@ -512,7 +511,7 @@ mod test_transmuter {
         start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
 
         let ceiling: Wad = transmuter.get_ceiling();
-        transmuter.transmute(ceiling.val);
+        transmuter.transmute(ceiling.into());
         assert(transmuter.get_total_transmuted() == ceiling, 'sanity check');
 
         transmuter.transmute(1_u128.into());
@@ -560,7 +559,7 @@ mod test_transmuter {
     #[test]
     fn test_reverse_with_preview_parametrized() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let TransmuterTestConfig {
             shrine, transmuter, ..,
@@ -754,7 +753,7 @@ mod test_transmuter {
     fn test_sweep_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -866,7 +865,7 @@ mod test_transmuter {
     fn test_withdraw_secondary_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -990,7 +989,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('Caller missing role',))]
     fn test_withdraw_secondary_asset_unauthorized() {
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let TransmuterTestConfig {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::Some(token_class));
@@ -1006,7 +1005,7 @@ mod test_transmuter {
     #[test]
     #[should_panic(expected: ('TR: Primary asset',))]
     fn test_withdraw_primary_asset_as_secondary_asset_fail() {
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let TransmuterTestConfig {
             transmuter, wad_usd_stable, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::Some(token_class));
@@ -1023,11 +1022,10 @@ mod test_transmuter {
     // Tests - Settle
     //
 
-    #[test]
     fn test_settle(transmuter_id: u32) {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let transmuter_admin: ContractAddress = transmuter_utils::admin();
         let shrine_admin: ContractAddress = shrine_utils::admin();
@@ -1131,7 +1129,7 @@ mod test_transmuter {
                                 assert(!transmuter.get_live(), 'not killed');
 
                                 let deficit: Wad = if expected_budget_adjustment.is_negative() {
-                                    expected_budget_adjustment.val.into()
+                                    expected_budget_adjustment.try_into().unwrap()
                                 } else {
                                     Zero::zero()
                                 };
@@ -1224,7 +1222,7 @@ mod test_transmuter {
     fn test_kill_and_reclaim_parametrized_pass() {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let admin: ContractAddress = transmuter_utils::admin();
         let receiver: ContractAddress = transmuter_utils::receiver();
@@ -1296,7 +1294,7 @@ mod test_transmuter {
                     let expected_first_reclaim_asset_amt: u128 = wadray::rmul_wr(
                         transmute_asset_amt.into(), first_reclaim_pct,
                     )
-                        .val;
+                        .into();
                     common::assert_equalish(
                         preview, expected_first_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #1',
                     );
@@ -1327,7 +1325,7 @@ mod test_transmuter {
                     let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
                         transmute_asset_amt.into(), second_reclaim_pct,
                     )
-                        .val;
+                        .into();
                     common::assert_equalish(
                         preview, expected_second_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #2',
                     );

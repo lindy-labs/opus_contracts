@@ -1,15 +1,10 @@
 mod test_transmuter_registry {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::transmuter_registry_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait};
+    use opus::interfaces::ITransmuter::ITransmuterRegistryDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
-    };
+    use snforge_std::{ContractClass, start_cheat_caller_address};
     use starknet::ContractAddress;
 
     //
@@ -38,7 +33,7 @@ mod test_transmuter_registry {
     #[test]
     fn test_add_and_remove_transmuters() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
 
         let registry = transmuter_utils::transmuter_registry_deploy();
 

@@ -2,18 +2,16 @@ pub mod transmuter_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Bounded;
     use opus::core::roles::shrine_roles;
-    use opus::core::transmuter::transmuter as transmuter_contract;
-    use opus::core::transmuter_registry::transmuter_registry as transmuter_registry_contract;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::{
-        ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait, ITransmuterV2Dispatcher,
-        ITransmuterV2DispatcherTrait,
+        ITransmuterRegistryDispatcher, ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait,
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
     use wadray::Wad;
@@ -57,7 +55,7 @@ pub mod transmuter_utils {
     //
 
     pub fn declare_transmuter() -> ContractClass {
-        declare("transmuter_v2").unwrap().contract_class()
+        *declare("transmuter_v2").unwrap().contract_class()
     }
 
     pub fn transmuter_deploy(
@@ -143,7 +141,7 @@ pub mod transmuter_utils {
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
         let mut calldata: Array<felt252> = array![admin().into()];
 
-        let transmuter_registry_class = declare("transmuter_registry").unwrap().contract_class();
+        let transmuter_registry_class = *declare("transmuter_registry").unwrap().contract_class();
         let (transmuter_registry_addr, _) = transmuter_registry_class
             .deploy(@calldata)
             .expect('TR registry deploy failed');
