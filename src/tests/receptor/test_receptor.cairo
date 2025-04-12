@@ -5,21 +5,18 @@ mod test_receptor {
     use opus::core::roles::receptor_roles;
     use opus::core::shrine::shrine as shrine_contract;
     use opus::external::interfaces::{ITaskDispatcher, ITaskDispatcherTrait};
-    use opus::interfaces::IReceptor::{IReceptorDispatcher, IReceptorDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IReceptor::IReceptorDispatcherTrait;
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
     use opus::tests::receptor::utils::{receptor_utils, receptor_utils::ReceptorTestConfig};
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::QuoteTokenInfo;
-    use opus::utils::ekubo_oracle_adapter::{
-        IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait, ekubo_oracle_adapter_component,
-    };
+    use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait};
     use snforge_std::{
-        CheatTarget, EventSpyAssertionsTrait, declare, spy_events, start_cheat_block_timestamp_global,
-        start_cheat_caller_address, stop_cheat_caller_address,
+        EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
     };
-    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::get_block_timestamp;
     use wadray::Wad;
 
 
@@ -162,7 +159,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(next_ts);
 
         let quotes: Span<Wad> = receptor.get_quotes();
         let expected_yin_spot_price: Wad = *quotes[2];
@@ -221,7 +218,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(next_ts);
 
         let quotes: Span<Wad> = receptor.get_quotes();
 
@@ -255,7 +252,7 @@ mod test_receptor {
         set_next_ekubo_prices(mock_ekubo_oracle_extension, shrine.contract_address, quote_tokens, prices);
 
         let next_ts = get_block_timestamp() + receptor_utils::INITIAL_UPDATE_FREQUENCY;
-        start_cheat_block_timestamp_global(CheatTarget::All, next_ts);
+        start_cheat_block_timestamp_global(next_ts);
 
         ITaskDispatcher { contract_address: receptor.contract_address }.execute_task();
 
@@ -288,12 +285,10 @@ mod test_receptor {
         task.execute_task();
         assert(!task.probe_task(), 'should not be ready 1');
 
-        start_cheat_block_timestamp_global(
-            CheatTarget::All, get_block_timestamp() + receptor.get_update_frequency() - 1,
-        );
+        start_cheat_block_timestamp_global(get_block_timestamp() + receptor.get_update_frequency() - 1);
         assert(!task.probe_task(), 'should not be ready 2');
 
-        start_cheat_block_timestamp_global(CheatTarget::All, get_block_timestamp() + 1);
+        start_cheat_block_timestamp_global(get_block_timestamp() + 1);
         assert(task.probe_task(), 'should be ready 2');
     }
 }

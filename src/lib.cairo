@@ -121,10 +121,10 @@ mod tests {
         mod test_purger;
         pub mod utils;
     }
-    // mod receptor {
-    //     mod test_receptor;
-    //     pub mod utils;
-    // }
+    mod receptor {
+        mod test_receptor;
+        pub mod utils;
+    }
     mod sentinel {
         mod test_sentinel;
         pub mod utils;
