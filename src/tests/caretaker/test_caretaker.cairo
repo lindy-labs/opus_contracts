@@ -3,20 +3,16 @@ mod test_caretaker {
     use core::num::traits::Zero;
     use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{caretaker_roles, shrine_roles};
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
+    use opus::interfaces::ICaretaker::ICaretakerDispatcherTrait;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::abbot::utils::abbot_utils;
     use opus::tests::caretaker::utils::{caretaker_utils, caretaker_utils::CaretakerTestConfig};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
     use opus::utils::math::fixed_point_to_wad;
-    use snforge_std::{
-        CheatTarget, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
-    };
-    use starknet::{ContractAddress};
+    use snforge_std::{EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address};
     use wadray::{Ray, WAD_ONE, Wad, ray_to_wad};
 
     #[test]
@@ -139,9 +135,9 @@ mod test_caretaker {
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[0], amount: (g0_before_balance - g0_after_balance).val });
+            .append(AssetBalance { address: *yangs[0], amount: (g0_before_balance - g0_after_balance).into() });
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[1], amount: (g1_before_balance - g1_after_balance).val });
+            .append(AssetBalance { address: *yangs[1], amount: (g1_before_balance - g1_after_balance).into() });
         let expected_events = array![
             (
                 caretaker.contract_address,
@@ -436,18 +432,16 @@ mod test_caretaker {
 
         // manipulate prices to be waaaay below start price to force
         // all yang deposits to be used to back yin
-        shrine_utils::make_root(shrine.contract_address, caretaker_utils::admin());
-        start_cheat_caller_address(
-            CheatTarget::Multiple(array![shrine.contract_address, caretaker.contract_address]),
-            caretaker_utils::admin(),
-        );
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         let new_eth_price: Wad = (50 * WAD_ONE).into();
         let new_wbtc_price: Wad = (20 * WAD_ONE).into();
         shrine.advance(*yangs[0], new_eth_price);
         shrine.advance(*yangs[1], new_wbtc_price);
+        stop_cheat_caller_address(shrine.contract_address);
 
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
         caretaker.shut();
-        stop_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address, caretaker.contract_address]));
+        stop_cheat_caller_address(caretaker.contract_address);
 
         let tolerance: Wad = 1_u128.into();
 
@@ -472,9 +466,9 @@ mod test_caretaker {
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[0], amount: (gate0_before_balance - gate0_after_balance).val });
+            .append(AssetBalance { address: *yangs[0], amount: (gate0_before_balance - gate0_after_balance).into() });
         expected_ringfenced_assets
-            .append(AssetBalance { address: *yangs[1], amount: (gate1_before_balance - gate1_after_balance).val });
+            .append(AssetBalance { address: *yangs[1], amount: (gate1_before_balance - gate1_after_balance).into() });
 
         let expected_events = array![
             (

@@ -91,10 +91,10 @@ mod tests {
         mod test_absorber;
         pub mod utils;
     }
-    // mod caretaker {
-    //     mod test_caretaker;
-    //     pub mod utils;
-    // }
+    mod caretaker {
+        mod test_caretaker;
+        pub mod utils;
+    }
     mod controller {
         mod test_controller;
         pub mod utils;

@@ -1,6 +1,5 @@
 pub mod caretaker_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::core::caretaker::caretaker as caretaker_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IAbbot::IAbbotDispatcher;
     use opus::interfaces::ICaretaker::ICaretakerDispatcher;
@@ -12,8 +11,8 @@ pub mod caretaker_utils {
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use snforge_std::{
-        CheatTarget, ContractClass, ContractClassTrait, declare, start_cheat_block_timestamp_global,
-        start_cheat_caller_address, stop_cheat_caller_address,
+        ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global, start_cheat_caller_address,
+        stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
 
@@ -32,7 +31,7 @@ pub mod caretaker_utils {
     }
 
     pub fn caretaker_deploy() -> CaretakerTestConfig {
-        start_cheat_block_timestamp_global(CheatTarget::All, shrine_utils::DEPLOYMENT_TIMESTAMP);
+        start_cheat_block_timestamp_global(shrine_utils::DEPLOYMENT_TIMESTAMP);
 
         let abbot_utils::AbbotTestConfig {
             shrine, sentinel, abbot, yangs, gates,
@@ -56,13 +55,14 @@ pub mod caretaker_utils {
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         IAccessControlDispatcher { contract_address: shrine.contract_address }
             .grant_role(shrine_roles::caretaker(), caretaker);
+        stop_cheat_caller_address(shrine.contract_address);
 
         // allow Caretaker to call exit in Sentinel during shut
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
 
-        stop_cheat_caller_address(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
+        stop_cheat_caller_address(sentinel.contract_address);
 
         let caretaker = ICaretakerDispatcher { contract_address: caretaker };
 
