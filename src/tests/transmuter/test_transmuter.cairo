@@ -1129,7 +1129,7 @@ mod test_transmuter {
                                 assert(!transmuter.get_live(), 'not killed');
 
                                 let deficit: Wad = if expected_budget_adjustment.is_negative() {
-                                    expected_budget_adjustment.try_into().unwrap()
+                                    (-expected_budget_adjustment).try_into().unwrap()
                                 } else {
                                     Zero::zero()
                                 };
