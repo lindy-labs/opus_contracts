@@ -1,16 +1,14 @@
 mod test_ekubo_oracle_adapter {
     use core::num::traits::Zero;
     use opus::constants;
-    use opus::mock::mock_ekubo_oracle_extension::{
-        IMockEkuboOracleExtensionDispatcher, IMockEkuboOracleExtensionDispatcherTrait, set_next_ekubo_prices,
-    };
+    use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
     use opus::tests::utils::mock_ekubo_oracle_adapter::mock_ekubo_oracle_adapter;
     use opus::utils::ekubo_oracle_adapter::ekubo_oracle_adapter_component::{
         EkuboOracleAdapterHelpers, MIN_TWAP_DURATION,
     };
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
-    use snforge_std::{ContractClass, EventSpyAssertionsTrait, EventSpyTrait, declare, spy_events, test_address};
+    use snforge_std::{ContractClass, EventSpyTrait, spy_events};
     use starknet::ContractAddress;
     use wadray::{WAD_DECIMALS, WAD_ONE, Wad};
 
@@ -84,7 +82,7 @@ mod test_ekubo_oracle_adapter {
     fn test_set_quote_tokens_too_many_tokens() {
         let mut state = state();
 
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
         let quote_tokens: Span<ContractAddress> = array![
@@ -99,7 +97,7 @@ mod test_ekubo_oracle_adapter {
     fn test_set_quote_tokens_too_many_decimals() {
         let mut state = state();
 
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
 
         let invalid_token: ContractAddress = invalid_token(Option::Some(token_class));
@@ -141,7 +139,7 @@ mod test_ekubo_oracle_adapter {
         let mock_ekubo = common::mock_ekubo_oracle_extension_deploy(Option::None);
         state.ekubo_oracle_adapter.set_oracle_extension(mock_ekubo.contract_address);
 
-        let token_class = declare("erc20_mintable").unwrap().contract_class();
+        let token_class = common::declare_token();
         let quote_tokens = common::quote_tokens(Option::Some(token_class));
         state.ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
 

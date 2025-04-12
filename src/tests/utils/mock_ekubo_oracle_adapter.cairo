@@ -7,9 +7,9 @@ pub mod mock_ekubo_oracle_adapter {
     impl EkuboOracleAdapterHelpers = ekubo_oracle_adapter_component::EkuboOracleAdapterHelpers<ContractState>;
 
     #[storage]
-    struct Storage {
+    pub struct Storage {
         #[substorage(v0)]
-        ekubo_oracle_adapter: ekubo_oracle_adapter_component::Storage,
+        pub ekubo_oracle_adapter: ekubo_oracle_adapter_component::Storage,
     }
 
     #[event]

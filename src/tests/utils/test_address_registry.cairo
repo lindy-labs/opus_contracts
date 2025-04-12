@@ -1,11 +1,8 @@
 mod test_address_registry {
     use core::num::traits::Zero;
-    use opus::tests::common;
     use opus::tests::utils::mock_address_registry::mock_address_registry;
-    use opus::utils::address_registry::address_registry_component;
     use opus::utils::address_registry::address_registry_component::AddressRegistryHelpers;
-    use snforge_std::cheatcodes::events::EventAssertions;
-    use snforge_std::{Event, EventSpyAssertionsTrait, EventSpyTrait, spy_events, test_address};
+    use snforge_std::{EventSpyTrait, spy_events};
     use starknet::ContractAddress;
 
     //

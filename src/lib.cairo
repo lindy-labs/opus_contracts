@@ -144,14 +144,14 @@ mod tests {
         pub mod test_transmuter_registry;
         pub mod utils;
     }
-    // mod utils {
-//     mod mock_address_registry;
-//     mod mock_ekubo_oracle_adapter;
-//     mod mock_reentrancy_guard;
-//     mod test_address_registry;
-//     mod test_ekubo_oracle_adapter;
-//     mod test_exp;
-//     mod test_math;
-//     mod test_reentrancy_guard;
-// }
+    mod utils {
+        mod mock_address_registry;
+        mod mock_ekubo_oracle_adapter;
+        mod mock_reentrancy_guard;
+        mod test_address_registry;
+        mod test_ekubo_oracle_adapter;
+        mod test_exp;
+        mod test_math;
+        mod test_reentrancy_guard;
+    }
 }
