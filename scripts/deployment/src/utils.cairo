@@ -1,12 +1,16 @@
 use core::array::ArrayTrait;
 use opus::types::pragma::PairSettings;
 use scripts::constants::MAX_FEE;
-use sncast_std::{DisplayContractAddress, InvokeResult, invoke};
+use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::ContractAddress;
 
 pub fn grant_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
-        target, selector!("grant_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None,
+        target,
+        selector!("grant_role"),
+        array![role.into(), account.into()],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('grant role failed');
 
@@ -15,7 +19,11 @@ pub fn grant_role(target: ContractAddress, account: ContractAddress, role: u128,
 
 pub fn revoke_role(target: ContractAddress, account: ContractAddress, role: u128, msg: ByteArray) {
     let _grant_role = invoke(
-        target, selector!("revoke_role"), array![role.into(), account.into()], Option::Some(MAX_FEE), Option::None,
+        target,
+        selector!("revoke_role"),
+        array![role.into(), account.into()],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('revoke role failed');
 
@@ -26,17 +34,25 @@ pub fn transfer_admin_and_role(
     target: ContractAddress, new_admin: ContractAddress, role: u128, module_name: ByteArray,
 ) {
     let _grant_admin_role = invoke(
-        target, selector!("grant_role"), array![role.into(), new_admin.into()], Option::Some(MAX_FEE), Option::None,
+        target,
+        selector!("grant_role"),
+        array![role.into(), new_admin.into()],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('grant role to new admin failed');
 
     let _renounce_admin_role = invoke(
-        target, selector!("renounce_role"), array![role.into()], Option::Some(MAX_FEE), Option::None,
+        target, selector!("renounce_role"), array![role.into()], FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
     )
         .expect('renounce role failed');
 
     let _transfer_admin = invoke(
-        target, selector!("set_pending_admin"), array![new_admin.into()], Option::Some(MAX_FEE), Option::None,
+        target,
+        selector!("set_pending_admin"),
+        array![new_admin.into()],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('set pending admin failed');
 
@@ -50,7 +66,9 @@ pub fn set_oracles_to_seer(seer: ContractAddress, mut oracles: Span<ContractAddr
         calldata.append((*oracle).into());
     };
 
-    let _set_oracles = invoke(seer, selector!("set_oracles"), calldata, Option::Some(MAX_FEE), Option::None)
+    let _set_oracles = invoke(
+        seer, selector!("set_oracles"), calldata, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
+    )
         .expect('set oracles failed');
 
     println!("Oracles set");
@@ -73,7 +91,7 @@ pub fn add_yang_to_sentinel(
         asset,
         selector!("approve"),
         array![sentinel.into(), initial_asset_amt.into(), 0],
-        Option::Some(MAX_FEE),
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('approve asset failed');
@@ -86,7 +104,9 @@ pub fn add_yang_to_sentinel(
         initial_base_rate.into(),
         gate.into(),
     ];
-    let _add_yang = invoke(sentinel, selector!("add_yang"), add_yang_calldata, Option::Some(MAX_FEE), Option::None)
+    let _add_yang = invoke(
+        sentinel, selector!("add_yang"), add_yang_calldata, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
+    )
         .expect('add yang failed');
 
     println!("Yang successfully added: {}", asset_name)
@@ -95,7 +115,11 @@ pub fn add_yang_to_sentinel(
 // Used for Pragma v1
 pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_id: felt252) {
     let _set_yang_pair_id = invoke(
-        oracle, selector!("set_yang_pair_id"), array![yang.into(), pair_id], Option::Some(MAX_FEE), Option::None,
+        oracle,
+        selector!("set_yang_pair_id"),
+        array![yang.into(), pair_id],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('set yang pair id failed');
 }
@@ -105,7 +129,7 @@ pub fn set_yang_pair_settings_for_oracle(oracle: ContractAddress, yang: Contract
     let mut calldata = array![yang.into()];
     pair_settings.serialize(ref calldata);
     let _set_yang_pair_settings = invoke(
-        oracle, selector!("set_yang_pair_settings"), calldata, Option::Some(MAX_FEE), Option::None,
+        oracle, selector!("set_yang_pair_settings"), calldata, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
     )
         .expect('set yang pair settings failed');
 }

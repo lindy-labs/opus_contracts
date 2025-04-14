@@ -1,5 +1,5 @@
 use deployment::{core_deployment, periphery_deployment, utils};
-use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
+use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID, WSTETH_USD_PAIR_ID};
 use opus::core::roles::{
     absorber_roles, allocator_roles, caretaker_roles, controller_roles, equalizer_roles, purger_roles, seer_roles,
     sentinel_roles, shrine_roles, transmuter_roles,
@@ -7,7 +7,7 @@ use opus::core::roles::{
 use opus::external::roles::pragma_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{CallResult, DisplayContractAddress, InvokeResult, call, invoke};
+use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::{ClassHash, ContractAddress};
 use wadray::RAY_PERCENT;
 
@@ -149,7 +149,7 @@ fn main() {
         shrine,
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set debt ceiling failed');
@@ -161,7 +161,7 @@ fn main() {
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set minimum trove value failed');
@@ -185,7 +185,7 @@ fn main() {
         allocator,
         selector!("set_allocation"),
         array![2, addresses::mainnet::multisig().into(), absorber.into(), 2, twenty_pct, eighty_pct],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set allocation failed');
@@ -194,7 +194,7 @@ fn main() {
     // Update prices
     println!("Updating prices");
     let _update_prices = invoke(
-        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
+        seer, selector!("execute_task"), array![], FeeSettingsTrait::max_fee(constants::MAX_FEE), Option::None,
     )
         .expect('update prices failed');
 

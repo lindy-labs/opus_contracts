@@ -13,7 +13,7 @@ fn main() {
         addresses::devnet::shrine(),
         selector!("approve"),
         array![addresses::devnet::absorber().into(), max_u128.into(), max_u128.into()],
-        Option::Some(MAX_FEE),
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('approve CASH failed');
@@ -22,7 +22,7 @@ fn main() {
         addresses::devnet::absorber(),
         selector!("provide"),
         array![provide_amt.into()],
-        Option::Some(MAX_FEE),
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('provide failed');

@@ -32,7 +32,11 @@ fn main() {
     );
 
     invoke(
-        addresses::devnet::seer(), selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
+        addresses::devnet::seer(),
+        selector!("execute_task"),
+        array![],
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('update prices failed');
 }

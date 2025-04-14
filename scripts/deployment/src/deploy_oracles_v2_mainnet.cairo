@@ -1,10 +1,9 @@
 use deployment::{core_deployment, periphery_deployment, utils};
-use opus::core::roles::{purger_roles, seer_roles, sentinel_roles, shrine_roles};
+use opus::core::roles::seer_roles;
 use opus::external::roles::pragma_roles;
-use opus::periphery::roles::frontend_data_provider_roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{DeployResult, DisplayContractAddress, InvokeResult, deploy, invoke};
+use sncast_std::{DisplayContractAddress, FeeSettingsTrait, deploy};
 use starknet::{ClassHash, ContractAddress};
 
 fn main() {
@@ -36,7 +35,12 @@ fn main() {
         multisig.into(), shrine.into(), sentinel.into(), absorber.into(), seer.into(),
     ];
     let purger = deploy(
-        purger_class_hash, purger_calldata, Option::None, true, Option::Some(constants::MAX_FEE), Option::None,
+        purger_class_hash,
+        purger_calldata,
+        Option::None,
+        true,
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
+        Option::None,
     )
         .expect('failed purger deploy')
         .contract_address;
@@ -76,7 +80,7 @@ fn main() {
     // Update prices
     // println!("Updating prices");
     // let _update_prices = invoke(
-    //     seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None
+    //     seer, selector!("execute_task"), array![], FeeSettingsTrait::max_fee(constants::MAX_FEE), Option::None
     // )
     //     .expect('update prices failed');
 

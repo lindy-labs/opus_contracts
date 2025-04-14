@@ -7,7 +7,7 @@ use opus::utils::math::wad_to_fixed_point;
 use scripts::addresses;
 use scripts::constants;
 use scripts::mock_utils;
-use sncast_std::{CallResult, DisplayContractAddress, InvokeResult, call, invoke};
+use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -127,7 +127,7 @@ fn main() {
         shrine,
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set debt ceiling failed');
@@ -139,7 +139,7 @@ fn main() {
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set minimum trove value failed');
@@ -181,7 +181,7 @@ fn main() {
         usdc,
         selector!("approve"),
         array![usdc_transmuter_restricted.into(), transmute_amt.into(), 0],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('approve USDC failed');
@@ -189,7 +189,7 @@ fn main() {
         usdc_transmuter_restricted,
         selector!("transmute"),
         array![transmute_amt.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('transmute failed');

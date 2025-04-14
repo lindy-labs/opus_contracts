@@ -11,7 +11,7 @@ pub fn max_approve_token_for_gate(asset: ContractAddress, gate: ContractAddress)
         asset,
         selector!("approve"),
         array![gate.into(), max_u128.into(), max_u128.into()],
-        Option::Some(MAX_FEE),
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('max approve asset failed');

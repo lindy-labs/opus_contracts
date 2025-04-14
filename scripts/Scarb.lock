@@ -3,8 +3,9 @@ version = 1
 
 [[package]]
 name = "access_control"
-version = "0.3.0"
-source = "git+https://github.com/lindy-labs/access_control.git?tag=v0.3.0#8fdfc97e15c4fb1b6cb1aa0da91d94e5956c3b1a"
+version = "0.4.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:6049cdb13bc3a2b45e714558da6f49745b61e70e29b81f932b2e532bf72a102d"
 
 [[package]]
 name = "deployment"
@@ -13,6 +14,7 @@ dependencies = [
  "opus",
  "scripts",
  "sncast_std",
+ "wadray",
 ]
 
 [[package]]
@@ -29,6 +31,7 @@ version = "1.0.0"
 dependencies = [
  "opus",
  "sncast_std",
+ "wadray",
 ]
 
 [[package]]
@@ -38,14 +41,17 @@ dependencies = [
  "opus",
  "scripts",
  "sncast_std",
+ "wadray",
 ]
 
 [[package]]
 name = "sncast_std"
-version = "0.23.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.23.0#f2bff8f796763ada77fe6033ec1b034ceee22abd"
+version = "0.41.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:0884539863cd2b802eec9bcaecdb810fe130969e766f178d1e42220ddf65344d"
 
 [[package]]
 name = "wadray"
-version = "0.3.0"
-source = "git+https://github.com/lindy-labs/wadray.git?tag=v0.3.0#9b1f0e21abac6811b09d8a9e861b5d53e6a52d9c"
+version = "0.5.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:efdcf25d14a3fdeed662a0f8de17b89a998166e3f884139197b4367337c2e8e2"

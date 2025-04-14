@@ -1,8 +1,5 @@
 use scripts::constants::MAX_FEE;
-use sncast_std::{
-    DeclareResult, DeployResult, DisplayClassHash, DisplayContractAddress, InvokeResult, ScriptCommandError, declare,
-    deploy, invoke,
-};
+use sncast_std::{DeclareResultTrait, DisplayClassHash, DisplayContractAddress, FeeSettingsTrait, declare, deploy};
 use starknet::{ClassHash, ContractAddress};
 
 //
@@ -20,9 +17,9 @@ pub fn deploy_frontend_data_provider(
     let fdp_class_hash = match fdp_class_hash {
         Option::Some(class_hash) => class_hash,
         Option::None => {
-            declare("frontend_data_provider", Option::Some(MAX_FEE), Option::None)
+            *declare("frontend_data_provider", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
                 .expect('failed FDP declare')
-                .class_hash
+                .class_hash()
         },
     };
 
@@ -30,7 +27,12 @@ pub fn deploy_frontend_data_provider(
         admin.into(), shrine.into(), sentinel.into(), abbot.into(), purger.into(),
     ];
     let deploy_frontend_data_provider = deploy(
-        fdp_class_hash, frontend_data_provider_calldata, Option::None, true, Option::Some(MAX_FEE), Option::None,
+        fdp_class_hash,
+        frontend_data_provider_calldata,
+        Option::None,
+        true,
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('failed FDP deploy');
 

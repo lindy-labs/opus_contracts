@@ -25,7 +25,11 @@ fn main() {
     ];
 
     invoke(
-        addresses::devnet::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None,
+        addresses::devnet::abbot(),
+        selector!("open_trove"),
+        open_trove_calldata,
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('open trove failed');
 
@@ -41,7 +45,13 @@ fn main() {
 
     let forge_calldata: Array<felt252> = array![trove_id, max_forge_amt.into(), 0];
 
-    invoke(addresses::devnet::abbot(), selector!("forge"), forge_calldata, Option::Some(MAX_FEE), Option::None)
+    invoke(
+        addresses::devnet::abbot(),
+        selector!("forge"),
+        forge_calldata,
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
+    )
         .expect('forge failed');
 
     println!("Trove opened with ID {}", trove_id);

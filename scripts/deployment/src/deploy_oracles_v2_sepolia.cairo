@@ -1,10 +1,8 @@
 use deployment::{core_deployment, periphery_deployment, utils};
-use opus::core::roles::{absorber_roles, purger_roles, seer_roles, sentinel_roles, shrine_roles};
-use opus::external::roles::pragma_roles;
-use opus::periphery::roles::frontend_data_provider_roles;
+use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{DisplayContractAddress, InvokeResult, invoke};
+use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::ContractAddress;
 
 fn main() {
@@ -68,7 +66,7 @@ fn main() {
     // Update prices
     println!("Updating prices");
     let _update_prices = invoke(
-        seer, selector!("execute_task"), array![], Option::Some(constants::MAX_FEE), Option::None,
+        seer, selector!("execute_task"), array![], FeeSettingsTrait::max_fee(constants::MAX_FEE), Option::None,
     )
         .expect('update prices failed');
 

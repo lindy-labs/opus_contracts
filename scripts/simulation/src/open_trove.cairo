@@ -25,7 +25,11 @@ fn main() {
     ];
 
     invoke(
-        addresses::devnet::abbot(), selector!("open_trove"), open_trove_calldata, Option::Some(MAX_FEE), Option::None,
+        addresses::devnet::abbot(),
+        selector!("open_trove"),
+        open_trove_calldata,
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('open trove failed');
 

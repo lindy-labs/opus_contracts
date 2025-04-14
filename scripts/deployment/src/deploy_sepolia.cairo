@@ -3,10 +3,7 @@ use opus::constants::{ETH_USD_PAIR_ID, STRK_USD_PAIR_ID};
 use opus::core::roles;
 use scripts::addresses;
 use scripts::constants;
-use sncast_std::{
-    DeclareResult, DeployResult, DisplayClassHash, DisplayContractAddress, InvokeResult, ScriptCommandError, declare,
-    deploy, invoke,
-};
+use sncast_std::{DisplayClassHash, DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::{ClassHash, ContractAddress};
 
 fn main() {
@@ -99,7 +96,7 @@ fn main() {
         shrine,
         selector!("set_debt_ceiling"),
         array![debt_ceiling.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set debt ceiling failed');
@@ -111,7 +108,7 @@ fn main() {
         shrine,
         selector!("set_minimum_trove_value"),
         array![minimum_trove_value.into()],
-        Option::Some(constants::MAX_FEE),
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
         Option::None,
     )
         .expect('set minimum trove value failed');
