@@ -5,7 +5,7 @@ pub mod shrine_utils {
     use core::traits::DivRem;
     use opus::core::roles::shrine_roles;
     use opus::core::shrine::shrine as shrine_contract;
-    use opus::interfaces::IERC20::{IERC20Dispatcher};
+    use opus::interfaces::IERC20::IERC20Dispatcher;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::tests::common;
     use opus::types::Health;
@@ -242,7 +242,7 @@ pub mod shrine_utils {
                 Option::Some(_) => { yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap())); },
                 Option::None => { break; },
             };
-        };
+        }
         let yang_feeds = yang_feeds.span();
 
         let mut idx: u32 = 0;
@@ -264,14 +264,14 @@ pub mod shrine_utils {
                     Option::Some(yang) => { shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx)); },
                     Option::None => { break; },
                 };
-            };
+            }
 
             shrine.set_multiplier(RAY_ONE.into());
 
             timestamp += shrine_contract::TIME_INTERVAL;
 
             idx += 1;
-        };
+        }
 
         // Reset contract address
         stop_cheat_caller_address(shrine.contract_address);
@@ -351,12 +351,12 @@ pub mod shrine_utils {
                     },
                     Option::None => { break; },
                 }
-            };
+            }
 
             shrine.set_multiplier(RAY_ONE.into());
 
             num_periods -= 1;
-        };
+        }
         next_ts += rem_time;
         start_cheat_block_timestamp_global(next_ts);
         stop_cheat_caller_address(shrine.contract_address);
@@ -411,7 +411,7 @@ pub mod shrine_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
         yang_prices.span()
     }
 
@@ -513,7 +513,7 @@ pub mod shrine_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         // Start of tests
 
@@ -541,7 +541,7 @@ pub mod shrine_utils {
                 weighted_rate_sum += weighted_rate;
 
                 j += 1;
-            };
+            }
             let base_rate: Ray = wadray::wdiv_rw(weighted_rate_sum, total_avg_yang_value);
             let rate: Ray = base_rate * *avg_multipliers[i];
 
@@ -669,7 +669,7 @@ pub mod shrine_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         stop_cheat_caller_address(shrine.contract_address);
 
@@ -725,7 +725,7 @@ pub mod shrine_utils {
                         troves_cumulative_amt += trove_amt;
 
                         trove_id += 1;
-                    };
+                    }
 
                     let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
                     let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
@@ -761,7 +761,7 @@ pub mod shrine_utils {
             cumulative_troves_debt += trove_health.debt;
 
             trove_id += 1;
-        };
+        }
         stop_cheat_caller_address(shrine.contract_address);
 
         let shrine_health: Health = shrine.get_shrine_health();

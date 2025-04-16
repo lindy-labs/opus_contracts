@@ -416,7 +416,7 @@ pub mod purger {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.reentrancy_guard.end();
             freed_assets.span()

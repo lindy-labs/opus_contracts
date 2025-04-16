@@ -4,7 +4,8 @@ mod test_controller {
     use opus::interfaces::IController::IControllerDispatcherTrait;
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::controller::utils::{controller_utils, controller_utils::ControllerTestConfig};
+    use opus::tests::controller::utils::controller_utils;
+    use opus::tests::controller::utils::controller_utils::ControllerTestConfig;
     use snforge_std::{
         EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
     };

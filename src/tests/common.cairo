@@ -148,7 +148,7 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
             },
             Option::None => { break; },
         };
-    };
+    }
 
     start_cheat_block_timestamp_global(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 
@@ -163,7 +163,7 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
             },
             Option::None => { break; },
         };
-    };
+    }
     stop_cheat_caller_address(shrine.contract_address);
 }
 
@@ -343,7 +343,7 @@ pub fn open_trove_helper(
             },
             Option::None => { break; },
         };
-    };
+    }
 
     start_cheat_caller_address(abbot.contract_address, user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
@@ -378,7 +378,7 @@ pub fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<Con
                         },
                         Option::None => { break; },
                     };
-                };
+                }
                 balances.append(yang_balances.span());
             },
             Option::None => { break balances.span(); },
@@ -456,7 +456,7 @@ pub fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span
             },
             Option::None => { break; },
         };
-    };
+    }
 
     asset_balances.span()
 }
@@ -473,7 +473,7 @@ pub fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
             },
             Option::None => { break; },
         };
-    };
+    }
 
     split_asset_amts.span()
 }
@@ -492,7 +492,7 @@ pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
             },
             Option::None => { break; },
         };
-    };
+    }
 
     combined_asset_amts.span()
 }

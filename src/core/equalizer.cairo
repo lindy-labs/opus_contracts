@@ -195,7 +195,7 @@ pub mod equalizer {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }

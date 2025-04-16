@@ -43,19 +43,19 @@ pub mod sentinel {
         #[substorage(v0)]
         access_control: access_control_component::Storage,
         // mapping between a yang address and our deployed Gate
-        yang_to_gate: Map::<ContractAddress, IGateDispatcher>,
+        yang_to_gate: Map<ContractAddress, IGateDispatcher>,
         // length of the yang_addresses array
         yang_addresses_count: u32,
         // array of yang addresses added to the Shrine via this Sentinel
         // starts from index 1
-        yang_addresses: Map::<u32, ContractAddress>,
+        yang_addresses: Map<u32, ContractAddress>,
         // The Shrine associated with this Sentinel
         shrine: IShrineDispatcher,
         // mapping between a yang address and the cap on the yang's asset in the
         // asset's decimals
-        yang_asset_max: Map::<ContractAddress, u128>,
+        yang_asset_max: Map<ContractAddress, u128>,
         // mapping between a yang address and whether its Gate is live
-        yang_is_live: Map::<ContractAddress, bool>,
+        yang_is_live: Map<ContractAddress, bool>,
     }
 
     //

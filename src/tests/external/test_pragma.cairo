@@ -10,9 +10,8 @@ mod test_pragma {
     use opus::interfaces::IPragma::IPragmaDispatcherTrait;
     use opus::mock::mock_pragma::IMockPragmaDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::external::utils::{
-        mock_eth_token_addr, pepe_token_addr, pragma_utils, pragma_utils::PragmaTestConfig,
-    };
+    use opus::tests::external::utils::pragma_utils::PragmaTestConfig;
+    use opus::tests::external::utils::{mock_eth_token_addr, pepe_token_addr, pragma_utils};
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse, PriceValidityThresholds};

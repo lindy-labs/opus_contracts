@@ -72,7 +72,7 @@ pub mod pragma {
         price_validity_thresholds: PriceValidityThresholds,
         // A mapping between a token's address and its pair settings in Pragma
         // (yang address) -> (PairSettings struct)
-        yang_pair_settings: Map::<ContractAddress, PairSettings>,
+        yang_pair_settings: Map<ContractAddress, PairSettings>,
     }
 
     //

@@ -99,44 +99,44 @@ pub mod absorber {
         // absorptions start from 1.
         absorptions_count: u32,
         // mapping from a provider to the last absorption ID accounted for
-        provider_last_absorption: Map::<ContractAddress, u32>,
+        provider_last_absorption: Map<ContractAddress, u32>,
         // mapping of address to a struct of
         // 1. epoch in which the provider's shares are issued
         // 2. number of shares for the provider in the above epoch
-        provisions: Map::<ContractAddress, Provision>,
+        provisions: Map<ContractAddress, Provision>,
         // mapping from an absorption to its epoch
-        absorption_epoch: Map::<u32, u32>,
+        absorption_epoch: Map<u32, u32>,
         // total number of shares for current epoch
         total_shares: Wad,
         // mapping of a tuple of asset and absorption ID to the amount of that asset in its
         // decimal precision absorbed per share Wad for an absorption
-        asset_absorption: Map::<(ContractAddress, u32), u128>,
+        asset_absorption: Map<(ContractAddress, u32), u128>,
         // conversion rate of an epoch's shares to the next
         // if an update causes the yin per share to drop below the threshold,
         // the epoch is incremented and yin per share is reset to one Ray.
         // a provider with shares in that epoch will receive new shares in the next epoch
         // based on this conversion rate.
         // if the absorber's yin balance is wiped out, the conversion rate will be 0.
-        epoch_share_conversion_rate: Map::<u32, Ray>,
+        epoch_share_conversion_rate: Map<u32, Ray>,
         // total number of reward tokens, starting from 1
         // a reward token cannot be removed once added.
         rewards_count: u8,
         // mapping from a reward token address to its id for iteration
-        reward_id: Map::<ContractAddress, u8>,
+        reward_id: Map<ContractAddress, u8>,
         // mapping from a reward token ID to its Reward struct:
         // 1. the ERC-20 token address
         // 2. the address of the vesting contract (blesser) implementing `IBlesser` for the ERC-20 token
         // 3. a boolean indicating if the blesser should be called
-        rewards: Map::<u8, Reward>,
+        rewards: Map<u8, Reward>,
         // mapping from a reward token address and epoch to a struct of
         // 1. the cumulative amount of that reward asset in its decimal precision per share Wad in that epoch
         // 2. the rounding error from calculating (1) that is to be added to the next reward distribution
-        cumulative_reward_amt_by_epoch: Map::<(ContractAddress, u32), DistributionInfo>,
+        cumulative_reward_amt_by_epoch: Map<(ContractAddress, u32), DistributionInfo>,
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
-        provider_last_reward_cumulative: Map::<(ContractAddress, ContractAddress), u128>,
+        provider_last_reward_cumulative: Map<(ContractAddress, ContractAddress), u128>,
         // Mapping from a provider to its latest request for removal
-        provider_request: Map::<ContractAddress, Request>,
+        provider_request: Map<ContractAddress, Request>,
     }
 
     //
@@ -577,7 +577,7 @@ pub mod absorber {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             //
             // Increment epoch ID only if yin per share drops below threshold or stability pool is emptied
@@ -852,7 +852,7 @@ pub mod absorber {
                             let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
 
                             absorbed_amt += u128_wmul(adjusted_shares.into(), asset_amt_per_share);
-                        };
+                        }
 
                         absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
                     },
@@ -961,7 +961,7 @@ pub mod absorber {
                 }
 
                 current_rewards_id += 1;
-            };
+            }
 
             if blessed_assets.len().is_non_zero() {
                 self.emit(Bestow { assets: blessed_assets.span(), total_recipient_shares, epoch });
@@ -1031,7 +1031,7 @@ pub mod absorber {
                     epoch_shares = self.convert_epoch_shares(epoch, epoch + 1, epoch_shares);
 
                     epoch += 1;
-                };
+                }
 
                 reward_assets.append(AssetBalance { address: reward.asset, amount: reward_amt });
 

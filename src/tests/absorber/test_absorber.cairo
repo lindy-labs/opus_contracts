@@ -7,7 +7,8 @@ mod test_absorber {
     use opus::interfaces::IAbsorber::{IAbsorberDispatcherTrait, IBlesserDispatcher};
     use opus::interfaces::IERC20::IERC20DispatcherTrait;
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
-    use opus::tests::absorber::utils::{absorber_utils, absorber_utils::{AbsorberRewardsTestConfig, AbsorberTestConfig}};
+    use opus::tests::absorber::utils::absorber_utils;
+    use opus::tests::absorber::utils::absorber_utils::{AbsorberRewardsTestConfig, AbsorberTestConfig};
     use opus::tests::common;
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::shrine::utils::shrine_utils;
@@ -276,7 +277,7 @@ mod test_absorber {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         absorber.reap();
 
@@ -1833,7 +1834,7 @@ mod test_absorber {
 
             expected_timelock *= absorber_contract::REQUEST_TIMELOCK_MULTIPLIER;
             idx += 1;
-        };
+        }
         spy.assert_emitted(@expected_events);
     }
 

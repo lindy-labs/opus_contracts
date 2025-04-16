@@ -16,7 +16,8 @@ mod test_purger {
     use opus::tests::absorber::utils::absorber_utils;
     use opus::tests::common;
     use opus::tests::flash_mint::utils::flash_mint_utils;
-    use opus::tests::purger::utils::{purger_utils, purger_utils::PurgerTestConfig};
+    use opus::tests::purger::utils::purger_utils;
+    use opus::tests::purger::utils::purger_utils::PurgerTestConfig;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
     use opus::utils::math::{pow, scale_u128_by_ray};
@@ -1856,7 +1857,7 @@ mod test_purger {
                             },
                             Option::None => { break; },
                         };
-                    };
+                    }
 
                     // Check Purger events
 
@@ -4189,7 +4190,7 @@ mod test_purger {
                                             );
                                     },
                                     AbsorbType::None => {},
-                                };
+                                }
 
                                 stop_cheat_caller_address(absorber.contract_address);
 

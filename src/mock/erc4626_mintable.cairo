@@ -20,8 +20,8 @@ pub mod erc4626_mintable {
         symbol: felt252,
         decimals: u8,
         total_supply: u256,
-        balances: Map::<ContractAddress, u256>,
-        allowances: Map::<(ContractAddress, ContractAddress), u256>,
+        balances: Map<ContractAddress, u256>,
+        allowances: Map<(ContractAddress, ContractAddress), u256>,
         // storage variables for mock ERC-4626
         asset: ContractAddress,
         convert_to_assets_wad_scale: u256,

@@ -83,7 +83,7 @@ pub mod equalizer_utils {
                 Option::Some(recipient) => { calldata.append((*recipient).into()); },
                 Option::None => { break; },
             };
-        };
+        }
 
         calldata.append(percentages.len().into());
         loop {
@@ -94,7 +94,7 @@ pub mod equalizer_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let allocator_class = match allocator_class {
             Option::Some(class) => class,

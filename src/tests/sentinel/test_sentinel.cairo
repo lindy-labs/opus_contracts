@@ -8,7 +8,8 @@ mod test_sentinel {
     use opus::interfaces::ISentinel::ISentinelDispatcherTrait;
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::sentinel::utils::{sentinel_utils, sentinel_utils::SentinelTestConfig};
+    use opus::tests::sentinel::utils::sentinel_utils;
+    use opus::tests::sentinel::utils::sentinel_utils::SentinelTestConfig;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::fixed_point_to_wad;

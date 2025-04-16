@@ -836,7 +836,7 @@ mod test_shrine_compound {
             let rate_update_interval: u64 = start_interval + (i + 1) * BASE_RATE_UPDATE_SPACING;
             rate_update_intervals.append(rate_update_interval);
             i += 1;
-        };
+        }
 
         let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
 
@@ -890,7 +890,7 @@ mod test_shrine_compound {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             avg_yang_prices_by_era.append(avg_yang_prices_for_era.span());
 
@@ -922,7 +922,7 @@ mod test_shrine_compound {
                         },
                         Option::None => { break; },
                     };
-                };
+                }
 
                 expected_events
                     .append(
@@ -945,7 +945,7 @@ mod test_shrine_compound {
 
             // Update start interval for next era
             era_start_interval = era_end_interval;
-        };
+        }
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let expected_debt: Wad = shrine_utils::compound(

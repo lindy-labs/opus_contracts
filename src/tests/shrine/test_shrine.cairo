@@ -181,7 +181,7 @@ mod test_shrine {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         // Check shrine threshold and value
         let shrine_health: Health = shrine.get_shrine_health();
@@ -229,7 +229,7 @@ mod test_shrine {
                 },
                 Option::None => { break (); },
             };
-        };
+        }
 
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
         assert(start_cumulative_multiplier == RAY_ONE.into(), 'wrong start cumulative mul');
@@ -284,7 +284,7 @@ mod test_shrine {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             expected_cumulative_multiplier += RAY_ONE.into();
             let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
@@ -305,7 +305,7 @@ mod test_shrine {
                     ),
                 );
             idx += 1;
-        };
+        }
         spy.assert_emitted(@expected_events);
     }
 
@@ -738,7 +738,7 @@ mod test_shrine {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         shrine.kill();
@@ -761,7 +761,7 @@ mod test_shrine {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let expected_events = array![
             (shrine.contract_address, shrine_contract::Event::Killed(shrine_contract::Killed {})),
@@ -1940,7 +1940,7 @@ mod test_shrine {
                 },
                 Option::None => { break (); },
             };
-        };
+        }
         let mut yang_thresholds: Array<Ray> = array![
             shrine_utils::YANG1_THRESHOLD.into(), shrine_utils::YANG2_THRESHOLD.into(),
         ];
@@ -2010,7 +2010,7 @@ mod test_shrine {
                 },
                 Option::None => { break (); },
             };
-        };
+        }
 
         // Update the amounts with the total amount deposited into troves 1 and 2
         let mut yang_amts: Array<Wad> = array![
@@ -2290,7 +2290,7 @@ mod test_shrine {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         // move time forward to a second before permanent suspension
         start_cheat_block_timestamp_global(start_ts + shrine_contract::SUSPENSION_GRACE_PERIOD - 1);
@@ -2957,7 +2957,7 @@ mod test_shrine {
                             },
                             Option::None => { break; },
                         };
-                    };
+                    }
                     stop_cheat_caller_address(shrine.contract_address);
 
                     assert(shrine.is_recovery_mode(), 'should be recovery mode');

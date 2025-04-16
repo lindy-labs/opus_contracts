@@ -18,7 +18,8 @@ mod test_seer {
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::common;
     use opus::tests::external::utils::pragma_utils;
-    use opus::tests::seer::utils::{seer_utils, seer_utils::SeerTestConfig};
+    use opus::tests::seer::utils::seer_utils;
+    use opus::tests::seer::utils::seer_utils::SeerTestConfig;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::PragmaPricesResponse;
@@ -427,7 +428,7 @@ mod test_seer {
             }
 
             period_div -= 1;
-        };
+        }
 
         assert(shrine.get_yang_suspension_status(eth_addr) == YangSuspensionStatus::Permanent, 'yang not suspended');
 

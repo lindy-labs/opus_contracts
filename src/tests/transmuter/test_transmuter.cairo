@@ -11,7 +11,8 @@ mod test_transmuter {
     use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
+    use opus::tests::transmuter::utils::transmuter_utils;
+    use opus::tests::transmuter::utils::transmuter_utils::TransmuterTestConfig;
     use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
     use snforge_std::{
         ContractClass, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
@@ -695,7 +696,7 @@ mod test_transmuter {
                             },
                             Option::None => { break; },
                         };
-                    };
+                    }
 
                     assert(
                         asset.balance_of(transmuter.contract_address) == cumulative_asset_fees.into(),

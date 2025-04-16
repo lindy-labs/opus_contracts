@@ -512,7 +512,7 @@ pub mod purger_utils {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
                 Option::None => { break; },
             };
-        };
+        }
         stop_cheat_caller_address(shrine.contract_address);
     }
 
@@ -531,7 +531,7 @@ pub mod purger_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
         stop_cheat_caller_address(shrine.contract_address);
     }
 
@@ -593,7 +593,7 @@ pub mod purger_utils {
         let mut value_after_compensation: Wad = trove_health.value;
         if compensation_value.is_some() {
             value_after_compensation -= compensation_value.unwrap()
-        };
+        }
 
         let mut expected_freed_pct_of_value_after_compensation = Zero::zero();
         let mut expected_freed_pct_of_value_before_compensation = Zero::zero();

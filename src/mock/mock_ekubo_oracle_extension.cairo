@@ -18,7 +18,7 @@ pub mod mock_ekubo_oracle_extension {
     #[storage]
     struct Storage {
         // Mapping from (base token, quote token) to x128 price
-        price: Map::<(ContractAddress, ContractAddress), u256>,
+        price: Map<(ContractAddress, ContractAddress), u256>,
     }
 
     #[abi(embed_v0)]

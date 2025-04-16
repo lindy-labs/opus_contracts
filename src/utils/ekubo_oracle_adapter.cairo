@@ -149,7 +149,7 @@ pub mod ekubo_oracle_adapter_component {
                     },
                     Option::None => { break; },
                 }
-            };
+            }
 
             self.emit(QuoteTokensUpdated { quote_tokens: quote_tokens_info.span() });
         }

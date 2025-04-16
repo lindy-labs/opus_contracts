@@ -44,7 +44,7 @@ pub mod mock_oracle {
                 }
 
                 i -= 1;
-            };
+            }
 
             self.latest_prices.write(token, price);
         }

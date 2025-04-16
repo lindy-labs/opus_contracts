@@ -4,9 +4,7 @@ use opus::constants::{
 };
 use opus::core::roles::{absorber_roles, seer_roles, sentinel_roles, shrine_roles};
 use opus::utils::math::wad_to_fixed_point;
-use scripts::addresses;
-use scripts::constants;
-use scripts::mock_utils;
+use scripts::{addresses, constants, mock_utils};
 use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::{ClassHash, ContractAddress};
 

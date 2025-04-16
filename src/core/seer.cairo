@@ -308,7 +308,7 @@ pub mod seer {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.last_update_prices_call_timestamp.write(get_block_timestamp());
             self.emit(UpdatePricesDone {});

@@ -62,7 +62,7 @@ pub mod flash_liquidator {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             let purger: IPurgerDispatcher = self.purger.read();
             let (_, max_close_amt) = purger.preview_liquidate(trove_id).expect('FL: not liquidatable');
@@ -119,7 +119,7 @@ pub mod flash_liquidator {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Open a trove with funded and freed assets, and mint the loan amount.
             // This should revert if the contract did not receive the freed assets

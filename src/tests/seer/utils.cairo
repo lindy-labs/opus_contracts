@@ -128,7 +128,7 @@ pub mod seer_utils {
                 Option::Some(vault) => { seer.set_yang_price_type(*vault, PriceType::Vault); },
                 Option::None => { break; },
             };
-        };
+        }
         stop_cheat_caller_address(seer.contract_address);
     }
 

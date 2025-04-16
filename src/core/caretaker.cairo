@@ -237,7 +237,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Kill modules
             shrine.kill();
@@ -300,7 +300,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
 
@@ -360,7 +360,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets });
 

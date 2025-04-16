@@ -5,7 +5,7 @@ pub mod flash_borrower {
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, contract_address_const, get_contract_address};
+    use starknet::{ContractAddress, get_contract_address};
 
     pub const VALID_USAGE: felt252 = 0;
     pub const ATTEMPT_TO_STEAL: felt252 = 1;
@@ -57,7 +57,7 @@ pub mod flash_borrower {
                     'FB: incorrect loan amount',
                 );
             } else if action == ATTEMPT_TO_STEAL {
-                IERC20Dispatcher { contract_address: token }.transfer(contract_address_const::<0xbeef>(), amount);
+                IERC20Dispatcher { contract_address: token }.transfer(0xbeef.try_into().unwrap(), amount);
             } else if action == ATTEMPT_TO_REENTER {
                 self.flashmint.read().flash_loan(initiator, token, amount, call_data_copy);
             }

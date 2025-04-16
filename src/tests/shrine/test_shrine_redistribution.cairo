@@ -125,7 +125,7 @@ mod test_shrine_redistribution {
                 },
                 Option::None => { break; },
             };
-        };
+        }
         (trove_yang_values.span(), expected_unit_debts.span(), expected_remaining_yangs.span(), cumulative_error)
     }
 
@@ -187,7 +187,7 @@ mod test_shrine_redistribution {
                 },
                 Option::None => { break; },
             };
-        };
+        }
         (expected_recipient_trove_debt_increment, cumulative_redistributed_debt)
     }
 
@@ -950,7 +950,7 @@ mod test_shrine_redistribution {
             shrine.deposit(yang2_addr, trove_idx, (tmp_multiplier * 200000000000000000).into()); // idx * 0.2 Wad
 
             idx += 1;
-        };
+        }
 
         let redistributed_trove: u64 = common::TROVE_1;
         let (_, _, _, expected_error) = preview_trove_redistribution(shrine, yangs, redistributed_trove);
@@ -1213,7 +1213,7 @@ mod test_shrine_redistribution {
                     spy.assert_emitted(@expected_events);
                 },
                 Option::None => { break; },
-            };
+            }
             idx += 1;
         };
     }

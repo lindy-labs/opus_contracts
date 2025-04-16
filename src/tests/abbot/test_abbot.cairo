@@ -6,7 +6,8 @@ mod test_abbot {
     use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::ISentinel::ISentinelDispatcherTrait;
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
-    use opus::tests::abbot::utils::{abbot_utils, abbot_utils::{AbbotTestConfig, AbbotTestTrove}};
+    use opus::tests::abbot::utils::abbot_utils;
+    use opus::tests::abbot::utils::abbot_utils::{AbbotTestConfig, AbbotTestTrove};
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
@@ -84,7 +85,7 @@ mod test_abbot {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         // Check trove's debt
         let trove_health: Health = shrine.get_trove_health(expected_trove_id);
@@ -146,7 +147,7 @@ mod test_abbot {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let shrine_health: Health = shrine.get_shrine_health();
         assert(shrine_health.debt == forge_amt + second_forge_amt, 'wrong total debt #2');
@@ -273,7 +274,7 @@ mod test_abbot {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.debt.is_zero(), 'wrong trove debt');
@@ -346,7 +347,7 @@ mod test_abbot {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         shrine_utils::assert_total_yang_invariant(shrine, yangs, abbot.get_troves_count());
 

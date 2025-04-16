@@ -64,7 +64,7 @@ pub fn set_oracles_to_seer(seer: ContractAddress, mut oracles: Span<ContractAddr
     calldata.append(oracles.len().into());
     while let Option::Some(oracle) = oracles.pop_front() {
         calldata.append((*oracle).into());
-    };
+    }
 
     let _set_oracles = invoke(
         seer, selector!("set_oracles"), calldata, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,

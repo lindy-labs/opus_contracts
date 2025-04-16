@@ -35,6 +35,6 @@ pub fn set_mock_pragma_prices(
             },
             Option::None => { break; },
         };
-    };
+    }
     println!("Prices set for mock Pragma");
 }

@@ -35,12 +35,12 @@ pub mod mock_pragma {
     #[storage]
     struct Storage {
         // Mapping from pair ID to price response data struct for get_data
-        get_data_response: Map::<felt252, PragmaPricesResponseWrapper>,
+        get_data_response: Map<felt252, PragmaPricesResponseWrapper>,
         // Mapping from pair ID to price response data struct for get_data_median
         // Used in Pragma V1
-        get_data_median_response: Map::<felt252, PragmaPricesResponseWrapper>,
+        get_data_median_response: Map<felt252, PragmaPricesResponseWrapper>,
         // Mapping from pair ID to TWAP price response for calculate_twap
-        calculate_twap_response: Map::<felt252, (u128, u32)>,
+        calculate_twap_response: Map<felt252, (u128, u32)>,
     }
 
     #[abi(embed_v0)]

@@ -8,7 +8,8 @@ mod test_ekubo {
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use opus::mock::mock_ekubo_oracle_extension::set_next_ekubo_prices;
     use opus::tests::common;
-    use opus::tests::external::utils::{ekubo_utils, ekubo_utils::EkuboTestConfig};
+    use opus::tests::external::utils::ekubo_utils;
+    use opus::tests::external::utils::ekubo_utils::EkuboTestConfig;
     use opus::utils::ekubo_oracle_adapter::{
         IEkuboOracleAdapterDispatcher, IEkuboOracleAdapterDispatcherTrait, ekubo_oracle_adapter_component,
     };

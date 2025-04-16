@@ -182,7 +182,7 @@ pub mod abbot {
                     Option::Some(yang_asset) => { self.deposit_helper(new_trove_id, user, *yang_asset); },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
@@ -214,7 +214,7 @@ pub mod abbot {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(TroveClosed { trove_id });
         }

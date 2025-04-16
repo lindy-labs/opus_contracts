@@ -7,7 +7,8 @@ mod test_equalizer {
     use opus::interfaces::IEqualizer::IEqualizerDispatcherTrait;
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::equalizer::utils::{equalizer_utils, equalizer_utils::EqualizerTestConfig};
+    use opus::tests::equalizer::utils::equalizer_utils;
+    use opus::tests::equalizer::utils::equalizer_utils::EqualizerTestConfig;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::Health;
     use snforge_std::{
@@ -179,7 +180,7 @@ mod test_equalizer {
                 },
                 Option::None => { break; },
             };
-        };
+        }
         assert(surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch');
 
         let expected_events = array![

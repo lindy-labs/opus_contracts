@@ -233,7 +233,7 @@ pub mod absorber_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         blessers.span()
     }
@@ -248,7 +248,7 @@ pub mod absorber_utils {
                 Option::Some(token) => { absorber.set_reward(*token, *blessers.pop_front().unwrap(), true); },
                 Option::None => { break; },
             };
-        };
+        }
 
         stop_cheat_caller_address(absorber.contract_address);
     }
@@ -388,7 +388,7 @@ pub mod absorber_utils {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
 

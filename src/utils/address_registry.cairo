@@ -9,8 +9,8 @@ pub mod address_registry_component {
     #[storage]
     pub struct Storage {
         entries_count: u32,
-        entry_ids: Map::<ContractAddress, u32>,
-        entries: Map::<u32, ContractAddress>,
+        entry_ids: Map<ContractAddress, u32>,
+        entries: Map<u32, ContractAddress>,
     }
 
     #[event]

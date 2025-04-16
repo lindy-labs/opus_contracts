@@ -3,7 +3,6 @@ pub mod shrine {
     use access_control::access_control_component;
     use core::cmp::{max, min};
     use core::num::traits::{Bounded, Zero};
-    use core::starknet::event::EventEmitter;
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IERC20::{IERC20, IERC20CamelOnly};
     use opus::interfaces::ISRC5::ISRC5;
@@ -117,26 +116,26 @@ pub mod shrine {
         access_control: access_control_component::Storage,
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
-        troves: Map::<u64, Trove>,
+        troves: Map<u64, Trove>,
         // Stores the amount of the "yin" (synthetic) each user owns.
         // (user_address) -> (Yin)
-        yin: Map::<ContractAddress, Wad>,
+        yin: Map<ContractAddress, Wad>,
         // Stores information about the total supply for each yang
         // (yang_id) -> (Total Supply)
-        yang_total: Map::<u32, Wad>,
+        yang_total: Map<u32, Wad>,
         // Stores information about the yang amount owned by the protocol, including the
         // initial yanga amount minted to the protocol
-        protocol_owned_yang_amts: Map::<u32, Wad>,
+        protocol_owned_yang_amts: Map<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
         yangs_count: u32,
         // Mapping from yang ContractAddress to yang ID.
         // Yang ID starts at 1.
         // (yang_address) -> (yang_id)
-        yang_ids: Map::<ContractAddress, u32>,
+        yang_ids: Map<ContractAddress, u32>,
         // Keeps track of how much of each yang has been deposited into each Trove - Wad
         // (yang_id, trove_id) -> (Amount Deposited)
-        deposits: Map::<(u32, u64), Wad>,
+        deposits: Map<(u32, u64), Wad>,
         // Total amount of debt accrued for troves. This includes any debt surplus
         // already accounted for in the budget.
         // The relationship between `total_troves_debt` and `protocol_owned_troves_debt` is:
@@ -163,7 +162,7 @@ pub mod shrine {
         // the yang at each time interval, both as Wads.
         // - interval: timestamp divided by TIME_INTERVAL.
         // (yang_id, interval) -> (price, cumulative_price)
-        yang_prices: Map::<(u32, u64), (Wad, Wad)>,
+        yang_prices: Map<(u32, u64), (Wad, Wad)>,
         // Spot price of yin
         yin_spot_price: Wad,
         // Minimum value for a trove before a user can forge any debt
@@ -183,27 +182,27 @@ pub mod shrine {
         // stores both the actual multiplier, and the cumulative multiplier of
         // the yang at each time interval, both as Rays
         // (interval) -> (multiplier, cumulative_multiplier)
-        multiplier: Map::<u64, (Ray, Ray)>,
+        multiplier: Map<u64, (Ray, Ray)>,
         // Keeps track of the most recent rates index.
         // Rate era starts at 1.
         // Each index is associated with an update to the interest rates of all yangs.
         rates_latest_era: u64,
         // Keeps track of the interval at which the rate update at `era` was made.
         // (era) -> (interval)
-        rates_intervals: Map::<u64, u64>,
+        rates_intervals: Map<u64, u64>,
         // Keeps track of the interest rate of each yang at each era
         // (yang_id, era) -> (Interest Rate)
-        yang_rates: Map::<(u32, u64), Ray>,
+        yang_rates: Map<(u32, u64), Ray>,
         // Keeps track of when a yang was suspended
         // 0 means it is not suspended
         // (yang_id) -> (suspension timestamp)
-        yang_suspension: Map::<u32, u64>,
+        yang_suspension: Map<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
         // NOTE: don't read the value directly, instead use `get_yang_threshold_helper`
         //       because a yang might be suspended; the function will return the correct
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
-        thresholds: Map::<u32, Ray>,
+        thresholds: Map<u32, Ray>,
         // This factor is applied to:
         // - the Shrine's threshold to determine the LTV at which recovery mode should be triggered; or
         // - a trove's threshold to determine its target recovery mode LTV, so `forge` and `withdraw`
@@ -223,11 +222,11 @@ pub mod shrine {
         redistributions_count: u32,
         // Last redistribution accounted for a trove
         // (trove_id) -> (Last Redistribution ID)
-        trove_redistribution_id: Map::<u64, u32>,
+        trove_redistribution_id: Map<u64, u32>,
         // Mapping of yang ID and redistribution ID to amount of debt in Wad to be redistributed
         // to each Wad unit of yang
         // (yang_id, redistribution_id) -> debt_per_wad
-        yang_redistributions: Map::<(u32, u32), Wad>,
+        yang_redistributions: Map<(u32, u32), Wad>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
         // Yin storage
@@ -236,7 +235,7 @@ pub mod shrine {
         yin_decimals: u8,
         // Mapping of user's yin allowance for another user
         // (user_address, spender_address) -> (Allowance)
-        yin_allowances: Map::<(ContractAddress, ContractAddress), u256>,
+        yin_allowances: Map<(ContractAddress, ContractAddress), u256>,
     }
 
     //
@@ -792,7 +791,7 @@ pub mod shrine {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Verify that all rates were updated correctly
             // This is necessary because we don't enforce that the `yangs` array really contains
@@ -808,7 +807,7 @@ pub mod shrine {
                 }
                 assert(self.yang_rates.read((idx, rate_era)).is_non_zero(), 'SH: Incorrect rate update');
                 idx -= 1;
-            };
+            }
 
             self.emit(YangRatesUpdated { rate_era, current_interval, yangs, new_rates });
         }
@@ -906,7 +905,7 @@ pub mod shrine {
                 self.yang_total.write(current_yang_id, total_yang_amt - protocol_owned_yang_amt);
 
                 current_yang_id += 1;
-            };
+            }
 
             // Event emission
             self.emit(Killed {});
@@ -1453,7 +1452,7 @@ pub mod shrine {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Catch division by zero
             let threshold: Ray = if total_value.is_non_zero() {
@@ -1676,7 +1675,7 @@ pub mod shrine {
                     cumulative_yang_value += yang_value;
                 }
                 current_yang_id -= 1;
-            };
+            }
 
             // Handle the corner case where a trove with non-zero debt has zero value i.e. the trove previously
             // forged debt using yangs that are now all delisted.
@@ -1875,7 +1874,7 @@ pub mod shrine {
                             // not revert.
                             redistributed_debt += debt_to_redistribute;
                             debt_to_distribute_for_yang = debt_to_redistribute;
-                        };
+                        }
 
                         // If there is at least `MIN_RECIPIENT_YANG_AMT` amount of yang in other troves,
                         // handle it as an ordinary redistribution by rebasing the redistributed yang, and
@@ -1981,7 +1980,7 @@ pub mod shrine {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // If some debt remains undistributed, transfer it to the protocol.
             // This may happen due to:

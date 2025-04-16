@@ -1,8 +1,6 @@
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::utils::math::wad_to_fixed_point;
-use scripts::addresses;
-use scripts::constants;
-use scripts::mock_utils;
+use scripts::{addresses, constants, mock_utils};
 use sncast_std::{InvokeResult, ScriptCommandError, invoke};
 use starknet::ContractAddress;
 use wadray::Ray;

@@ -7,7 +7,8 @@ mod test_caretaker {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::IShrineDispatcherTrait;
     use opus::tests::abbot::utils::abbot_utils;
-    use opus::tests::caretaker::utils::{caretaker_utils, caretaker_utils::CaretakerTestConfig};
+    use opus::tests::caretaker::utils::caretaker_utils;
+    use opus::tests::caretaker::utils::caretaker_utils::CaretakerTestConfig;
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health};
@@ -92,7 +93,7 @@ mod test_caretaker {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
         caretaker.shut();
@@ -131,7 +132,7 @@ mod test_caretaker {
                 },
                 Option::None => { break; },
             };
-        };
+        }
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
         expected_ringfenced_assets
