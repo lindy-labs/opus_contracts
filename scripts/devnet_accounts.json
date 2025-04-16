@@ -2,28 +2,28 @@
     "alpha-sepolia": {
         "devnet_admin": {
             "address": "0x42044b3252fcdaeccfc2514c2b72107aed76855f7251469e2f105d97ec6b6e5",
-            "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+            "class_hash": "0x02b31e19e45c06f29234e06e2ee98a9966479ba3067f8785ed972794fdb0065c",
             "deployed": true,
             "private_key": "0x940abc491cf8c083e45645bc0f0bcdc",
             "public_key": "0x426a04eaf2ecd0446250cb6766005d20d8f32e96aed208964db682e533221f1"
         },
         "devnet_user1": {
             "address": "0x7abc48f3f4266ae75b899e51bbc6fa2765580b398706231e81bd0c41389aeb0",
-            "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+            "class_hash": "0x02b31e19e45c06f29234e06e2ee98a9966479ba3067f8785ed972794fdb0065c",
             "deployed": true,
             "private_key": "0xdf18ee6645e587b8555eec7cfe3ae3b3",
             "public_key": "0x35a018848928158598117241722d9ec6a1c21b62d435ce9d91cc4697db4c84a"
         },
         "devnet_user2": {
             "address": "0x6bd1e9117687def2d20e8a95798a9a3bf7738547bf638265bc03cab7dbb2e1e",
-            "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+            "class_hash": "0x02b31e19e45c06f29234e06e2ee98a9966479ba3067f8785ed972794fdb0065c",
             "deployed": true,
             "private_key": "0xcaf75e94efd308876cb667a10c6abca7",
             "public_key": "0x4d8c85c1ed10324a2b64fc76c70b27757a71c558530c2d6cbafab27c3484919"
         },
         "devnet_user3": {
             "address": "0x7e0d359e109f05a0aba473fac4d2fbce9f288e69bb349038977d9d927b8bbf1",
-            "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+            "class_hash": "0x02b31e19e45c06f29234e06e2ee98a9966479ba3067f8785ed972794fdb0065c",
             "deployed": true,
             "private_key": "0x9e189121273dc861d7f4b00f4c9f3758",
             "public_key": "0x266d2c4854186dd78bc6ba71ffcf78db78e40efb909d09ec877512967192815"

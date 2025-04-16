@@ -112,19 +112,6 @@ pub fn add_yang_to_sentinel(
     println!("Yang successfully added: {}", asset_name)
 }
 
-// Used for Pragma v1
-pub fn set_yang_pair_id_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_id: felt252) {
-    let _set_yang_pair_id = invoke(
-        oracle,
-        selector!("set_yang_pair_id"),
-        array![yang.into(), pair_id],
-        FeeSettingsTrait::max_fee(MAX_FEE),
-        Option::None,
-    )
-        .expect('set yang pair id failed');
-}
-
-// Used for Pragma v2
 pub fn set_yang_pair_settings_for_oracle(oracle: ContractAddress, yang: ContractAddress, pair_settings: PairSettings) {
     let mut calldata = array![yang.into()];
     pair_settings.serialize(ref calldata);

@@ -49,7 +49,7 @@ pub const WBTC_INITIAL_SUPPLY: u128 = 2099999997690000; // approx. 21_000_000 * 
 
 // Chain constants
 pub fn erc20_class_hash() -> ClassHash {
-    0x046ded64ae2dead6448e247234bab192a9c483644395b66f2155f2614e5804b0.try_into().expect('invalid ERC20 class hash')
+    0x11374319A6E07B4F2738FA3BFA8CF2181BFB0DBB4D800215BAA87B83A57877E.try_into().expect('invalid ERC20 class hash')
 }
 
 pub fn pragma_eth_pair_settings() -> PairSettings {

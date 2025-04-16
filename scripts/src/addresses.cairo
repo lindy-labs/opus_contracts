@@ -306,7 +306,7 @@ pub mod mainnet {
         0x023037703b187f6ff23b883624a0a9f266c9d44671e762048c70100c2f128ab9.try_into().unwrap()
     }
 
-    pub fn pragma_v2() -> ContractAddress {
+    pub fn pragma() -> ContractAddress {
         0x0532f8b442e90eae93493a4f3e4f6d3bf2579e56a75238b786a5e90cb82fdfe9.try_into().unwrap()
     }
 
@@ -318,7 +318,7 @@ pub mod mainnet {
         0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678.try_into().unwrap()
     }
 
-    pub fn seer_v2() -> ContractAddress {
+    pub fn seer() -> ContractAddress {
         0x076baf9a48986ae11b144481aec7699823d7ebc5843f30cf47b053ebfe579824.try_into().unwrap()
     }
 

@@ -29,25 +29,19 @@ build-external-contracts = [
     "opus::core::purger::purger",
     "opus::core::receptor::receptor",
     "opus::core::seer::seer",
-    "opus::core::seer_v2::seer_v2",
+    "opus::core::seer::seer",
     "opus::core::sentinel::sentinel",
     "opus::core::shrine::shrine",
     "opus::core::transmuter_restricted::transmuter_restricted",
     "opus::external::ekubo::ekubo",
-    "opus::external::pragma_v2::pragma_v2",
-    "opus::external::switchboard::switchboard",
+    "opus::external::pragma::pragma",
     "opus::mock::erc20_mintable::erc20_mintable",
     "opus::mock::mock_pragma::mock_pragma",
-    "opus::mock::mock_switchboard::mock_switchboard",
     "opus::periphery::frontend_data_provider::frontend_data_provider",
 ]
 
 [scripts]
 deploy_devnet = "rm deploy_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run deploy_devnet --package deployment"
-deploy_sepolia = "sncast --profile sepolia script run deploy_sepolia --package deployment"
-deploy_mainnet = "sncast --profile mainnet script run deploy_mainnet --package deployment"
-deploy_oracles_v2_sepolia = "sncast --profile sepolia script run deploy_oracles_v2_sepolia --package deployment"
-deploy_oracles_v2_mainnet = "sncast --profile mainnet script run deploy_oracles_v2_mainnet --package deployment"
 
 upgrade_fdp_devnet = "rm upgrade_fdp_devnet_alpha-sepolia_state.json 2> /dev/null; sncast --profile devnet script run upgrade_fdp_devnet --package deployment"
 upgrade_fdp_sepolia = "sncast --profile sepolia script run upgrade_fdp_sepolia --package deployment"

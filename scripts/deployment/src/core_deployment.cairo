@@ -93,21 +93,6 @@ pub fn deploy_seer(admin: ContractAddress, shrine: ContractAddress, sentinel: Co
     deploy_seer.contract_address
 }
 
-pub fn deploy_seer_v2(admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
-    let declare_seer = declare("seer_v2", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
-        .expect('failed seer v2 declare');
-
-    let seer_calldata: Array<felt252> = array![
-        admin.into(), shrine.into(), sentinel.into(), SEER_UPDATE_FREQUENCY.into(),
-    ];
-    let deploy_seer = deploy(
-        *declare_seer.class_hash(), seer_calldata, Option::None, true, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
-    )
-        .expect('failed seer v2 deploy');
-
-    deploy_seer.contract_address
-}
-
 pub fn deploy_abbot(shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
     let declare_abbot = declare("abbot", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
         .expect('failed abbot declare');
@@ -322,27 +307,6 @@ pub fn deploy_pragma(
     sources_threshold: u32,
 ) -> ContractAddress {
     let declare_pragma = declare("pragma", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
-        .expect('failed pragma declare');
-    let calldata: Array<felt252> = array![
-        admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into(),
-    ];
-
-    let deploy_pragma = deploy(
-        *declare_pragma.class_hash(), calldata, Option::None, true, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
-    )
-        .expect('failed pragma deploy');
-
-    deploy_pragma.contract_address
-}
-
-pub fn deploy_pragma_v2(
-    admin: ContractAddress,
-    spot_oracle: ContractAddress,
-    twap_oracle: ContractAddress,
-    freshness_threshold: u64,
-    sources_threshold: u32,
-) -> ContractAddress {
-    let declare_pragma = declare("pragma_v2", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
         .expect('failed pragma declare');
     let calldata: Array<felt252> = array![
         admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into(),
