@@ -112,26 +112,6 @@ pub mod pragma_utils {
         // Add yangs to Pragma
         start_cheat_caller_address(pragma, admin());
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
-        pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
-        pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-        stop_cheat_caller_address(pragma);
-    }
-
-    pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
-        // assuming yangs are always ordered as ETH, WBTC
-        let eth_yang = *yangs.at(0);
-        let wbtc_yang = *yangs.at(1);
-
-        // add_yang does an assert on the response decimals, so we
-        // need to provide a valid mock response for it to pass
-        let oracle = IOracleDispatcher { contract_address: pragma };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: *oracle.get_oracles().at(0) };
-        mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
-        mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
-
-        // Add yangs to Pragma
-        start_cheat_caller_address(pragma, admin());
-        let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
         let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
