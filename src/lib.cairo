@@ -18,6 +18,7 @@ pub mod core {
     pub mod shrine;
     pub mod transmuter;
     pub mod transmuter_registry;
+    pub mod transmuter_restricted;
 }
 
 pub mod external {
