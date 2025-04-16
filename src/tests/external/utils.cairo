@@ -13,9 +13,7 @@ pub mod pragma_utils {
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IPragma::{
-        IPragmaDispatcher, IPragmaDispatcherTrait, IPragmaV2Dispatcher, IPragmaV2DispatcherTrait,
-    };
+    use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
@@ -34,8 +32,8 @@ pub mod pragma_utils {
     }
 
     #[derive(Copy, Drop)]
-    pub struct PragmaV2TestConfig {
-        pub pragma: IPragmaV2Dispatcher,
+    pub struct PragmaTestConfig {
+        pub pragma: IPragmaDispatcher,
         pub mock_pragma: IMockPragmaDispatcher,
     }
 
@@ -75,9 +73,9 @@ pub mod pragma_utils {
         IMockPragmaDispatcher { contract_address: mock_pragma_addr }
     }
 
-    pub fn pragma_v2_deploy(
-        pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
-    ) -> PragmaV2TestConfig {
+    pub fn pragma_deploy(
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
+    ) -> PragmaTestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
             admin().into(),
@@ -87,16 +85,16 @@ pub mod pragma_utils {
             SOURCES_THRESHOLD.into(),
         ];
 
-        let pragma_v2_class = match pragma_v2_class {
+        let pragma_class = match pragma_class {
             Option::Some(class) => class,
-            Option::None => *declare("pragma_v2").unwrap().contract_class(),
+            Option::None => *declare("pragma").unwrap().contract_class(),
         };
 
-        let (pragma_v2_addr, _) = pragma_v2_class.deploy(@calldata).expect('pragma v2 deploy failed');
+        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma  deploy failed');
 
-        let pragma_v2 = IPragmaV2Dispatcher { contract_address: pragma_v2_addr };
+        let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        PragmaV2TestConfig { pragma: pragma_v2, mock_pragma }
+        PragmaTestConfig { pragma: pragma, mock_pragma }
     }
 
     pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
@@ -119,7 +117,7 @@ pub mod pragma_utils {
         stop_cheat_caller_address(pragma);
     }
 
-    pub fn add_yangs_v2(pragma: ContractAddress, yangs: Span<ContractAddress>) {
+    pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
         // assuming yangs are always ordered as ETH, WBTC
         let eth_yang = *yangs.at(0);
         let wbtc_yang = *yangs.at(1);
@@ -133,7 +131,7 @@ pub mod pragma_utils {
 
         // Add yangs to Pragma
         start_cheat_caller_address(pragma, admin());
-        let pragma_dispatcher = IPragmaV2Dispatcher { contract_address: pragma };
+        let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
         let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
@@ -166,7 +164,7 @@ pub mod pragma_utils {
     }
 
     // Helper function to add a valid price update to the mock Pragma oracle
-    // for both `get_data_median()` (v1) and `get_data()` (v2)
+    // for both `get_data_median()` (v1) and `get_data()` ()
     // using default values for decimals and number of sources.
     pub fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64,

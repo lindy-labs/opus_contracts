@@ -1,5 +1,5 @@
 #[starknet::contract]
-pub mod seer_v2 {
+pub mod seer {
     use access_control::access_control_component;
     use core::num::traits::Zero;
     use opus::core::roles::seer_roles;
@@ -7,7 +7,7 @@ pub mod seer_v2 {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IERC4626::{IERC4626Dispatcher, IERC4626DispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::ISeerV2;
+    use opus::interfaces::ISeer::ISeer;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ConversionRateInfo, InternalPriceType, PriceType, YangSuspensionStatus};
@@ -129,7 +129,7 @@ pub mod seer_v2 {
     //
 
     #[abi(embed_v0)]
-    impl ISeerV2Impl of ISeerV2<ContractState> {
+    impl ISeerImpl of ISeer<ContractState> {
         fn get_oracles(self: @ContractState) -> Span<ContractAddress> {
             let mut oracles: Array<ContractAddress> = Default::default();
             let mut index = LOOP_START;

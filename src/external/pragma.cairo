@@ -6,7 +6,7 @@
 //       order to get ASSET/SYN
 
 #[starknet::contract]
-pub mod pragma_v2 {
+pub mod pragma {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::num::traits::Zero;
@@ -16,7 +16,7 @@ pub mod pragma_v2 {
     };
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
-    use opus::interfaces::IPragma::IPragmaV2;
+    use opus::interfaces::IPragma::IPragma;
     use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::storage::{
@@ -144,7 +144,7 @@ pub mod pragma_v2 {
     //
 
     #[abi(embed_v0)]
-    impl IPragmaV2Impl of IPragmaV2<ContractState> {
+    impl IPragmaImpl of IPragma<ContractState> {
         fn set_yang_pair_settings(ref self: ContractState, yang: ContractAddress, pair_settings: PairSettings) {
             self.access_control.assert_has_role(pragma_roles::ADD_YANG);
             assert(pair_settings.pair_id != 0, 'PGM: Invalid pair ID');

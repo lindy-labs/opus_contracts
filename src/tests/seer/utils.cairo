@@ -2,7 +2,7 @@ pub mod seer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::shrine_roles;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::IMockPragmaDispatcher;
@@ -20,13 +20,13 @@ pub mod seer_utils {
     #[derive(Copy, Drop)]
     pub struct SeerTestConfig {
         pub shrine: IShrineDispatcher,
-        pub seer: ISeerV2Dispatcher,
+        pub seer: ISeerDispatcher,
         pub sentinel: ISentinelDispatcher,
     }
 
     #[derive(Copy, Drop)]
     pub struct OracleTestClasses {
-        pub pragma_v2: Option<ContractClass>,
+        pub pragma: Option<ContractClass>,
         pub mock_pragma: Option<ContractClass>,
         pub ekubo: Option<ContractClass>,
         pub mock_ekubo: Option<ContractClass>,
@@ -63,10 +63,10 @@ pub mod seer_utils {
 
     pub fn declare_oracles() -> OracleTestClasses {
         OracleTestClasses {
-            pragma_v2: Option::Some(*declare("pragma_v2").unwrap().contract_class()),
+            pragma: Option::Some(*declare("pragma").unwrap().contract_class()),
             mock_pragma: Option::Some(*declare("mock_pragma").unwrap().contract_class()),
             ekubo: Option::Some(*declare("ekubo").unwrap().contract_class()),
-            mock_ekubo: Option::Some(*declare("mock_ekubo_oracle_extension").unwrap().contract_class()),
+            mock_ekubo: Option::Some(common::declare_mock_ekubo_oracle_extension()),
         }
     }
 
@@ -80,7 +80,7 @@ pub mod seer_utils {
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => *declare("seer_v2").unwrap().contract_class(),
+            Option::None => *declare("seer").unwrap().contract_class(),
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -92,7 +92,7 @@ pub mod seer_utils {
         stop_cheat_caller_address(shrine);
 
         SeerTestConfig {
-            seer: ISeerV2Dispatcher { contract_address: seer_addr },
+            seer: ISeerDispatcher { contract_address: seer_addr },
             sentinel: sentinel_dispatcher,
             shrine: IShrineDispatcher { contract_address: shrine },
         }
@@ -100,14 +100,14 @@ pub mod seer_utils {
 
     pub fn deploy_seer_using(
         seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress,
-    ) -> ISeerV2Dispatcher {
+    ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
             admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into(),
         ];
 
         let seer_class = match seer_class {
             Option::Some(class) => class,
-            Option::None => *declare("seer_v2").unwrap().contract_class(),
+            Option::None => *declare("seer").unwrap().contract_class(),
         };
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
@@ -118,10 +118,10 @@ pub mod seer_utils {
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_cheat_caller_address(shrine);
 
-        ISeerV2Dispatcher { contract_address: seer_addr }
+        ISeerDispatcher { contract_address: seer_addr }
     }
 
-    pub fn set_price_types_to_vault(seer: ISeerV2Dispatcher, mut vaults: Span<ContractAddress>) {
+    pub fn set_price_types_to_vault(seer: ISeerDispatcher, mut vaults: Span<ContractAddress>) {
         start_cheat_caller_address(seer.contract_address, admin());
         loop {
             match vaults.pop_front() {
@@ -133,7 +133,7 @@ pub mod seer_utils {
     }
 
     pub fn add_oracles(
-        seer: ISeerV2Dispatcher, oracle_classes: Option<OracleTestClasses>, token_class: Option<ContractClass>,
+        seer: ISeerDispatcher, oracle_classes: Option<OracleTestClasses>, token_class: Option<ContractClass>,
     ) -> Span<ContractAddress> {
         let oracle_classes = match oracle_classes {
             Option::Some(classes) => classes,
@@ -142,9 +142,9 @@ pub mod seer_utils {
 
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 
-        let pragma_utils::PragmaV2TestConfig {
+        let pragma_utils::PragmaTestConfig {
             pragma, ..,
-        } = pragma_utils::pragma_v2_deploy(oracle_classes.pragma_v2, oracle_classes.mock_pragma);
+        } = pragma_utils::pragma_deploy(oracle_classes.pragma, oracle_classes.mock_pragma);
         oracles.append(pragma.contract_address);
 
         let ekubo_utils::EkuboTestConfig {
@@ -159,7 +159,7 @@ pub mod seer_utils {
         oracles.span()
     }
 
-    pub fn mock_valid_price_update(seer: ISeerV2Dispatcher, yang: ContractAddress, price: Wad) {
+    pub fn mock_valid_price_update(seer: ISeerDispatcher, yang: ContractAddress, price: Wad) {
         let current_ts: u64 = get_block_timestamp();
         let oracles: Span<ContractAddress> = seer.get_oracles();
 

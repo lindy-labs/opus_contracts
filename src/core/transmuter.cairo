@@ -1,12 +1,12 @@
 #[starknet::contract]
-pub mod transmuter_v2 {
+pub mod transmuter {
     use access_control::access_control_component;
     use core::cmp::min;
     use core::num::traits::{Bounded, Zero};
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::ITransmuterV2;
+    use opus::interfaces::ITransmuter::ITransmuter;
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
@@ -210,7 +210,7 @@ pub mod transmuter_v2 {
     //
 
     #[abi(embed_v0)]
-    impl ITransmuterV2Impl of ITransmuterV2<ContractState> {
+    impl ITransmuterImpl of ITransmuter<ContractState> {
         //
         // Getters
         //

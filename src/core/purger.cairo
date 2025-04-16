@@ -6,7 +6,7 @@ pub mod purger {
     use opus::core::roles::purger_roles;
     use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use opus::interfaces::IPurger::IPurger;
-    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health, HealthTrait};
@@ -81,7 +81,7 @@ pub mod purger {
         // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
         // the Seer module
-        seer: ISeerV2Dispatcher,
+        seer: ISeerDispatcher,
         // Scalar for multiplying penalties above `ABSORPTION_THRESHOLD`
         penalty_scalar: Ray,
     }
@@ -144,7 +144,7 @@ pub mod purger {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.absorber.write(IAbsorberDispatcher { contract_address: absorber });
-        self.seer.write(ISeerV2Dispatcher { contract_address: seer });
+        self.seer.write(ISeerDispatcher { contract_address: seer });
 
         self.penalty_scalar.write(RAY_ONE.into());
         self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into() });

@@ -4,14 +4,14 @@ mod test_pragma {
     use core::result::ResultTrait;
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS};
     use opus::core::shrine::shrine;
-    use opus::external::pragma_v2::pragma_v2 as pragma_contract;
+    use opus::external::pragma::pragma as pragma_contract;
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IPragma::IPragmaV2DispatcherTrait;
+    use opus::interfaces::IPragma::IPragmaDispatcherTrait;
     use opus::mock::mock_pragma::IMockPragmaDispatcherTrait;
     use opus::tests::common;
     use opus::tests::external::utils::{
-        mock_eth_token_addr, pepe_token_addr, pragma_utils, pragma_utils::PragmaV2TestConfig,
+        mock_eth_token_addr, pepe_token_addr, pragma_utils, pragma_utils::PragmaTestConfig,
     };
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
@@ -33,7 +33,7 @@ mod test_pragma {
     #[test]
     fn test_pragma_setup() {
         let mut spy = spy_events();
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         // Check permissions
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
@@ -66,7 +66,7 @@ mod test_pragma {
 
     #[test]
     fn test_set_price_validity_thresholds_pass() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events();
 
         let new_freshness: u64 = 5 * 60; // 5 minutes * 60 seconds
@@ -94,7 +94,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Freshness out of bounds')]
     fn test_set_price_validity_threshold_freshness_too_low_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::LOWER_FRESHNESS_BOUND - 1;
         let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
@@ -106,7 +106,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Freshness out of bounds')]
     fn test_set_price_validity_threshold_freshness_too_high_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let invalid_freshness: u64 = pragma_contract::UPPER_FRESHNESS_BOUND + 1;
         let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
@@ -118,7 +118,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Sources out of bounds')]
     fn test_set_price_validity_threshold_sources_too_low_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let invalid_sources: u32 = pragma_contract::LOWER_SOURCES_BOUND - 1;
@@ -130,7 +130,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Sources out of bounds')]
     fn test_set_price_validity_threshold_sources_too_high_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let invalid_sources: u32 = pragma_contract::UPPER_SOURCES_BOUND + 1;
@@ -142,7 +142,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_price_validity_threshold_unauthorized_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
@@ -153,7 +153,7 @@ mod test_pragma {
 
     #[test]
     fn test_set_yang_pair_settings_pass() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events();
 
         // PEPE token is not added to sentinel, just needs to be deployed for the test to work
@@ -186,7 +186,7 @@ mod test_pragma {
 
     #[test]
     fn test_set_yang_pair_settings_overwrite_pass() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events();
         start_cheat_block_timestamp_global(TS);
 
@@ -244,7 +244,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_yang_pair_settings_unauthorized_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         start_cheat_caller_address(pragma.contract_address, common::badguy());
         pragma.set_yang_pair_settings(mock_eth_token_addr(), pair_settings);
@@ -253,7 +253,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Invalid pair ID')]
     fn test_set_yang_pair_settings_invalid_pair_id_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_cheat_caller_address(pragma.contract_address, pragma_utils::admin());
         let invalid_pair_id = 0;
         let pair_settings = PairSettings { pair_id: invalid_pair_id, aggregation_mode: AggregationMode::Median };
@@ -263,7 +263,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Invalid yang address')]
     fn test_set_yang_pair_settings_invalid_yang_address_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         start_cheat_caller_address(pragma.contract_address, pragma_utils::admin());
         let invalid_yang_addr = Zero::zero();
         let pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
@@ -273,7 +273,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Spot unknown pair ID')]
     fn test_set_yang_pair_settings_unknown_spot_pair_id_fail() {
-        let PragmaV2TestConfig { pragma, .. } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pair_settings = PairSettings {
             pair_id: pragma_utils::PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
         };
@@ -284,7 +284,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: TWAP unknown pair ID')]
     fn test_set_yang_pair_settings_unknown_twap_pair_id_fail() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pepe_spot_response = PragmaPricesResponse {
             price: 1000,
             decimals: PRAGMA_DECIMALS.into(),
@@ -306,7 +306,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: Spot too many decimals')]
     fn test_set_yang_pair_settings_spot_too_many_decimals_fail() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
 
@@ -332,7 +332,7 @@ mod test_pragma {
     #[test]
     #[should_panic(expected: 'PGM: TWAP too many decimals')]
     fn test_set_yang_pair_settings_twap_too_many_decimals_fail() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
         let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
 
@@ -365,9 +365,9 @@ mod test_pragma {
 
     #[test]
     fn test_fetch_price_pass() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
-        pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let wbtc_addr = *yangs.at(1);
@@ -405,9 +405,9 @@ mod test_pragma {
 
     #[test]
     fn test_fetch_price_return_min_spot() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
-        pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         // make spot price be lower than twap price
@@ -437,9 +437,9 @@ mod test_pragma {
 
     #[test]
     fn test_fetch_price_return_min_twap() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
-        pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         // make twap price be lower than twap price
@@ -470,11 +470,11 @@ mod test_pragma {
 
     #[test]
     fn test_fetch_price_too_soon() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events();
 
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
-        pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let now: u64 = 100000000;
@@ -513,11 +513,11 @@ mod test_pragma {
 
     #[test]
     fn test_fetch_price_insufficient_sources() {
-        let PragmaV2TestConfig { pragma, mock_pragma } = pragma_utils::pragma_v2_deploy(Option::None, Option::None);
+        let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let mut spy = spy_events();
 
         let sentinel_utils::SentinelTestConfig { yangs, .. } = sentinel_utils::deploy_sentinel_with_gates(Option::None);
-        pragma_utils::add_yangs_v2(pragma.contract_address, yangs);
+        pragma_utils::add_yangs(pragma.contract_address, yangs);
 
         let eth_addr = *yangs.at(0);
         let now: u64 = 100000000;

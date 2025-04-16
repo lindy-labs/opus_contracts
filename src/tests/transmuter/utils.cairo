@@ -5,7 +5,7 @@ pub mod transmuter_utils {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::{
-        ITransmuterRegistryDispatcher, ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait,
+        ITransmuterDispatcher, ITransmuterDispatcherTrait, ITransmuterRegistryDispatcher,
     };
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
@@ -19,7 +19,7 @@ pub mod transmuter_utils {
     #[derive(Copy, Drop)]
     pub struct TransmuterTestConfig {
         pub shrine: IShrineDispatcher,
-        pub transmuter: ITransmuterV2Dispatcher,
+        pub transmuter: ITransmuterDispatcher,
         pub wad_usd_stable: IERC20Dispatcher,
     }
 
@@ -55,7 +55,7 @@ pub mod transmuter_utils {
     //
 
     pub fn declare_transmuter() -> ContractClass {
-        *declare("transmuter_v2").unwrap().contract_class()
+        *declare("transmuter").unwrap().contract_class()
     }
 
     pub fn transmuter_deploy(
@@ -63,7 +63,7 @@ pub mod transmuter_utils {
         shrine: ContractAddress,
         asset: ContractAddress,
         receiver: ContractAddress,
-    ) -> ITransmuterV2Dispatcher {
+    ) -> ITransmuterDispatcher {
         let mut calldata: Array<felt252> = array![
             admin().into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into(),
         ];
@@ -79,7 +79,7 @@ pub mod transmuter_utils {
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::transmuter(), transmuter_addr);
 
-        ITransmuterV2Dispatcher { contract_address: transmuter_addr }
+        ITransmuterDispatcher { contract_address: transmuter_addr }
     }
 
     // mock stable with 18 decimals
@@ -102,7 +102,7 @@ pub mod transmuter_utils {
 
     pub fn setup_shrine_with_transmuter(
         shrine: IShrineDispatcher,
-        transmuter: ITransmuterV2Dispatcher,
+        transmuter: ITransmuterDispatcher,
         shrine_ceiling: Wad,
         shrine_start_yin: Wad,
         start_yin_recipient: ContractAddress,
@@ -127,7 +127,7 @@ pub mod transmuter_utils {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let wad_usd_stable = wad_usd_stable_deploy(token_class);
 
-        let transmuter: ITransmuterV2Dispatcher = transmuter_deploy(
+        let transmuter: ITransmuterDispatcher = transmuter_deploy(
             transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver(),
         );
 

@@ -239,7 +239,7 @@ pub mod pragma {
 }
 
 //
-// Seer v2
+// Seer
 //
 
 #[derive(Copy, Default, Drop, Debug, PartialEq, Serde, starknet::Store)]

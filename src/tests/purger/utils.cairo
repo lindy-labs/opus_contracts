@@ -8,7 +8,7 @@ pub mod purger_utils {
     use opus::interfaces::IAbsorber::IAbsorberDispatcher;
     use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::ISeer::{ISeerV2Dispatcher, ISeerV2DispatcherTrait};
+    use opus::interfaces::ISeer::{ISeerDispatcher, ISeerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::mock::flash_liquidator::IFlashLiquidatorDispatcher;
     use opus::tests::absorber::utils::absorber_utils;
@@ -37,7 +37,7 @@ pub mod purger_utils {
         absorber: Option<ContractClass>,
         blesser: ContractClass,
         purger: ContractClass,
-        pragma_v2: Option<ContractClass>,
+        pragma: Option<ContractClass>,
         mock_pragma: Option<ContractClass>,
         ekubo: Option<ContractClass>,
         mock_ekubo: Option<ContractClass>,
@@ -48,7 +48,7 @@ pub mod purger_utils {
     pub struct PurgerTestConfig {
         pub shrine: IShrineDispatcher,
         pub abbot: IAbbotDispatcher,
-        pub seer: ISeerV2Dispatcher,
+        pub seer: ISeerDispatcher,
         pub absorber: IAbsorberDispatcher,
         pub purger: IPurgerDispatcher,
         pub yangs: Span<ContractAddress>,
@@ -336,11 +336,11 @@ pub mod purger_utils {
             absorber: Option::Some(*declare("absorber").unwrap().contract_class()),
             blesser: *declare("blesser").unwrap().contract_class(),
             purger: *declare("purger").unwrap().contract_class(),
-            pragma_v2: Option::Some(*declare("pragma_v2").unwrap().contract_class()),
+            pragma: Option::Some(*declare("pragma").unwrap().contract_class()),
             mock_pragma: Option::Some(*declare("mock_pragma").unwrap().contract_class()),
             ekubo: Option::Some(*declare("ekubo").unwrap().contract_class()),
             mock_ekubo: Option::Some(common::declare_mock_ekubo_oracle_extension()),
-            seer: Option::Some(*declare("seer_v2").unwrap().contract_class()),
+            seer: Option::Some(*declare("seer").unwrap().contract_class()),
         }
     }
 
@@ -375,7 +375,7 @@ pub mod purger_utils {
             seer,
             Option::Some(
                 seer_utils::OracleTestClasses {
-                    pragma_v2: classes.pragma_v2,
+                    pragma: classes.pragma,
                     mock_pragma: classes.mock_pragma,
                     ekubo: classes.ekubo,
                     mock_ekubo: classes.mock_ekubo,
@@ -383,7 +383,7 @@ pub mod purger_utils {
             ),
             classes.token,
         );
-        pragma_utils::add_yangs_v2(*oracles.at(0), yangs);
+        pragma_utils::add_yangs(*oracles.at(0), yangs);
 
         start_cheat_caller_address(seer.contract_address, seer_utils::admin());
         seer.update_prices();
@@ -518,7 +518,7 @@ pub mod purger_utils {
 
     // Helper function to decrease yang prices by the given percentage
     pub fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, seer: ISeerV2Dispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
+        shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
         start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
         loop {
@@ -539,7 +539,7 @@ pub mod purger_utils {
     // yang prices
     pub fn lower_prices_to_raise_trove_ltv(
         shrine: IShrineDispatcher,
-        seer: ISeerV2Dispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
         value: Wad,
         debt: Wad,
@@ -553,7 +553,7 @@ pub mod purger_utils {
 
     pub fn trigger_recovery_mode(
         shrine: IShrineDispatcher,
-        seer: ISeerV2Dispatcher,
+        seer: ISeerDispatcher,
         yangs: Span<ContractAddress>,
         rm_setup_type: common::RecoveryModeSetupType,
     ) {

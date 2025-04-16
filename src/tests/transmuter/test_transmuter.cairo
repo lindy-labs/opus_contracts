@@ -3,12 +3,12 @@ mod test_transmuter {
     use core::cmp::min;
     use core::num::traits::{Bounded, Zero};
     use opus::core::roles::transmuter_roles;
-    use opus::core::transmuter_v2::transmuter_v2 as transmuter_contract;
+    use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait,
     };
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterV2Dispatcher, ITransmuterV2DispatcherTrait};
+    use opus::interfaces::ITransmuter::{ITransmuterDispatcher, ITransmuterDispatcherTrait};
     use opus::tests::common;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::{transmuter_utils, transmuter_utils::TransmuterTestConfig};
@@ -378,7 +378,7 @@ mod test_transmuter {
             transmuter_utils::receiver(),
         );
 
-        let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
+        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let transmute_fees: Span<Ray> = array![
             Zero::zero(), // 0%
@@ -576,7 +576,7 @@ mod test_transmuter {
             transmuter_utils::receiver(),
         );
 
-        let mut transmuters: Span<ITransmuterV2Dispatcher> = array![wad_transmuter, nonwad_transmuter].span();
+        let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
 
         let reverse_fees: Span<Ray> = array![
             Zero::zero(), // 0%
@@ -774,7 +774,7 @@ mod test_transmuter {
 
                     let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                    let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
+                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
                         Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
                     );
 
@@ -883,7 +883,7 @@ mod test_transmuter {
                     loop {
                         match kill_transmuter.pop_front() {
                             Option::Some(kill_transmuter) => {
-                                let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
+                                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
                                     Option::Some(transmuter_class),
                                     shrine.contract_address,
                                     asset.contract_address,
@@ -1066,7 +1066,7 @@ mod test_transmuter {
                                     Option::Some(shrine_class),
                                 );
 
-                                let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
+                                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
                                     Option::Some(transmuter_class),
                                     shrine.contract_address,
                                     asset.contract_address,
@@ -1245,7 +1245,7 @@ mod test_transmuter {
 
                     let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                    let transmuter: ITransmuterV2Dispatcher = transmuter_utils::transmuter_deploy(
+                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
                         Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
                     );
 

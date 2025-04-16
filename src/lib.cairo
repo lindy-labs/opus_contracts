@@ -13,17 +13,17 @@ pub mod core {
     pub mod purger;
     pub mod receptor;
     pub mod roles;
-    pub mod seer_v2;
+    pub mod seer;
     pub mod sentinel;
     pub mod shrine;
+    pub mod transmuter;
     pub mod transmuter_registry;
-    pub mod transmuter_v2;
 }
 
 pub mod external {
     pub mod ekubo;
     pub mod interfaces;
-    pub mod pragma_v2;
+    pub mod pragma;
     pub mod roles;
 }
 
@@ -106,7 +106,7 @@ mod tests {
     }
     mod external {
         mod test_ekubo;
-        mod test_pragma_v2;
+        mod test_pragma;
         pub mod utils;
     }
     mod flash_mint {
