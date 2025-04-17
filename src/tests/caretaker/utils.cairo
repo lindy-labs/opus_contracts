@@ -26,9 +26,7 @@ pub mod caretaker_utils {
         pub gates: Span<IGateDispatcher>,
     }
 
-    pub const fn admin() -> ContractAddress {
-        'caretaker admin'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'caretaker admin'.try_into().unwrap();
 
     pub fn caretaker_deploy() -> CaretakerTestConfig {
         start_cheat_block_timestamp_global(shrine_utils::DEPLOYMENT_TIMESTAMP);
@@ -41,7 +39,7 @@ pub mod caretaker_utils {
         } = equalizer_utils::equalizer_deploy_with_shrine(shrine.contract_address, Option::None);
 
         let calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             shrine.contract_address.into(),
             abbot.contract_address.into(),
             sentinel.contract_address.into(),
@@ -52,13 +50,13 @@ pub mod caretaker_utils {
         let (caretaker, _) = caretaker_class.deploy(@calldata).expect('caretaker deploy failed');
 
         // allow Caretaker to do its business with Shrine
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         IAccessControlDispatcher { contract_address: shrine.contract_address }
             .grant_role(shrine_roles::caretaker(), caretaker);
         stop_cheat_caller_address(shrine.contract_address);
 
         // allow Caretaker to call exit in Sentinel during shut
-        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
             .grant_role(sentinel_roles::caretaker(), caretaker);
 

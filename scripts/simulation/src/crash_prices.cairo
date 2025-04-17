@@ -19,7 +19,7 @@ fn main() {
     );
 
     mock_utils::set_mock_pragma_prices(
-        addresses::devnet::mock_pragma(),
+        addresses::devnet::MOCK_PRAGMA,
         array![ETH_USD_PAIR_ID, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID].span(),
         array![
             (eth_pragma_price, eth_pragma_price),
@@ -30,11 +30,7 @@ fn main() {
     );
 
     invoke(
-        addresses::devnet::seer(),
-        selector!("execute_task"),
-        array![],
-        FeeSettingsTrait::max_fee(MAX_FEE),
-        Option::None,
+        addresses::devnet::SEER, selector!("execute_task"), array![], FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
     )
         .expect('update prices failed');
 }

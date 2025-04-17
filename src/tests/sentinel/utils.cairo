@@ -42,21 +42,10 @@ pub mod sentinel_utils {
     pub const ETH_ASSET_MAX: u128 = 1000 * WAD_ONE; // 1000 (wad)
     pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
-    pub const fn admin() -> ContractAddress {
-        'sentinel admin'.try_into().unwrap()
-    }
-
-    pub const fn mock_abbot() -> ContractAddress {
-        'mock abbot'.try_into().unwrap()
-    }
-
-    pub const fn dummy_yang_addr() -> ContractAddress {
-        'dummy yang'.try_into().unwrap()
-    }
-
-    pub const fn dummy_yang_gate_addr() -> ContractAddress {
-        'dummy yang token'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'sentinel admin'.try_into().unwrap();
+    pub const MOCK_ABBOT: ContractAddress = 'mock abbot'.try_into().unwrap();
+    pub const DUMMY_YANG_ADDR: ContractAddress = 'dummy yang'.try_into().unwrap();
+    pub const DUMMY_YANG_GATE_ADDR: ContractAddress = 'dummy yang token'.try_into().unwrap();
 
     //
     // Test setup
@@ -79,20 +68,20 @@ pub mod sentinel_utils {
 
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(classes.shrine);
 
-        let calldata: Array<felt252> = array![admin().into(), shrine_addr.into()];
+        let calldata: Array<felt252> = array![ADMIN.into(), shrine_addr.into()];
 
         let (sentinel_addr, _) = classes.sentinel.unwrap().deploy(@calldata).expect('sentinel deploy failed');
 
         // Grant `abbot` role to `mock_abbot`
-        start_cheat_caller_address(sentinel_addr, admin());
-        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), mock_abbot());
+        start_cheat_caller_address(sentinel_addr, ADMIN);
+        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), MOCK_ABBOT);
         stop_cheat_caller_address(sentinel_addr);
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        start_cheat_caller_address(shrine_addr, shrine_utils::admin());
+        start_cheat_caller_address(shrine_addr, shrine_utils::ADMIN);
 
         shrine_ac.grant_role(shrine_roles::sentinel(), sentinel_addr);
-        shrine_ac.grant_role(shrine_roles::abbot(), mock_abbot());
+        shrine_ac.grant_role(shrine_roles::abbot(), MOCK_ABBOT);
 
         stop_cheat_caller_address(shrine_addr);
 
@@ -131,13 +120,13 @@ pub mod sentinel_utils {
         let eth_vault_erc20 = IERC20Dispatcher { contract_address: eth_vault };
         let initial_deposit_amt: u128 = get_initial_asset_amt(eth_vault);
 
-        // Transferring the initial deposit amounts to `admin()`
-        start_cheat_caller_address(eth_vault, common::eth_hoarder());
-        eth_vault_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_cheat_caller_address(eth_vault, admin());
+        // Transferring the initial deposit amounts to `ADMIN`
+        start_cheat_caller_address(eth_vault, common::ETH_HOARDER);
+        eth_vault_erc20.transfer(ADMIN, initial_deposit_amt.into());
+        start_cheat_caller_address(eth_vault, ADMIN);
         eth_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_cheat_caller_address(eth_vault);
-        start_cheat_caller_address(sentinel.contract_address, admin());
+        start_cheat_caller_address(sentinel.contract_address, ADMIN);
 
         sentinel
             .add_yang(
@@ -170,14 +159,14 @@ pub mod sentinel_utils {
         let wbtc_vault_erc20 = IERC20Dispatcher { contract_address: wbtc_vault };
         let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc_vault);
 
-        // Transferring the initial deposit amounts to `admin()`
-        start_cheat_caller_address(wbtc_vault, common::wbtc_hoarder());
-        wbtc_vault_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_cheat_caller_address(wbtc_vault, admin());
+        // Transferring the initial deposit amounts to `ADMIN`
+        start_cheat_caller_address(wbtc_vault, common::WBTC_HOARDER);
+        wbtc_vault_erc20.transfer(ADMIN, initial_deposit_amt.into());
+        start_cheat_caller_address(wbtc_vault, ADMIN);
         wbtc_vault_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_cheat_caller_address(wbtc_vault);
 
-        start_cheat_caller_address(sentinel.contract_address, admin());
+        start_cheat_caller_address(sentinel.contract_address, ADMIN);
         sentinel
             .add_yang(
                 wbtc_vault,
@@ -253,14 +242,14 @@ pub mod sentinel_utils {
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let initial_deposit_amt: u128 = get_initial_asset_amt(eth);
 
-        // Transferring the initial deposit amounts to `admin()`
-        start_cheat_caller_address(eth, common::eth_hoarder());
-        eth_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_cheat_caller_address(eth, admin());
+        // Transferring the initial deposit amounts to `ADMIN`
+        start_cheat_caller_address(eth, common::ETH_HOARDER);
+        eth_erc20.transfer(ADMIN, initial_deposit_amt.into());
+        start_cheat_caller_address(eth, ADMIN);
         eth_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_cheat_caller_address(eth);
 
-        start_cheat_caller_address(sentinel.contract_address, admin());
+        start_cheat_caller_address(sentinel.contract_address, ADMIN);
 
         sentinel
             .add_yang(
@@ -291,14 +280,14 @@ pub mod sentinel_utils {
         let wbtc_erc20 = IERC20Dispatcher { contract_address: wbtc };
         let initial_deposit_amt: u128 = get_initial_asset_amt(wbtc);
 
-        // Transferring the initial deposit amounts to `admin()`
-        start_cheat_caller_address(wbtc, common::wbtc_hoarder());
-        wbtc_erc20.transfer(admin(), initial_deposit_amt.into());
-        start_cheat_caller_address(wbtc, admin());
+        // Transferring the initial deposit amounts to `ADMIN`
+        start_cheat_caller_address(wbtc, common::WBTC_HOARDER);
+        wbtc_erc20.transfer(ADMIN, initial_deposit_amt.into());
+        start_cheat_caller_address(wbtc, ADMIN);
         wbtc_erc20.approve(sentinel.contract_address, initial_deposit_amt.into());
         stop_cheat_caller_address(wbtc);
 
-        start_cheat_caller_address(sentinel.contract_address, admin());
+        start_cheat_caller_address(sentinel.contract_address, ADMIN);
         sentinel
             .add_yang(
                 wbtc,

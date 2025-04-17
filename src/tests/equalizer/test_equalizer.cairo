@@ -25,7 +25,7 @@ mod test_equalizer {
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
         let equalizer_ac = IAccessControlDispatcher { contract_address: equalizer.contract_address };
-        let admin = shrine_utils::admin();
+        let admin = shrine_utils::ADMIN;
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
         assert(equalizer_ac.get_roles(admin) == equalizer_roles::default_admin_role(), 'wrong role');
         assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
@@ -37,7 +37,7 @@ mod test_equalizer {
         let mut spy = spy_events();
 
         let surplus: Wad = (500 * WAD_ONE).into();
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.adjust_budget(surplus.into());
         assert(shrine.get_budget() == surplus.into(), 'sanity check');
 
@@ -78,13 +78,13 @@ mod test_equalizer {
         let EqualizerTestConfig { shrine, equalizer, .. } = equalizer_utils::equalizer_deploy(Option::None);
         let mut spy = spy_events();
 
-        let yangs = array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr()].span();
+        let yangs = array![shrine_utils::YANG1_ADDR, shrine_utils::YANG2_ADDR].span();
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
 
         // deposit 1000 ETH and forge the debt ceiling
         shrine_utils::trove1_deposit(shrine, (1000 * WAD_ONE).into());
         shrine_utils::trove1_forge(shrine, debt_ceiling);
-        let eth: ContractAddress = shrine_utils::yang1_addr();
+        let eth: ContractAddress = shrine_utils::YANG1_ADDR;
         let (eth_price, _, _) = shrine.get_current_yang_price(eth);
 
         let mut loop_id = 5;
@@ -98,7 +98,7 @@ mod test_equalizer {
             common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
 
             // update price to speed up calculation
-            start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+            start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
             shrine.advance(eth, eth_price);
             stop_cheat_caller_address(shrine.contract_address);
 
@@ -145,7 +145,7 @@ mod test_equalizer {
         let mut spy = spy_events();
 
         // Simulate minted surplus by injecting to Equalizer directly
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let surplus: Wad = (1000 * WAD_ONE + 123).into();
         shrine.inject(equalizer.contract_address, surplus);
 
@@ -217,7 +217,7 @@ mod test_equalizer {
         ]
             .span();
 
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = shrine_utils::ADMIN;
 
         loop {
             match normalize_amts.pop_front() {
@@ -278,7 +278,7 @@ mod test_equalizer {
         let mut new_percentages = equalizer_utils::new_percentages();
         let new_allocator = equalizer_utils::allocator_deploy(new_recipients, new_percentages, allocator_class);
 
-        start_cheat_caller_address(equalizer.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(equalizer.contract_address, shrine_utils::ADMIN);
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated

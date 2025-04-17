@@ -92,21 +92,10 @@ pub mod absorber_utils {
     // Address constants
     //
 
-    pub const fn admin() -> ContractAddress {
-        'absorber owner'.try_into().unwrap()
-    }
-
-    pub const fn provider_1() -> ContractAddress {
-        'provider 1'.try_into().unwrap()
-    }
-
-    pub const fn provider_2() -> ContractAddress {
-        'provider 2'.try_into().unwrap()
-    }
-
-    pub const fn mock_purger() -> ContractAddress {
-        'mock purger'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'absorber owner'.try_into().unwrap();
+    pub const PROVIDER_1: ContractAddress = 'provider 1'.try_into().unwrap();
+    pub const PROVIDER_2: ContractAddress = 'provider 2'.try_into().unwrap();
+    pub const MOCK_PURGER: ContractAddress = 'mock purger'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -145,7 +134,7 @@ pub mod absorber_utils {
                 ),
             );
 
-        let admin: ContractAddress = admin();
+        let admin: ContractAddress = ADMIN;
 
         let calldata: Array<felt252> = array![
             admin.into(), shrine.contract_address.into(), sentinel.contract_address.into(),
@@ -156,7 +145,7 @@ pub mod absorber_utils {
 
         start_cheat_caller_address(absorber_addr, admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
-        absorber_ac.grant_role(absorber_roles::purger(), mock_purger());
+        absorber_ac.grant_role(absorber_roles::purger(), MOCK_PURGER);
         stop_cheat_caller_address(absorber_addr);
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
@@ -164,11 +153,11 @@ pub mod absorber_utils {
     }
 
     pub fn opus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token('Opus', 'OPUS', 18, 0_u256, admin(), token_class)
+        common::deploy_token('Opus', 'OPUS', 18, 0_u256, ADMIN, token_class)
     }
 
     pub fn veopus_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token('veOpus', 'veOPUS', 18, 0_u256, admin(), token_class)
+        common::deploy_token('veOpus', 'veOPUS', 18, 0_u256, ADMIN, token_class)
     }
 
     // Convenience fixture for reward token addresses constants
@@ -195,7 +184,7 @@ pub mod absorber_utils {
         blesser_class: Option<ContractClass>,
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = array![
-            admin().into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
+            ADMIN.into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
         ];
 
         let blesser_class = match blesser_class {
@@ -241,7 +230,7 @@ pub mod absorber_utils {
     pub fn add_rewards_to_absorber(
         absorber: IAbsorberDispatcher, mut tokens: Span<ContractAddress>, mut blessers: Span<ContractAddress>,
     ) {
-        start_cheat_caller_address(absorber.contract_address, admin());
+        start_cheat_caller_address(absorber.contract_address, ADMIN);
 
         loop {
             match tokens.pop_front() {
@@ -260,7 +249,7 @@ pub mod absorber_utils {
     ) {
         let AbsorberTestConfig { shrine, sentinel, abbot, absorber, yangs, gates } = absorber_deploy(classes);
 
-        let provider = provider_1();
+        let provider = PROVIDER_1;
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt);
 
@@ -372,7 +361,7 @@ pub mod absorber_utils {
         burn_amt: Wad,
     ) {
         // Simulate burning a percentage of absorber's yin
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.eject(absorber.contract_address, burn_amt);
         stop_cheat_caller_address(shrine.contract_address);
 
@@ -392,13 +381,13 @@ pub mod absorber_utils {
 
         let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, yang_asset_amts);
 
-        start_cheat_caller_address(absorber.contract_address, mock_purger());
+        start_cheat_caller_address(absorber.contract_address, MOCK_PURGER);
         absorber.update(absorbed_assets);
         stop_cheat_caller_address(absorber.contract_address);
     }
 
     pub fn kill_absorber(absorber: IAbsorberDispatcher) {
-        start_cheat_caller_address(absorber.contract_address, admin());
+        start_cheat_caller_address(absorber.contract_address, ADMIN);
         absorber.kill();
         stop_cheat_caller_address(absorber.contract_address);
     }

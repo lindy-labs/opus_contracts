@@ -16,9 +16,7 @@ pub mod gate_utils {
     // Address constants
     //
 
-    pub const fn mock_sentinel() -> ContractAddress {
-        'mock sentinel'.try_into().unwrap()
-    }
+    pub const MOCK_SENTINEL: ContractAddress = 'mock sentinel'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -42,19 +40,19 @@ pub mod gate_utils {
     pub fn eth_gate_deploy(token_class: Option<ContractClass>) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
         let eth: ContractAddress = common::eth_token_deploy(token_class);
-        let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel(), Option::None);
+        let gate: ContractAddress = gate_deploy(eth, shrine, MOCK_SENTINEL, Option::None);
         (shrine, eth, gate)
     }
 
     pub fn wbtc_gate_deploy(token_class: Option<ContractClass>) -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = shrine_utils::shrine_deploy(Option::None);
         let wbtc: ContractAddress = common::wbtc_token_deploy(token_class);
-        let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel(), Option::None);
+        let gate: ContractAddress = gate_deploy(wbtc, shrine, MOCK_SENTINEL, Option::None);
         (shrine, wbtc, gate)
     }
 
     pub fn add_eth_as_yang(shrine: ContractAddress, eth: ContractAddress) {
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
             .add_yang(
@@ -69,7 +67,7 @@ pub mod gate_utils {
     }
 
     pub fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
             .add_yang(

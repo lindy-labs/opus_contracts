@@ -10,16 +10,16 @@ fn main() {
 
     let max_u128: u128 = Bounded::MAX();
     invoke(
-        addresses::devnet::shrine(),
+        addresses::devnet::SHRINE,
         selector!("approve"),
-        array![addresses::devnet::absorber().into(), max_u128.into(), max_u128.into()],
+        array![addresses::devnet::ABSORBER.into(), max_u128.into(), max_u128.into()],
         FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('approve CASH failed');
 
     invoke(
-        addresses::devnet::absorber(),
+        addresses::devnet::ABSORBER,
         selector!("provide"),
         array![provide_amt.into()],
         FeeSettingsTrait::max_fee(MAX_FEE),

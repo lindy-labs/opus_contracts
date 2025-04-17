@@ -111,13 +111,13 @@ pub mod abbot_utils {
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
         stop_cheat_caller_address(shrine.contract_address);
 
         // Grant Sentinel roles to Abbot
-        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
         stop_cheat_caller_address(sentinel.contract_address);
@@ -127,7 +127,7 @@ pub mod abbot_utils {
 
     pub fn deploy_abbot_and_open_trove(classes: Option<AbbotTestClasses>) -> (AbbotTestConfig, AbbotTestTrove) {
         let abbot_test_config = abbot_deploy(classes);
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let trove_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, abbot_test_config.yangs, initial_asset_amts());

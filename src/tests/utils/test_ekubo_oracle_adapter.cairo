@@ -17,7 +17,7 @@ mod test_ekubo_oracle_adapter {
     }
 
     fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
-        common::deploy_token('Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), common::admin(), token_class)
+        common::deploy_token('Invalid', 'INV', (WAD_DECIMALS + 1).into(), WAD_ONE.into(), common::ADMIN, token_class)
     }
 
     #[test]

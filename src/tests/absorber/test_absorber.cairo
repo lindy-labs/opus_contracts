@@ -36,7 +36,7 @@ mod test_absorber {
 
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
         assert(
-            absorber_ac.get_roles(absorber_utils::admin()) == absorber_roles::default_admin_role(),
+            absorber_ac.get_roles(absorber_utils::ADMIN) == absorber_roles::default_admin_role(),
             'wrong role for admin',
         );
     }
@@ -64,7 +64,7 @@ mod test_absorber {
 
         let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
 
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.set_reward(opus_token, opus_blesser, true);
 
         assert(absorber.get_rewards_count() == 1, 'rewards count not updated');
@@ -136,10 +136,10 @@ mod test_absorber {
     fn test_set_reward_blesser_zero_address_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        let valid_address = common::non_zero_address();
+        let valid_address = common::NON_ZERO_ADDR;
         let invalid_address = Zero::zero();
 
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.set_reward(valid_address, invalid_address, true);
     }
 
@@ -148,10 +148,10 @@ mod test_absorber {
     fn test_set_reward_token_zero_address_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        let valid_address = common::non_zero_address();
+        let valid_address = common::NON_ZERO_ADDR;
         let invalid_address = Zero::zero();
 
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.set_reward(invalid_address, valid_address, true);
     }
 
@@ -168,7 +168,7 @@ mod test_absorber {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.kill();
 
         assert(!absorber.get_live(), 'should be killed');
@@ -222,7 +222,7 @@ mod test_absorber {
         let expected_absorption_id = 1;
 
         // Step 2
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.kill();
 
         // Step 3
@@ -336,7 +336,7 @@ mod test_absorber {
     fn test_provide_after_kill_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.kill();
         absorber.provide(1_u128.into());
     }
@@ -735,8 +735,8 @@ mod test_absorber {
             shrine, abbot, absorber, yangs, gates, ..,
         } = absorber_utils::absorber_deploy(Option::None);
 
-        let donor: ContractAddress = absorber_utils::provider_1();
-        let provider: ContractAddress = absorber_utils::provider_2();
+        let donor: ContractAddress = absorber_utils::PROVIDER_1;
+        let provider: ContractAddress = absorber_utils::PROVIDER_2;
 
         let provided_amt: Wad = (10000 * WAD_ONE).into();
         let provider_amt: Wad = (5000 * WAD_ONE).into();
@@ -819,7 +819,7 @@ mod test_absorber {
 
         // Second epoch starts here
         // Step 3
-        let second_provider = absorber_utils::provider_2();
+        let second_provider = absorber_utils::PROVIDER_2;
         let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         absorber_utils::provide_to_absorber(
             shrine,
@@ -1119,7 +1119,7 @@ mod test_absorber {
         let second_epoch_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
             - absorber_contract::INITIAL_SHARES.into();
 
-        let second_provider = absorber_utils::provider_2();
+        let second_provider = absorber_utils::PROVIDER_2;
         let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         absorber_utils::provide_to_absorber(
             shrine,
@@ -1388,7 +1388,7 @@ mod test_absorber {
 
         // Second epoch starts here
         // Step 3
-        let second_provider = absorber_utils::provider_2();
+        let second_provider = absorber_utils::PROVIDER_2;
         let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         absorber_utils::provide_to_absorber(
             shrine,
@@ -1622,7 +1622,7 @@ mod test_absorber {
         let expected_yin_per_share: Ray = wadray::rdiv_ww(remaining_absorber_yin, first_provided_amt);
 
         // Step 3
-        let second_provider = absorber_utils::provider_2();
+        let second_provider = absorber_utils::PROVIDER_2;
         let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         absorber_utils::provide_to_absorber(
             shrine,
@@ -1853,7 +1853,7 @@ mod test_absorber {
 
         shrine_utils::recovery_mode_test_setup(shrine, yangs, common::RecoveryModeSetupType::BufferLowerBound);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         stop_cheat_caller_address(shrine.contract_address);
 
@@ -1889,7 +1889,7 @@ mod test_absorber {
         let eth_addr: ContractAddress = *yangs.at(0);
         let (eth_yang_price, _, _) = shrine.get_current_yang_price(eth_addr);
         let new_eth_yang_price: Wad = (eth_yang_price.into() / 5_u128).into(); // 80% drop in price
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.advance(eth_addr, new_eth_yang_price);
         stop_cheat_caller_address(shrine.contract_address);
         assert(shrine.is_recovery_mode(), 'sanity check for RM threshold');
@@ -1995,7 +1995,7 @@ mod test_absorber {
             shrine, abbot, absorber, yangs, gates, ..,
         } = absorber_utils::absorber_deploy(Option::None);
 
-        let provider = absorber_utils::provider_1();
+        let provider = absorber_utils::PROVIDER_1;
         let less_than_initial_shares_amt: Wad = (absorber_contract::INITIAL_SHARES - 1).into();
         absorber_utils::provide_to_absorber(
             shrine,
@@ -2016,7 +2016,7 @@ mod test_absorber {
             shrine, abbot, absorber, yangs, gates, ..,
         } = absorber_utils::absorber_deploy(Option::None);
 
-        let provider = absorber_utils::provider_1();
+        let provider = absorber_utils::PROVIDER_1;
         let provided_amt: Wad = (10000 * WAD_ONE).into();
 
         let yang_asset_amts: Span<u128> = absorber_utils::provider_asset_amts();
@@ -2038,7 +2038,7 @@ mod test_absorber {
     fn test_provide_insufficient_allowance_fail() {
         let AbsorberTestConfig { abbot, absorber, yangs, gates, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        let provider = absorber_utils::provider_1();
+        let provider = absorber_utils::PROVIDER_1;
         let provided_amt: Wad = (10000 * WAD_ONE).into();
 
         let yang_asset_amts: Span<u128> = absorber_utils::provider_asset_amts();
@@ -2076,7 +2076,7 @@ mod test_absorber {
             .get_cumulative_reward_amt_by_epoch(veopus_addr, expected_epoch);
 
         // Set veopus to inactive
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.set_reward(veopus_addr, veopus_blesser_addr, false);
 
         // Trigger rewards
@@ -2116,7 +2116,7 @@ mod test_absorber {
         spy.assert_emitted(@expected_events);
 
         // Set OPUS to inactive
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber.set_reward(opus_addr, opus_blesser_addr, false);
 
         // Trigger rewards
@@ -2164,7 +2164,7 @@ mod test_absorber {
 
         absorber_utils::add_rewards_to_absorber(absorber, reward_tokens, blessers.span());
 
-        let provider = absorber_utils::provider_1();
+        let provider = absorber_utils::PROVIDER_1;
         let provided_amt: Wad = (10000 * WAD_ONE).into();
         absorber_utils::provide_to_absorber(
             shrine, abbot, absorber, provider, yangs, absorber_utils::provider_asset_amts(), gates, provided_amt,

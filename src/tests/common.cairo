@@ -51,35 +51,13 @@ pub const WHALE_TROVE: u64 = 0xb17b01;
 //
 
 pub const BAD_GUY: ContractAddress = 'bad guy'.try_into().unwrap();
-
-pub const fn trove1_owner_addr() -> ContractAddress {
-    'trove1 owner'.try_into().unwrap()
-}
-
-pub const fn trove2_owner_addr() -> ContractAddress {
-    'trove2 owner'.try_into().unwrap()
-}
-
-pub const fn trove3_owner_addr() -> ContractAddress {
-    'trove3 owner'.try_into().unwrap()
-}
-
-pub const fn non_zero_address() -> ContractAddress {
-    'nonzero address'.try_into().unwrap()
-}
-
-pub const fn eth_hoarder() -> ContractAddress {
-    'eth hoarder'.try_into().unwrap()
-}
-
-pub const fn wbtc_hoarder() -> ContractAddress {
-    'wbtc hoarder'.try_into().unwrap()
-}
-
-pub const fn admin() -> ContractAddress {
-    'admin'.try_into().unwrap()
-}
-
+pub const TROVE1_OWNER_ADDR: ContractAddress = 'trove1 owner'.try_into().unwrap();
+pub const TROVE2_OWNER_ADDR: ContractAddress = 'trove2 owner'.try_into().unwrap();
+pub const TROVE3_OWNER_ADDR: ContractAddress = 'trove3 owner'.try_into().unwrap();
+pub const NON_ZERO_ADDR: ContractAddress = 'nonzero address'.try_into().unwrap();
+pub const ETH_HOARDER: ContractAddress = 'eth hoarder'.try_into().unwrap();
+pub const WBTC_HOARDER: ContractAddress = 'wbtc hoarder'.try_into().unwrap();
+pub const ADMIN: ContractAddress = 'admin'.try_into().unwrap();
 
 //
 // Trait implementations
@@ -151,7 +129,7 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
     start_cheat_block_timestamp_global(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
 
     // Updating prices and multiplier
-    start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+    start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
     shrine.set_multiplier(current_multiplier);
     loop {
         match yangs.pop_front() {
@@ -173,27 +151,27 @@ pub fn advance_intervals(intervals: u64) {
 // Mock tokens
 
 pub fn eth_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder(), token_class)
+    deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), ETH_HOARDER, token_class)
 }
 
 pub fn wbtc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder(), token_class)
+    deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), WBTC_HOARDER, token_class)
 }
 
 pub fn usdc_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+    deploy_token('USD Coin', 'USDC', USDC_DECIMALS.into(), WAD_ONE.into(), ADMIN, token_class)
 }
 
 pub fn usdt_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+    deploy_token('Tether USD', 'USDT', USDT_DECIMALS.into(), WAD_ONE.into(), ADMIN, token_class)
 }
 
 pub fn dai_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+    deploy_token('Dai Stablecoin', 'DAI', DAI_DECIMALS.into(), WAD_ONE.into(), ADMIN, token_class)
 }
 
 pub fn lusd_token_deploy(token_class: Option<ContractClass>) -> ContractAddress {
-    deploy_token('LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), admin(), token_class)
+    deploy_token('LUSD Stablecoin', 'LUSD', LUSD_DECIMALS.into(), WAD_ONE.into(), ADMIN, token_class)
 }
 
 pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress> {
@@ -210,11 +188,11 @@ pub fn quote_tokens(token_class: Option<ContractClass>) -> Span<ContractAddress>
 }
 
 pub fn eth_vault_deploy(vault_class: Option<ContractClass>, eth: ContractAddress) -> ContractAddress {
-    deploy_vault('Ether Vault', 'vETH', 18, ETH_TOTAL.into(), eth_hoarder(), eth, vault_class)
+    deploy_vault('Ether Vault', 'vETH', 18, ETH_TOTAL.into(), ETH_HOARDER, eth, vault_class)
 }
 
 pub fn wbtc_vault_deploy(vault_class: Option<ContractClass>, wbtc: ContractAddress) -> ContractAddress {
-    deploy_vault('Bitcoin Vault', 'vWBTC', 18, WBTC_TOTAL.into(), wbtc_hoarder(), wbtc, vault_class)
+    deploy_vault('Bitcoin Vault', 'vWBTC', 18, WBTC_TOTAL.into(), WBTC_HOARDER, wbtc, vault_class)
 }
 
 pub fn declare_token() -> ContractClass {

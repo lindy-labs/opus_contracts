@@ -76,7 +76,7 @@ pub mod equalizer_utils {
     pub fn allocator_deploy(
         mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>, allocator_class: Option<ContractClass>,
     ) -> IAllocatorDispatcher {
-        let mut calldata: Array<felt252> = array![shrine_utils::admin().into(), recipients.len().into()];
+        let mut calldata: Array<felt252> = array![shrine_utils::ADMIN.into(), recipients.len().into()];
 
         loop {
             match recipients.pop_front() {
@@ -116,7 +116,7 @@ pub mod equalizer_utils {
         let allocator: IAllocatorDispatcher = allocator_deploy(
             initial_recipients(), initial_percentages(), allocator_class,
         );
-        let admin = shrine_utils::admin();
+        let admin = shrine_utils::ADMIN;
 
         let mut calldata: Array<felt252> = array![admin.into(), shrine.into(), allocator.contract_address.into()];
 

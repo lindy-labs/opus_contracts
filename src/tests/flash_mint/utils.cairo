@@ -27,7 +27,7 @@ pub mod flash_mint_utils {
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
         shrine_accesscontrol.grant_role(shrine_roles::flash_mint(), flashmint_addr);
         stop_cheat_caller_address(shrine);
@@ -49,7 +49,7 @@ pub mod flash_mint_utils {
         );
 
         // Mint some yin in shrine
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         shrine_dispatcher.inject(Zero::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)
     }

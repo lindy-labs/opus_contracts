@@ -34,7 +34,7 @@ mod test_transmuter {
 
         // Check Transmuter getters
         let ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
-        let receiver: ContractAddress = transmuter_utils::receiver();
+        let receiver: ContractAddress = transmuter_utils::RECEIVER;
 
         assert(transmuter.get_asset() == wad_usd_stable.contract_address, 'wrong asset');
         assert(transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted');
@@ -53,7 +53,7 @@ mod test_transmuter {
         let transmuter_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: transmuter.contract_address,
         };
-        let admin: ContractAddress = transmuter_utils::admin();
+        let admin: ContractAddress = transmuter_utils::ADMIN;
         assert(transmuter_ac.get_admin() == admin, 'wrong admin');
         assert(transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(), 'wrong admin roles');
 
@@ -94,7 +94,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 2_000_000 (Wad)
         let new_ceiling: Wad = 2000000000000000000000000_u128.into();
         transmuter.set_ceiling(new_ceiling);
@@ -135,7 +135,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 5% (Ray)
         let cap: Ray = 50000000000000000000000000_u128.into();
         transmuter.set_percentage_cap(cap);
@@ -158,7 +158,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 100% + 1E-27 (Ray)
         let cap: Ray = (transmuter_contract::PERCENTAGE_CAP_UPPER_BOUND + 1).into();
         transmuter.set_percentage_cap(cap);
@@ -185,7 +185,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         let new_receiver: ContractAddress = 'new receiver'.try_into().unwrap();
         transmuter.set_receiver(new_receiver);
 
@@ -195,7 +195,7 @@ mod test_transmuter {
             (
                 transmuter.contract_address,
                 transmuter_contract::Event::ReceiverUpdated(
-                    transmuter_contract::ReceiverUpdated { old_receiver: transmuter_utils::receiver(), new_receiver },
+                    transmuter_contract::ReceiverUpdated { old_receiver: transmuter_utils::RECEIVER, new_receiver },
                 ),
             ),
         ];
@@ -209,7 +209,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.set_receiver(Zero::zero());
     }
 
@@ -233,7 +233,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 0.5% (Ray)
         let new_fee: Ray = 5000000000000000000000000_u128.into();
 
@@ -275,7 +275,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_transmute_fee(new_fee);
@@ -301,7 +301,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         // 1% + 1E-27 (Ray)
         let new_fee: Ray = 10000000000000000000000001_u128.into();
         transmuter.set_reverse_fee(new_fee);
@@ -328,7 +328,7 @@ mod test_transmuter {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'reversible');
 
@@ -376,7 +376,7 @@ mod test_transmuter {
             Option::Some(transmuter_class),
             shrine.contract_address,
             nonwad_usd_stable.contract_address,
-            transmuter_utils::receiver(),
+            transmuter_utils::RECEIVER,
         );
 
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -401,7 +401,7 @@ mod test_transmuter {
         ]
             .span();
 
-        let user: ContractAddress = transmuter_utils::user();
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         loop {
             match transmuters.pop_front() {
@@ -426,7 +426,7 @@ mod test_transmuter {
                     loop {
                         match transmute_fees_copy.pop_front() {
                             Option::Some(transmute_fee) => {
-                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
                                 transmuter.set_transmute_fee(*transmute_fee);
 
                                 start_cheat_caller_address(transmuter.contract_address, user);
@@ -493,9 +493,9 @@ mod test_transmuter {
         let TransmuterTestConfig {
             shrine, transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
-        let user: ContractAddress = transmuter_utils::user();
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let debt_ceiling: Wad = shrine.get_debt_ceiling();
         shrine.inject(user, debt_ceiling);
 
@@ -509,7 +509,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
 
         let ceiling: Wad = transmuter.get_ceiling();
         transmuter.transmute(ceiling.into());
@@ -525,17 +525,17 @@ mod test_transmuter {
             shrine, transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // reduce total supply to 1m yin
         let target_total_yin: Wad = 1000000000000000000000000_u128.into();
-        shrine.eject(transmuter_utils::receiver(), transmuter_utils::START_TOTAL_YIN.into() - target_total_yin);
+        shrine.eject(transmuter_utils::RECEIVER, transmuter_utils::START_TOTAL_YIN.into() - target_total_yin);
         assert(shrine.get_total_yin() == target_total_yin, 'sanity check #1');
 
         stop_cheat_caller_address(shrine.contract_address);
 
         // now, the cap is at 100_000
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         let expected_cap: u128 = 100000 * WAD_ONE;
         transmuter.transmute(expected_cap + 1);
     }
@@ -547,7 +547,7 @@ mod test_transmuter {
             shrine, transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.update_yin_spot_price((WAD_ONE - 1).into());
 
         transmuter.transmute(1_u128.into());
@@ -574,7 +574,7 @@ mod test_transmuter {
             Option::Some(transmuter_class),
             shrine.contract_address,
             nonwad_usd_stable.contract_address,
-            transmuter_utils::receiver(),
+            transmuter_utils::RECEIVER,
         );
 
         let mut transmuters: Span<ITransmuterDispatcher> = array![wad_transmuter, nonwad_transmuter].span();
@@ -591,7 +591,7 @@ mod test_transmuter {
         let real_reverse_amt: u128 = 1000;
         let reverse_yin_amt: Wad = (real_reverse_amt * WAD_ONE).into();
 
-        let user: ContractAddress = transmuter_utils::user();
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         loop {
             match transmuters.pop_front() {
@@ -634,7 +634,7 @@ mod test_transmuter {
                             Option::Some(reverse_fee) => {
                                 let mut spy = spy_events();
 
-                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
                                 transmuter.set_reverse_fee(*reverse_fee);
                                 stop_cheat_caller_address(transmuter.contract_address);
 
@@ -716,11 +716,11 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.toggle_reversibility();
         assert(!transmuter.get_reversibility(), 'sanity check');
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         let transmute_amt: u128 = 1000 * WAD_ONE;
         transmuter.transmute(transmute_amt);
 
@@ -734,12 +734,12 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        let user: ContractAddress = transmuter_utils::user();
+        let user: ContractAddress = common::NON_ZERO_ADDR;
         let asset_amt: u128 = WAD_ONE;
         start_cheat_caller_address(transmuter.contract_address, user);
         transmuter.transmute(asset_amt.into());
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.sweep(asset_amt);
 
         start_cheat_caller_address(transmuter.contract_address, user);
@@ -756,9 +756,9 @@ mod test_transmuter {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
 
-        let admin: ContractAddress = transmuter_utils::admin();
-        let receiver: ContractAddress = transmuter_utils::receiver();
-        let user: ContractAddress = transmuter_utils::user();
+        let admin: ContractAddress = transmuter_utils::ADMIN;
+        let receiver: ContractAddress = transmuter_utils::RECEIVER;
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         let mut transmuter_ids: Span<u32> = array![0, 1].span();
 
@@ -868,9 +868,9 @@ mod test_transmuter {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
 
-        let admin: ContractAddress = transmuter_utils::admin();
-        let receiver: ContractAddress = transmuter_utils::receiver();
-        let user: ContractAddress = transmuter_utils::user();
+        let admin: ContractAddress = transmuter_utils::ADMIN;
+        let receiver: ContractAddress = transmuter_utils::RECEIVER;
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
         let asset = transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class));
@@ -897,7 +897,7 @@ mod test_transmuter {
                                     'sASSET',
                                     (*secondary_asset_decimal).into(),
                                     WAD_ONE.into(),
-                                    transmuter_utils::admin(),
+                                    transmuter_utils::ADMIN,
                                     Option::Some(token_class),
                                 );
                                 let secondary_asset_erc20 = IERC20Dispatcher { contract_address: secondary_asset };
@@ -1015,7 +1015,7 @@ mod test_transmuter {
             'Secondary Asset', 'sASSET', 18, WAD_ONE.into(), transmuter.contract_address, Option::Some(token_class),
         );
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.withdraw_secondary_asset(wad_usd_stable.contract_address, Bounded::MAX);
     }
 
@@ -1028,10 +1028,10 @@ mod test_transmuter {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
 
-        let transmuter_admin: ContractAddress = transmuter_utils::admin();
-        let shrine_admin: ContractAddress = shrine_utils::admin();
-        let receiver: ContractAddress = transmuter_utils::receiver();
-        let user: ContractAddress = transmuter_utils::user();
+        let transmuter_admin: ContractAddress = transmuter_utils::ADMIN;
+        let shrine_admin: ContractAddress = shrine_utils::ADMIN;
+        let receiver: ContractAddress = transmuter_utils::RECEIVER;
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         // parametrize transmuter and asset
         let asset = if transmuter_id == 0 {
@@ -1170,10 +1170,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.settle();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         transmuter.transmute(1_u128);
     }
 
@@ -1184,10 +1184,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.settle();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         transmuter.reverse(1_u128.into());
     }
 
@@ -1198,7 +1198,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.settle();
 
         transmuter.sweep(Bounded::MAX);
@@ -1225,9 +1225,9 @@ mod test_transmuter {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
 
-        let admin: ContractAddress = transmuter_utils::admin();
-        let receiver: ContractAddress = transmuter_utils::receiver();
-        let user: ContractAddress = transmuter_utils::user();
+        let admin: ContractAddress = transmuter_utils::ADMIN;
+        let receiver: ContractAddress = transmuter_utils::RECEIVER;
+        let user: ContractAddress = common::NON_ZERO_ADDR;
 
         let mut transmuter_ids: Span<u32> = array![0, 1].span();
 
@@ -1409,10 +1409,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.kill();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         transmuter.transmute(1_u128);
     }
 
@@ -1423,10 +1423,10 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.kill();
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::user());
+        start_cheat_caller_address(transmuter.contract_address, common::NON_ZERO_ADDR);
         transmuter.transmute(1_u128.into());
     }
 
@@ -1437,7 +1437,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.kill();
 
         transmuter.sweep(Bounded::MAX);
@@ -1450,7 +1450,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.kill();
 
         transmuter.reclaim(Bounded::MAX);
@@ -1463,7 +1463,7 @@ mod test_transmuter {
             transmuter, ..,
         } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::admin());
+        start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
         transmuter.enable_reclaim();
     }
 

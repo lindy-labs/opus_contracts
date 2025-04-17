@@ -75,7 +75,7 @@ mod test_controller {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
         let mut spy = spy_events();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         let new_p_gain: Ray = 1_u128.into();
         let new_i_gain: Ray = 2_u128.into();
@@ -193,7 +193,7 @@ mod test_controller {
     fn test_against_ground_truth1() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
@@ -225,7 +225,7 @@ mod test_controller {
     fn test_against_ground_truth2() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -483,7 +483,7 @@ mod test_controller {
     fn test_against_ground_truth3() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -576,7 +576,7 @@ mod test_controller {
     fn test_against_ground_truth4() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -709,7 +709,7 @@ mod test_controller {
     fn test_against_ground_truth5() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
 
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
 
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
@@ -802,7 +802,7 @@ mod test_controller {
     #[test]
     fn test_frequent_updates() {
         let ControllerTestConfig { controller, shrine } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, controller_utils::admin());
+        start_cheat_caller_address(controller.contract_address, controller_utils::ADMIN);
         // Ensuring the integral gain is non-zero
         controller.set_i_gain(100000000000000000000000_u128.into()); // 0.0001
 

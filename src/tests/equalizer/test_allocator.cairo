@@ -40,7 +40,7 @@ mod test_allocator {
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
         let allocator_ac = IAccessControlDispatcher { contract_address: allocator.contract_address };
-        let admin = shrine_utils::admin();
+        let admin = shrine_utils::ADMIN;
         assert(allocator_ac.get_admin() == admin, 'wrong admin');
         assert(allocator_ac.get_roles(admin) == allocator_roles::SET_ALLOCATION, 'wrong role');
         assert(allocator_ac.has_role(allocator_roles::SET_ALLOCATION, admin), 'role not granted');
@@ -80,7 +80,7 @@ mod test_allocator {
 
         let mut spy = spy_events();
 
-        start_cheat_caller_address(allocator.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(allocator.contract_address, shrine_utils::ADMIN);
         let new_recipients = equalizer_utils::new_recipients();
         let new_percentages = equalizer_utils::new_percentages();
         allocator.set_allocation(new_recipients, new_percentages);
@@ -110,7 +110,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
-        start_cheat_caller_address(allocator.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(allocator.contract_address, shrine_utils::ADMIN);
         let new_recipients: Span<ContractAddress> = array![
             'new recipient 1'.try_into().unwrap(),
             'new recipient 2'.try_into().unwrap(),
@@ -129,7 +129,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
-        start_cheat_caller_address(allocator.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(allocator.contract_address, shrine_utils::ADMIN);
         let new_recipients = equalizer_utils::new_recipients();
         let mut new_percentages = equalizer_utils::new_percentages();
         let _ = new_percentages.pop_front();
@@ -143,7 +143,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
-        start_cheat_caller_address(allocator.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(allocator.contract_address, shrine_utils::ADMIN);
         let recipients: Array<ContractAddress> = ArrayTrait::new();
         let percentages: Array<Ray> = ArrayTrait::new();
         allocator.set_allocation(recipients.span(), percentages.span());
@@ -156,7 +156,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
-        start_cheat_caller_address(allocator.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(allocator.contract_address, shrine_utils::ADMIN);
         let mut new_recipients = equalizer_utils::new_recipients();
         // Pop one off new recipients to set it to same length as invalid percentages
         let _ = new_recipients.pop_front();

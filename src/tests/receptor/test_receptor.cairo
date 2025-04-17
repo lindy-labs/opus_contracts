@@ -28,7 +28,7 @@ mod test_receptor {
         } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let receptor_ac = IAccessControlDispatcher { contract_address: receptor.contract_address };
-        let admin = shrine_utils::admin();
+        let admin = shrine_utils::ADMIN;
         assert(receptor_ac.get_admin() == admin, 'wrong admin');
         assert(receptor_ac.get_roles(admin) == receptor_roles::default_admin_role(), 'wrong role');
 
@@ -60,7 +60,7 @@ mod test_receptor {
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
         start_cheat_caller_address(receptor.contract_address, common::BAD_GUY);
-        ekubo_oracle_adapter.set_oracle_extension(receptor_utils::mock_oracle_extension());
+        ekubo_oracle_adapter.set_oracle_extension(receptor_utils::MOCK_ORACLE_EXTENSION);
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod test_receptor {
 
         let old_frequency: u64 = receptor_utils::INITIAL_UPDATE_FREQUENCY;
         let new_frequency: u64 = old_frequency + 1;
-        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::ADMIN);
         receptor.set_update_frequency(new_frequency);
 
         assert_eq!(receptor.get_update_frequency(), new_frequency, "wrong update frequency");
@@ -123,7 +123,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::LOWER_UPDATE_FREQUENCY_BOUND - 1;
-        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::ADMIN);
         receptor.set_update_frequency(new_frequency);
     }
 
@@ -133,7 +133,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
 
         let new_frequency: u64 = receptor_contract::UPPER_UPDATE_FREQUENCY_BOUND + 1;
-        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::ADMIN);
         receptor.set_update_frequency(new_frequency);
     }
 
@@ -183,7 +183,7 @@ mod test_receptor {
             };
         }
 
-        start_cheat_caller_address(receptor.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(receptor.contract_address, shrine_utils::ADMIN);
         receptor.update_yin_price();
 
         let after_yin_spot_price: Wad = shrine.get_yin_spot_price();

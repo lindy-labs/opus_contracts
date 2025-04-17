@@ -69,17 +69,9 @@ pub mod purger_utils {
     // Address constants
     //
 
-    pub const fn admin() -> ContractAddress {
-        'purger owner'.try_into().unwrap()
-    }
-
-    pub const fn searcher() -> ContractAddress {
-        'searcher'.try_into().unwrap()
-    }
-
-    pub const fn target_trove_owner() -> ContractAddress {
-        'target trove owner'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'purger owner'.try_into().unwrap();
+    pub const SEARCHER: ContractAddress = 'searcher'.try_into().unwrap();
+    pub const TARGET_TROVE_OWNER: ContractAddress = 'target trove owner'.try_into().unwrap();
 
     //
     // Constant helpers
@@ -385,11 +377,11 @@ pub mod purger_utils {
         );
         pragma_utils::add_yangs(*oracles.at(0), yangs);
 
-        start_cheat_caller_address(seer.contract_address, seer_utils::admin());
+        start_cheat_caller_address(seer.contract_address, seer_utils::ADMIN);
         seer.update_prices();
         stop_cheat_caller_address(seer.contract_address);
 
-        let admin: ContractAddress = admin();
+        let admin: ContractAddress = ADMIN;
 
         let calldata = array![
             admin.into(),
@@ -405,7 +397,7 @@ pub mod purger_utils {
 
         // Approve Purger in Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine_ac.grant_role(shrine_roles::purger(), purger_addr);
 
         // Increase debt ceiling
@@ -416,19 +408,19 @@ pub mod purger_utils {
 
         // Approve Purger in Sentinel
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         sentinel_ac.grant_role(sentinel_roles::purger(), purger_addr);
         stop_cheat_caller_address(sentinel.contract_address);
 
         // Approve Purger in Seer
         let oracle_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
-        start_cheat_caller_address(seer.contract_address, seer_utils::admin());
+        start_cheat_caller_address(seer.contract_address, seer_utils::ADMIN);
         oracle_ac.grant_role(seer_roles::purger(), purger_addr);
         stop_cheat_caller_address(seer.contract_address);
 
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        start_cheat_caller_address(absorber.contract_address, absorber_utils::admin());
+        start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
         absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
         stop_cheat_caller_address(absorber.contract_address);
 
@@ -464,7 +456,7 @@ pub mod purger_utils {
     pub fn funded_searcher(
         abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) {
-        let user: ContractAddress = searcher();
+        let user: ContractAddress = SEARCHER;
         common::fund_user(user, yangs, recipient_trove_yang_asset_amts());
         common::open_trove_helper(abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt);
     }
@@ -478,7 +470,7 @@ pub mod purger_utils {
         amt: Wad,
     ) -> u64 {
         absorber_utils::provide_to_absorber(
-            shrine, abbot, absorber, absorber_utils::provider_1(), yangs, recipient_trove_yang_asset_amts(), gates, amt,
+            shrine, abbot, absorber, absorber_utils::PROVIDER_1, yangs, recipient_trove_yang_asset_amts(), gates, amt,
         )
     }
 
@@ -486,7 +478,7 @@ pub mod purger_utils {
     pub fn funded_healthy_trove(
         abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>, yin_amt: Wad,
     ) -> u64 {
-        let user: ContractAddress = target_trove_owner();
+        let user: ContractAddress = TARGET_TROVE_OWNER;
         let deposit_amts: Span<u128> = target_trove_yang_asset_amts();
         common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
@@ -497,7 +489,7 @@ pub mod purger_utils {
     pub fn create_whale_trove(
         abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>,
     ) -> u64 {
-        let user: ContractAddress = target_trove_owner();
+        let user: ContractAddress = TARGET_TROVE_OWNER;
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
         let yin_amt: Wad = WAD_ONE.into();
         common::fund_user(user, yangs, deposit_amts);
@@ -506,7 +498,7 @@ pub mod purger_utils {
 
     // Update thresholds for all yangs to the given value
     pub fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
@@ -520,7 +512,7 @@ pub mod purger_utils {
     pub fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {

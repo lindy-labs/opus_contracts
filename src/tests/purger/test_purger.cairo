@@ -38,9 +38,7 @@ mod test_purger {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
-        assert(
-            purger_ac.get_roles(purger_utils::admin()) == purger_roles::default_admin_role(), 'wrong role for admin',
-        );
+        assert(purger_ac.get_roles(purger_utils::ADMIN) == purger_roles::default_admin_role(), 'wrong role for admin');
 
         let expected_events = array![
             (
@@ -88,7 +86,7 @@ mod test_purger {
         let mut expected_events: Array<(ContractAddress, purger_contract::Event)> = ArrayTrait::new();
 
         // Set scalar to 1
-        start_cheat_caller_address(purger.contract_address, purger_utils::admin());
+        start_cheat_caller_address(purger.contract_address, purger_utils::ADMIN);
         let penalty_scalar: Ray = RAY_ONE.into();
         purger.set_penalty_scalar(penalty_scalar);
 
@@ -189,7 +187,7 @@ mod test_purger {
         assert(purger.preview_absorb(target_trove).is_none(), 'should not be absorbable #1');
 
         // Set scalar to 1.06 and check the trove is still not absorbable.
-        start_cheat_caller_address(purger.contract_address, purger_utils::admin());
+        start_cheat_caller_address(purger.contract_address, purger_utils::ADMIN);
         let penalty_scalar: Ray = purger_contract::MAX_PENALTY_SCALAR.into();
         purger.set_penalty_scalar(penalty_scalar);
 
@@ -201,7 +199,7 @@ mod test_purger {
     fn test_set_penalty_scalar_too_low_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
-        start_cheat_caller_address(purger.contract_address, purger_utils::admin());
+        start_cheat_caller_address(purger.contract_address, purger_utils::ADMIN);
         purger.set_penalty_scalar((purger_contract::MIN_PENALTY_SCALAR - 1).into());
     }
 
@@ -210,7 +208,7 @@ mod test_purger {
     fn test_set_penalty_scalar_too_high_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
-        start_cheat_caller_address(purger.contract_address, purger_utils::admin());
+        start_cheat_caller_address(purger.contract_address, purger_utils::ADMIN);
         purger.set_penalty_scalar((purger_contract::MAX_PENALTY_SCALAR + 1).into());
     }
 
@@ -369,7 +367,7 @@ mod test_purger {
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health);
 
         let (penalty, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
-        let searcher: ContractAddress = purger_utils::searcher();
+        let searcher: ContractAddress = purger_utils::SEARCHER;
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![searcher].span());
 
@@ -478,7 +476,7 @@ mod test_purger {
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_start_health);
         let (_, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
 
-        let searcher: ContractAddress = purger_utils::searcher();
+        let searcher: ContractAddress = purger_utils::SEARCHER;
 
         start_cheat_caller_address(flash_liquidator.contract_address, searcher);
         flash_liquidator.flash_liquidate(target_trove, yangs, gates);
@@ -598,7 +596,7 @@ mod test_purger {
                         .preview_liquidate(target_trove)
                         .expect('Should be liquidatable');
 
-                    let searcher: ContractAddress = purger_utils::searcher();
+                    let searcher: ContractAddress = purger_utils::SEARCHER;
                     start_cheat_caller_address(purger.contract_address, searcher);
                     let freed_assets: Span<AssetBalance> = purger.liquidate(target_trove, Bounded::MAX, searcher);
 
@@ -762,7 +760,7 @@ mod test_purger {
 
         purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, shrine.get_trove_health(healthy_trove));
 
-        let searcher: ContractAddress = purger_utils::searcher();
+        let searcher: ContractAddress = purger_utils::SEARCHER;
         start_cheat_caller_address(purger.contract_address, searcher);
         purger.liquidate(healthy_trove, Bounded::MAX, searcher);
     }
@@ -781,7 +779,7 @@ mod test_purger {
         purger_utils::set_thresholds(shrine, yangs, threshold);
         let max_forge_amt: Wad = shrine.get_max_forge(healthy_trove);
 
-        let healthy_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+        let healthy_trove_owner: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
         start_cheat_caller_address(abbot.contract_address, healthy_trove_owner);
         abbot.forge(healthy_trove, max_forge_amt, Zero::zero());
         stop_cheat_caller_address(abbot.contract_address);
@@ -791,7 +789,7 @@ mod test_purger {
         assert(health.ltv > purger_contract::ABSORPTION_THRESHOLD.into(), 'too low');
         purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, health);
 
-        let searcher: ContractAddress = purger_utils::searcher();
+        let searcher: ContractAddress = purger_utils::SEARCHER;
         start_cheat_caller_address(purger.contract_address, searcher);
         purger.liquidate(healthy_trove, Bounded::MAX, searcher);
     }
@@ -818,7 +816,7 @@ mod test_purger {
         let updated_target_trove_health: Health = shrine.get_trove_health(target_trove);
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health);
 
-        let searcher: ContractAddress = purger_utils::searcher();
+        let searcher: ContractAddress = purger_utils::SEARCHER;
         start_cheat_caller_address(purger.contract_address, searcher);
         purger.liquidate(target_trove, Bounded::MAX, searcher);
     }
@@ -1010,7 +1008,7 @@ mod test_purger {
         let (penalty, max_close_amt, expected_compensation_value) = purger
             .preview_absorb(target_trove)
             .expect('Should be absorbable');
-        let caller: ContractAddress = common::non_zero_address();
+        let caller: ContractAddress = common::NON_ZERO_ADDR;
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(yangs, array![caller].span());
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -1146,13 +1144,13 @@ mod test_purger {
                                                             let mut spy = spy_events();
 
                                                             start_cheat_caller_address(
-                                                                shrine.contract_address, shrine_utils::admin(),
+                                                                shrine.contract_address, shrine_utils::ADMIN,
                                                             );
                                                             shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
                                                             stop_cheat_caller_address(shrine.contract_address);
 
                                                             let target_trove_owner: ContractAddress =
-                                                                purger_utils::target_trove_owner();
+                                                                purger_utils::TARGET_TROVE_OWNER;
                                                             common::fund_user(
                                                                 target_trove_owner,
                                                                 yangs,
@@ -1174,7 +1172,7 @@ mod test_purger {
                                                                 .get_trove_health(target_trove);
 
                                                             let recipient_trove_owner: ContractAddress =
-                                                                absorber_utils::provider_1();
+                                                                absorber_utils::PROVIDER_1;
                                                             let recipient_trove: u64 =
                                                                 absorber_utils::provide_to_absorber(
                                                                 shrine,
@@ -1245,7 +1243,7 @@ mod test_purger {
                                                                 'not less than close amount',
                                                             );
 
-                                                            let caller: ContractAddress = common::non_zero_address();
+                                                            let caller: ContractAddress = common::NON_ZERO_ADDR;
 
                                                             let before_caller_asset_bals: Span<Span<u128>> =
                                                                 common::get_token_balances(
@@ -1569,7 +1567,7 @@ mod test_purger {
 
                     let mut spy = spy_events();
 
-                    let target_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+                    let target_trove_owner: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
                     common::fund_user(target_trove_owner, yangs, target_trove_yang_asset_amts);
                     let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
                     let target_trove: u64 = common::open_trove_helper(
@@ -1614,7 +1612,7 @@ mod test_purger {
                     // sanity check
                     assert(max_close_amt < target_trove_start_health.debt, 'close amt ge trove debt #1');
 
-                    let caller: ContractAddress = common::non_zero_address();
+                    let caller: ContractAddress = common::NON_ZERO_ADDR;
 
                     let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
                         yangs, array![caller].span(),
@@ -1623,7 +1621,7 @@ mod test_purger {
                         yangs, array![absorber.contract_address].span(),
                     );
 
-                    let recipient_trove_owner: ContractAddress = absorber_utils::provider_1();
+                    let recipient_trove_owner: ContractAddress = absorber_utils::PROVIDER_1;
 
                     // Provide the minimum to absorber.
                     // The actual amount will be provided after
@@ -2807,14 +2805,14 @@ mod test_purger {
                                                     let mut spy = spy_events();
 
                                                     start_cheat_caller_address(
-                                                        shrine.contract_address, shrine_utils::admin(),
+                                                        shrine.contract_address, shrine_utils::ADMIN,
                                                     );
                                                     shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
                                                     stop_cheat_caller_address(shrine.contract_address);
 
                                                     let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
                                                     let target_trove_owner: ContractAddress =
-                                                        purger_utils::target_trove_owner();
+                                                        purger_utils::TARGET_TROVE_OWNER;
                                                     common::fund_user(
                                                         target_trove_owner, yangs, *target_trove_yang_asset_amts,
                                                     );
@@ -2828,7 +2826,7 @@ mod test_purger {
                                                     );
 
                                                     let recipient_trove_owner: ContractAddress =
-                                                        absorber_utils::provider_1();
+                                                        absorber_utils::PROVIDER_1;
                                                     let recipient_trove: u64 = absorber_utils::provide_to_absorber(
                                                         shrine,
                                                         abbot,
@@ -2879,7 +2877,7 @@ mod test_purger {
                                                         shrine, purger, target_trove, target_trove_updated_start_health,
                                                     );
 
-                                                    let caller: ContractAddress = common::non_zero_address();
+                                                    let caller: ContractAddress = common::NON_ZERO_ADDR;
                                                     let before_caller_asset_bals: Span<Span<u128>> =
                                                         common::get_token_balances(
                                                         yangs, array![caller].span(),
@@ -3158,7 +3156,7 @@ mod test_purger {
                         assert(max_close_amt < target_trove_updated_start_health.debt, 'close amount == debt');
                     }
 
-                    let caller: ContractAddress = common::non_zero_address();
+                    let caller: ContractAddress = common::NON_ZERO_ADDR;
                     start_cheat_caller_address(purger.contract_address, caller);
                     let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
@@ -3442,7 +3440,7 @@ mod test_purger {
                         }
                     }
 
-                    let caller: ContractAddress = common::non_zero_address();
+                    let caller: ContractAddress = common::NON_ZERO_ADDR;
                     start_cheat_caller_address(purger.contract_address, caller);
                     let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
@@ -3725,7 +3723,7 @@ mod test_purger {
 
         purger_utils::assert_trove_is_healthy(shrine, purger, healthy_trove, shrine.get_trove_health(healthy_trove));
 
-        start_cheat_caller_address(purger.contract_address, common::non_zero_address());
+        start_cheat_caller_address(purger.contract_address, common::NON_ZERO_ADDR);
         purger.absorb(healthy_trove);
     }
 
@@ -3752,7 +3750,7 @@ mod test_purger {
         purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, updated_target_trove_health);
         purger_utils::assert_trove_is_not_absorbable(purger, target_trove);
 
-        start_cheat_caller_address(purger.contract_address, common::non_zero_address());
+        start_cheat_caller_address(purger.contract_address, common::NON_ZERO_ADDR);
         purger.absorb(target_trove);
     }
 
@@ -3826,7 +3824,7 @@ mod test_purger {
         let btc: ContractAddress = *yangs[1];
         let current_timestamp: u64 = get_block_timestamp();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.suspend_yang(btc);
         stop_cheat_caller_address(shrine.contract_address);
 
@@ -3874,7 +3872,7 @@ mod test_purger {
         assert(!shrine.is_healthy(target_trove), 'should be unhealthy');
 
         // Liquidate the trove
-        let searcher = purger_utils::searcher();
+        let searcher = purger_utils::SEARCHER;
         start_cheat_caller_address(purger.contract_address, searcher);
         purger.liquidate(target_trove, target_trove_start_health.debt, searcher);
 
@@ -3919,11 +3917,11 @@ mod test_purger {
         let eth_amt: u128 = WAD_ONE;
         let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
-        let target_user: ContractAddress = purger_utils::target_trove_owner();
+        let target_user: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
         common::fund_user(target_user, array![eth].span(), array![(10 * eth_amt).into()].span());
 
         // Have the searcher provide half of his yin to the absorber
-        let searcher = purger_utils::searcher();
+        let searcher = purger_utils::SEARCHER;
         let searcher_yin: Wad = (purger_utils::SEARCHER_YIN / 2).into();
         let yin_erc20 = shrine_utils::yin(shrine.contract_address);
 
@@ -3954,7 +3952,7 @@ mod test_purger {
                     );
 
                     // Suspend ETH
-                    start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+                    start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
                     shrine.suspend_yang(eth);
                     stop_cheat_caller_address(shrine.contract_address);
 
@@ -4032,7 +4030,7 @@ mod test_purger {
                         );
                     }
 
-                    start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+                    start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
                     shrine.unsuspend_yang(eth);
                     stop_cheat_caller_address(shrine.contract_address);
                 },
@@ -4094,7 +4092,7 @@ mod test_purger {
     fn test_absorb_low_thresholds(absorb_type: AbsorbType, is_recovery_mode: bool) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
-        let searcher = purger_utils::searcher();
+        let searcher = purger_utils::SEARCHER;
         let searcher_start_yin: Wad = (purger_utils::SEARCHER_YIN * 6).into();
 
         let minimum_operational_shares: Wad = (absorber_contract::INITIAL_SHARES
@@ -4119,14 +4117,14 @@ mod test_purger {
                                     shrine, abbot, absorber, purger, yangs, gates, ..,
                                 } = purger_utils::purger_deploy_with_searcher(searcher_start_yin, classes);
 
-                                start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+                                start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
                                 shrine.set_debt_ceiling((10000000 * WAD_ONE).into());
                                 stop_cheat_caller_address(shrine.contract_address);
 
                                 // Create whale trove to either:
                                 // - mint enough debt to trigger recovery mode before thresholds are set to a very low
                                 // value; or - to prevent recovery mode from being triggered
-                                let whale_trove_owner: ContractAddress = purger_utils::target_trove_owner();
+                                let whale_trove_owner: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
                                 let whale_trove: u64 = purger_utils::create_whale_trove(abbot, yangs, gates);
 
                                 // Approve absorber for maximum yin

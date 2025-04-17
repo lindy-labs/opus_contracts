@@ -46,17 +46,8 @@ pub mod seer_utils {
     // Address constants
     //
 
-    pub const fn admin() -> ContractAddress {
-        'seer owner'.try_into().unwrap()
-    }
-
-    pub const fn dummy_eth() -> ContractAddress {
-        'eth token'.try_into().unwrap()
-    }
-
-    pub const fn dummy_wbtc() -> ContractAddress {
-        'wbtc token'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'seer owner'.try_into().unwrap();
+    pub const DUMMY_ETH: ContractAddress = 'eth token'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -76,7 +67,7 @@ pub mod seer_utils {
     ) -> SeerTestConfig {
         let (sentinel_dispatcher, shrine) = sentinel_utils::deploy_sentinel(sentinel_classes);
         let calldata: Array<felt252> = array![
-            admin().into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into(),
+            ADMIN.into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into(),
         ];
 
         let seer_class = match seer_class {
@@ -88,7 +79,7 @@ pub mod seer_utils {
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_cheat_caller_address(shrine);
 
@@ -103,7 +94,7 @@ pub mod seer_utils {
         seer_class: Option<ContractClass>, shrine: ContractAddress, sentinel: ContractAddress,
     ) -> ISeerDispatcher {
         let mut calldata: Array<felt252> = array![
-            admin().into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into(),
+            ADMIN.into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into(),
         ];
 
         let seer_class = match seer_class {
@@ -115,7 +106,7 @@ pub mod seer_utils {
 
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
         stop_cheat_caller_address(shrine);
 
@@ -123,7 +114,7 @@ pub mod seer_utils {
     }
 
     pub fn set_price_types_to_vault(seer: ISeerDispatcher, mut vaults: Span<ContractAddress>) {
-        start_cheat_caller_address(seer.contract_address, admin());
+        start_cheat_caller_address(seer.contract_address, ADMIN);
         loop {
             match vaults.pop_front() {
                 Option::Some(vault) => { seer.set_yang_price_type(*vault, PriceType::Vault); },
@@ -153,7 +144,7 @@ pub mod seer_utils {
         } = ekubo_utils::ekubo_deploy(oracle_classes.ekubo, oracle_classes.mock_ekubo, token_class);
         oracles.append(ekubo.contract_address);
 
-        start_cheat_caller_address(seer.contract_address, admin());
+        start_cheat_caller_address(seer.contract_address, ADMIN);
         seer.set_oracles(oracles.span());
         stop_cheat_caller_address(seer.contract_address);
 

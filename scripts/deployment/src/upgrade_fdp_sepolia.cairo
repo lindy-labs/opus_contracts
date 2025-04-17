@@ -14,7 +14,7 @@ fn main() {
 
     let calldata: Array<felt252> = array![(*declare_frontend_data_provider.class_hash()).into()];
     invoke(
-        addresses::sepolia::frontend_data_provider(),
+        addresses::sepolia::FRONTEND_DATA_PROVIDER,
         selector!("upgrade"),
         calldata,
         FeeSettingsTrait::max_fee(MAX_FEE),

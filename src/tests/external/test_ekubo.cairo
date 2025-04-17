@@ -31,7 +31,7 @@ mod test_ekubo {
 
         // Check permissions
         let ekubo_ac = IAccessControlDispatcher { contract_address: ekubo.contract_address };
-        let admin: ContractAddress = ekubo_utils::admin();
+        let admin: ContractAddress = ekubo_utils::ADMIN;
 
         assert(ekubo_ac.get_admin() == admin, 'wrong admin');
         assert(ekubo_ac.get_roles(admin) == ekubo_roles::default_admin_role(), 'wrong admin role');

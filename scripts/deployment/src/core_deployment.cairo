@@ -257,12 +257,12 @@ pub fn deploy_receptor(admin: ContractAddress, shrine: ContractAddress) -> Contr
     let receptor_calldata: Array<felt252> = array![
         admin.into(),
         shrine.into(),
-        addresses::mainnet::ekubo_oracle_extension().into(),
+        addresses::mainnet::EKUBO_ORACLE_EXTENSION.into(),
         RECEPTOR_UPDATE_FREQUENCY.into(),
         RECEPTOR_TWAP_DURATION.into(),
         num_quote_tokens,
         addresses::mainnet::dai().into(),
-        addresses::mainnet::usdc().into(),
+        addresses::mainnet::USDC.into(),
         addresses::mainnet::usdt().into(),
     ];
     let deploy_receptor = deploy(
@@ -333,7 +333,7 @@ pub fn deploy_ekubo(admin: ContractAddress, oracle: ContractAddress) -> Contract
         EKUBO_TWAP_DURATION.into(),
         num_quote_tokens,
         addresses::mainnet::dai().into(),
-        addresses::mainnet::usdc().into(),
+        addresses::mainnet::USDC.into(),
         addresses::mainnet::usdt().into(),
     ];
 

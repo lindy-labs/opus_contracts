@@ -22,8 +22,8 @@ mod test_caretaker {
 
         let caretaker_ac = IAccessControlDispatcher { contract_address: caretaker.contract_address };
 
-        assert(caretaker_ac.get_admin() == caretaker_utils::admin(), 'setup admin');
-        assert(caretaker_ac.get_roles(caretaker_utils::admin()) == caretaker_roles::SHUT, 'admin roles');
+        assert(caretaker_ac.get_admin() == caretaker_utils::ADMIN, 'setup admin');
+        assert(caretaker_ac.get_roles(caretaker_utils::ADMIN) == caretaker_roles::SHUT, 'admin roles');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
         assert(shrine_ac.has_role(shrine_roles::KILL, caretaker.contract_address), 'caretaker cant kill shrine');
@@ -57,7 +57,7 @@ mod test_caretaker {
         let mut spy = spy_events();
 
         // user 1 with 950 yin and 2 different yangs
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_forge_amt: Wad = (950 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         common::open_trove_helper(
@@ -65,7 +65,7 @@ mod test_caretaker {
         );
 
         // user 2 with 50 yin and 1 yang
-        let user2 = common::trove2_owner_addr();
+        let user2 = common::TROVE2_OWNER_ADDR;
         let trove2_forge_amt: Wad = (50 * WAD_ONE).into();
         common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
         let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
@@ -95,7 +95,7 @@ mod test_caretaker {
             };
         }
 
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
 
         // assert Shrine killed
@@ -154,14 +154,14 @@ mod test_caretaker {
         let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_deposit_amts = abbot_utils::open_trove_yang_asset_amts();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(abbot, user1, yangs, trove1_deposit_amts, gates, trove1_forge_amt);
 
         // user 2 with 100 yin and 1 yang
-        let user2 = common::trove2_owner_addr();
+        let user2 = common::TROVE2_OWNER_ADDR;
         let trove2_forge_amt: Wad = (1000 * WAD_ONE).into();
         common::fund_user(user2, yangs, abbot_utils::initial_asset_amts());
         let (eth_yang, eth_gate, eth_yang_amt) = caretaker_utils::only_eth(yangs, gates);
@@ -179,7 +179,7 @@ mod test_caretaker {
         let trove1_yang0_deposit: Wad = shrine.get_deposit(*yangs[0], trove1_id);
         let trove1_yang1_deposit: Wad = shrine.get_deposit(*yangs[1], trove1_id);
 
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
 
         start_cheat_caller_address(caretaker.contract_address, user1);
@@ -248,14 +248,14 @@ mod test_caretaker {
         let CaretakerTestConfig { caretaker, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
 
         // user 1 with 10000 yin and 2 different yangs
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         common::open_trove_helper(
             abbot, user1, yangs, abbot_utils::open_trove_yang_asset_amts(), gates, trove1_forge_amt,
         );
 
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
 
         let (reclaimed_yin, reclaimable_assets) = caretaker.preview_reclaim(trove1_forge_amt + WAD_ONE.into());
@@ -280,7 +280,7 @@ mod test_caretaker {
         let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         common::open_trove_helper(
@@ -302,7 +302,7 @@ mod test_caretaker {
         let scammer_yang0_before_balance: u256 = y0.balance_of(scammer);
         let scammer_yang1_before_balance: u256 = y1.balance_of(scammer);
 
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
 
         //
@@ -418,7 +418,7 @@ mod test_caretaker {
         let mut spy = spy_events();
 
         // user 1 with 10000 yin and 2 different yangs
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
@@ -433,14 +433,14 @@ mod test_caretaker {
 
         // manipulate prices to be waaaay below start price to force
         // all yang deposits to be used to back yin
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let new_eth_price: Wad = (50 * WAD_ONE).into();
         let new_wbtc_price: Wad = (20 * WAD_ONE).into();
         shrine.advance(*yangs[0], new_eth_price);
         shrine.advance(*yangs[1], new_wbtc_price);
         stop_cheat_caller_address(shrine.contract_address);
 
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
         stop_cheat_caller_address(caretaker.contract_address);
 
@@ -491,7 +491,7 @@ mod test_caretaker {
     #[should_panic(expected: 'CA: System is live')]
     fn test_release_when_system_live_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.release(1);
     }
 
@@ -499,7 +499,7 @@ mod test_caretaker {
     #[should_panic(expected: 'CA: Owner should not be zero')]
     fn test_release_foreign_trove_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
         caretaker.release(1);
     }
@@ -508,7 +508,7 @@ mod test_caretaker {
     #[should_panic(expected: 'CA: System is live')]
     fn test_reclaim_when_system_live_reverts() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.reclaim(WAD_ONE.into());
     }
 
@@ -518,7 +518,7 @@ mod test_caretaker {
         let CaretakerTestConfig { caretaker, shrine, abbot, yangs, gates, .. } = caretaker_utils::caretaker_deploy();
 
         // opening a trove
-        let user1 = common::trove1_owner_addr();
+        let user1 = common::TROVE1_OWNER_ADDR;
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, abbot_utils::initial_asset_amts());
         common::open_trove_helper(
@@ -537,13 +537,13 @@ mod test_caretaker {
         //
         // In other words, we do the transfer to ensure that the test still tests the correct thing regardless of the
         // order of operations in `shrine.melt_helper`.
-        let user2 = common::trove2_owner_addr();
+        let user2 = common::TROVE2_OWNER_ADDR;
         let transfer_amt: u256 = (4000 * WAD_ONE).into();
         start_cheat_caller_address(caretaker.contract_address, user1);
         shrine_utils::yin(shrine.contract_address).transfer(user2, transfer_amt);
 
         // Activating global settlement mode
-        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::admin());
+        start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
         caretaker.shut();
 
         // User1 attempts to reclaim more yin than they have

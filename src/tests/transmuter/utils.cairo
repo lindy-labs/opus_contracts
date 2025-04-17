@@ -37,17 +37,8 @@ pub mod transmuter_utils {
     // 2_000_000 (6 decimals)
     pub const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;
 
-    pub const fn admin() -> ContractAddress {
-        'transmuter admin'.try_into().unwrap()
-    }
-
-    pub const fn receiver() -> ContractAddress {
-        'receiver'.try_into().unwrap()
-    }
-
-    pub const fn user() -> ContractAddress {
-        'transmuter user'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'transmuter admin'.try_into().unwrap();
+    pub const RECEIVER: ContractAddress = 'receiver'.try_into().unwrap();
 
 
     //
@@ -65,7 +56,7 @@ pub mod transmuter_utils {
         receiver: ContractAddress,
     ) -> ITransmuterDispatcher {
         let mut calldata: Array<felt252> = array![
-            admin().into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into(),
+            ADMIN.into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into(),
         ];
 
         let transmuter_class = match transmuter_class {
@@ -75,7 +66,7 @@ pub mod transmuter_utils {
 
         let (transmuter_addr, _) = transmuter_class.deploy(@calldata).expect('transmuter deploy failed');
 
-        start_cheat_caller_address(shrine, shrine_utils::admin());
+        start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
         shrine_ac.grant_role(shrine_roles::transmuter(), transmuter_addr);
 
@@ -86,7 +77,7 @@ pub mod transmuter_utils {
     pub fn wad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
-                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), user(), token_class,
+                'Mock USD #1', 'mUSD1', 18, MOCK_WAD_USD_TOTAL.into(), common::NON_ZERO_ADDR, token_class,
             ),
         }
     }
@@ -95,7 +86,7 @@ pub mod transmuter_utils {
     pub fn nonwad_usd_stable_deploy(token_class: Option<ContractClass>) -> IERC20Dispatcher {
         IERC20Dispatcher {
             contract_address: common::deploy_token(
-                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), user(), token_class,
+                'Mock USD #2', 'mUSD2', 6, MOCK_NONWAD_USD_TOTAL.into(), common::NON_ZERO_ADDR, token_class,
             ),
         }
     }
@@ -109,7 +100,7 @@ pub mod transmuter_utils {
         user: ContractAddress,
     ) {
         // set debt ceiling to 30m
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_debt_ceiling(shrine_ceiling);
         shrine.inject(start_yin_recipient, shrine_start_yin);
         stop_cheat_caller_address(shrine.contract_address);
@@ -128,18 +119,18 @@ pub mod transmuter_utils {
         let wad_usd_stable = wad_usd_stable_deploy(token_class);
 
         let transmuter: ITransmuterDispatcher = transmuter_deploy(
-            transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, receiver(),
+            transmuter_class, shrine.contract_address, wad_usd_stable.contract_address, RECEIVER,
         );
 
         let debt_ceiling: Wad = 30000000000000000000000000_u128.into();
         let seed_amt: Wad = START_TOTAL_YIN.into();
-        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, receiver(), user());
+        setup_shrine_with_transmuter(shrine, transmuter, debt_ceiling, seed_amt, RECEIVER, common::NON_ZERO_ADDR);
 
         TransmuterTestConfig { shrine, transmuter, wad_usd_stable }
     }
 
     pub fn transmuter_registry_deploy() -> ITransmuterRegistryDispatcher {
-        let mut calldata: Array<felt252> = array![admin().into()];
+        let mut calldata: Array<felt252> = array![ADMIN.into()];
 
         let transmuter_registry_class = *declare("transmuter_registry").unwrap().contract_class();
         let (transmuter_registry_addr, _) = transmuter_registry_class

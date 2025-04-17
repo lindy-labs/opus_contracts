@@ -30,16 +30,14 @@ pub mod controller_utils {
 
     // Addresses
 
-    pub const fn admin() -> ContractAddress {
-        'controller admin'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'controller admin'.try_into().unwrap();
 
     pub fn deploy_controller() -> ControllerTestConfig {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
-        shrine_utils::make_root(shrine_addr, shrine_utils::admin());
+        shrine_utils::make_root(shrine_addr, shrine_utils::ADMIN);
 
         let calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             shrine_addr.into(),
             P_GAIN.into(),
             I_GAIN.into(),
@@ -53,7 +51,7 @@ pub mod controller_utils {
         let (controller_addr, _) = controller_class.deploy(@calldata).expect('controller deploy failed');
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
-        start_cheat_caller_address(shrine_addr, shrine_utils::admin());
+        start_cheat_caller_address(shrine_addr, shrine_utils::ADMIN);
         shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
         stop_cheat_caller_address(shrine_addr);
 
@@ -65,7 +63,7 @@ pub mod controller_utils {
 
     #[inline(always)]
     pub fn set_yin_spot_price(shrine: IShrineDispatcher, spot_price: Wad) {
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.update_yin_spot_price(spot_price);
         stop_cheat_caller_address(shrine.contract_address);
     }

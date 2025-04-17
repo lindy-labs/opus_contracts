@@ -45,9 +45,7 @@ pub mod pragma_utils {
     // Constant addresses
     //
 
-    pub const fn admin() -> ContractAddress {
-        'pragma owner'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'pragma owner'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -71,7 +69,7 @@ pub mod pragma_utils {
     ) -> PragmaTestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             mock_pragma.contract_address.into(),
             mock_pragma.contract_address.into(),
             FRESHNESS_THRESHOLD.into(),
@@ -103,7 +101,7 @@ pub mod pragma_utils {
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_cheat_caller_address(pragma, admin());
+        start_cheat_caller_address(pragma, ADMIN);
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
         let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
@@ -180,9 +178,7 @@ pub mod ekubo_utils {
     // Constant addresses
     //
 
-    pub const fn admin() -> ContractAddress {
-        'ekubo owner'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'ekubo owner'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -198,7 +194,7 @@ pub mod ekubo_utils {
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             mock_ekubo.contract_address.into(),
             TWAP_DURATION.into(),
             quote_tokens.len().into(),

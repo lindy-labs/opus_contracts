@@ -51,7 +51,7 @@ mod test_shrine {
         );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
-        assert(shrine_accesscontrol.get_admin() == shrine_utils::admin(), 'wrong admin');
+        assert(shrine_accesscontrol.get_admin() == shrine_utils::ADMIN, 'wrong admin');
 
         let expected_events = array![
             (
@@ -318,7 +318,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let new_value: Wad = (100 * WAD_ONE).into();
         shrine.set_minimum_trove_value(new_value);
         assert(shrine.get_minimum_trove_value() == new_value, 'wrong min trove value');
@@ -353,7 +353,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        let admin = shrine_utils::admin();
+        let admin = shrine_utils::ADMIN;
         start_cheat_caller_address(shrine.contract_address, admin);
 
         let current_rate_era: u64 = shrine.get_current_rate_era();
@@ -405,10 +405,10 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Yang already exists')]
     fn test_add_yang_duplicate_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .add_yang(
-                shrine_utils::yang1_addr(),
+                shrine_utils::YANG1_ADDR,
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
@@ -423,7 +423,7 @@ mod test_shrine {
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
         shrine
             .add_yang(
-                shrine_utils::yang1_addr(),
+                shrine_utils::YANG1_ADDR,
                 shrine_utils::YANG1_THRESHOLD.into(),
                 shrine_utils::YANG1_START_PRICE.into(),
                 shrine_utils::YANG1_BASE_RATE.into(),
@@ -436,10 +436,10 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        let yang1_addr = shrine_utils::yang1_addr();
+        let yang1_addr = shrine_utils::YANG1_ADDR;
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_threshold(yang1_addr, new_threshold);
         let threshold = shrine.get_yang_threshold(yang1_addr);
         assert(threshold == new_threshold, 'threshold not updated');
@@ -462,8 +462,8 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_threshold: Ray = (RAY_SCALE + 1).into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.set_threshold(shrine_utils::yang1_addr(), invalid_threshold);
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.set_threshold(shrine_utils::YANG1_ADDR, invalid_threshold);
     }
 
     #[test]
@@ -473,21 +473,21 @@ mod test_shrine {
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
 
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
-        shrine.set_threshold(shrine_utils::yang1_addr(), new_threshold);
+        shrine.set_threshold(shrine_utils::YANG1_ADDR, new_threshold);
     }
 
     #[test]
     #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_set_threshold_invalid_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.set_threshold(shrine_utils::invalid_yang_addr(), shrine_utils::YANG1_THRESHOLD.into());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.set_threshold(shrine_utils::INVALID_YANG_ADDR, shrine_utils::YANG1_THRESHOLD.into());
     }
 
     #[test]
     fn test_update_rates_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let yangs: Span<ContractAddress> = shrine_utils::three_yang_addrs();
         shrine
@@ -542,7 +542,7 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Rate out of bounds')]
     fn test_update_rates_exceed_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
@@ -559,7 +559,7 @@ mod test_shrine {
     #[should_panic(expected: 'SH: yangs.len != new_rates.len')]
     fn test_update_rates_array_length_mismatch() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
@@ -572,7 +572,7 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Too few yangs')]
     fn test_update_rates_too_few_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .update_rates(
                 shrine_utils::two_yang_addrs_reversed(),
@@ -585,11 +585,10 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_update_rates_invalid_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::invalid_yang_addr()]
-                    .span(),
+                array![shrine_utils::YANG1_ADDR, shrine_utils::YANG2_ADDR, shrine_utils::INVALID_YANG_ADDR].span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
@@ -603,10 +602,10 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Incorrect rate update')]
     fn test_update_rates_not_all_yangs() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine
             .update_rates(
-                array![shrine_utils::yang1_addr(), shrine_utils::yang2_addr(), shrine_utils::yang1_addr()].span(),
+                array![shrine_utils::YANG1_ADDR, shrine_utils::YANG2_ADDR, shrine_utils::YANG1_ADDR].span(),
                 array![
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
                     shrine_contract::USE_PREV_ERA_BASE_RATE.into(),
@@ -625,7 +624,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let target_factor: Ray = (75 * RAY_PERCENT).into();
         shrine.set_recovery_mode_target_factor(target_factor);
         assert_eq!(shrine.get_recovery_mode_target_factor(), target_factor, "wrong target factor");
@@ -658,7 +657,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_target_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_TARGET_FACTOR + 1).into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_recovery_mode_target_factor(invalid_target_factor);
     }
 
@@ -668,7 +667,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_target_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_TARGET_FACTOR - 1).into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_recovery_mode_target_factor(invalid_target_factor);
     }
 
@@ -688,7 +687,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_buffer_factor: Ray = (shrine_contract::MIN_RECOVERY_MODE_BUFFER_FACTOR - 1).into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
     }
 
@@ -698,7 +697,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let invalid_buffer_factor: Ray = (shrine_contract::MAX_RECOVERY_MODE_BUFFER_FACTOR + 1).into();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_recovery_mode_buffer_factor(invalid_buffer_factor);
     }
 
@@ -740,11 +739,11 @@ mod test_shrine {
             };
         }
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
 
         // Check eject pass
-        shrine.eject(common::trove1_owner_addr(), 1_u128.into());
+        shrine.eject(common::TROVE1_OWNER_ADDR, 1_u128.into());
 
         assert(!shrine.get_live(), 'should not be live');
 
@@ -775,7 +774,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         assert(!shrine.get_live(), 'should not be live');
 
@@ -789,7 +788,7 @@ mod test_shrine {
         assert(shrine.get_live(), 'should be live');
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         assert(!shrine.get_live(), 'should not be live');
 
@@ -803,7 +802,7 @@ mod test_shrine {
         assert(shrine.get_live(), 'should be live');
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         assert(!shrine.get_live(), 'should not be live');
 
@@ -819,7 +818,7 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         assert(!shrine.get_live(), 'should not be live');
 
@@ -832,11 +831,11 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.kill();
         assert(!shrine.get_live(), 'should not be live');
 
-        shrine.inject(shrine_utils::admin(), 1_u128.into());
+        shrine.inject(shrine_utils::ADMIN, 1_u128.into());
     }
 
     #[test]
@@ -888,9 +887,9 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_shrine_deposit_invalid_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
-        shrine.deposit(shrine_utils::invalid_yang_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(shrine_utils::INVALID_YANG_ADDR, common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
 
     #[test]
@@ -899,7 +898,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
 
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
 
     //
@@ -910,7 +909,7 @@ mod test_shrine {
     fn test_shrine_withdraw_pass() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         let withdraw_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT / 3).into();
@@ -948,11 +947,11 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let withdraw_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT / 3).into();
         shrine_utils::trove1_withdraw(shrine, withdraw_amt);
 
-        let yang1_addr = shrine_utils::yang1_addr();
+        let yang1_addr = shrine_utils::YANG1_ADDR;
         let remaining_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
         assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
         assert(shrine.get_deposit(yang1_addr, common::TROVE_1) == remaining_amt, 'incorrect yang deposit');
@@ -973,10 +972,10 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, 1_u128.into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Set ETH's price to exactly the minimum trove value
-        let eth: ContractAddress = shrine_utils::yang1_addr();
+        let eth: ContractAddress = shrine_utils::YANG1_ADDR;
         shrine.advance(eth, shrine_utils::MINIMUM_TROVE_VALUE.into());
 
         // Withdraw the smallest unit of ETH yang
@@ -987,9 +986,9 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_shrine_withdraw_invalid_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
-        shrine.withdraw(shrine_utils::invalid_yang_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.withdraw(shrine_utils::INVALID_YANG_ADDR, common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
 
     #[test]
@@ -1000,7 +999,7 @@ mod test_shrine {
 
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
 
-        shrine.withdraw(shrine_utils::yang1_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.withdraw(shrine_utils::YANG1_ADDR, common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
 
     #[test]
@@ -1009,18 +1008,18 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
-        shrine.withdraw(shrine_utils::yang1_addr(), common::TROVE_1, (shrine_utils::TROVE1_YANG1_DEPOSIT + 1).into());
+        shrine.withdraw(shrine_utils::YANG1_ADDR, common::TROVE_1, (shrine_utils::TROVE1_YANG1_DEPOSIT + 1).into());
     }
 
     #[test]
     #[should_panic(expected: 'SH: Insufficient yang balance')]
     fn test_shrine_withdraw_zero_yang_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
-        shrine.withdraw(shrine_utils::yang2_addr(), common::TROVE_1, (shrine_utils::TROVE1_YANG1_DEPOSIT + 1).into());
+        shrine.withdraw(shrine_utils::YANG2_ADDR, common::TROVE_1, (shrine_utils::TROVE1_YANG1_DEPOSIT + 1).into());
     }
 
     #[test]
@@ -1035,15 +1034,15 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
-        let (yang1_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
+        let (yang1_price, _, _) = shrine.get_current_yang_price(shrine_utils::YANG1_ADDR);
 
         // Value of trove needed for existing forged amount to be safe
         let unsafe_trove_value: Wad = wadray::rdiv_wr(shrine_utils::TROVE1_FORGE_AMT.into(), trove_health.threshold);
         // Amount of yang to be withdrawn to decrease the trove's value to unsafe
         // `WAD_SCALE` is added to account for loss of precision from fixed point division
         let unsafe_withdraw_yang_amt: Wad = (trove_health.value - unsafe_trove_value) / yang1_price + WAD_SCALE.into();
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.withdraw(shrine_utils::yang1_addr(), common::TROVE_1, unsafe_withdraw_yang_amt);
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.withdraw(shrine_utils::YANG1_ADDR, common::TROVE_1, unsafe_withdraw_yang_amt);
     }
 
     //
@@ -1081,7 +1080,7 @@ mod test_shrine {
         assert(after_max_forge_amt == before_max_forge_amt - forge_amt, 'incorrect max forge amt');
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let trove1_owner_addr: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner_addr: ContractAddress = common::TROVE1_OWNER_ADDR;
         assert(yin.balance_of(trove1_owner_addr) == forge_amt.into(), 'incorrect ERC-20 balance');
         assert(yin.total_supply() == forge_amt.into(), 'incorrect ERC-20 balance');
 
@@ -1116,10 +1115,10 @@ mod test_shrine {
         // Deposit 1 ETH
         shrine_utils::trove1_deposit(shrine, WAD_ONE.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Set ETH's price to just below the minimum trove value
-        let eth: ContractAddress = shrine_utils::yang1_addr();
+        let eth: ContractAddress = shrine_utils::YANG1_ADDR;
         shrine.advance(eth, (shrine_utils::MINIMUM_TROVE_VALUE - 1).into());
 
         shrine_utils::trove1_forge(shrine, 1_u128.into());
@@ -1133,8 +1132,8 @@ mod test_shrine {
         // Set up another trove to prevent recovery mode
         shrine_utils::create_whale_trove(shrine);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.forge(common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), Zero::zero());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.forge(common::TROVE3_OWNER_ADDR, common::TROVE_3, 1_u128.into(), Zero::zero());
     }
 
     #[test]
@@ -1144,15 +1143,15 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
         // prevent recovery mode
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::WHALE_TROVE_YANG1_DEPOSIT.into());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::WHALE_TROVE_YANG1_DEPOSIT.into());
         assert(!shrine.is_recovery_mode(), 'recovery mode');
 
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
         let unsafe_forge_amt: Wad = max_forge_amt + 1_u128.into();
 
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, Zero::zero());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_1, unsafe_forge_amt, Zero::zero());
     }
 
     #[test]
@@ -1161,14 +1160,14 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // deposit more collateral
         let additional_yang1_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT * 10).into();
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_1, additional_yang1_amt);
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_1, additional_yang1_amt);
 
         let unsafe_amt: Wad = (shrine_utils::TROVE1_FORGE_AMT * 10).into();
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, Zero::zero());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_1, unsafe_amt, Zero::zero());
     }
 
     #[test]
@@ -1179,7 +1178,7 @@ mod test_shrine {
 
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
 
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
     }
 
     #[test]
@@ -1205,11 +1204,11 @@ mod test_shrine {
         let mut spy = spy_events();
 
         let trove_id: u64 = common::TROVE_1;
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         shrine.update_yin_spot_price(yin_price1);
@@ -1263,11 +1262,11 @@ mod test_shrine {
     fn test_shrine_forge_fee_exceeds_max() {
         let yin_price1: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let yin_price2: Wad = 970000000000000000_u128.into(); // 0.985 (wad)
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
 
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         shrine.update_yin_spot_price(yin_price1);
         // Front end fetches the forge fee for the user
@@ -1300,7 +1299,7 @@ mod test_shrine {
 
         let yin = shrine_utils::yin(shrine.contract_address);
         let trove_id: u64 = common::TROVE_1;
-        let trove1_owner_addr = common::trove1_owner_addr();
+        let trove1_owner_addr = common::TROVE1_OWNER_ADDR;
 
         let shrine_health: Health = shrine.get_shrine_health();
         let before_total_debt: Wad = shrine_health.debt;
@@ -1310,7 +1309,7 @@ mod test_shrine {
         let melt_amt: Wad = (shrine_utils::TROVE1_YANG1_DEPOSIT / 3_u128).into();
 
         let outstanding_amt: Wad = forge_amt - melt_amt;
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.melt(trove1_owner_addr, trove_id, melt_amt);
 
         let shrine_health: Health = shrine.get_shrine_health();
@@ -1362,7 +1361,7 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
-        shrine.melt(common::trove1_owner_addr(), common::TROVE_1, 1_u128.into());
+        shrine.melt(common::TROVE1_OWNER_ADDR, common::TROVE_1, 1_u128.into());
     }
 
     #[test]
@@ -1372,8 +1371,8 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.melt(common::trove2_owner_addr(), common::TROVE_1, 1_u128.into());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.melt(common::TROVE2_OWNER_ADDR, common::TROVE_1, 1_u128.into());
     }
 
     //
@@ -1385,13 +1384,13 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
 
         let success: bool = yin.transfer(yin_user, shrine_utils::TROVE1_FORGE_AMT.into());
@@ -1419,13 +1418,13 @@ mod test_shrine {
     fn test_yin_transfer_fail_insufficient() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
 
         yin.transfer(yin_user, (shrine_utils::TROVE1_FORGE_AMT + 1).into());
@@ -1437,8 +1436,8 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
 
         yin.transfer(yin_user, 1_u256);
@@ -1453,9 +1452,9 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         let transfer_amt: u256 = shrine_utils::TROVE1_FORGE_AMT.into();
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
         yin.approve(yin_user, transfer_amt);
@@ -1499,9 +1498,9 @@ mod test_shrine {
 
         let yin = shrine_utils::yin(shrine.contract_address);
         let camel_yin = IERC20CamelOnlyDispatcher { contract_address: yin.contract_address };
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         let transfer_amt: u256 = shrine_utils::TROVE1_FORGE_AMT.into();
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
         yin.approve(yin_user, transfer_amt);
@@ -1543,9 +1542,9 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
         start_cheat_caller_address(shrine.contract_address, yin_user);
-        yin.transfer_from(common::trove1_owner_addr(), yin_user, 1_u256);
+        yin.transfer_from(common::TROVE1_OWNER_ADDR, yin_user, 1_u256);
     }
 
     #[test]
@@ -1554,14 +1553,14 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
         let approve_amt: u256 = (shrine_utils::TROVE1_FORGE_AMT / 2).into();
         yin.approve(yin_user, approve_amt);
@@ -1576,14 +1575,14 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
         yin.approve(yin_user, Bounded::MAX);
 
@@ -1597,14 +1596,14 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.forge(trove1_owner, common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
         yin.approve(yin_user, Bounded::MAX);
 
@@ -1617,12 +1616,12 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let trove1_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
         let forge_amt: Wad = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine_utils::trove1_forge(shrine, forge_amt);
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let yin_user: ContractAddress = shrine_utils::yin_user_addr();
+        let yin_user: ContractAddress = common::NON_ZERO_ADDR;
 
         start_cheat_caller_address(shrine.contract_address, trove1_owner);
 
@@ -1650,7 +1649,7 @@ mod test_shrine {
         let shrine = shrine_utils::shrine(shrine_addr);
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
 
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = shrine_utils::ADMIN;
         let new_admin: ContractAddress = 'new shrine admin'.try_into().unwrap();
 
         assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
@@ -1681,7 +1680,7 @@ mod test_shrine {
         let shrine = shrine_utils::shrine(shrine_addr);
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
 
-        let admin: ContractAddress = shrine_utils::admin();
+        let admin: ContractAddress = shrine_utils::ADMIN;
         start_cheat_caller_address(shrine.contract_address, admin);
 
         let new_admin: ContractAddress = 'new shrine admin'.try_into().unwrap();
@@ -1704,7 +1703,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        let yang: ContractAddress = shrine_utils::yang1_addr();
+        let yang: ContractAddress = shrine_utils::YANG1_ADDR;
         let trove_id: u64 = common::TROVE_1;
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
@@ -1717,7 +1716,7 @@ mod test_shrine {
 
         let zero_price = Zero::zero();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.advance(yang, zero_price);
 
         let expected_interval = shrine_utils::get_interval(get_block_timestamp());
@@ -1752,7 +1751,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
-        shrine.advance(shrine_utils::yang1_addr(), shrine_utils::YANG1_START_PRICE.into());
+        shrine.advance(shrine_utils::YANG1_ADDR, shrine_utils::YANG1_START_PRICE.into());
     }
 
     #[test]
@@ -1760,8 +1759,8 @@ mod test_shrine {
     fn test_advance_invalid_yang() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.advance(shrine_utils::invalid_yang_addr(), shrine_utils::YANG1_START_PRICE.into());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.advance(shrine_utils::INVALID_YANG_ADDR, shrine_utils::YANG1_START_PRICE.into());
     }
 
     #[test]
@@ -1783,14 +1782,14 @@ mod test_shrine {
         let mut spy = spy_events();
 
         let yin = shrine_utils::yin(shrine.contract_address);
-        let trove1_owner = common::trove1_owner_addr();
+        let trove1_owner = common::TROVE1_OWNER_ADDR;
 
         let before_total_supply: u256 = yin.total_supply();
         let before_user_bal: u256 = yin.balance_of(trove1_owner);
         let before_total_yin: Wad = shrine.get_total_yin();
         let before_user_yin: Wad = shrine.get_yin(trove1_owner);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let inject_amt = shrine_utils::TROVE1_FORGE_AMT.into();
         shrine.inject(trove1_owner, inject_amt);
@@ -1831,9 +1830,9 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_shrine_inject_exceeds_debt_ceiling_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let trove1_owner = common::trove1_owner_addr();
+        let trove1_owner = common::TROVE1_OWNER_ADDR;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let inject_amt = shrine.get_debt_ceiling() + 1_u128.into();
         shrine.inject(trove1_owner, inject_amt);
@@ -1843,9 +1842,9 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Debt ceiling reached')]
     fn test_shrine_inject_exceeds_debt_ceiling_neg_budget_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        let trove1_owner = common::trove1_owner_addr();
+        let trove1_owner = common::TROVE1_OWNER_ADDR;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let inject_amt: Wad = shrine.get_debt_ceiling();
         shrine.inject(trove1_owner, inject_amt);
@@ -1867,7 +1866,7 @@ mod test_shrine {
     fn test_shrine_set_multiplier_zero_value_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_multiplier(Zero::zero());
     }
 
@@ -1876,7 +1875,7 @@ mod test_shrine {
     fn test_shrine_set_multiplier_exceeds_max_fail() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         shrine.set_multiplier((RAY_SCALE * 10 + 1).into());
     }
 
@@ -1890,8 +1889,8 @@ mod test_shrine {
 
         // Depositing lots of collateral in another trove
         // to avoid entering recovery mode
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, (50 * WAD_ONE).into());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, (50 * WAD_ONE).into());
 
         let deposit_amt: Wad = shrine_utils::TROVE1_YANG1_DEPOSIT.into();
         shrine_utils::trove1_deposit(shrine, deposit_amt);
@@ -1902,8 +1901,8 @@ mod test_shrine {
 
         let unsafe_price: Wad = wadray::rdiv_wr(trove_health.debt, shrine_utils::YANG1_THRESHOLD.into()) / deposit_amt;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.advance(shrine_utils::yang1_addr(), unsafe_price);
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.advance(shrine_utils::YANG1_ADDR, unsafe_price);
 
         assert(shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
     }
@@ -1912,8 +1911,8 @@ mod test_shrine {
     fn test_get_trove_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        let yang1_addr: ContractAddress = shrine_utils::yang1_addr();
-        let yang2_addr: ContractAddress = shrine_utils::yang2_addr();
+        let yang1_addr: ContractAddress = shrine_utils::YANG1_ADDR;
+        let yang2_addr: ContractAddress = shrine_utils::YANG2_ADDR;
 
         let mut yangs: Array<ContractAddress> = array![yang1_addr, yang2_addr];
         let mut yang_amts: Array<Wad> = array![
@@ -1929,7 +1928,7 @@ mod test_shrine {
         let mut yangs_copy: Span<ContractAddress> = yangs.span();
         let mut yang_prices_copy: Span<Wad> = yang_prices.span();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         loop {
             match yang_amts_copy.pop_front() {
                 Option::Some(yang_amt) => {
@@ -1977,8 +1976,8 @@ mod test_shrine {
     fn test_get_shrine_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        let yang1_addr: ContractAddress = shrine_utils::yang1_addr();
-        let yang2_addr: ContractAddress = shrine_utils::yang2_addr();
+        let yang1_addr: ContractAddress = shrine_utils::YANG1_ADDR;
+        let yang2_addr: ContractAddress = shrine_utils::YANG2_ADDR;
 
         let mut yangs: Array<ContractAddress> = array![yang1_addr, yang2_addr];
 
@@ -1997,7 +1996,7 @@ mod test_shrine {
 
         // Deposit into troves 1 and 2, with trove 2 getting twice
         // the amount of trove 1
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         loop {
             match yang_amts_copy.pop_front() {
                 Option::Some(yang_amt) => {
@@ -2044,7 +2043,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         shrine.update_yin_spot_price(first_yin_price);
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
@@ -2112,11 +2111,11 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
 
-        let status_yang1 = shrine.get_yang_suspension_status(shrine_utils::yang1_addr());
+        let status_yang1 = shrine.get_yang_suspension_status(shrine_utils::YANG1_ADDR);
         assert(status_yang1 == YangSuspensionStatus::None, 'yang1');
-        let status_yang2 = shrine.get_yang_suspension_status(shrine_utils::yang2_addr());
+        let status_yang2 = shrine.get_yang_suspension_status(shrine_utils::YANG2_ADDR);
         assert(status_yang2 == YangSuspensionStatus::None, 'yang2');
-        let status_yang3 = shrine.get_yang_suspension_status(shrine_utils::yang3_addr());
+        let status_yang3 = shrine.get_yang_suspension_status(shrine_utils::YANG3_ADDR);
         assert(status_yang3 == YangSuspensionStatus::None, 'yang3');
     }
 
@@ -2124,7 +2123,7 @@ mod test_shrine {
     #[should_panic(expected: 'SH: Yang does not exist')]
     fn test_get_yang_suspension_status_nonexisting_yang() {
         let shrine = shrine_utils::shrine(shrine_utils::shrine_deploy(Option::None));
-        shrine.get_yang_suspension_status(shrine_utils::invalid_yang_addr());
+        shrine.get_yang_suspension_status(shrine_utils::INVALID_YANG_ADDR);
     }
 
     #[test]
@@ -2133,8 +2132,8 @@ mod test_shrine {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.suspend_yang(shrine_utils::invalid_yang_addr());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.suspend_yang(shrine_utils::INVALID_YANG_ADDR);
     }
 
     #[test]
@@ -2143,8 +2142,8 @@ mod test_shrine {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
-        shrine.unsuspend_yang(shrine_utils::invalid_yang_addr());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+        shrine.unsuspend_yang(shrine_utils::INVALID_YANG_ADDR);
     }
 
     #[test]
@@ -2154,11 +2153,11 @@ mod test_shrine {
 
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
         start_cheat_block_timestamp_global(start_ts);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // initiate yang's suspension, starting now
         shrine.suspend_yang(yang);
@@ -2198,7 +2197,7 @@ mod test_shrine {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         start_cheat_caller_address(shrine.contract_address, common::BAD_GUY);
 
         shrine.suspend_yang(yang);
@@ -2210,7 +2209,7 @@ mod test_shrine {
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(Option::None);
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
 
         // We directly unsuspend the yang instead of suspending it first, because
         // an unauthorized call to `suspend_yang` has the same error message, which
@@ -2224,11 +2223,11 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let mut spy = spy_events();
 
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         let (yang_price, _, _) = shrine.get_current_yang_price(yang);
         let start_ts = get_block_timestamp();
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         let trove_id: u64 = common::TROVE_1;
         shrine.deposit(yang, trove_id, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
@@ -2336,11 +2335,11 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
 
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
         start_cheat_block_timestamp_global(start_ts);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // mark permanent
         shrine.suspend_yang(yang);
@@ -2361,11 +2360,11 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
 
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
         start_cheat_block_timestamp_global(start_ts);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // suspend yang
         shrine.suspend_yang(yang);
@@ -2385,11 +2384,11 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
 
-        let yang = shrine_utils::yang1_addr();
+        let yang = shrine_utils::YANG1_ADDR;
         let start_ts = shrine_utils::DEPLOYMENT_TIMESTAMP;
 
         start_cheat_block_timestamp_global(start_ts);
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // suspend yang
         shrine.suspend_yang(yang);
@@ -2420,13 +2419,13 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
+                common::TROVE1_OWNER_ADDR, common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
             );
 
         shrine_utils::recovery_mode_test_setup(
@@ -2448,13 +2447,13 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_FORGE_AMT.into());
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine
             .forge(
-                common::trove1_owner_addr(), common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
+                common::TROVE1_OWNER_ADDR, common::TROVE_2, (shrine_utils::TROVE1_FORGE_AMT * 2).into(), Zero::zero(),
             );
 
         shrine_utils::recovery_mode_test_setup(
@@ -2478,11 +2477,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
@@ -2507,11 +2506,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
@@ -2536,11 +2535,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
@@ -2572,11 +2571,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
@@ -2614,11 +2613,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferLowerBound,
@@ -2654,11 +2653,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::BufferUpperBound,
@@ -2673,7 +2672,7 @@ mod test_shrine {
         // 7,500 value).
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818. We decrease it by an
         // additional yin to account for the offset when setting up the Shrine's LTV to be slightly below the buffer.
-        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
+        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::YANG1_ADDR);
         let value_to_withdraw: Wad = (((7500 - 6818) * WAD_ONE) + WAD_ONE).into();
         let eth_to_withdraw: Wad = yang_price / value_to_withdraw;
 
@@ -2693,11 +2692,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2726,11 +2725,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2753,11 +2752,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (5500 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 5,500 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (5500 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2788,11 +2787,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2830,11 +2829,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2871,11 +2870,11 @@ mod test_shrine {
         shrine_utils::trove1_forge(shrine, (3000 * WAD_ONE).into());
         let trove_id: u64 = common::TROVE_1;
 
-        start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
 
         // Trove 2 deposits 10,000 USD worth, and borrows 6,000 USD
-        shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
+        shrine.deposit(shrine_utils::YANG1_ADDR, common::TROVE_2, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.forge(common::TROVE1_OWNER_ADDR, common::TROVE_2, (6000 * WAD_ONE).into(), Zero::zero());
 
         shrine_utils::recovery_mode_test_setup(
             shrine, shrine_utils::three_yang_addrs(), common::RecoveryModeSetupType::ExceedsBuffer,
@@ -2889,7 +2888,7 @@ mod test_shrine {
         // which is slightly lower than 60% (75% * 80%), the Shrine value will be around 15,000 (with each trove having
         // 7,500 value).
         // This means that we need to decrease the trove's value to 3,000 / (1 - 0.56) = 6,818.
-        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::yang1_addr());
+        let (yang_price, _, _) = shrine.get_current_yang_price(shrine_utils::YANG1_ADDR);
         let value_to_withdraw: Wad = ((7500 - 6818) * WAD_ONE).into();
         let eth_to_withdraw: Wad = yang_price / value_to_withdraw;
 
@@ -2946,7 +2945,7 @@ mod test_shrine {
                         (shrine_health.value - unhealthy_value), shrine_health.value,
                     );
 
-                    start_cheat_caller_address(shrine.contract_address, shrine_utils::admin());
+                    start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
                     let mut yangs_copy = yangs;
                     loop {
                         match yangs_copy.pop_front() {
