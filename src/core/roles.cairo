@@ -3,10 +3,7 @@ pub mod absorber_roles {
     pub const SET_REWARD: u128 = 2;
     pub const UPDATE: u128 = 4;
 
-    #[inline(always)]
-    pub fn purger() -> u128 {
-        UPDATE
-    }
+    pub const PURGER: u128 = UPDATE;
 
     #[inline(always)]
     pub fn default_admin_role() -> u128 {

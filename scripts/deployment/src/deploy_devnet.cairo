@@ -64,7 +64,7 @@ fn main() {
     // Grant roles
     println!("Setting up roles");
 
-    utils::grant_role(absorber, purger, absorber_roles::purger(), "ABS -> PU");
+    utils::grant_role(absorber, purger, absorber_roles::PURGER, "ABS -> PU");
 
     utils::grant_role(sentinel, abbot, sentinel_roles::abbot(), "SE -> ABB");
     utils::grant_role(sentinel, purger, sentinel_roles::purger(), "SE -> PU");

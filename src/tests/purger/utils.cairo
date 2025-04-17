@@ -421,7 +421,7 @@ pub mod purger_utils {
         // Approve Purger in Absorber
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
         start_cheat_caller_address(absorber.contract_address, absorber_utils::ADMIN);
-        absorber_ac.grant_role(absorber_roles::purger(), purger_addr);
+        absorber_ac.grant_role(absorber_roles::PURGER, purger_addr);
         stop_cheat_caller_address(absorber.contract_address);
 
         PurgerTestConfig { shrine, abbot, seer, absorber, purger, yangs, gates }

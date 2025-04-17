@@ -145,7 +145,7 @@ pub mod absorber_utils {
 
         start_cheat_caller_address(absorber_addr, admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
-        absorber_ac.grant_role(absorber_roles::purger(), MOCK_PURGER);
+        absorber_ac.grant_role(absorber_roles::PURGER, MOCK_PURGER);
         stop_cheat_caller_address(absorber_addr);
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
