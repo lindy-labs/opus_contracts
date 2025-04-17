@@ -144,7 +144,6 @@ pub mod pragma_utils {
     }
 
     // Helper function to add a valid price update to the mock Pragma oracle
-    // for both `get_data_median()` (v1) and `get_data()` ()
     // using default values for decimals and number of sources.
     pub fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64,
@@ -159,7 +158,6 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data(pair_id, response);
-        mock_pragma.next_get_data_median(pair_id, response);
         mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
     }
 }

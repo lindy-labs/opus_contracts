@@ -15,7 +15,6 @@ pub trait IPragmaSpotOracle<TContractState> {
     fn get_data(
         self: @TContractState, data_type: pragma::DataType, aggregation_mode: pragma::AggregationMode,
     ) -> pragma::PragmaPricesResponse;
-    fn get_data_median(self: @TContractState, data_type: pragma::DataType) -> pragma::PragmaPricesResponse;
 }
 
 #[starknet::interface]

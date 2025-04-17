@@ -13,12 +13,10 @@ struct PragmaPricesResponseWrapper {
 
 #[starknet::interface]
 pub trait IMockPragma<TContractState> {
-    // Note that `get_data()` and ``get_data_median()` are part of `IPragmaSpotOracleDispatcher`
+    // Note that `get_data()` is part of `IPragmaSpotOracleDispatcher`
     fn next_get_data(ref self: TContractState, pair_id: felt252, response: PragmaPricesResponse);
-    fn next_get_data_median(ref self: TContractState, pair_id: felt252, response: PragmaPricesResponse);
     // Sets a valid price response based on price and number of sources
     fn next_get_valid_data(ref self: TContractState, pair_id: felt252, price: u128, num_sources: u32);
-    fn next_get_valid_data_median(ref self: TContractState, pair_id: felt252, price: u128, num_sources: u32);
     // Note that `calculate_twap()` is part of `IPragmaTwapOracleDispatcher`
     fn next_calculate_twap(ref self: TContractState, pair_id: felt252, response: (u128, u32));
 }
@@ -36,9 +34,6 @@ pub mod mock_pragma {
     struct Storage {
         // Mapping from pair ID to price response data struct for get_data
         get_data_response: Map<felt252, PragmaPricesResponseWrapper>,
-        // Mapping from pair ID to price response data struct for get_data_median
-        // Used in Pragma V1
-        get_data_median_response: Map<felt252, PragmaPricesResponseWrapper>,
         // Mapping from pair ID to TWAP price response for calculate_twap
         calculate_twap_response: Map<felt252, (u128, u32)>,
     }
@@ -73,35 +68,6 @@ pub mod mock_pragma {
                 );
         }
 
-        // Used in Pragma V1
-        fn next_get_data_median(ref self: ContractState, pair_id: felt252, response: PragmaPricesResponse) {
-            self
-                .get_data_median_response
-                .write(
-                    pair_id,
-                    PragmaPricesResponseWrapper {
-                        price: response.price,
-                        decimals: response.decimals,
-                        last_updated_timestamp: response.last_updated_timestamp,
-                        num_sources_aggregated: response.num_sources_aggregated,
-                    },
-                );
-        }
-
-        fn next_get_valid_data_median(ref self: ContractState, pair_id: felt252, price: u128, num_sources: u32) {
-            self
-                .get_data_median_response
-                .write(
-                    pair_id,
-                    PragmaPricesResponseWrapper {
-                        price: price,
-                        decimals: PRAGMA_DECIMALS.into(),
-                        last_updated_timestamp: get_block_timestamp(),
-                        num_sources_aggregated: num_sources,
-                    },
-                );
-        }
-
         fn next_calculate_twap(ref self: ContractState, pair_id: felt252, response: (u128, u32)) {
             self.calculate_twap_response.write(pair_id, response);
         }
@@ -115,24 +81,6 @@ pub mod mock_pragma {
             match data_type {
                 DataType::SpotEntry(pair_id) => {
                     let wrapper: PragmaPricesResponseWrapper = self.get_data_response.read(pair_id);
-
-                    PragmaPricesResponse {
-                        price: wrapper.price,
-                        decimals: wrapper.decimals,
-                        last_updated_timestamp: wrapper.last_updated_timestamp,
-                        num_sources_aggregated: wrapper.num_sources_aggregated,
-                        expiration_timestamp: Option::None,
-                    }
-                },
-                _ => { core::panic_with_felt252('only spot') },
-            }
-        }
-
-        // Used in Pragma V1
-        fn get_data_median(self: @ContractState, data_type: DataType) -> PragmaPricesResponse {
-            match data_type {
-                DataType::SpotEntry(pair_id) => {
-                    let wrapper: PragmaPricesResponseWrapper = self.get_data_median_response.read(pair_id);
 
                     PragmaPricesResponse {
                         price: wrapper.price,
