@@ -94,7 +94,7 @@ mod test_flash_mint {
 
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');
 
-        let second_loan_amt: u256 = flash_mint_utils::DEFAULT_MINT_AMOUNT;
+        let second_loan_amt: u256 = flash_mint_utils::DEFAULT_MINT_AMOUNT.into();
         flashmint.flash_loan(borrower, shrine, second_loan_amt, calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 2');
 
@@ -263,7 +263,7 @@ mod test_flash_mint {
             .flash_loan(
                 borrower,
                 shrine,
-                flash_mint_utils::DEFAULT_MINT_AMOUNT,
+                flash_mint_utils::DEFAULT_MINT_AMOUNT.into(),
                 flash_mint_utils::build_calldata(false, flash_borrower_contract::VALID_USAGE),
             );
     }
@@ -276,7 +276,7 @@ mod test_flash_mint {
             .flash_loan(
                 borrower,
                 shrine,
-                flash_mint_utils::DEFAULT_MINT_AMOUNT,
+                flash_mint_utils::DEFAULT_MINT_AMOUNT.into(),
                 flash_mint_utils::build_calldata(true, flash_borrower_contract::ATTEMPT_TO_STEAL),
             );
     }
@@ -289,7 +289,7 @@ mod test_flash_mint {
             .flash_loan(
                 borrower,
                 shrine,
-                flash_mint_utils::DEFAULT_MINT_AMOUNT,
+                flash_mint_utils::DEFAULT_MINT_AMOUNT.into(),
                 flash_mint_utils::build_calldata(true, flash_borrower_contract::ATTEMPT_TO_REENTER),
             );
     }

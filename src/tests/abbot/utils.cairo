@@ -13,7 +13,7 @@ pub mod abbot_utils {
         stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
-    use wadray::Wad;
+    use wadray::{WAD_ONE, Wad};
 
     // Struct to group together all contract classes
     // needed for abbot tests
