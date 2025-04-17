@@ -31,12 +31,6 @@ pub mod pragma_utils {
         pub mock_pragma: IMockPragmaDispatcher,
     }
 
-    #[derive(Copy, Drop)]
-    pub struct PragmaTestConfig {
-        pub pragma: IPragmaDispatcher,
-        pub mock_pragma: IMockPragmaDispatcher,
-    }
-
     //
     // Constants
     //

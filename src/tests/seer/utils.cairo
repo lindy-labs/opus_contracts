@@ -6,6 +6,7 @@ pub mod seer_utils {
     use opus::interfaces::ISentinel::ISentinelDispatcher;
     use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::mock::mock_pragma::IMockPragmaDispatcher;
+    use opus::tests::common;
     use opus::tests::external::utils::{ekubo_utils, pragma_utils};
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
