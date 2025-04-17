@@ -47,7 +47,7 @@ mod test_caretaker {
     #[should_panic(expected: 'Caller missing role')]
     fn test_shut_by_badguy_throws() {
         let CaretakerTestConfig { caretaker, .. } = caretaker_utils::caretaker_deploy();
-        start_cheat_caller_address(caretaker.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(caretaker.contract_address, common::BAD_GUY);
         caretaker.shut();
     }
 
@@ -289,7 +289,7 @@ mod test_caretaker {
 
         // transfer some yin from user1 elsewhere
         // => user1 got scammed, poor guy
-        let scammer = common::BAD_GUY();
+        let scammer = common::BAD_GUY;
         let scam_amt: u256 = (4000 * WAD_ONE).into();
         start_cheat_caller_address(shrine.contract_address, user1);
         shrine_utils::yin(shrine.contract_address).transfer(scammer, scam_amt);

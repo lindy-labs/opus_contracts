@@ -47,7 +47,7 @@ mod test_ekubo {
         let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
-        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY);
         ekubo_oracle_adapter.set_oracle_extension(Zero::zero());
     }
 
@@ -59,7 +59,7 @@ mod test_ekubo {
         } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
-        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY);
         ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
     }
 
@@ -69,7 +69,7 @@ mod test_ekubo {
         let EkuboTestConfig { ekubo, .. } = ekubo_utils::ekubo_deploy(Option::None, Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: ekubo.contract_address };
 
-        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(ekubo.contract_address, common::BAD_GUY);
         ekubo_oracle_adapter.set_twap_duration(ekubo_oracle_adapter_component::MIN_TWAP_DURATION + 1);
     }
 

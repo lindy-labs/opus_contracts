@@ -127,7 +127,7 @@ mod test_gate {
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.enter(common::BAD_GUY(), WAD_SCALE);
+        IGateDispatcher { contract_address: gate }.enter(common::BAD_GUY, WAD_SCALE);
     }
 
     #[test]
@@ -135,7 +135,7 @@ mod test_gate {
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = gate_utils::eth_gate_deploy(Option::None);
         gate_utils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.exit(common::BAD_GUY(), WAD_SCALE.into());
+        IGateDispatcher { contract_address: gate }.exit(common::BAD_GUY, WAD_SCALE.into());
     }
 
     #[test]

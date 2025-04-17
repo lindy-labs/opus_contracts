@@ -219,7 +219,7 @@ mod test_purger {
     fn test_set_penalty_scalar_unauthorized_fail() {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
-        start_cheat_caller_address(purger.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(purger.contract_address, common::BAD_GUY);
         purger.set_penalty_scalar(RAY_ONE.into());
     }
 

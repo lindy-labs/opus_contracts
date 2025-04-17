@@ -171,7 +171,7 @@ mod test_allocator {
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,
         );
 
-        start_cheat_caller_address(allocator.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(allocator.contract_address, common::BAD_GUY);
         allocator.set_allocation(equalizer_utils::new_recipients(), equalizer_utils::new_percentages());
     }
 }

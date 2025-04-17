@@ -79,7 +79,7 @@ mod test_seer {
         let oracles: Span<ContractAddress> = array!['pragma addr'.try_into().unwrap(), 'ekubo addr'.try_into().unwrap()]
             .span();
 
-        start_cheat_caller_address(seer.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(seer.contract_address, common::BAD_GUY);
         seer.set_oracles(oracles);
     }
 
@@ -113,7 +113,7 @@ mod test_seer {
     fn test_set_update_frequency_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
-        start_cheat_caller_address(seer.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(seer.contract_address, common::BAD_GUY);
         seer.set_update_frequency(1200);
     }
 
@@ -198,7 +198,7 @@ mod test_seer {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
         let price_type = PriceType::Direct;
-        start_cheat_caller_address(seer.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(seer.contract_address, common::BAD_GUY);
         seer.set_yang_price_type(seer_utils::dummy_eth(), price_type);
     }
 
@@ -669,7 +669,7 @@ mod test_seer {
     fn test_update_prices_unauthorized() {
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
 
-        start_cheat_caller_address(seer.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(seer.contract_address, common::BAD_GUY);
         seer.update_prices();
     }
 

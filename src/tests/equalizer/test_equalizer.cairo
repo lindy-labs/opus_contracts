@@ -306,7 +306,7 @@ mod test_equalizer {
             equalizer_utils::new_recipients(), equalizer_utils::new_percentages(), allocator_class,
         );
 
-        start_cheat_caller_address(equalizer.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(equalizer.contract_address, common::BAD_GUY);
         equalizer.set_allocator(new_allocator.contract_address);
     }
 }

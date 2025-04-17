@@ -288,7 +288,7 @@ mod test_sentinel {
     fn test_set_yang_asset_max_unauthed() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY);
         sentinel.set_yang_asset_max(eth, sentinel_utils::ETH_ASSET_MAX);
     }
 
@@ -467,7 +467,7 @@ mod test_sentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY);
         sentinel.enter(eth, user, deposit_amt.into());
     }
 
@@ -479,7 +479,7 @@ mod test_sentinel {
 
         let user: ContractAddress = common::eth_hoarder();
 
-        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY);
         sentinel.exit(eth, user, WAD_ONE.into());
     }
 
@@ -596,7 +596,7 @@ mod test_sentinel {
     fn test_try_suspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY);
         sentinel.suspend_yang(eth);
     }
 
@@ -605,7 +605,7 @@ mod test_sentinel {
     fn test_try_unsuspending_yang_unauthorized() {
         let SentinelTestConfig { sentinel, yangs, .. } = sentinel_utils::deploy_sentinel_with_eth_gate(Option::None);
         let eth = *yangs[0];
-        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(sentinel.contract_address, common::BAD_GUY);
         sentinel.unsuspend_yang(eth);
     }
 }

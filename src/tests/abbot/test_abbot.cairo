@@ -394,7 +394,7 @@ mod test_abbot {
         let asset_addr = *yangs.at(0);
         let amount: u128 = 1;
 
-        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY);
         abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
@@ -591,7 +591,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY);
 
         let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;
@@ -644,7 +644,7 @@ mod test_abbot {
             Option::None,
         );
 
-        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY());
+        start_cheat_caller_address(abbot.contract_address, common::BAD_GUY);
         abbot.forge(trove_id, Zero::zero(), Zero::zero());
     }
 
