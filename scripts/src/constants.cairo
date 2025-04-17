@@ -4,7 +4,7 @@ use opus::constants::{
 use opus::types::pragma::{AggregationMode, PairSettings};
 use starknet::ClassHash;
 
-pub const MAX_FEE: felt252 = 9999999999999999;
+pub const MAX_FEE: felt252 = 9999999999999999999999;
 
 // Constants for Shrine
 pub const INITIAL_DEBT_CEILING: u128 = 1000000000000000000000000; // 1_000_000 (Wad)

@@ -17,7 +17,7 @@ pub fn set_mock_pragma_prices(
 
                 let _set_spot_price = invoke(
                     mock_pragma,
-                    selector!("next_get_valid_data_median"),
+                    selector!("next_get_valid_data"),
                     array![*pair_id, spot_price.into(), num_sources.into()],
                     fee_settings,
                     Option::None,
