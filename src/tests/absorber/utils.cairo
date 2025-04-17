@@ -92,19 +92,19 @@ pub mod absorber_utils {
     // Address constants
     //
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'absorber owner'.try_into().unwrap()
     }
 
-    pub fn provider_1() -> ContractAddress {
+    pub const fn provider_1() -> ContractAddress {
         'provider 1'.try_into().unwrap()
     }
 
-    pub fn provider_2() -> ContractAddress {
+    pub const fn provider_2() -> ContractAddress {
         'provider 2'.try_into().unwrap()
     }
 
-    pub fn mock_purger() -> ContractAddress {
+    pub const fn mock_purger() -> ContractAddress {
         'mock purger'.try_into().unwrap()
     }
 

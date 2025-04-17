@@ -50,35 +50,35 @@ pub const WHALE_TROVE: u64 = 0xb17b01;
 // Constant addresses
 //
 
-pub fn badguy() -> ContractAddress {
+pub const fn badguy() -> ContractAddress {
     'bad guy'.try_into().unwrap()
 }
 
-pub fn trove1_owner_addr() -> ContractAddress {
+pub const fn trove1_owner_addr() -> ContractAddress {
     'trove1 owner'.try_into().unwrap()
 }
 
-pub fn trove2_owner_addr() -> ContractAddress {
+pub const fn trove2_owner_addr() -> ContractAddress {
     'trove2 owner'.try_into().unwrap()
 }
 
-pub fn trove3_owner_addr() -> ContractAddress {
+pub const fn trove3_owner_addr() -> ContractAddress {
     'trove3 owner'.try_into().unwrap()
 }
 
-pub fn non_zero_address() -> ContractAddress {
+pub const fn non_zero_address() -> ContractAddress {
     'nonzero address'.try_into().unwrap()
 }
 
-pub fn eth_hoarder() -> ContractAddress {
+pub const fn eth_hoarder() -> ContractAddress {
     'eth hoarder'.try_into().unwrap()
 }
 
-pub fn wbtc_hoarder() -> ContractAddress {
+pub const fn wbtc_hoarder() -> ContractAddress {
     'wbtc hoarder'.try_into().unwrap()
 }
 
-pub fn admin() -> ContractAddress {
+pub const fn admin() -> ContractAddress {
     'admin'.try_into().unwrap()
 }
 

@@ -30,8 +30,7 @@ pub mod controller_utils {
 
     // Addresses
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'controller admin'.try_into().unwrap()
     }
 

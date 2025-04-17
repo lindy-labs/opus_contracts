@@ -37,15 +37,15 @@ pub mod transmuter_utils {
     // 2_000_000 (6 decimals)
     pub const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'transmuter admin'.try_into().unwrap()
     }
 
-    pub fn receiver() -> ContractAddress {
+    pub const fn receiver() -> ContractAddress {
         'receiver'.try_into().unwrap()
     }
 
-    pub fn user() -> ContractAddress {
+    pub const fn user() -> ContractAddress {
         'transmuter user'.try_into().unwrap()
     }
 

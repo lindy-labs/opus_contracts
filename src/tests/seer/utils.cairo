@@ -16,7 +16,7 @@ pub mod seer_utils {
         stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::Wad;
+    use wadray::{WAD_ONE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct SeerTestConfig {
@@ -37,7 +37,7 @@ pub mod seer_utils {
     // Constants
     //
 
-    pub const ETH_INIT_PRICE: u128 = 1888000000000000000000; // Wad scale
+    pub const ETH_INIT_PRICE: u128 = 1888 * WAD_ONE; //000000000000000000; // Wad scale
     pub const WBTC_INIT_PRICE: u128 = 20000000000000000000000; // Wad scale
 
     pub const UPDATE_FREQUENCY: u64 = 30 * 60; // 30 minutes
@@ -46,15 +46,15 @@ pub mod seer_utils {
     // Address constants
     //
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'seer owner'.try_into().unwrap()
     }
 
-    pub fn dummy_eth() -> ContractAddress {
+    pub const fn dummy_eth() -> ContractAddress {
         'eth token'.try_into().unwrap()
     }
 
-    pub fn dummy_wbtc() -> ContractAddress {
+    pub const fn dummy_wbtc() -> ContractAddress {
         'wbtc token'.try_into().unwrap()
     }
 

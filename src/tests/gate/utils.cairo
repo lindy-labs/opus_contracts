@@ -16,7 +16,7 @@ pub mod gate_utils {
     // Address constants
     //
 
-    pub fn mock_sentinel() -> ContractAddress {
+    pub const fn mock_sentinel() -> ContractAddress {
         'mock sentinel'.try_into().unwrap()
     }
 

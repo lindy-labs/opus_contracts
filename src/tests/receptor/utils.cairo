@@ -34,7 +34,7 @@ pub mod receptor_utils {
         )
     }
 
-    pub fn mock_oracle_extension() -> ContractAddress {
+    pub const fn mock_oracle_extension() -> ContractAddress {
         'mock oracle extension'.try_into().unwrap()
     }
 

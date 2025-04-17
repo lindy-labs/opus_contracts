@@ -41,23 +41,19 @@ pub mod sentinel_utils {
     pub const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
     pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'sentinel admin'.try_into().unwrap()
     }
 
-    #[inline(always)]
-    pub fn mock_abbot() -> ContractAddress {
+    pub const fn mock_abbot() -> ContractAddress {
         'mock abbot'.try_into().unwrap()
     }
 
-    #[inline(always)]
-    pub fn dummy_yang_addr() -> ContractAddress {
+    pub const fn dummy_yang_addr() -> ContractAddress {
         'dummy yang'.try_into().unwrap()
     }
 
-    #[inline(always)]
-    pub fn dummy_yang_gate_addr() -> ContractAddress {
+    pub const fn dummy_yang_gate_addr() -> ContractAddress {
         'dummy yang token'.try_into().unwrap()
     }
 

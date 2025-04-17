@@ -69,15 +69,15 @@ pub mod purger_utils {
     // Address constants
     //
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'purger owner'.try_into().unwrap()
     }
 
-    pub fn searcher() -> ContractAddress {
+    pub const fn searcher() -> ContractAddress {
         'searcher'.try_into().unwrap()
     }
 
-    pub fn target_trove_owner() -> ContractAddress {
+    pub const fn target_trove_owner() -> ContractAddress {
         'target trove owner'.try_into().unwrap()
     }
 

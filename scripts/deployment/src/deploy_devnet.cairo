@@ -163,9 +163,9 @@ fn main() {
 
     // Set up oracles
     println!("Setting up oracles");
-    utils::set_yang_pair_settings_for_oracle(pragma, eth, constants::pragma_eth_pair_settings());
-    utils::set_yang_pair_settings_for_oracle(pragma, wbtc, constants::pragma_wbtc_pair_settings());
-    utils::set_yang_pair_settings_for_oracle(pragma, strk, constants::pragma_strk_pair_settings());
+    utils::set_yang_pair_settings_for_oracle(pragma, eth, constants::PRAGMA_ETH_PAIR_SETTINGS);
+    utils::set_yang_pair_settings_for_oracle(pragma, wbtc, constants::PRAGMA_WBTC_PAIR_SETTINGS);
+    utils::set_yang_pair_settings_for_oracle(pragma, strk, constants::PRAGMA_STRK_PAIR_SETTINGS);
 
     // Peripheral deployment
     println!("Deploying periphery contracts");

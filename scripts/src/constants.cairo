@@ -47,31 +47,27 @@ pub const USDC_TRANSMUTER_RESTRICTED_DEBT_CEILING: u128 = 2500000000000000000000
 pub const USDC_INITIAL_SUPPLY: u128 = 1000000000000; // 1,000,000 (10**6)
 pub const WBTC_INITIAL_SUPPLY: u128 = 2099999997690000; // approx. 21_000_000 * 10 ** 8
 
+// Constants for Pragma oracle adapter
+pub const PRAGMA_ETH_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
+};
+pub const PRAGMA_STRK_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: STRK_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
+};
+pub const PRAGMA_WBTC_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
+};
+pub const PRAGMA_WSTETH_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: WSTETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
+};
+pub const PRAGMA_XSTRK_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: XSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate,
+};
+pub const PRAGMA_SSTRK_PAIR_SETTINGS: PairSettings = PairSettings {
+    pair_id: SSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate,
+};
+
 // Chain constants
-pub fn erc20_class_hash() -> ClassHash {
+pub const fn erc20_class_hash() -> ClassHash {
     0x11374319A6E07B4F2738FA3BFA8CF2181BFB0DBB4D800215BAA87B83A57877E.try_into().expect('invalid ERC20 class hash')
-}
-
-pub fn pragma_eth_pair_settings() -> PairSettings {
-    PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
-}
-
-pub fn pragma_strk_pair_settings() -> PairSettings {
-    PairSettings { pair_id: STRK_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
-}
-
-pub fn pragma_wbtc_pair_settings() -> PairSettings {
-    PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
-}
-
-pub fn pragma_wsteth_pair_settings() -> PairSettings {
-    PairSettings { pair_id: WSTETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median }
-}
-
-pub fn pragma_xstrk_pair_settings() -> PairSettings {
-    PairSettings { pair_id: XSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate }
-}
-
-pub fn pragma_sstrk_pair_settings() -> PairSettings {
-    PairSettings { pair_id: SSTRK_USD_PAIR_ID, aggregation_mode: AggregationMode::ConversionRate }
 }

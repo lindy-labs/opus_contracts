@@ -26,7 +26,7 @@ pub mod caretaker_utils {
         pub gates: Span<IGateDispatcher>,
     }
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'caretaker admin'.try_into().unwrap()
     }
 

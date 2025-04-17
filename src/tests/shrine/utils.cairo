@@ -22,7 +22,7 @@ pub mod shrine_utils {
     //
 
     // Arbitrary timestamp set to approximately 18 May 2023, 7:55:28am UTC
-    pub const DEPLOYMENT_TIMESTAMP: u64 = 1684390000_u64;
+    pub const DEPLOYMENT_TIMESTAMP: u64 = 1684390000;
 
     // Number of seconds in an interval
 
@@ -66,27 +66,27 @@ pub mod shrine_utils {
     // Address constants
     //
 
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'shrine admin'.try_into().unwrap()
     }
 
-    pub fn yin_user_addr() -> ContractAddress {
+    pub const fn yin_user_addr() -> ContractAddress {
         'yin user'.try_into().unwrap()
     }
 
-    pub fn yang1_addr() -> ContractAddress {
+    pub const fn yang1_addr() -> ContractAddress {
         'yang 1'.try_into().unwrap()
     }
 
-    pub fn yang2_addr() -> ContractAddress {
+    pub const fn yang2_addr() -> ContractAddress {
         'yang 2'.try_into().unwrap()
     }
 
-    pub fn yang3_addr() -> ContractAddress {
+    pub const fn yang3_addr() -> ContractAddress {
         'yang 3'.try_into().unwrap()
     }
 
-    pub fn invalid_yang_addr() -> ContractAddress {
+    pub const fn invalid_yang_addr() -> ContractAddress {
         'invalid yang'.try_into().unwrap()
     }
 

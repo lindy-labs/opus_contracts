@@ -45,8 +45,7 @@ pub mod pragma_utils {
     // Constant addresses
     //
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'pragma owner'.try_into().unwrap()
     }
 
@@ -181,8 +180,7 @@ pub mod ekubo_utils {
     // Constant addresses
     //
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
+    pub const fn admin() -> ContractAddress {
         'ekubo owner'.try_into().unwrap()
     }
 
