@@ -28,8 +28,8 @@ snforge_std = ">= 0.38.0"
 assert_macros = ">= 2.11.0"
 
 [scripts]
-restart_devnet = "rm devnet_dump.json 2> /dev/null; starknet-devnet --seed 1087810753 --gas-price 1000 --dump-on exit --dump-path devnet_dump.json"
-load_devnet = "starknet-devnet --seed 1087810753 --gas-price 1000 --dump-path devnet_dump.json"
+restart_devnet = "rm devnet_dump.json 2> /dev/null; starknet-devnet --seed 1087810753 --gas-price 1000 --initial-balance 1000000000000000000000000 --dump-on exit --dump-path devnet_dump.json"
+load_devnet = "starknet-devnet --seed 1087810753 --gas-price 1000 --initial-balance 1000000000000000000000000 --dump-path devnet_dump.json"
 test = "snforge test"
 
 [tool.scarb]
