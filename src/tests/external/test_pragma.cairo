@@ -146,7 +146,7 @@ mod test_pragma {
         let valid_freshness: u64 = pragma_utils::FRESHNESS_THRESHOLD;
         let valid_sources: u32 = pragma_utils::SOURCES_THRESHOLD;
 
-        start_cheat_caller_address(pragma.contract_address, common::badguy());
+        start_cheat_caller_address(pragma.contract_address, common::BAD_GUY());
         pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
     }
 
@@ -245,7 +245,7 @@ mod test_pragma {
     fn test_set_yang_pair_settings_unauthorized_fail() {
         let PragmaTestConfig { pragma, .. } = pragma_utils::pragma_deploy(Option::None, Option::None);
         let pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
-        start_cheat_caller_address(pragma.contract_address, common::badguy());
+        start_cheat_caller_address(pragma.contract_address, common::BAD_GUY());
         pragma.set_yang_pair_settings(mock_eth_token_addr(), pair_settings);
     }
 

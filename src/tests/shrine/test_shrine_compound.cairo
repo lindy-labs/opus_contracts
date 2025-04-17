@@ -1098,7 +1098,7 @@ mod test_shrine_compound {
     #[should_panic(expected: 'Caller missing role')]
     fn test_adjust_budget_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
 
         let surplus: SignedWad = (500 * WAD_ONE).into();
         shrine.adjust_budget(surplus);

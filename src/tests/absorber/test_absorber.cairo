@@ -327,7 +327,7 @@ mod test_absorber {
     fn test_kill_unauthorized_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        start_cheat_caller_address(absorber.contract_address, common::badguy());
+        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY());
         absorber.kill();
     }
 
@@ -611,7 +611,7 @@ mod test_absorber {
             Option::Some(classes),
         );
 
-        start_cheat_caller_address(absorber.contract_address, common::badguy());
+        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY());
         let first_update_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs, absorber_utils::first_update_assets(),
         );
@@ -1966,7 +1966,7 @@ mod test_absorber {
     fn test_non_provider_request_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        start_cheat_caller_address(absorber.contract_address, common::badguy());
+        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY());
         absorber.request();
     }
 
@@ -1975,7 +1975,7 @@ mod test_absorber {
     fn test_non_provider_remove_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        start_cheat_caller_address(absorber.contract_address, common::badguy());
+        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY());
         absorber.remove(0_u128.into());
     }
 
@@ -1984,7 +1984,7 @@ mod test_absorber {
     fn test_non_provider_reap_fail() {
         let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
 
-        start_cheat_caller_address(absorber.contract_address, common::badguy());
+        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY());
         absorber.reap();
     }
 

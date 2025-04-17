@@ -59,7 +59,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_cheat_caller_address(receptor.contract_address, common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::BAD_GUY());
         ekubo_oracle_adapter.set_oracle_extension(receptor_utils::mock_oracle_extension());
     }
 
@@ -71,7 +71,7 @@ mod test_receptor {
         } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_cheat_caller_address(receptor.contract_address, common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::BAD_GUY());
         ekubo_oracle_adapter.set_quote_tokens(quote_tokens);
     }
 
@@ -81,7 +81,7 @@ mod test_receptor {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
 
-        start_cheat_caller_address(receptor.contract_address, common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::BAD_GUY());
         ekubo_oracle_adapter.set_twap_duration(receptor_utils::INITIAL_TWAP_DURATION + 1);
     }
 
@@ -113,7 +113,7 @@ mod test_receptor {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_update_frequency_unauthorized() {
         let ReceptorTestConfig { receptor, .. } = receptor_utils::receptor_deploy(Option::None, Option::None);
-        start_cheat_caller_address(receptor.contract_address, common::badguy());
+        start_cheat_caller_address(receptor.contract_address, common::BAD_GUY());
         receptor.set_update_frequency(receptor_utils::INITIAL_UPDATE_FREQUENCY - 1);
     }
 

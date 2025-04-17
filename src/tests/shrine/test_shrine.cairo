@@ -339,7 +339,7 @@ mod test_shrine {
     fn test_set_trove_minimum_value_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         let new_value: Wad = (100 * WAD_ONE).into();
         shrine.set_minimum_trove_value(new_value);
     }
@@ -420,7 +420,7 @@ mod test_shrine {
     #[should_panic(expected: 'Caller missing role')]
     fn test_add_yang_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine
             .add_yang(
                 shrine_utils::yang1_addr(),
@@ -472,7 +472,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.set_threshold(shrine_utils::yang1_addr(), new_threshold);
     }
 
@@ -525,7 +525,7 @@ mod test_shrine {
     #[should_panic(expected: 'Caller missing role')]
     fn test_update_rates_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine
             .update_rates(
                 shrine_utils::three_yang_addrs(),
@@ -678,7 +678,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let target_factor: Ray = (50 * RAY_PERCENT).into();
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.set_recovery_mode_target_factor(target_factor);
     }
 
@@ -708,7 +708,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         let buffer_factor: Ray = (2 * RAY_PERCENT).into();
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.set_recovery_mode_buffer_factor(buffer_factor);
     }
 
@@ -845,7 +845,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         assert(shrine.get_live(), 'should be live');
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.kill();
     }
 
@@ -897,7 +897,7 @@ mod test_shrine {
     #[should_panic(expected: 'Caller missing role')]
     fn test_shrine_deposit_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
 
         shrine.deposit(shrine_utils::yang1_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
@@ -998,7 +998,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
 
         shrine.withdraw(shrine_utils::yang1_addr(), common::TROVE_1, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
     }
@@ -1177,7 +1177,7 @@ mod test_shrine {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
 
         shrine.forge(common::trove1_owner_addr(), common::TROVE_1, shrine_utils::TROVE1_FORGE_AMT.into(), Zero::zero());
     }
@@ -1361,7 +1361,7 @@ mod test_shrine {
         shrine_utils::trove1_deposit(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
         shrine_utils::trove1_forge(shrine, shrine_utils::TROVE1_YANG1_DEPOSIT.into());
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.melt(common::trove1_owner_addr(), common::TROVE_1, 1_u128.into());
     }
 
@@ -1751,7 +1751,7 @@ mod test_shrine {
     fn test_advance_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.advance(shrine_utils::yang1_addr(), shrine_utils::YANG1_START_PRICE.into());
     }
 
@@ -1769,7 +1769,7 @@ mod test_shrine {
     fn test_set_multiplier_unauthorized() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.set_multiplier(RAY_SCALE.into());
     }
 
@@ -2199,7 +2199,7 @@ mod test_shrine {
         shrine_utils::shrine_setup(shrine_addr);
         let shrine = shrine_utils::shrine(shrine_addr);
         let yang = shrine_utils::yang1_addr();
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
 
         shrine.suspend_yang(yang);
     }
@@ -2215,7 +2215,7 @@ mod test_shrine {
         // We directly unsuspend the yang instead of suspending it first, because
         // an unauthorized call to `suspend_yang` has the same error message, which
         // can be ambiguous when trying to understand which part of the test failed.
-        start_cheat_caller_address(shrine.contract_address, common::badguy());
+        start_cheat_caller_address(shrine.contract_address, common::BAD_GUY());
         shrine.unsuspend_yang(yang);
     }
 

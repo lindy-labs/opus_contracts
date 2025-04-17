@@ -50,9 +50,7 @@ pub const WHALE_TROVE: u64 = 0xb17b01;
 // Constant addresses
 //
 
-pub const fn badguy() -> ContractAddress {
-    'bad guy'.try_into().unwrap()
-}
+pub const BAD_GUY: ContractAddress = 'bad guy'.try_into().unwrap();
 
 pub const fn trove1_owner_addr() -> ContractAddress {
     'trove1 owner'.try_into().unwrap()

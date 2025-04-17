@@ -145,7 +145,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_p_gain_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_p_gain(1_u128.into());
     }
 
@@ -153,7 +153,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_i_gain_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_i_gain(1_u128.into());
     }
 
@@ -161,7 +161,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_alpha_p_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_alpha_p(1);
     }
 
@@ -169,7 +169,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_alpha_i_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_alpha_i(1);
     }
 
@@ -177,7 +177,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_beta_p_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_beta_p(1);
     }
 
@@ -185,7 +185,7 @@ mod test_controller {
     #[should_panic(expected: 'Caller missing role')]
     fn test_set_beta_i_unauthorized() {
         let ControllerTestConfig { controller, .. } = controller_utils::deploy_controller();
-        start_cheat_caller_address(controller.contract_address, common::badguy());
+        start_cheat_caller_address(controller.contract_address, common::BAD_GUY());
         controller.set_beta_i(1);
     }
 
