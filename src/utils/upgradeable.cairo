@@ -15,22 +15,22 @@ pub mod upgradeable_component {
     use starknet::{ClassHash, SyscallResultTrait};
 
     #[storage]
-    struct Storage {}
+    pub struct Storage {}
 
     #[event]
     #[derive(Copy, Drop, PartialEq, starknet::Event)]
     pub enum Event {
-        Upgraded: Upgraded
+        Upgraded: Upgraded,
     }
 
     #[derive(Copy, Drop, PartialEq, starknet::Event)]
     pub struct Upgraded {
-        class_hash: ClassHash
+        class_hash: ClassHash,
     }
 
     #[generate_trait]
     pub impl UpgradeableHelpers<
-        TContractState, +HasComponent<TContractState>
+        TContractState, +HasComponent<TContractState>,
     > of UpgradeableHelpersTrait<TContractState> {
         fn upgrade(ref self: ComponentState<TContractState>, new_class_hash: ClassHash) {
             assert(!new_class_hash.is_zero(), 'Class hash cannot be zero');

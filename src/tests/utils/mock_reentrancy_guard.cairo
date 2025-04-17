@@ -20,7 +20,7 @@ pub mod mock_reentrancy_guard {
     #[event]
     #[derive(Drop, starknet::Event)]
     pub enum Event {
-        ReentrancyGuardEvent: reentrancy_guard_component::Event
+        ReentrancyGuardEvent: reentrancy_guard_component::Event,
     }
 
     #[abi(embed_v0)]

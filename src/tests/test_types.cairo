@@ -1,6 +1,6 @@
 use opus::types::{DistributionInfo, Health, HealthTrait, Provision, Request, Trove, YangBalance};
 use starknet::storage_access::StorePacking;
-use wadray::{Wad, Ray};
+use wadray::Wad;
 
 #[test]
 fn test_display_and_debug() {
@@ -76,7 +76,7 @@ fn test_distribution_info_packing() {
     assert_eq!(
         distribution_info.asset_amt_per_share,
         unpacked.asset_amt_per_share,
-        "distribution_info 2 asset_amt_per_share packing failed"
+        "distribution_info 2 asset_amt_per_share packing failed",
     );
     assert_eq!(unpacked.error, max_error, "distribution_info 2 error packing failed");
 }

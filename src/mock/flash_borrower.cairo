@@ -4,7 +4,8 @@ pub mod flash_borrower {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use starknet::{contract_address_const, get_contract_address, ContractAddress};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::{ContractAddress, get_contract_address};
 
     pub const VALID_USAGE: felt252 = 0;
     pub const ATTEMPT_TO_STEAL: felt252 = 1;
@@ -27,7 +28,7 @@ pub mod flash_borrower {
         pub token: ContractAddress,
         pub amount: u256,
         pub fee: u256,
-        pub call_data: Span<felt252>
+        pub call_data: Span<felt252>,
     }
 
     #[constructor]
@@ -43,7 +44,7 @@ pub mod flash_borrower {
             token: ContractAddress,
             amount: u256,
             fee: u256,
-            mut call_data: Span<felt252>
+            mut call_data: Span<felt252>,
         ) -> u256 {
             let call_data_copy = call_data;
 
@@ -53,10 +54,10 @@ pub mod flash_borrower {
             if action == VALID_USAGE {
                 assert(
                     IERC20Dispatcher { contract_address: token }.balance_of(get_contract_address()) == amount,
-                    'FB: incorrect loan amount'
+                    'FB: incorrect loan amount',
                 );
             } else if action == ATTEMPT_TO_STEAL {
-                IERC20Dispatcher { contract_address: token }.transfer(contract_address_const::<0xbeef>(), amount);
+                IERC20Dispatcher { contract_address: token }.transfer(0xbeef.try_into().unwrap(), amount);
             } else if action == ATTEMPT_TO_REENTER {
                 self.flashmint.read().flash_loan(initiator, token, amount, call_data_copy);
             }
@@ -65,8 +66,8 @@ pub mod flash_borrower {
             self
                 .emit(
                     FlashLoancall_dataReceived {
-                        initiator: initiator, token: token, amount: amount, fee: fee, call_data: call_data_copy
-                    }
+                        initiator: initiator, token: token, amount: amount, fee: fee, call_data: call_data_copy,
+                    },
                 );
 
             if should_return_correct {

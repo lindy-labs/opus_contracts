@@ -4,6 +4,7 @@ mod blesser {
     use opus::core::roles::blesser_roles;
     use opus::interfaces::IAbsorber::IBlesser;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_contract_address};
 
     component!(path: access_control_component, storage: access_control, event: AccessControlEvent);
@@ -33,10 +34,10 @@ mod blesser {
         admin: ContractAddress,
         asset: ContractAddress,
         absorber: ContractAddress,
-        bless_amt: u128
+        bless_amt: u128,
     ) {
         self.access_control.initializer(admin, Option::None);
-        self.access_control.grant_role_helper(blesser_roles::default_admin_role(), absorber);
+        self.access_control.grant_role_helper(blesser_roles::ADMIN, absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
         self.absorber.write(absorber);

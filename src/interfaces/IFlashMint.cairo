@@ -8,7 +8,7 @@ pub trait IFlashMint<TContractState> {
         receiver: ContractAddress,
         token: ContractAddress,
         amount: u256,
-        call_data: Span<felt252>
+        call_data: Span<felt252>,
     ) -> bool;
     // view
     fn max_flash_loan(self: @TContractState, token: ContractAddress) -> u256;

@@ -1,28 +1,27 @@
-use core::integer::BoundedInt;
+use core::num::traits::Bounded;
 use scripts::addresses;
 use scripts::constants::MAX_FEE;
-use sncast_std::{invoke, InvokeResult, ScriptCommandError};
-use starknet::ContractAddress;
+use sncast_std::{FeeSettingsTrait, invoke};
 use wadray::WAD_ONE;
 
 fn main() {
     let provide_amt: u128 = 1000 * WAD_ONE;
 
-    let max_u128: u128 = BoundedInt::max();
+    let max_u128: u128 = Bounded::MAX;
     invoke(
-        addresses::devnet::shrine(),
+        addresses::devnet::SHRINE,
         selector!("approve"),
-        array![addresses::devnet::absorber().into(), max_u128.into(), max_u128.into()],
-        Option::Some(MAX_FEE),
+        array![addresses::devnet::ABSORBER.into(), max_u128.into(), max_u128.into()],
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('approve CASH failed');
 
     invoke(
-        addresses::devnet::absorber(),
+        addresses::devnet::ABSORBER,
         selector!("provide"),
         array![provide_amt.into()],
-        Option::Some(MAX_FEE),
+        FeeSettingsTrait::max_fee(MAX_FEE),
         Option::None,
     )
         .expect('provide failed');

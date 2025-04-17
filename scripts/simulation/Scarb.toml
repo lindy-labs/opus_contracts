@@ -8,6 +8,7 @@ edition = "2023_11"
 [dependencies]
 sncast_std.workspace = true 
 starknet.workspace = true
+wadray.workspace = true
 opus.workspace = true
 scripts.workspace = true
 

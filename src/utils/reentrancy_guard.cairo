@@ -1,7 +1,9 @@
 #[starknet::component]
 pub mod reentrancy_guard_component {
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+
     #[storage]
-    struct Storage {
+    pub struct Storage {
         entered: bool,
     }
 
@@ -11,7 +13,7 @@ pub mod reentrancy_guard_component {
 
     #[generate_trait]
     pub impl ReentrancyGuardHelpers<
-        TContractState, +HasComponent<TContractState>
+        TContractState, +HasComponent<TContractState>,
     > of ReentrancyGuardHelpersTrait<TContractState> {
         fn start(ref self: ComponentState<TContractState>) {
             assert(!self.entered.read(), 'RG: reentrant call');

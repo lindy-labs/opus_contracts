@@ -1,7 +1,6 @@
 mod tests {
     use opus::tests::utils::mock_reentrancy_guard::{IMockReentrancyGuard, mock_reentrancy_guard};
-    use opus::utils::reentrancy_guard::reentrancy_guard_component::{ReentrancyGuardHelpers};
-    use opus::utils::reentrancy_guard::reentrancy_guard_component;
+    use opus::utils::reentrancy_guard::reentrancy_guard_component::ReentrancyGuardHelpers;
 
     fn state() -> mock_reentrancy_guard::ContractState {
         mock_reentrancy_guard::contract_state_for_testing()
@@ -18,7 +17,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('RG: reentrant call',))]
+    #[should_panic(expected: 'RG: reentrant call')]
     fn test_reentrancy_guard_fail() {
         let mut state = state();
         // Calling the guarded function from inside itself should fail.

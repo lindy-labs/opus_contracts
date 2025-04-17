@@ -1,4 +1,3 @@
-use starknet::ContractAddress;
 use wadray::{Ray, SignedRay};
 
 #[starknet::interface]

@@ -2,14 +2,15 @@
 pub mod transmuter {
     use access_control::access_control_component;
     use core::cmp::min;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::roles::transmuter_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::interfaces::ITransmuter::ITransmuter;
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, SignedWad, Wad, WAD_ONE};
+    use wadray::{Ray, WAD_ONE, Wad};
 
     //
     // Components
@@ -25,7 +26,7 @@ pub mod transmuter {
     // Constants
     //
 
-    // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a 
+    // Upper bound of the maximum amount of yin that can be minted via this Transmuter as a
     // percentage of total yin supply: 100% (Ray)
     pub const PERCENTAGE_CAP_UPPER_BOUND: u128 = 1000000000000000000000000000;
     // Percentage cap at deployment: 10% (Ray)
@@ -48,9 +49,9 @@ pub mod transmuter {
         access_control: access_control_component::Storage,
         // The Shrine associated with this Transmuter
         shrine: IShrineDispatcher,
-        // The asset that can be swapped for yin via this Transmuter
+        // The primary asset that can be swapped for yin via this Transmuter
         asset: IERC20Dispatcher,
-        // The total yin transmuted 
+        // The total yin transmuted
         total_transmuted: Wad,
         // The maximum amount of yin that can be minted via this Transmuter
         ceiling: Wad,
@@ -92,12 +93,13 @@ pub mod transmuter {
         Sweep: Sweep,
         Transmute: Transmute,
         TransmuteFeeUpdated: TransmuteFeeUpdated,
+        WithdrawSecondaryAsset: WithdrawSecondaryAsset,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct CeilingUpdated {
         pub old_ceiling: Wad,
-        pub new_ceiling: Wad
+        pub new_ceiling: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -105,13 +107,13 @@ pub mod transmuter {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct PercentageCapUpdated {
-        pub cap: Ray
+        pub cap: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReceiverUpdated {
         pub old_receiver: ContractAddress,
-        pub new_receiver: ContractAddress
+        pub new_receiver: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -128,30 +130,39 @@ pub mod transmuter {
         pub user: ContractAddress,
         pub asset_amt: u128,
         pub yin_amt: Wad,
-        pub fee: Wad
+        pub fee: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReverseFeeUpdated {
         pub old_fee: Ray,
-        pub new_fee: Ray
+        pub new_fee: Ray,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ReversibilityToggled {
-        pub reversibility: bool
+        pub reversibility: bool,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Settle {
-        pub deficit: Wad
+        pub deficit: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Sweep {
         #[key]
         pub recipient: ContractAddress,
-        pub asset_amt: u128
+        pub asset_amt: u128,
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    pub struct WithdrawSecondaryAsset {
+        #[key]
+        pub recipient: ContractAddress,
+        #[key]
+        pub asset: ContractAddress,
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -160,13 +171,13 @@ pub mod transmuter {
         pub user: ContractAddress,
         pub asset_amt: u128,
         pub yin_amt: Wad,
-        pub fee: Wad
+        pub fee: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TransmuteFeeUpdated {
         pub old_fee: Ray,
-        pub new_fee: Ray
+        pub new_fee: Ray,
     }
 
     // Constructor
@@ -180,7 +191,7 @@ pub mod transmuter {
         receiver: ContractAddress,
         ceiling: Wad,
     ) {
-        self.access_control.initializer(admin, Option::Some(transmuter_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });
@@ -303,7 +314,7 @@ pub mod transmuter {
             self.is_reclaimable.write(true);
         }
 
-        // 
+        //
         // Core functions - View
         //
 
@@ -364,11 +375,11 @@ pub mod transmuter {
             // `preview_reverse_helper` checks for liveness and reversibility
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
-            // Decrement total transmuted amount by yin amount to be reversed 
+            // Decrement total transmuted amount by yin amount to be reversed
             // excluding the fee. The fee is excluded because this Transmuter
-            // is still liable to back the amount of yin representing the fee 
-            // (when it is added to the Shrine's budget and eventually minted 
-            // via the Equalizer) with the corresponding amount of assets, 
+            // is still liable to back the amount of yin representing the fee
+            // (when it is added to the Shrine's budget and eventually minted
+            // via the Equalizer) with the corresponding amount of assets,
             // particularly in the event of shutdown.
             self.total_transmuted.write(self.total_transmuted.read() - yin_amt + fee);
 
@@ -390,30 +401,42 @@ pub mod transmuter {
             self.emit(Reverse { user, asset_amt, yin_amt, fee });
         }
 
-        // Transfers assets in the Transmuter to the receiver
+        // Transfers the primary asset in the Transmuter to the receiver
         fn sweep(ref self: ContractState, asset_amt: u128) {
             self.assert_live();
 
             self.access_control.assert_has_role(transmuter_roles::SWEEP);
 
-            let asset: IERC20Dispatcher = self.asset.read();
-            let asset_balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
-            let capped_asset_amt: u128 = min(asset_balance, asset_amt);
-
-            if capped_asset_amt.is_zero() {
-                return;
+            let asset_amt_transferred = self.transfer_asset_to_receiver(self.asset.read(), asset_amt);
+            if let Option::Some(asset_amt) = asset_amt_transferred {
+                self.emit(Sweep { recipient: self.receiver.read(), asset_amt });
             }
-
-            let recipient: ContractAddress = self.receiver.read();
-            asset.transfer(recipient, capped_asset_amt.into());
-            self.emit(Sweep { recipient, asset_amt: capped_asset_amt });
         }
 
-        // 
-        // Isolated deprecation
-        // 
+        // Transfers any secondary asset in the Transmuter to a user.
+        // The primary asset cannot be withdrawn using this function so to ensure that the existing amount
+        // can be reclaimed after the Transmuter is killed. However, it is possible to withdraw any yin
+        // in the Transmuter through this function, although it is not envisaged that this contract will
+        // hold any yin in its ordinary usage.
+        // This does not require the Transmuter to be live because the winding down
+        // (i.e. conversion of secondary assets to the primary asset) may occur after
+        // a shutdown.
+        fn withdraw_secondary_asset(ref self: ContractState, asset: ContractAddress, asset_amt: u128) {
+            self.access_control.assert_has_role(transmuter_roles::WITHDRAW_SECONDARY_ASSET);
+            assert(asset != self.asset.read().contract_address, 'TR: Primary asset');
 
-        // Irreversibly deprecate this Transmuter only by settling its debt and transferring 
+            let asset_amt_transferred = self
+                .transfer_asset_to_receiver(IERC20Dispatcher { contract_address: asset }, asset_amt);
+            if let Option::Some(asset_amt) = asset_amt_transferred {
+                self.emit(WithdrawSecondaryAsset { recipient: self.receiver.read(), asset, asset_amt });
+            }
+        }
+
+        //
+        // Isolated deprecation
+        //
+
+        // Irreversibly deprecate this Transmuter only by settling its debt and transferring
         // all of its yin and asset to the receiver.
         fn settle(ref self: ContractState) {
             self.assert_live();
@@ -437,7 +460,7 @@ pub mod transmuter {
 
             // Incur deficit if any
             if total_transmuted.is_non_zero() {
-                self.shrine.read().adjust_budget(SignedWad { val: total_transmuted.val, sign: true });
+                self.shrine.read().adjust_budget(-total_transmuted.into());
             }
 
             // Transfer all remaining yin and all assets to receiver
@@ -445,8 +468,7 @@ pub mod transmuter {
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
 
-            let asset: IERC20Dispatcher = self.asset.read();
-            asset.transfer(receiver, asset.balance_of(transmuter));
+            self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })
@@ -468,7 +490,7 @@ pub mod transmuter {
         }
 
         // Note that the amount of asset that can be claimed is no longer pegged 1 : 1
-        // because we do not make any assumptions as to the amount of assets held by the 
+        // because we do not make any assumptions as to the amount of assets held by the
         // Transmuter.
         fn reclaim(ref self: ContractState, yin: Wad) {
             // `preview_reclaim` checks that reclaim is enabled
@@ -559,7 +581,7 @@ pub mod transmuter {
 
             assert(self.reversibility.read(), 'TR: Reverse is paused');
 
-            let fee: Wad = wadray::rmul_wr(yin_amt.into(), self.reverse_fee.read());
+            let fee: Wad = wadray::rmul_wr(yin_amt, self.reverse_fee.read());
 
             let asset: IERC20Dispatcher = self.asset.read();
             let asset_amt: u128 = wad_to_fixed_point(yin_amt - fee, asset.decimals());
@@ -571,7 +593,7 @@ pub mod transmuter {
 
         // Returns a tuple of:
         // 1. the amount of yin that can be reclaimed, capped by what is still reclaimable; and
-        // 2. the amount of asset that a user is expected to receive for `reclaim` after the 
+        // 2. the amount of asset that a user is expected to receive for `reclaim` after the
         //    Transmuter is killed.
         fn preview_reclaim_helper(self: @ContractState, yin_amt: Wad) -> (Wad, u128) {
             assert(self.is_reclaimable.read(), 'TR: Reclaim unavailable');
@@ -584,7 +606,23 @@ pub mod transmuter {
             if asset_balance.is_zero() {
                 (Zero::zero(), 0)
             } else {
-                (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).val)
+                (capped_yin, ((capped_yin / self.total_transmuted.read()) * asset_balance).into())
+            }
+        }
+
+        // Helper function to transfer an asset to a recipient, capping the amount at the contract's balance.
+        // Returns an Option containing the amount transferred if it is non-zero.
+        fn transfer_asset_to_receiver(
+            ref self: ContractState, asset: IERC20Dispatcher, asset_amt: u128,
+        ) -> Option<u128> {
+            let asset_balance: u256 = asset.balance_of(get_contract_address());
+            let capped_asset_amt: u256 = min(asset_balance, asset_amt.into());
+
+            if capped_asset_amt.is_zero() {
+                Option::None
+            } else {
+                asset.transfer(self.receiver.read(), capped_asset_amt);
+                Option::Some(capped_asset_amt.try_into().unwrap())
             }
         }
     }

@@ -12,8 +12,9 @@ pub mod caretaker {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{AssetBalance, Health};
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, RAY_ONE, Wad};
+    use wadray::{RAY_ONE, Ray, Wad};
 
     //
     // Components
@@ -63,12 +64,12 @@ pub mod caretaker {
         Release: Release,
         Reclaim: Reclaim,
         // Component events
-        ReentrancyGuardEvent: reentrancy_guard_component::Event
+        ReentrancyGuardEvent: reentrancy_guard_component::Event,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Shut {
-        pub assets: Span<AssetBalance>
+        pub assets: Span<AssetBalance>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -77,7 +78,7 @@ pub mod caretaker {
         pub user: ContractAddress,
         #[key]
         pub trove_id: u64,
-        pub assets: Span<AssetBalance>
+        pub assets: Span<AssetBalance>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -85,7 +86,7 @@ pub mod caretaker {
         #[key]
         pub user: ContractAddress,
         pub yin_amt: Wad,
-        pub assets: Span<AssetBalance>
+        pub assets: Span<AssetBalance>,
     }
 
     //
@@ -99,9 +100,9 @@ pub mod caretaker {
         shrine: ContractAddress,
         abbot: ContractAddress,
         sentinel: ContractAddress,
-        equalizer: ContractAddress
+        equalizer: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(caretaker_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(caretaker_roles::ADMIN));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
@@ -175,7 +176,7 @@ pub mod caretaker {
                         let asset = IERC20Dispatcher { contract_address: *yang };
                         let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
                         let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
-                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.val });
+                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.into() });
                     },
                     Option::None => { break (capped_yin, reclaimable_assets.span()); },
                 };
@@ -205,8 +206,8 @@ pub mod caretaker {
             self.equalizer.read().equalize();
 
             // Calculate the percentage of collateral needed to back all troves' yin 1 : 1
-            // based on the last value of all collateral in Shrine. We can use the total troves' 
-            // debt from the Shrine's Health as a proxy for total yin minted by troves because 
+            // based on the last value of all collateral in Shrine. We can use the total troves'
+            // debt from the Shrine's Health as a proxy for total yin minted by troves because
             // we would have minted any surplus budget via `Equalizer.equalize` in the preceding step.
             let shrine_health: Health = shrine.get_shrine_health();
             let backing_pct: Ray = wadray::rdiv_ww(shrine_health.debt, shrine_health.value);
@@ -236,7 +237,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Kill modules
             shrine.kill();
@@ -299,7 +300,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
 
@@ -359,7 +360,7 @@ pub mod caretaker {
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             self.emit(Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets });
 

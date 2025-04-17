@@ -1,28 +1,28 @@
-use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use opus::interfaces::IGate::IGateDispatcher;
 use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IFlashLiquidator<TContractState> {
     fn flash_liquidate(
-        ref self: TContractState, trove_id: u64, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+        ref self: TContractState, trove_id: u64, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>,
     );
 }
 
 #[starknet::contract]
 pub mod flash_liquidator {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::core::flash_mint::flash_mint::ON_FLASH_MINT_SUCCESS;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IFlashBorrower::IFlashBorrower;
     use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IGate::IGateDispatcher;
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::types::AssetBalance;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_contract_address};
-    use wadray::{Wad, WAD_ONE};
+    use wadray::WAD_ONE;
 
     #[storage]
     struct Storage {
@@ -39,7 +39,7 @@ pub mod flash_liquidator {
         shrine: ContractAddress,
         abbot: ContractAddress,
         flashmint: ContractAddress,
-        purger: ContractAddress
+        purger: ContractAddress,
     ) {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
@@ -50,7 +50,7 @@ pub mod flash_liquidator {
     #[abi(embed_v0)]
     impl IFlashLiquidatorImpl of super::IFlashLiquidator<ContractState> {
         fn flash_liquidate(
-            ref self: ContractState, trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>
+            ref self: ContractState, trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>,
         ) {
             // Approve gate for tokens
             loop {
@@ -58,11 +58,11 @@ pub mod flash_liquidator {
                     Option::Some(yang) => {
                         let gate: IGateDispatcher = *gates.pop_front().unwrap();
                         let token = IERC20Dispatcher { contract_address: *yang };
-                        token.approve(gate.contract_address, BoundedInt::max());
+                        token.approve(gate.contract_address, Bounded::MAX);
                     },
-                    Option::None => { break; }
+                    Option::None => { break; },
                 };
-            };
+            }
 
             let purger: IPurgerDispatcher = self.purger.read();
             let (_, max_close_amt) = purger.preview_liquidate(trove_id).expect('FL: not liquidatable');
@@ -75,7 +75,7 @@ pub mod flash_liquidator {
                     get_contract_address(), // receiver
                     self.shrine.read().contract_address, // token
                     max_close_amt.into(), // amount
-                    call_data.span()
+                    call_data.span(),
                 );
         }
     }
@@ -88,13 +88,13 @@ pub mod flash_liquidator {
             token: ContractAddress,
             amount: u256,
             fee: u256,
-            mut call_data: Span<felt252>
+            mut call_data: Span<felt252>,
         ) -> u256 {
             let flash_liquidator: ContractAddress = get_contract_address();
 
             assert(
                 IERC20Dispatcher { contract_address: token }.balance_of(flash_liquidator) == amount,
-                'FL: incorrect loan amount'
+                'FL: incorrect loan amount',
             );
 
             let trove_id: u64 = (*call_data.pop_front().unwrap()).try_into().unwrap();
@@ -113,13 +113,13 @@ pub mod flash_liquidator {
                             .append(
                                 AssetBalance {
                                     address: *freed_asset.address,
-                                    amount: *freed_asset.amount + *provider_assets.pop_front().unwrap()
-                                }
+                                    amount: *freed_asset.amount + *provider_assets.pop_front().unwrap(),
+                                },
                             );
                     },
                     Option::None => { break; },
                 };
-            };
+            }
 
             // Open a trove with funded and freed assets, and mint the loan amount.
             // This should revert if the contract did not receive the freed assets
@@ -133,7 +133,7 @@ pub mod flash_liquidator {
     // Copy of `provider_asset_amts` in `absorber_utils`
     fn provider_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
-         100000000, // 1 (10 ** 8) - BTC
+        100000000 // 1 (10 ** 8) - BTC
         ];
         asset_amts.span()
     }
