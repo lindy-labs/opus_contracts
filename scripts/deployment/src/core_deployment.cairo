@@ -261,9 +261,9 @@ pub fn deploy_receptor(admin: ContractAddress, shrine: ContractAddress) -> Contr
         RECEPTOR_UPDATE_FREQUENCY.into(),
         RECEPTOR_TWAP_DURATION.into(),
         num_quote_tokens,
-        addresses::mainnet::dai().into(),
+        addresses::mainnet::DAI.into(),
         addresses::mainnet::USDC.into(),
-        addresses::mainnet::usdt().into(),
+        addresses::mainnet::USDT.into(),
     ];
     let deploy_receptor = deploy(
         *declare_receptor.class_hash(),
@@ -332,9 +332,9 @@ pub fn deploy_ekubo(admin: ContractAddress, oracle: ContractAddress) -> Contract
         oracle.into(),
         EKUBO_TWAP_DURATION.into(),
         num_quote_tokens,
-        addresses::mainnet::dai().into(),
+        addresses::mainnet::DAI.into(),
         addresses::mainnet::USDC.into(),
-        addresses::mainnet::usdt().into(),
+        addresses::mainnet::USDT.into(),
     ];
 
     let deploy_ekubo = deploy(

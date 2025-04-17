@@ -29,7 +29,7 @@ fn main() {
 
     // Deploy mocks
     println!("Deploying mocks");
-    let mock_pragma: ContractAddress = mock_deployment::deploy_MOCK_PRAGMA;
+    let mock_pragma: ContractAddress = mock_deployment::deploy_mock_pragma();
 
     let erc20_mintable_class_hash: ClassHash = mock_deployment::declare_erc20_mintable();
     let usdc: ContractAddress = mock_deployment::deploy_erc20_mintable(
@@ -64,20 +64,20 @@ fn main() {
     // Grant roles
     println!("Setting up roles");
 
-    utils::grant_role(absorber, purger, absorber_roles::PURGER, "ABS -> PU");
+    utils::grant_role(absorber, purger, absorber_roles::purger(), "ABS -> PU");
 
-    utils::grant_role(sentinel, abbot, sentinel_roles::ABBOT, "SE -> ABB");
-    utils::grant_role(sentinel, purger, sentinel_roles::PURGER, "SE -> PU");
-    utils::grant_role(sentinel, caretaker, sentinel_roles::CARETAKER, "SE -> CA");
-    utils::grant_role(seer, purger, seer_roles::PURGER, "SEER -> PU");
-    utils::grant_role(shrine, abbot, shrine_roles::ABBOT, "SHR -> ABB");
-    utils::grant_role(shrine, caretaker, shrine_roles::CARETAKER, "SHR -> CA");
-    utils::grant_role(shrine, controller, shrine_roles::CONTROLLER, "SHR -> CTR");
-    utils::grant_role(shrine, equalizer, shrine_roles::EQUALIZER, "SHR -> EQ");
-    utils::grant_role(shrine, flash_mint, shrine_roles::FLASH_MINT, "SHR -> FM");
-    utils::grant_role(shrine, purger, shrine_roles::PURGER, "SHR -> PU");
-    utils::grant_role(shrine, seer, shrine_roles::SEER, "SHR -> SEER");
-    utils::grant_role(shrine, sentinel, shrine_roles::SENTINEL, "SHR -> SE");
+    utils::grant_role(sentinel, abbot, sentinel_roles::abbot(), "SE -> ABB");
+    utils::grant_role(sentinel, purger, sentinel_roles::purger(), "SE -> PU");
+    utils::grant_role(sentinel, caretaker, sentinel_roles::caretaker(), "SE -> CA");
+    utils::grant_role(seer, purger, seer_roles::purger(), "SEER -> PU");
+    utils::grant_role(shrine, abbot, shrine_roles::abbot(), "SHR -> ABB");
+    utils::grant_role(shrine, caretaker, shrine_roles::caretaker(), "SHR -> CA");
+    utils::grant_role(shrine, controller, shrine_roles::controller(), "SHR -> CTR");
+    utils::grant_role(shrine, equalizer, shrine_roles::equalizer(), "SHR -> EQ");
+    utils::grant_role(shrine, flash_mint, shrine_roles::flash_mint(), "SHR -> FM");
+    utils::grant_role(shrine, purger, shrine_roles::purger(), "SHR -> PU");
+    utils::grant_role(shrine, seer, shrine_roles::seer(), "SHR -> SEER");
+    utils::grant_role(shrine, sentinel, shrine_roles::sentinel(), "SHR -> SE");
     utils::grant_role(shrine, usdc_transmuter_restricted, shrine_roles::transmuter(), "SHR -> TR[USDC]");
 
     // Adding ETH and STRK yangs

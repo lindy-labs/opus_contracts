@@ -1,8 +1,7 @@
 use scripts::addresses;
 use scripts::constants::{MAX_FEE, MINIMUM_TROVE_VALUE};
 use simulation::utils;
-use sncast_std::{CallResult, InvokeResult, ScriptCommandError, call, invoke};
-use starknet::ContractAddress;
+use sncast_std::{FeeSettingsTrait, call, invoke};
 use wadray::WAD_ONE;
 
 fn main() {

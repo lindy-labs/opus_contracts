@@ -21,66 +21,66 @@ pub mod devnet {
 
     // these deployments are based on replaying the transactions in `scripts/devnet_dump.json` and should not be used
     // in the deployment package
-    pub const ABBOT: ContractAddress = 0x7f48497532c4ea819861437b7dde60af8bd32f2922ba8ae77ad1893960892b8
+    pub const ABBOT: ContractAddress = 0x676c823dfff94667e930b0556c9762bc9b210dffb7248e9f5cc00c411bfd511
         .try_into()
         .unwrap();
-    pub const ABSORBER: ContractAddress = 0x1c92473117cfcf8a7b8aba58ac54d422529e694056efa8cf1e68d90ad40c48d
+    pub const ABSORBER: ContractAddress = 0x63099820ca5a4531d80707f9f556e070baf4373a9c431fa4e7679b7d0897084
         .try_into()
         .unwrap();
-    pub const ALLOCATOR: ContractAddress = 0x1c99f9f01617d470a68db7d3a288ceae738dc182bf422508f6d8bee302d4e24
+    pub const ALLOCATOR: ContractAddress = 0x4c99d9722f8a92c9ec8b4fcbcda34b3f421e6a606a96b3412d0814bd3950b37
         .try_into()
         .unwrap();
-    pub const CARETAKER: ContractAddress = 0x244ca73c52914e7f7eb18f9cf90644b414490b7d7a5776809e35ce9538aa8a6
+    pub const CARETAKER: ContractAddress = 0x588224a04816c800750e3cd42d6510c737522ae70364f68dc9d145ea5a3595c
         .try_into()
         .unwrap();
-    pub const CONTROLLER: ContractAddress = 0x67a242213fbb95d97dd65cf5ddcfb92ae0dc93727b9d962c7b7c0357d92fe5
+    pub const CONTROLLER: ContractAddress = 0x4f249023c640595451965915faae8331e91441d794459c2346c897de925237d
         .try_into()
         .unwrap();
-    pub const EQUALIZER: ContractAddress = 0x1649094f1bb16d02bb64cd78bf1ec8a326632b9989ea2462579a681f114418c
+    pub const EQUALIZER: ContractAddress = 0x5bf00e87b04e8ca30eb208ed73c4ba22c396a1356c19a139f4981008e07164e
         .try_into()
         .unwrap();
-    pub const ETH_GATE: ContractAddress = 0x50e48fb57b4abd1895600b969153e21aa99b91a7638750e4922d74821c00ba9
+    pub const ETH_GATE: ContractAddress = 0x6625311551fa60639de710f028e4851452b716926516819fb3784aba3fced6b
         .try_into()
         .unwrap();
-    pub const FLASH_MINT: ContractAddress = 0x74f0b5f36428898edcdd7ba249cf94ab53f214153626236c69c4db001a83c36
+    pub const FLASH_MINT: ContractAddress = 0x1e7300a9bed6a5ac6cc511e256f92a3f8a72a6e549e6d9ace2df6efd22a9e87
         .try_into()
         .unwrap();
     pub const FRONTEND_DATA_PROVIDER: ContractAddress =
-        0x42e2e55c94cefb8595deb008c6476cb0c6e8887a1b0d7703f6815e4fb083c8c
+        0x1bc7e89cc9500af3ecbf17c23a1266592c7727f2ac8e55eb8b9772a8632c496
         .try_into()
         .unwrap();
-    pub const MOCK_PRAGMA: ContractAddress = 0x485f7ce22da86b087fed259bca12f7cf4684a02158048d4a7098c61fce9b09f
+    pub const MOCK_PRAGMA: ContractAddress = 0x6e87c3272ec2d2974404e28209af6ae1a04abd1b98278de729fc8870e819848
         .try_into()
         .unwrap();
-    pub const PRAGMA: ContractAddress = 0x60b9d9307875f8559384570b94339933bd9afa9ab12c7ec170ac4aa37b03ba1
+    pub const PRAGMA: ContractAddress = 0x5c3a263e668c801cdc4c5e47e884f27a18ff2e23b60eb96463429bc6de6752c
         .try_into()
         .unwrap();
-    pub const PURGER: ContractAddress = 0x3854c0538ddcd2b5be0901bee66ccc66e313a9e9e51b2cdca0aa420bfbab7a2
+    pub const PURGER: ContractAddress = 0x5a5ff7047dfbc11bdef1e508b9c93243b56c87fcd60f5cb1de9cd83c0b8c5ac
         .try_into()
         .unwrap();
-    pub const SEER: ContractAddress = 0x14c6c354b24b7cb5d1d361162dedcd949955b654c3d471256bbcff1b4a28969
+    pub const SEER: ContractAddress = 0x4c494a52d143345fd07ab3332e79ad5d88510d6987485a780ccad4469a6996a
         .try_into()
         .unwrap();
-    pub const SENTINEL: ContractAddress = 0x5abec6ca54ca6bffba69b028570faf41bf85b04fc053308465c447162bfb591
+    pub const SENTINEL: ContractAddress = 0x337ba8343b351b666bc68d98c089be92f700c0c5b9fa3249d6f6e32d6b8460e
         .try_into()
         .unwrap();
-    pub const SHRINE: ContractAddress = 0x63f6a3e200e1d7d752773cafe84f34db17681029d306478edc1160d11c08b90
+    pub const SHRINE: ContractAddress = 0x617dddf396a9dfa0a4e7280d20c86a6fa127da450d4349b268c67429a485d05
         .try_into()
         .unwrap();
-    pub const STRK_GATE: ContractAddress = 0x3beae87c85ae726d33e071c982b4d075586f58660a53e1e80deda56c6fb579
+    pub const STRK_GATE: ContractAddress = 0x139bf2eec17ee49ef1ae720a64fe8cd38ee058637675f9a1229c86e8cdd837c
         .try_into()
         .unwrap();
     pub const USDC_TRANSMUTER_RESTRICTED: ContractAddress =
-        0x290d5ed29ed3df766ae3b2547447c38fb7e4298e5d12a839dc5573afa3a853d
+        0x54496baa43399f9fe1d84ea73ee58a72bd6fc889147c89c1586d35c86dfff0a
         .try_into()
         .unwrap();
-    pub const USDC: ContractAddress = 0x4f528b977e2af95a7fec867842a968244e839599b017c99ba05d4eb4078deeb
+    pub const USDC: ContractAddress = 0xb555576884d0052fa8ca06e05685947c905bb21bd9b2627016b01da41fac5e
         .try_into()
         .unwrap();
-    pub const WBTC: ContractAddress = 0x1f63635007788374016629b9c8843aff4cd34d2a8adb079793f7808b882866d
+    pub const WBTC: ContractAddress = 0x45533574519d0351214e2a81201e199fe5d060e92f74fd8cbad39767d6a141a
         .try_into()
         .unwrap();
-    pub const WBTC_GATE: ContractAddress = 0x4e36e43bfec1bf2f5644c11bfb46241d074385b3af9913cef49de67be52aabb
+    pub const WBTC_GATE: ContractAddress = 0x2c076f39d9ae2b1c5bd58393a7fa9c02606e53b745cf91ac9cc8cfb792a2d1
         .try_into()
         .unwrap();
 }
@@ -196,7 +196,7 @@ pub mod mainnet {
     pub const SSTRK: ContractAddress = 0x0356f304b154d29d2a8fe22f1cb9107a9b564a733cf6b4cc47fd121ac1af90c9
         .try_into()
         .unwrap();
-    pub const EKUBO: ContractAddress = 0x075afe6402ad5a5c20dd25e10ec3b3986acaa647b77e4ae24b0cbc9a54a27a87
+    pub const EKUBO_TOKEN: ContractAddress = 0x075afe6402ad5a5c20dd25e10ec3b3986acaa647b77e4ae24b0cbc9a54a27a87
         .try_into()
         .unwrap();
 

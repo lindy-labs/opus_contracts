@@ -1,8 +1,7 @@
 use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, STRK_USD_PAIR_ID, WBTC_USD_PAIR_ID};
 use opus::utils::math::wad_to_fixed_point;
 use scripts::{addresses, constants, mock_utils};
-use sncast_std::{InvokeResult, ScriptCommandError, invoke};
-use starknet::ContractAddress;
+use sncast_std::{FeeSettingsTrait, invoke};
 use wadray::Ray;
 
 fn main() {
@@ -30,7 +29,11 @@ fn main() {
     );
 
     invoke(
-        addresses::devnet::SEER, selector!("execute_task"), array![], FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
+        addresses::devnet::SEER,
+        selector!("execute_task"),
+        array![],
+        FeeSettingsTrait::max_fee(constants::MAX_FEE),
+        Option::None,
     )
         .expect('update prices failed');
 }
