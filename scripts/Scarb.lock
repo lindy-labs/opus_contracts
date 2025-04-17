@@ -8,7 +8,7 @@ source = "git+https://github.com/lindy-labs/access_control.git?tag=v0.3.0#8fdfc9
 
 [[package]]
 name = "deployment"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "opus",
  "scripts",
@@ -17,7 +17,7 @@ dependencies = [
 
 [[package]]
 name = "opus"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "access_control",
  "wadray",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "scripts"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "opus",
  "sncast_std",
@@ -33,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "simulation"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "opus",
  "scripts",
