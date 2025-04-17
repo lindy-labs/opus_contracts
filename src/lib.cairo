@@ -29,7 +29,6 @@ pub mod external {
     pub mod pragma;
     pub mod pragma_v2;
     pub mod roles;
-    pub mod switchboard;
 }
 
 mod interfaces {
@@ -53,7 +52,6 @@ mod interfaces {
     pub mod ISeer;
     pub mod ISentinel;
     pub mod IShrine;
-    pub mod ISwitchboard;
     pub mod ITransmuter;
 }
 
@@ -83,7 +81,6 @@ pub mod mock {
     pub mod flash_liquidator;
     pub mod mock_ekubo_oracle_extension;
     pub mod mock_pragma;
-    pub mod mock_switchboard;
 }
 
 #[cfg(test)]
@@ -115,7 +112,6 @@ mod tests {
         mod test_ekubo;
         mod test_pragma;
         mod test_pragma_v2;
-        mod test_switchboard;
         pub mod utils;
     }
     mod flash_mint {
