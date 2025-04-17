@@ -24,10 +24,10 @@ use wadray::{Ray, WAD_ONE, Wad};
 
 #[derive(Copy, Drop, PartialEq)]
 pub enum RecoveryModeSetupType {
-    BeforeRecoveryMode: (),
-    BufferLowerBound: (),
-    BufferUpperBound: (),
-    ExceedsBuffer: (),
+    BeforeRecoveryMode,
+    BufferLowerBound,
+    BufferUpperBound,
+    ExceedsBuffer,
 }
 
 //
