@@ -34,8 +34,8 @@ pub enum RecoveryModeSetupType {
 // Constants
 //
 
-pub const ETH_TOTAL: u128 = 100000000000000000000; // 100 * 10**18
-pub const WBTC_TOTAL: u128 = 30000000000000000000; // 30 * 10**18
+pub const ETH_TOTAL: u128 = 100 * WAD_ONE; // 100 (Wad)
+pub const WBTC_TOTAL: u128 = 30 * WAD_ONE; // 30 (Wad)
 pub const WBTC_DECIMALS: u8 = 8;
 pub const WBTC_SCALE: u128 = 100000000; // WBTC has 8 decimals, scale is 10**8
 

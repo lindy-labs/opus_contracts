@@ -15,6 +15,7 @@ pub mod sentinel_utils {
         stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
+    use wadray::WAD_ONE;
 
     // Struct to group together all contract classes
     // needed for abbot tests
@@ -38,7 +39,7 @@ pub mod sentinel_utils {
     // Constants
     //
 
-    pub const ETH_ASSET_MAX: u128 = 1000000000000000000000; // 1000 (wad)
+    pub const ETH_ASSET_MAX: u128 = 1000 * WAD_ONE; // 1000 (wad)
     pub const WBTC_ASSET_MAX: u128 = 100000000000; // 1000 * 10**8
 
     pub const fn admin() -> ContractAddress {

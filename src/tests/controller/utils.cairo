@@ -9,7 +9,7 @@ pub mod controller_utils {
         stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::Wad;
+    use wadray::{RAY_ONE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct ControllerTestConfig {
@@ -21,7 +21,7 @@ pub mod controller_utils {
     pub const ONE_HOUR: u64 = 60 * 60; // 1 hour
 
     // Default controller parameters
-    pub const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE
+    pub const P_GAIN: u128 = 100 * RAY_ONE; // 100 * RAY_ONE
     pub const I_GAIN: u128 = 0;
     pub const ALPHA_P: u8 = 3;
     pub const BETA_P: u8 = 8;

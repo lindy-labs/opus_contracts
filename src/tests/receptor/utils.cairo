@@ -25,8 +25,8 @@ pub mod receptor_utils {
     // constants
     //
 
-    pub const INITIAL_TWAP_DURATION: u64 = 10800; // 3 hrs
-    pub const INITIAL_UPDATE_FREQUENCY: u64 = 1800; // 30 mins
+    pub const INITIAL_TWAP_DURATION: u64 = 3 * 60 * 60; // 3 hrs
+    pub const INITIAL_UPDATE_FREQUENCY: u64 = 30 * 60; // 30 mins
 
     pub fn invalid_token(token_class: Option<ContractClass>) -> ContractAddress {
         common::deploy_token(

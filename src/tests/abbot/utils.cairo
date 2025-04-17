@@ -47,8 +47,8 @@ pub mod abbot_utils {
     // Constants
     //
 
-    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
-    pub const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000 * WAD_ONE; // 2_000 (Wad)
+    pub const ETH_DEPOSIT_AMT: u128 = 10 * WAD_ONE; // 10 (Wad);
     pub const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
 
     pub const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);

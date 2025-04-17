@@ -15,7 +15,7 @@ pub mod shrine_utils {
         start_cheat_caller_address, stop_cheat_caller_address,
     };
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{RAY_ONE, Ray, Wad};
+    use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_ONE, Wad};
 
     //
     // Constants
@@ -27,40 +27,40 @@ pub mod shrine_utils {
     // Number of seconds in an interval
 
     pub const FEED_LEN: u64 = 10;
-    pub const PRICE_CHANGE: u128 = 25000000000000000000000000; // 2.5%
+    pub const PRICE_CHANGE: u128 = (2 * RAY_PERCENT) + (RAY_PERCENT / 2); // 2.5%
 
     // Shrine ERC-20 constants
     pub const YIN_NAME: felt252 = 'Cash';
     pub const YIN_SYMBOL: felt252 = 'CASH';
 
     // Shrine constants
-    pub const MINIMUM_TROVE_VALUE: u128 = 50000000000000000000; // 50 (Wad)
-    pub const DEBT_CEILING: u128 = 20000000000000000000000; // 20_000 (Wad)
+    pub const MINIMUM_TROVE_VALUE: u128 = 50 * WAD_ONE; // 50 (Wad)
+    pub const DEBT_CEILING: u128 = 20000 * WAD_ONE; // 20_000 (Wad)
 
     // Yang constants
-    pub const YANG1_THRESHOLD: u128 = 800000000000000000000000000; // 80% (Ray)
-    pub const YANG1_START_PRICE: u128 = 2000000000000000000000; // 2_000 (Wad)
-    pub const YANG1_BASE_RATE: u128 = 20000000000000000000000000; // 2% (Ray)
+    pub const YANG1_THRESHOLD: u128 = 80 * RAY_PERCENT; // 80% (Ray)
+    pub const YANG1_START_PRICE: u128 = 2000 * WAD_ONE; // 2_000 (Wad)
+    pub const YANG1_BASE_RATE: u128 = 2 * RAY_PERCENT; // 2% (Ray)
 
-    pub const YANG2_THRESHOLD: u128 = 750000000000000000000000000; // 75% (Ray)
-    pub const YANG2_START_PRICE: u128 = 500000000000000000000; // 500 (Wad)
-    pub const YANG2_BASE_RATE: u128 = 30000000000000000000000000; // 3% (Ray)
+    pub const YANG2_THRESHOLD: u128 = 75 * RAY_PERCENT; // 75% (Ray)
+    pub const YANG2_START_PRICE: u128 = 500 * WAD_ONE; // 500 (Wad)
+    pub const YANG2_BASE_RATE: u128 = 3 * RAY_PERCENT; // 3% (Ray)
 
-    pub const YANG3_THRESHOLD: u128 = 850000000000000000000000000; // 85% (Ray)
-    pub const YANG3_START_PRICE: u128 = 1000000000000000000000; // 1_000 (Wad)
-    pub const YANG3_BASE_RATE: u128 = 25000000000000000000000000; // 2.5% (Ray)
+    pub const YANG3_THRESHOLD: u128 = 85 * RAY_PERCENT; // 85% (Ray)
+    pub const YANG3_START_PRICE: u128 = 1000 * WAD_ONE; // 1_000 (Wad)
+    pub const YANG3_BASE_RATE: u128 = (2 * RAY_PERCENT) + (RAY_PERCENT / 2); // 2.5% (Ray)
 
     pub const INITIAL_YANG_AMT: u128 = 0;
 
-    pub const TROVE1_YANG1_DEPOSIT: u128 = 5000000000000000000; // 5 (Wad)
-    pub const TROVE1_YANG2_DEPOSIT: u128 = 8000000000000000000; // 8 (Wad)
-    pub const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
-    pub const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
+    pub const TROVE1_YANG1_DEPOSIT: u128 = 5 * WAD_ONE; // 5 (Wad)
+    pub const TROVE1_YANG2_DEPOSIT: u128 = 8 * WAD_ONE; // 8 (Wad)
+    pub const TROVE1_YANG3_DEPOSIT: u128 = 6 * WAD_ONE; // 6 (Wad)
+    pub const TROVE1_FORGE_AMT: u128 = 3000 * WAD_ONE; // 3_000 (Wad)
 
-    pub const WHALE_TROVE_YANG1_DEPOSIT: u128 = 100000000000000000000; // 100 (wad)
-    pub const WHALE_TROVE_FORGE_AMT: u128 = 10000000000000000000000; // 10,000 (wad)
+    pub const WHALE_TROVE_YANG1_DEPOSIT: u128 = 100 * WAD_ONE; // 100 (wad)
+    pub const WHALE_TROVE_FORGE_AMT: u128 = 10000 * WAD_ONE; // 10,000 (wad)
 
-    pub const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500000000000000000000; // 7500 (wad)
+    pub const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500 * WAD_ONE; // 7500 (wad)
 
     //
     // Address constants

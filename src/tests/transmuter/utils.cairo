@@ -14,7 +14,7 @@ pub mod transmuter_utils {
         stop_cheat_caller_address,
     };
     use starknet::ContractAddress;
-    use wadray::Wad;
+    use wadray::{WAD_ONE, Wad};
 
     #[derive(Copy, Drop)]
     pub struct TransmuterTestConfig {
@@ -26,13 +26,13 @@ pub mod transmuter_utils {
     // Constants
 
     // 1_000_000 (Wad)
-    pub const INITIAL_CEILING: u128 = 1000000000000000000000000;
+    pub const INITIAL_CEILING: u128 = 1000000 * WAD_ONE;
 
     // 20_000_000 (Wad)
-    pub const START_TOTAL_YIN: u128 = 20000000000000000000000000;
+    pub const START_TOTAL_YIN: u128 = 20000000 * WAD_ONE;
 
     // 2_000_000 (Wad)
-    pub const MOCK_WAD_USD_TOTAL: u128 = 2000000000000000000000000;
+    pub const MOCK_WAD_USD_TOTAL: u128 = 2000000 * WAD_ONE;
 
     // 2_000_000 (6 decimals)
     pub const MOCK_NONWAD_USD_TOTAL: u128 = 2000000000000;

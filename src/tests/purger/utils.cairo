@@ -59,10 +59,10 @@ pub mod purger_utils {
     // Constants
     //
 
-    pub const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
-    pub const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
+    pub const SEARCHER_YIN: u128 = 10000 * WAD_ONE; // 10_000 (Wad)
+    pub const TARGET_TROVE_YIN: u128 = 1000 * WAD_ONE; // 1000 (Wad)
 
-    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
+    pub const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2 * WAD_ONE; // 2 (Wad) - ETH
     pub const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
     //

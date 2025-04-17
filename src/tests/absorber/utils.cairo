@@ -57,10 +57,10 @@ pub mod absorber_utils {
     // Constants
     //
 
-    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
+    pub const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000 * WAD_ONE; // 100_000 (Wad)
 
-    pub const OPUS_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-    pub const veOPUS_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
+    pub const OPUS_BLESS_AMT: u128 = 1000 * WAD_ONE; // 1_000 (Wad)
+    pub const veOPUS_BLESS_AMT: u128 = 990 * WAD_ONE; // 990 (Wad)
 
     #[inline(always)]
     pub fn provider_asset_amts() -> Span<u128> {

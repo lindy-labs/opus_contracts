@@ -11,8 +11,8 @@ pub mod flash_mint_utils {
     use starknet::ContractAddress;
     use wadray::WAD_ONE;
 
-    pub const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
-    pub const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
+    pub const YIN_TOTAL_SUPPLY: u128 = 20000 * WAD_ONE; // 20000 (Wad)
+    pub const DEFAULT_MINT_AMOUNT: u256 = 500 * WAD_ONE; // 500 (Wad)
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]

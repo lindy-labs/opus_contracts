@@ -37,8 +37,8 @@ pub mod seer_utils {
     // Constants
     //
 
-    pub const ETH_INIT_PRICE: u128 = 1888 * WAD_ONE; //000000000000000000; // Wad scale
-    pub const WBTC_INIT_PRICE: u128 = 20000000000000000000000; // Wad scale
+    pub const ETH_INIT_PRICE: u128 = 1888 * WAD_ONE; // 1888 (Wad)
+    pub const WBTC_INIT_PRICE: u128 = 20000 * WAD_ONE; // 20_000 (Wad)
 
     pub const UPDATE_FREQUENCY: u64 = 30 * 60; // 30 minutes
 
