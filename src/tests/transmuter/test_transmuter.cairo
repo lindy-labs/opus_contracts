@@ -55,7 +55,7 @@ mod test_transmuter {
         };
         let admin: ContractAddress = transmuter_utils::ADMIN;
         assert(transmuter_ac.get_admin() == admin, 'wrong admin');
-        assert(transmuter_ac.get_roles(admin) == transmuter_roles::default_admin_role(), 'wrong admin roles');
+        assert(transmuter_ac.get_roles(admin) == transmuter_roles::ADMIN, 'wrong admin roles');
 
         let expected_events = array![
             (

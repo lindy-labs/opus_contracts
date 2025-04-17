@@ -68,7 +68,7 @@ pub mod ekubo {
         twap_duration: u64,
         quote_tokens: Span<ContractAddress>,
     ) {
-        self.access_control.initializer(admin, Option::Some(ekubo_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(ekubo_roles::ADMIN));
 
         self.ekubo_oracle_adapter.set_oracle_extension(oracle_extension);
         self.ekubo_oracle_adapter.set_twap_duration(twap_duration);

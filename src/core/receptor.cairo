@@ -98,7 +98,7 @@ pub mod receptor {
         twap_duration: u64,
         quote_tokens: Span<ContractAddress>,
     ) {
-        self.access_control.initializer(admin, Option::Some(receptor_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(receptor_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
 

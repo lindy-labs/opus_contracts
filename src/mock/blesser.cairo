@@ -37,7 +37,7 @@ mod blesser {
         bless_amt: u128,
     ) {
         self.access_control.initializer(admin, Option::None);
-        self.access_control.grant_role_helper(blesser_roles::default_admin_role(), absorber);
+        self.access_control.grant_role_helper(blesser_roles::ADMIN, absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
         self.absorber.write(absorber);

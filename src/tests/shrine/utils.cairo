@@ -157,7 +157,7 @@ pub mod shrine_utils {
 
     pub fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         start_cheat_caller_address(shrine_addr, ADMIN);
-        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(shrine_roles::all_roles(), user);
+        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(shrine_roles::ALL_ROLES, user);
         stop_cheat_caller_address(shrine_addr);
     }
 

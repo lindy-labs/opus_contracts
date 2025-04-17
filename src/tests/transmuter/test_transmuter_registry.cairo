@@ -23,7 +23,7 @@ mod test_transmuter_registry {
         };
         let admin: ContractAddress = transmuter_utils::ADMIN;
         assert(registry_ac.get_admin() == admin, 'wrong admin');
-        assert(registry_ac.get_roles(admin) == transmuter_registry_roles::default_admin_role(), 'wrong admin roles');
+        assert(registry_ac.get_roles(admin) == transmuter_registry_roles::ADMIN, 'wrong admin roles');
     }
 
     //

@@ -123,7 +123,7 @@ pub mod pragma {
         freshness_threshold: u64,
         sources_threshold: u32,
     ) {
-        self.access_control.initializer(admin, Option::Some(pragma_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(pragma_roles::ADMIN));
 
         // init storage
         self.spot_oracle.write(IPragmaSpotOracleDispatcher { contract_address: spot_oracle });

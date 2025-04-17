@@ -30,7 +30,7 @@ mod test_receptor {
         let receptor_ac = IAccessControlDispatcher { contract_address: receptor.contract_address };
         let admin = shrine_utils::ADMIN;
         assert(receptor_ac.get_admin() == admin, 'wrong admin');
-        assert(receptor_ac.get_roles(admin) == receptor_roles::default_admin_role(), 'wrong role');
+        assert(receptor_ac.get_roles(admin) == receptor_roles::ADMIN, 'wrong role');
 
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
         assert_eq!(

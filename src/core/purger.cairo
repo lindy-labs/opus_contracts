@@ -139,7 +139,7 @@ pub mod purger {
         absorber: ContractAddress,
         seer: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(purger_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(purger_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });

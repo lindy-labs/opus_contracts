@@ -80,7 +80,7 @@ pub mod seer_utils {
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
         start_cheat_caller_address(shrine, shrine_utils::ADMIN);
-        shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
+        shrine_ac.grant_role(shrine_roles::SEER, seer_addr);
         stop_cheat_caller_address(shrine);
 
         SeerTestConfig {
@@ -107,7 +107,7 @@ pub mod seer_utils {
         // Allow Seer to advance Shrine
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine };
         start_cheat_caller_address(shrine, shrine_utils::ADMIN);
-        shrine_ac.grant_role(shrine_roles::seer(), seer_addr);
+        shrine_ac.grant_role(shrine_roles::SEER, seer_addr);
         stop_cheat_caller_address(shrine);
 
         ISeerDispatcher { contract_address: seer_addr }

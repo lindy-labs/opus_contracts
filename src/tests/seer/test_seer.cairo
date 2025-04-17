@@ -38,7 +38,7 @@ mod test_seer {
         let mut spy = spy_events();
         let SeerTestConfig { seer, .. } = seer_utils::deploy_seer(Option::None, Option::None);
         let seer_ac = IAccessControlDispatcher { contract_address: seer.contract_address };
-        assert(seer_ac.get_roles(seer_utils::ADMIN) == seer_roles::default_admin_role(), 'wrong role for admin');
+        assert(seer_ac.get_roles(seer_utils::ADMIN) == seer_roles::ADMIN, 'wrong role for admin');
         assert(seer.get_update_frequency() == seer_utils::UPDATE_FREQUENCY, 'wrong update frequency');
         assert(seer.get_oracles().len() == 0, 'wrong number of oracles');
 

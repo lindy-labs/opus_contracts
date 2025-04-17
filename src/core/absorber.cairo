@@ -230,7 +230,7 @@ pub mod absorber {
     fn constructor(
         ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(absorber_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(absorber_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });

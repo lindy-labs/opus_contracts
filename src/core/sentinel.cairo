@@ -99,7 +99,7 @@ pub mod sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        self.access_control.initializer(admin, Option::Some(sentinel_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(sentinel_roles::ADMIN));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 

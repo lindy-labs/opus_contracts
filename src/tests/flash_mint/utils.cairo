@@ -29,7 +29,7 @@ pub mod flash_mint_utils {
         // Grant flashmint contract the FLASHMINT role
         start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
-        shrine_accesscontrol.grant_role(shrine_roles::flash_mint(), flashmint_addr);
+        shrine_accesscontrol.grant_role(shrine_roles::FLASH_MINT, flashmint_addr);
         stop_cheat_caller_address(shrine);
         flashmint
     }

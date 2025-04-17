@@ -117,7 +117,7 @@ pub mod seer {
         sentinel: ContractAddress,
         update_frequency: u64,
     ) {
-        self.access_control.initializer(admin, Option::Some(seer_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(seer_roles::ADMIN));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.update_frequency.write(update_frequency);

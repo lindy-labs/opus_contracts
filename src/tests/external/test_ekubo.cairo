@@ -34,7 +34,7 @@ mod test_ekubo {
         let admin: ContractAddress = ekubo_utils::ADMIN;
 
         assert(ekubo_ac.get_admin() == admin, 'wrong admin');
-        assert(ekubo_ac.get_roles(admin) == ekubo_roles::default_admin_role(), 'wrong admin role');
+        assert(ekubo_ac.get_roles(admin) == ekubo_roles::ADMIN, 'wrong admin role');
 
         assert(oracle.get_name() == 'Ekubo', 'wrong name');
         let oracles: Span<ContractAddress> = array![mock_ekubo.contract_address].span();

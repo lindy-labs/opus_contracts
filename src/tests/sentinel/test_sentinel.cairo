@@ -60,10 +60,7 @@ mod test_sentinel {
 
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         assert(sentinel_ac.get_admin() == sentinel_utils::ADMIN, 'Wrong admin');
-        assert(
-            sentinel_ac.get_roles(sentinel_utils::ADMIN) == sentinel_roles::default_admin_role(),
-            'Wrong roles for admin',
-        );
+        assert(sentinel_ac.get_roles(sentinel_utils::ADMIN) == sentinel_roles::ADMIN, 'Wrong roles for admin');
 
         // Checking that the gates were set up correctly
 

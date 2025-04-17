@@ -49,7 +49,7 @@ pub mod transmuter_registry {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress) {
-        self.access_control.initializer(admin, Option::Some(transmuter_registry_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_registry_roles::ADMIN));
     }
 
     //

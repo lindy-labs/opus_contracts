@@ -52,13 +52,13 @@ pub mod caretaker_utils {
         // allow Caretaker to do its business with Shrine
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         IAccessControlDispatcher { contract_address: shrine.contract_address }
-            .grant_role(shrine_roles::caretaker(), caretaker);
+            .grant_role(shrine_roles::CARETAKER, caretaker);
         stop_cheat_caller_address(shrine.contract_address);
 
         // allow Caretaker to call exit in Sentinel during shut
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         IAccessControlDispatcher { contract_address: sentinel.contract_address }
-            .grant_role(sentinel_roles::caretaker(), caretaker);
+            .grant_role(sentinel_roles::CARETAKER, caretaker);
 
         stop_cheat_caller_address(sentinel.contract_address);
 

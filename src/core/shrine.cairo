@@ -437,7 +437,7 @@ pub mod shrine {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, name: felt252, symbol: felt252) {
-        self.access_control.initializer(admin, Option::Some(shrine_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(shrine_roles::ADMIN));
 
         self.is_live.write(true);
 

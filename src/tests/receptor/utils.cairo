@@ -88,7 +88,7 @@ pub mod receptor_utils {
         // Grant UPDATE_YIN_SPOT_PRICE role to receptor contract
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        shrine_accesscontrol.grant_role(shrine_roles::receptor(), receptor_addr);
+        shrine_accesscontrol.grant_role(shrine_roles::RECEPTOR, receptor_addr);
         stop_cheat_caller_address(shrine.contract_address);
 
         ReceptorTestConfig {

@@ -70,7 +70,7 @@ pub mod frontend_data_provider {
         abbot: ContractAddress,
         purger: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(frontend_data_provider_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(frontend_data_provider_roles::ADMIN));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });

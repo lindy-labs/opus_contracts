@@ -113,13 +113,13 @@ pub mod abbot_utils {
         // Grant Shrine roles to Abbot
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
+        shrine_ac.grant_role(shrine_roles::ABBOT, abbot_addr);
         stop_cheat_caller_address(shrine.contract_address);
 
         // Grant Sentinel roles to Abbot
         start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
+        sentinel_ac.grant_role(sentinel_roles::ABBOT, abbot_addr);
         stop_cheat_caller_address(sentinel.contract_address);
 
         AbbotTestConfig { shrine, sentinel, abbot, yangs, gates }

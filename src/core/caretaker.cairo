@@ -102,7 +102,7 @@ pub mod caretaker {
         sentinel: ContractAddress,
         equalizer: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(caretaker_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(caretaker_roles::ADMIN));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });

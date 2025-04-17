@@ -38,7 +38,7 @@ mod test_purger {
         let PurgerTestConfig { purger, .. } = purger_utils::purger_deploy(Option::None);
 
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
-        assert(purger_ac.get_roles(purger_utils::ADMIN) == purger_roles::default_admin_role(), 'wrong role for admin');
+        assert(purger_ac.get_roles(purger_utils::ADMIN) == purger_roles::ADMIN, 'wrong role for admin');
 
         let expected_events = array![
             (

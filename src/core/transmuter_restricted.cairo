@@ -182,7 +182,7 @@ pub mod transmuter_restricted {
         receiver: ContractAddress,
         ceiling: Wad,
     ) {
-        self.access_control.initializer(admin, Option::Some(transmuter_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.asset.write(IERC20Dispatcher { contract_address: asset });

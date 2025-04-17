@@ -92,7 +92,7 @@ pub mod controller {
         alpha_i: u8,
         beta_i: u8,
     ) {
-        self.access_control.initializer(admin, Option::Some(controller_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(controller_roles::ADMIN));
 
         // Setting `i_term_last_updated` to the current timestamp to
         // ensure that the integral term is correctly updated

@@ -74,14 +74,14 @@ pub mod sentinel_utils {
 
         // Grant `abbot` role to `mock_abbot`
         start_cheat_caller_address(sentinel_addr, ADMIN);
-        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::abbot(), MOCK_ABBOT);
+        IAccessControlDispatcher { contract_address: sentinel_addr }.grant_role(sentinel_roles::ABBOT, MOCK_ABBOT);
         stop_cheat_caller_address(sentinel_addr);
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         start_cheat_caller_address(shrine_addr, shrine_utils::ADMIN);
 
-        shrine_ac.grant_role(shrine_roles::sentinel(), sentinel_addr);
-        shrine_ac.grant_role(shrine_roles::abbot(), MOCK_ABBOT);
+        shrine_ac.grant_role(shrine_roles::SENTINEL, sentinel_addr);
+        shrine_ac.grant_role(shrine_roles::ABBOT, MOCK_ABBOT);
 
         stop_cheat_caller_address(shrine_addr);
 

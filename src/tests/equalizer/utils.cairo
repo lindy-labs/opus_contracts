@@ -125,12 +125,12 @@ pub mod equalizer_utils {
 
         let equalizer_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: equalizer_addr };
         start_cheat_caller_address(equalizer_addr, admin);
-        equalizer_ac.grant_role(equalizer_roles::default_admin_role(), admin);
+        equalizer_ac.grant_role(equalizer_roles::ADMIN, admin);
         stop_cheat_caller_address(equalizer_addr);
 
         start_cheat_caller_address(shrine, admin);
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
-        shrine_ac.grant_role(shrine_roles::equalizer(), equalizer_addr);
+        shrine_ac.grant_role(shrine_roles::EQUALIZER, equalizer_addr);
         stop_cheat_caller_address(shrine);
 
         EqualizerTestConfig {

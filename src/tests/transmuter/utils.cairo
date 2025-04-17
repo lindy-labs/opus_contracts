@@ -68,7 +68,7 @@ pub mod transmuter_utils {
 
         start_cheat_caller_address(shrine, shrine_utils::ADMIN);
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine };
-        shrine_ac.grant_role(shrine_roles::transmuter(), transmuter_addr);
+        shrine_ac.grant_role(shrine_roles::TRANSMUTER, transmuter_addr);
 
         ITransmuterDispatcher { contract_address: transmuter_addr }
     }

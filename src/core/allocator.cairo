@@ -77,7 +77,7 @@ pub mod allocator {
     fn constructor(
         ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>,
     ) {
-        self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(allocator_roles::ADMIN));
 
         self.set_allocation_helper(recipients, percentages);
     }

@@ -35,10 +35,7 @@ mod test_absorber {
         assert(!absorber.is_operational(), 'should not be operational');
 
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
-        assert(
-            absorber_ac.get_roles(absorber_utils::ADMIN) == absorber_roles::default_admin_role(),
-            'wrong role for admin',
-        );
+        assert(absorber_ac.get_roles(absorber_utils::ADMIN) == absorber_roles::ADMIN, 'wrong role for admin');
     }
 
     //

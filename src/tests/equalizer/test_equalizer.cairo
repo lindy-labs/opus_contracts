@@ -27,7 +27,7 @@ mod test_equalizer {
         let equalizer_ac = IAccessControlDispatcher { contract_address: equalizer.contract_address };
         let admin = shrine_utils::ADMIN;
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
-        assert(equalizer_ac.get_roles(admin) == equalizer_roles::default_admin_role(), 'wrong role');
+        assert(equalizer_ac.get_roles(admin) == equalizer_roles::ADMIN, 'wrong role');
         assert(equalizer_ac.has_role(equalizer_roles::SET_ALLOCATOR, admin), 'role not granted');
     }
 

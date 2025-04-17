@@ -52,7 +52,7 @@ pub mod controller_utils {
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         start_cheat_caller_address(shrine_addr, shrine_utils::ADMIN);
-        shrine_ac.grant_role(shrine_roles::controller(), controller_addr);
+        shrine_ac.grant_role(shrine_roles::CONTROLLER, controller_addr);
         stop_cheat_caller_address(shrine_addr);
 
         ControllerTestConfig {
