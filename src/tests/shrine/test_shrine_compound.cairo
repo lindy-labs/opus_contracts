@@ -902,7 +902,7 @@ mod test_shrine_compound {
                 let era: u32 = i.try_into().unwrap() + 1;
                 let mut expected_base_rates: Span<Ray> = *yang_base_rates_history_to_compound_copy.at(era);
                 for yang in yangs {
-                    let rate: Ray = shrine.get_yang_rate(*yang_addr, expected_era);
+                    let rate: Ray = shrine.get_yang_rate(*yang, expected_era);
                     let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                     assert(rate == expected_rate, 'wrong base rate');
                 }

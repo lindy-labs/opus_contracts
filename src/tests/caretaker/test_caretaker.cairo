@@ -114,7 +114,7 @@ mod test_caretaker {
 
         // assert that protocol owned yangs have been rebased
         let mut expected_after_yang_total_amts: Span<Wad> = expected_after_yang_total_amts.span();
-        for yang in yangs_copy {
+        for yang in yangs {
             assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
 
             let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);

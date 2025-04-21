@@ -689,6 +689,7 @@ pub mod purger_utils {
             let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
             sum = sum + yang_price * *amounts.pop_front().unwrap();
         }
+        sum
     }
 
     // Helper function to deserialize the `Purged` event specifically for the purger

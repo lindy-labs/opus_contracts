@@ -324,6 +324,8 @@ pub fn get_token_balances(tokens: Span<ContractAddress>, addresses: Span<Contrac
         }
         balances.append(yang_balances.span());
     }
+
+    balances.span()
 }
 
 // Fetches the ERC20 asset balance of a given address, and
@@ -352,8 +354,8 @@ pub fn assert_asset_balances_equalish(a: Span<AssetBalance>, mut b: Span<AssetBa
 
     for i in a {
         let b: AssetBalance = *b.pop_front().unwrap();
-        assert(*a.address == b.address, 'wrong asset address');
-        assert_equalish(*a.amount, b.amount, error, message);
+        assert(*i.address == b.address, 'wrong asset address');
+        assert_equalish(*i.amount, b.amount, error, message);
     }
 }
 
