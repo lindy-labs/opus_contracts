@@ -769,15 +769,13 @@ pub mod shrine {
             // ALL yangs must have a new rate value. A new rate value of `USE_PREV_ERA_BASE_RATE` means the
             // yang's rate isn't being updated, and so we get the previous era's value.
             let mut yangs_copy = yangs;
-            // TODO: temporary workaround for issue with borrowing snapshots in loops
-            let self_snap = @self;
             for rate in new_rates {
-                let current_yang_id: u32 = self_snap.get_valid_yang_id(*yangs_copy.pop_front().unwrap());
+                let current_yang_id: u32 = self.get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                 if (*rate).into() == USE_PREV_ERA_BASE_RATE {
                     // Setting new era rate to the previous era's rate
                     self
                         .yang_rates
-                        .write((current_yang_id, rate_era), self_snap.yang_rates.read((current_yang_id, rate_era - 1)));
+                        .write((current_yang_id, rate_era), self.yang_rates.read((current_yang_id, rate_era - 1)));
                 } else {
                     assert_rate_is_valid(*rate);
                     self.yang_rates.write((current_yang_id, rate_era), *rate);
@@ -1784,9 +1782,6 @@ pub mod shrine {
             pct_value_to_redistribute: Ray,
             current_interval: u64,
         ) {
-            // TODO: temporary workaround for issue with borrowing snapshots in loops
-            let self_snap = @self;
-
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (_, trove_value) = self.get_threshold_and_value(trove_yang_balances, current_interval);
             let trove_value_to_redistribute: Wad = wadray::rmul_wr(trove_value, pct_value_to_redistribute);
@@ -1819,7 +1814,7 @@ pub mod shrine {
                 // rounding of dust amounts of debt.
                 // Note that if yang is delisted, its price will be zero, and therefore no debt will be
                 // redistributed for this yang because it does not account for any of the trove's value.
-                let (redistributed_yang_price, _, _) = self_snap
+                let (redistributed_yang_price, _, _) = self
                     .get_recent_price_from(yang_id_to_redistribute, current_interval);
 
                 let mut raw_debt_to_distribute_for_yang: Wad = Zero::zero();
@@ -1862,7 +1857,7 @@ pub mod shrine {
                 //     occurs);
                 // (2) adding the trove's debt to the protocol owned troves' debt
                 let is_ordinary_redistribution: bool = (recipient_yang_amt >= MIN_RECIPIENT_YANG_AMT.into())
-                    && !self_snap.is_delisted(yang_id_to_redistribute);
+                    && !self.is_delisted(yang_id_to_redistribute);
 
                 let mut updated_trove_yang_balance: Wad = trove_yang_amt - yang_amt_to_redistribute;
                 let mut updated_yang_total: Wad = yang_total;
