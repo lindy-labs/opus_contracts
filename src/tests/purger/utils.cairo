@@ -676,6 +676,8 @@ pub mod purger_utils {
 
             let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
+            println!("after asset bal: {}", after_asset_bal);
+            println!("expected: {}", expected_after_asset_bal);
             common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
         };
     }
