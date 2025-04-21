@@ -71,14 +71,12 @@ pub trait SpanTraitExt<T> {
 
 pub impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
     fn contains<impl TPartialEq: PartialEq<T>>(mut self: Span<T>, item: T) -> bool {
-        loop {
-            match self.pop_front() {
-                Option::Some(v) => { if *v == item {
-                    break true;
-                } },
-                Option::None => { break false; },
-            };
+        for v in self {
+            if *v == item {
+                return true;
+            }
         }
+        false
     }
 }
 
@@ -108,22 +106,16 @@ pub impl RewardPartialEq of PartialEq<Reward> {
 
 // Helper function to advance timestamp by the given intervals
 pub fn advance_intervals_and_refresh_prices_and_multiplier(
-    shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, intervals: u64,
+    shrine: IShrineDispatcher, yangs: Span<ContractAddress>, intervals: u64,
 ) {
     // Getting the yang price and interval so that they can be updated after the warp to reduce recursion
     let (current_multiplier, _, _) = shrine.get_current_multiplier();
 
     let mut yang_prices = array![];
-    let mut yangs_copy = yangs;
 
-    loop {
-        match yangs_copy.pop_front() {
-            Option::Some(yang) => {
-                let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                yang_prices.append(current_yang_price);
-            },
-            Option::None => { break; },
-        };
+    for yang in yangs {
+        let (current_yang_price, _, _) = shrine.get_current_yang_price(*yang);
+        yang_prices.append(current_yang_price);
     }
 
     start_cheat_block_timestamp_global(get_block_timestamp() + (intervals * shrine::TIME_INTERVAL));
@@ -131,14 +123,9 @@ pub fn advance_intervals_and_refresh_prices_and_multiplier(
     // Updating prices and multiplier
     start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
     shrine.set_multiplier(current_multiplier);
-    loop {
-        match yangs.pop_front() {
-            Option::Some(yang) => {
-                let yang_price = yang_prices.pop_front().unwrap();
-                shrine.advance(*yang, yang_price);
-            },
-            Option::None => { break; },
-        };
+    for yang in yangs {
+        let yang_price = yang_prices.pop_front().unwrap();
+        shrine.advance(*yang, yang_price);
     }
     stop_cheat_caller_address(shrine.contract_address);
 }
@@ -261,18 +248,13 @@ pub fn deploy_vault(
 }
 
 // Helper function to fund a user account with yang assets
-pub fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
-    loop {
-        match yangs.pop_front() {
-            Option::Some(yang) => {
-                let amt = *asset_amts.pop_front().unwrap();
-                if amt.is_zero() {
-                    continue;
-                }
-                IMintableDispatcher { contract_address: *yang }.mint(user, amt.into());
-            },
-            Option::None => { break; },
-        };
+pub fn fund_user(user: ContractAddress, yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
+    for yang in yangs {
+        let amt = *asset_amts.pop_front().unwrap();
+        if amt.is_zero() {
+            continue;
+        }
+        IMintableDispatcher { contract_address: *yang }.mint(user, amt.into());
     };
 }
 
@@ -308,17 +290,10 @@ pub fn open_trove_helper(
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad,
 ) -> u64 {
-    let mut yangs_copy = yangs;
-
-    loop {
-        match yangs_copy.pop_front() {
-            Option::Some(yang) => {
-                // Approve Gate to transfer from user
-                let gate: IGateDispatcher = *gates.pop_front().unwrap();
-                sentinel_utils::approve_max(gate, *yang, user);
-            },
-            Option::None => { break; },
-        };
+    for yang in yangs {
+        // Approve Gate to transfer from user
+        let gate: IGateDispatcher = *gates.pop_front().unwrap();
+        sentinel_utils::approve_max(gate, *yang, user);
     }
 
     start_cheat_caller_address(abbot.contract_address, user);
@@ -336,29 +311,18 @@ pub fn open_trove_helper(
 // token addresses and user addresses.
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
-pub fn get_token_balances(mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
+pub fn get_token_balances(tokens: Span<ContractAddress>, addresses: Span<ContractAddress>) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
-    loop {
-        match tokens.pop_front() {
-            Option::Some(token) => {
-                let token: IERC20Dispatcher = IERC20Dispatcher { contract_address: *token };
+    for token in tokens {
+        let token: IERC20Dispatcher = IERC20Dispatcher { contract_address: *token };
 
-                let mut yang_balances: Array<u128> = ArrayTrait::new();
-                let mut addresses_copy = addresses;
-                loop {
-                    match addresses_copy.pop_front() {
-                        Option::Some(address) => {
-                            let bal: u128 = token.balance_of(*address).try_into().unwrap();
-                            yang_balances.append(bal);
-                        },
-                        Option::None => { break; },
-                    };
-                }
-                balances.append(yang_balances.span());
-            },
-            Option::None => { break balances.span(); },
-        };
+        let mut yang_balances: Array<u128> = ArrayTrait::new();
+        for address in addresses {
+            let bal: u128 = token.balance_of(*address).try_into().unwrap();
+            yang_balances.append(bal);
+        }
+        balances.append(yang_balances.span());
     }
 }
 
@@ -383,21 +347,14 @@ pub fn assert_equalish<T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, im
     }
 }
 
-pub fn assert_asset_balances_equalish(
-    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252,
-) {
+pub fn assert_asset_balances_equalish(a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252) {
     assert(a.len() == b.len(), message);
 
-    loop {
-        match a.pop_front() {
-            Option::Some(a) => {
-                let b: AssetBalance = *b.pop_front().unwrap();
-                assert(*a.address == b.address, 'wrong asset address');
-                assert_equalish(*a.amount, b.amount, error, message);
-            },
-            Option::None => { break; },
-        };
-    };
+    for i in a {
+        let b: AssetBalance = *b.pop_front().unwrap();
+        assert(*a.address == b.address, 'wrong asset address');
+        assert_equalish(*a.amount, b.amount, error, message);
+    }
 }
 
 // Helper to assert that an event was not emitted at all by checking the event name only
@@ -405,11 +362,7 @@ pub fn assert_asset_balances_equalish(
 pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, Event)>, event_selector: felt252) {
     let end_idx = emitted_events.len();
     let mut current_idx = 0;
-    loop {
-        if current_idx == end_idx {
-            break;
-        }
-
+    while current_idx != end_idx {
         let (_, raw_event) = emitted_events.at(current_idx);
 
         assert(*raw_event.keys.at(0) != event_selector, 'event name emitted');
@@ -422,33 +375,23 @@ pub fn assert_event_not_emitted_by_name(emitted_events: Span<(ContractAddress, E
 // Helpers - Array functions
 //
 
-pub fn combine_assets_and_amts(mut assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
+pub fn combine_assets_and_amts(assets: Span<ContractAddress>, mut amts: Span<u128>) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
-    loop {
-        match assets.pop_front() {
-            Option::Some(asset) => {
-                asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap() });
-            },
-            Option::None => { break; },
-        };
+    for asset in assets {
+        asset_balances.append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap() });
     }
 
     asset_balances.span()
 }
 
 // Helper function to multiply an array of values by a given percentage
-pub fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+pub fn scale_span_by_pct(asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     let mut split_asset_amts: Array<u128> = ArrayTrait::new();
-    loop {
-        match asset_amts.pop_front() {
-            Option::Some(asset_amt) => {
-                // Convert to Wad for fixed point operations
-                let asset_amt: Wad = (*asset_amt).into();
-                split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).into());
-            },
-            Option::None => { break; },
-        };
+    for asset_amt in asset_amts {
+        // Convert to Wad for fixed point operations
+        let asset_amt: Wad = (*asset_amt).into();
+        split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).into());
     }
 
     split_asset_amts.span()
@@ -456,18 +399,13 @@ pub fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
 
 // Helper function to combine two arrays of equal lengths into a single array by doing element-wise addition.
 // Assumes the arrays are ordered identically.
-pub fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
+pub fn combine_spans(lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     assert(lhs.len() == rhs.len(), 'combining diff array lengths');
     let mut combined_asset_amts: Array<u128> = ArrayTrait::new();
 
-    loop {
-        match lhs.pop_front() {
-            Option::Some(asset_amt) => {
-                // Convert to Wad for fixed point operations
-                combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
-            },
-            Option::None => { break; },
-        };
+    for asset_amt in lhs {
+        // Convert to Wad for fixed point operations
+        combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
     }
 
     combined_asset_amts.span()

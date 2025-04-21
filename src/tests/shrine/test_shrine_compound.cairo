@@ -829,10 +829,7 @@ mod test_shrine_compound {
         // Adding zero as the first interval since that's when the initial base rates were first added in `add_yang`
         let mut rate_update_intervals: Array<u64> = array![0];
         let mut i = 0;
-        loop {
-            if i == num_base_rate_updates {
-                break;
-            }
+        while i != num_base_rate_updates {
             let rate_update_interval: u64 = start_interval + (i + 1) * BASE_RATE_UPDATE_SPACING;
             rate_update_intervals.append(rate_update_interval);
             i += 1;
@@ -860,13 +857,11 @@ mod test_shrine_compound {
 
         let mut i = 0;
         let mut era_start_interval: u64 = start_interval;
-        loop {
-            // We perform an extra iteration here to test the last rate era by advancing the prices.
-            // Otherwise, if the last interval is also the start of a new rate era, we would not be able to test it.
-            if i == num_base_rate_updates + 1 {
-                break;
-            }
 
+        // We perform an extra iteration here to test the last rate era by advancing the prices.
+        // Otherwise, if the last interval is also the start of a new rate era, we would not be able to test it.
+        let loop_end = num_base_rate_updates + 1;
+        while i != loop_end {
             // Fetch the latest yang prices
             let yang_prices: Span<Wad> = shrine_utils::get_yang_prices(shrine, yangs);
 
@@ -879,17 +874,11 @@ mod test_shrine_compound {
 
             // Calculate average price of yangs over the era for calculating the compounded interest
             let mut avg_yang_prices_for_era: Array<Wad> = ArrayTrait::new();
-            let mut yangs_copy = yangs;
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let yang_avg_price: Wad = shrine_utils::get_avg_yang_price(
-                            shrine, *yang, era_start_interval, era_end_interval,
-                        );
-                        avg_yang_prices_for_era.append(yang_avg_price);
-                    },
-                    Option::None => { break; },
-                };
+            for yang in yangs {
+                let yang_avg_price: Wad = shrine_utils::get_avg_yang_price(
+                    shrine, *yang, era_start_interval, era_end_interval,
+                );
+                avg_yang_prices_for_era.append(yang_avg_price);
             }
 
             avg_yang_prices_by_era.append(avg_yang_prices_for_era.span());
@@ -909,19 +898,13 @@ mod test_shrine_compound {
                 assert(shrine.get_current_rate_era() == expected_era, 'wrong rate era');
 
                 // Check that base rates are updated correctly
-                let mut yangs_copy = yangs;
                 // Offset by 1 to discount the initial
                 let era: u32 = i.try_into().unwrap() + 1;
                 let mut expected_base_rates: Span<Ray> = *yang_base_rates_history_to_compound_copy.at(era);
-                loop {
-                    match yangs_copy.pop_front() {
-                        Option::Some(yang_addr) => {
-                            let rate: Ray = shrine.get_yang_rate(*yang_addr, expected_era);
-                            let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
-                            assert(rate == expected_rate, 'wrong base rate');
-                        },
-                        Option::None => { break; },
-                    };
+                for yang in yangs {
+                    let rate: Ray = shrine.get_yang_rate(*yang_addr, expected_era);
+                    let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
+                    assert(rate == expected_rate, 'wrong base rate');
                 }
 
                 expected_events

@@ -83,16 +83,10 @@ mod test_caretaker {
         let y0_backing: Wad = ray_to_wad(wadray::wmul_wr(g0_before_balance, backing));
         let y1_backing: Wad = ray_to_wad(wadray::wmul_wr(g1_before_balance, backing));
 
-        let mut yangs_copy = yangs;
         let mut expected_after_yang_total_amts: Array<Wad> = ArrayTrait::new();
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    expected_after_yang_total_amts
-                        .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
-                },
-                Option::None => { break; },
-            };
+        for yang in yangs {
+            expected_after_yang_total_amts
+                .append(shrine.get_yang_total(*yang) - shrine.get_protocol_owned_yang_amt(*yang));
         }
 
         start_cheat_caller_address(caretaker.contract_address, caretaker_utils::ADMIN);
@@ -119,19 +113,13 @@ mod test_caretaker {
         common::assert_equalish(caretaker_y1_balance, y1_backing, tolerance, 'caretaker yang1 balance');
 
         // assert that protocol owned yangs have been rebased
-        let mut yangs_copy = yangs;
         let mut expected_after_yang_total_amts: Span<Wad> = expected_after_yang_total_amts.span();
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
+        for yang in yangs_copy {
+            assert(shrine.get_protocol_owned_yang_amt(*yang).is_zero(), 'yang not rebased');
 
-                    let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
-                    let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
-                    assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
-                },
-                Option::None => { break; },
-            };
+            let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
+            let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
+            assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
         }
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
@@ -398,17 +386,12 @@ mod test_caretaker {
         spy.assert_emitted(@expected_events);
 
         // assert that caretaker has no assets remaining
-        let mut caretaker_assets: Span<Span<u128>> = common::get_token_balances(
+        let caretaker_assets: Span<Span<u128>> = common::get_token_balances(
             yangs, array![caretaker.contract_address].span(),
         );
-        loop {
-            match caretaker_assets.pop_front() {
-                Option::Some(caretaker_asset_arr) => {
-                    let caretaker_asset: u128 = *caretaker_asset_arr[0];
-                    assert(caretaker_asset.is_zero(), 'caretaker asset should be 0');
-                },
-                Option::None => { break; },
-            };
+        for caretaker_asset_arr in caretaker_assets {
+            let caretaker_asset: u128 = *caretaker_asset_arr[0];
+            assert(caretaker_asset.is_zero(), 'caretaker asset should be 0');
         };
     }
 

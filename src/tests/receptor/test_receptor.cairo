@@ -172,15 +172,9 @@ mod test_receptor {
             .span();
         let error_margin: Wad = 200_u128.into();
 
-        let mut quotes_copy = quotes;
-        loop {
-            match quotes_copy.pop_front() {
-                Option::Some(quote) => {
-                    let expected: Wad = *expected_prices.pop_front().unwrap();
-                    common::assert_equalish(*quote, expected, error_margin, 'wrong quote');
-                },
-                Option::None => { break; },
-            };
+        for quote in quotes {
+            let expected: Wad = *expected_prices.pop_front().unwrap();
+            common::assert_equalish(*quote, expected, error_margin, 'wrong quote');
         }
 
         start_cheat_caller_address(receptor.contract_address, shrine_utils::ADMIN);

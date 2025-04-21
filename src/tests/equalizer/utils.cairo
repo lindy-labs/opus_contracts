@@ -78,22 +78,14 @@ pub mod equalizer_utils {
     ) -> IAllocatorDispatcher {
         let mut calldata: Array<felt252> = array![shrine_utils::ADMIN.into(), recipients.len().into()];
 
-        loop {
-            match recipients.pop_front() {
-                Option::Some(recipient) => { calldata.append((*recipient).into()); },
-                Option::None => { break; },
-            };
+        for recipient in recipients {
+            calldata.append((*recipient).into());
         }
 
         calldata.append(percentages.len().into());
-        loop {
-            match percentages.pop_front() {
-                Option::Some(percentage) => {
-                    let val: u128 = (*percentage).into();
-                    calldata.append(val.into());
-                },
-                Option::None => { break; },
-            };
+        for percentage in percentages {
+            let val: u128 = (*percentage).into();
+            calldata.append(val.into());
         }
 
         let allocator_class = match allocator_class {

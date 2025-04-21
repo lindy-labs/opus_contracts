@@ -89,11 +89,7 @@ mod test_equalizer {
 
         let mut loop_id = 5;
         let mut start_debt = debt_ceiling;
-        loop {
-            if loop_id.is_zero() {
-                break;
-            }
-
+        while loop_id != 0 {
             // accrue interest to exceed the debt ceiling
             common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
 
@@ -164,22 +160,16 @@ mod test_equalizer {
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
         let mut allocated = Zero::zero();
-        let mut percentages_copy = percentages;
-        loop {
-            match percentages_copy.pop_front() {
-                Option::Some(percentage) => {
-                    let expected_increment = wadray::rmul_rw(*percentage, surplus);
-                    // sanity check
-                    assert(expected_increment.is_non_zero(), 'increment is zero');
+        for percentage in percentages {
+            let expected_increment = wadray::rmul_rw(*percentage, surplus);
+            // sanity check
+            assert(expected_increment.is_non_zero(), 'increment is zero');
 
-                    let before_yin_bal = *before_yin_balances.pop_front().unwrap();
-                    let after_yin_bal = *after_yin_balances.pop_front().unwrap();
-                    assert(after_yin_bal == before_yin_bal + expected_increment.into(), 'wrong recipient balance');
+            let before_yin_bal = *before_yin_balances.pop_front().unwrap();
+            let after_yin_bal = *after_yin_balances.pop_front().unwrap();
+            assert(after_yin_bal == before_yin_bal + expected_increment.into(), 'wrong recipient balance');
 
-                    allocated += expected_increment;
-                },
-                Option::None => { break; },
-            };
+            allocated += expected_increment;
         }
         assert(surplus == allocated + shrine.get_yin(equalizer.contract_address), 'allocated mismatch');
 
@@ -219,52 +209,47 @@ mod test_equalizer {
 
         let admin: ContractAddress = shrine_utils::ADMIN;
 
-        loop {
-            match normalize_amts.pop_front() {
-                Option::Some(normalize_amt) => {
-                    // Create the deficit
-                    let deficit = -(inject_amt.into());
-                    start_cheat_caller_address(shrine.contract_address, admin);
-                    shrine.adjust_budget(deficit);
-                    assert(shrine.get_budget() == deficit, 'sanity check #1');
+        for normalize_amt in normalize_amts {
+            // Create the deficit
+            let deficit = -(inject_amt.into());
+            start_cheat_caller_address(shrine.contract_address, admin);
+            shrine.adjust_budget(deficit);
+            assert(shrine.get_budget() == deficit, 'sanity check #1');
 
-                    // Mint the deficit amount to the admin
-                    shrine.inject(admin, inject_amt);
-                    stop_cheat_caller_address(shrine.contract_address);
+            // Mint the deficit amount to the admin
+            shrine.inject(admin, inject_amt);
+            stop_cheat_caller_address(shrine.contract_address);
 
-                    start_cheat_caller_address(equalizer.contract_address, admin);
-                    let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
+            start_cheat_caller_address(equalizer.contract_address, admin);
+            let normalized_amt: Wad = equalizer.normalize(*normalize_amt);
 
-                    let expected_normalized_amt: Wad = min(inject_amt, *normalize_amt);
-                    assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
-                    assert(shrine.get_budget() == deficit + expected_normalized_amt.into(), 'wrong remaining deficit');
+            let expected_normalized_amt: Wad = min(inject_amt, *normalize_amt);
+            assert(normalized_amt == expected_normalized_amt, 'wrong normalized amt');
+            assert(shrine.get_budget() == deficit + expected_normalized_amt.into(), 'wrong remaining deficit');
 
-                    // Event is emitted only if non-zero amount of deficit was wiped
-                    if expected_normalized_amt.is_non_zero() {
-                        let expected_events = array![
-                            (
-                                equalizer.contract_address,
-                                equalizer_contract::Event::Normalize(
-                                    equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt },
-                                ),
-                            ),
-                        ];
-                        spy.assert_emitted(@expected_events);
-                    }
+            // Event is emitted only if non-zero amount of deficit was wiped
+            if expected_normalized_amt.is_non_zero() {
+                let expected_events = array![
+                    (
+                        equalizer.contract_address,
+                        equalizer_contract::Event::Normalize(
+                            equalizer_contract::Normalize { caller: admin, yin_amt: expected_normalized_amt },
+                        ),
+                    ),
+                ];
+                spy.assert_emitted(@expected_events);
+            }
 
-                    // Reset by normalizing all remaining deficit
-                    equalizer.normalize(Bounded::MAX);
+            // Reset by normalizing all remaining deficit
+            equalizer.normalize(Bounded::MAX);
 
-                    assert(shrine.get_budget().is_zero(), 'sanity check #2');
+            assert(shrine.get_budget().is_zero(), 'sanity check #2');
 
-                    // Assert nothing happens if we try to normalize again
-                    equalizer.normalize(Bounded::MAX);
+            // Assert nothing happens if we try to normalize again
+            equalizer.normalize(Bounded::MAX);
 
-                    assert(shrine.get_budget().is_zero(), 'sanity check #3');
-                    stop_cheat_caller_address(equalizer.contract_address);
-                },
-                Option::None => { break; },
-            };
+            assert(shrine.get_budget().is_zero(), 'sanity check #3');
+            stop_cheat_caller_address(equalizer.contract_address);
         };
     }
 

@@ -267,13 +267,8 @@ mod test_absorber {
         let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(provider);
 
         let mut preview_reward_assets_copy = preview_reward_assets;
-        loop {
-            match preview_reward_assets_copy.pop_front() {
-                Option::Some(reward_asset_balance) => {
-                    assert((*reward_asset_balance).amount.is_zero(), 'rewards should be zero');
-                },
-                Option::None => { break; },
-            };
+        for reward_asset_balance in preview_reward_assets_copy {
+            assert((*reward_asset_balance).amount.is_zero(), 'rewards should be zero');
         }
 
         absorber.reap();
@@ -348,7 +343,7 @@ mod test_absorber {
 
         // Parametrization so that the second provider action is performed
         // for each percentage
-        let mut percentages_to_drain: Array<Ray> = array![
+        let percentages_to_drain: Span<Ray> = array![
             21745231600000000000000000_u128.into(), // 2.17452316% (Ray)
             439210000000000000000000000_u128.into(), // 43.291% (Ray)
             RAY_ONE.into(), // 100% (Ray)
@@ -358,245 +353,230 @@ mod test_absorber {
             439210000000000000000000000_u128.into(), // 43.291% (Ray)
             RAY_ONE.into(), // 100% (Ray)
             21745231600000000000000000_u128.into() // 2.17452316% (Ray)
-        ];
+        ]
+            .span();
 
-        let mut percentages_to_drain = percentages_to_drain.span();
-
-        loop {
-            match percentages_to_drain.pop_front() {
-                Option::Some(percentage_to_drain) => {
-                    let (
-                        AbsorberTestConfig {
-                            shrine, sentinel, absorber, yangs, ..,
-                            }, AbsorberRewardsTestConfig {
-                            reward_tokens, reward_amts_per_blessing, provider, provided_amt, ..,
-                        },
-                    ) =
-                        absorber_utils::absorber_with_rewards_and_first_provider(
-                        Option::Some(classes),
-                    );
-                    let first_provided_amt = provided_amt;
-
-                    let mut spy = spy_events();
-
-                    assert(absorber.is_operational(), 'should be operational');
-
-                    // total shares is equal to amount provided
-                    let before_total_shares: Wad = first_provided_amt;
-                    let before_gate_balances: Span<u128> = absorber_utils::get_gate_balances(sentinel, yangs);
-
-                    let expected_absorption_id = 1;
-
-                    // Simulate absorption
-                    let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
-                    absorber_utils::simulate_update_with_pct_to_drain(
-                        shrine, absorber, yangs, first_update_assets, *percentage_to_drain,
-                    );
-
-                    let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, first_update_assets,
-                    );
-                    let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-                        reward_tokens, reward_amts_per_blessing,
-                    );
-                    let expected_recipient_shares = before_total_shares - absorber_contract::INITIAL_SHARES.into();
-                    let mut expected_events = array![
-                        (
-                            absorber.contract_address,
-                            absorber_contract::Event::Gain(
-                                absorber_contract::Gain {
-                                    assets: expected_absorbed_assets,
-                                    total_recipient_shares: expected_recipient_shares,
-                                    epoch: 1,
-                                    absorption_id: expected_absorption_id,
-                                },
-                            ),
-                        ),
-                        (
-                            absorber.contract_address,
-                            absorber_contract::Event::Bestow(
-                                absorber_contract::Bestow {
-                                    assets: expected_rewarded_assets,
-                                    total_recipient_shares: expected_recipient_shares,
-                                    epoch: 1,
-                                },
-                            ),
-                        ),
-                    ];
-
-                    let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
-
-                    let expected_epoch = if is_fully_absorbed {
-                        absorber_contract::FIRST_EPOCH + 1
-                    } else {
-                        absorber_contract::FIRST_EPOCH
-                    };
-                    let expected_total_shares: Wad = if is_fully_absorbed {
-                        Zero::zero()
-                    } else {
-                        first_provided_amt // total shares is equal to amount provided
-                    };
-
-                    if is_fully_absorbed {
-                        expected_events
-                            .append(
-                                (
-                                    absorber.contract_address,
-                                    absorber_contract::Event::EpochChanged(
-                                        absorber_contract::EpochChanged {
-                                            old_epoch: absorber_contract::FIRST_EPOCH, new_epoch: expected_epoch,
-                                        },
-                                    ),
-                                ),
-                            );
-                    }
-
-                    spy.assert_emitted(@expected_events);
-
-                    assert(absorber.get_absorptions_count() == expected_absorption_id, 'wrong absorption id');
-
-                    absorber_utils::assert_update_is_correct(
-                        sentinel,
-                        absorber,
-                        expected_absorption_id,
-                        expected_recipient_shares,
-                        yangs,
-                        first_update_assets,
-                        before_gate_balances,
-                    );
-
-                    let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-                    let absorption_epoch = absorber_contract::FIRST_EPOCH;
-                    absorber_utils::assert_reward_cumulative_updated(
-                        absorber,
-                        expected_recipient_shares,
-                        absorption_epoch,
-                        reward_tokens,
-                        reward_amts_per_blessing,
-                        expected_blessings_multiplier,
-                    );
-
-                    assert(
-                        absorber.get_total_shares_for_current_epoch() == expected_total_shares, 'wrong total shares',
-                    );
-                    assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
-
-                    let before_absorbed_bals = common::get_token_balances(yangs, provider.into());
-                    let before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
-                    let before_provider_yin_bal: Wad = shrine.get_yin(provider);
-                    let before_absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-
-                    // Perform three different actions
-                    // (in the following order if the number of test cases is a multiple of 3):
-                    // 1. `provide`
-                    // 2. `request` and `remove`
-                    // 3. `reap`
-                    // and check that the provider receives rewards and absorbed assets
-
-                    let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(provider);
-
-                    let mut remove_as_second_action: bool = false;
-                    let mut provide_as_second_action: bool = false;
-                    start_cheat_caller_address(absorber.contract_address, provider);
-                    if percentages_to_drain.len() % 3 == 2 {
-                        absorber.provide(WAD_SCALE.into());
-                        provide_as_second_action = true;
-                    } else if percentages_to_drain.len() % 3 == 1 {
-                        absorber.request();
-                        start_cheat_block_timestamp_global(
-                            get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK,
-                        );
-                        absorber.remove(Bounded::MAX);
-                        remove_as_second_action = true;
-                    } else {
-                        absorber.reap();
-                    }
-
-                    // One distribution from `update` and another distribution from
-                    // `reap`/`remove`/`provide` if not fully absorbed
-                    let expected_blessings_multiplier = if is_fully_absorbed {
-                        RAY_SCALE.into()
-                    } else {
-                        (RAY_SCALE * 2).into()
-                    };
-
-                    // Check rewards
-                    let error_margin: u128 = 10000;
-                    absorber_utils::assert_provider_received_absorbed_assets(
-                        absorber,
-                        provider,
-                        first_update_assets,
-                        before_absorbed_bals,
-                        preview_absorbed_assets,
-                        error_margin,
-                    );
-
-                    let error_margin: u128 = 500;
-                    absorber_utils::assert_provider_received_rewards(
-                        absorber,
-                        provider,
-                        reward_amts_per_blessing,
-                        before_reward_bals,
-                        preview_reward_assets,
-                        expected_blessings_multiplier,
-                        error_margin,
-                    );
-                    absorber_utils::assert_provider_reward_cumulatives_updated(absorber, provider, reward_tokens);
-
-                    let (_, after_preview_reward_assets) = absorber.preview_reap(provider);
-                    if is_fully_absorbed {
-                        if provide_as_second_action {
-                            // Updated preview amount should increase because of addition of error
-                            // from previous redistribution
-                            assert(
-                                *after_preview_reward_assets.at(0).amount > *preview_reward_assets.at(0).amount,
-                                'preview amount should decrease',
-                            );
-                            assert(absorber.is_operational(), 'should be operational');
-                        } else {
-                            assert(after_preview_reward_assets.len().is_zero(), 'should not have rewards');
-                            absorber_utils::assert_reward_errors_propagated_to_next_epoch(
-                                absorber, expected_epoch - 1, reward_tokens,
-                            );
-                            assert(!absorber.is_operational(), 'should not be operational');
-                        }
-                    } else if after_preview_reward_assets.len().is_non_zero() {
-                        // Sanity check that updated preview reward amount is lower than before
-                        assert(
-                            (*after_preview_reward_assets.at(0)).amount < (*preview_reward_assets.at(0)).amount,
-                            'preview amount should decrease',
-                        );
-                    }
-
-                    // If the second action was `remove`, check that the yin balances of absorber
-                    // and provider are updated.
-                    if remove_as_second_action {
-                        let expected_removed_amt: Wad = wadray::rmul_wr(
-                            first_provided_amt - absorber_contract::INITIAL_SHARES.into(),
-                            (RAY_SCALE.into() - *percentage_to_drain),
-                        );
-                        let error_margin: Wad = 1000_u128.into();
-                        common::assert_equalish(
-                            shrine.get_yin(provider),
-                            before_provider_yin_bal + expected_removed_amt,
-                            error_margin,
-                            'wrong provider yin balance',
-                        );
-
-                        let expected_absorber_yin: Wad = before_absorber_yin_bal - expected_removed_amt;
-                        common::assert_equalish(
-                            shrine.get_yin(absorber.contract_address),
-                            expected_absorber_yin,
-                            error_margin,
-                            'wrong absorber yin balance',
-                        );
-
-                        // Check `request` is used
-                        assert(!absorber.get_provider_request(provider).is_valid, 'request should be fulfilled');
-                    }
+        for percentage_to_drain in percentages_to_drain {
+            let (
+                AbsorberTestConfig {
+                    shrine, sentinel, absorber, yangs, ..,
+                    }, AbsorberRewardsTestConfig {
+                    reward_tokens, reward_amts_per_blessing, provider, provided_amt, ..,
                 },
-                Option::None => { break; },
+            ) =
+                absorber_utils::absorber_with_rewards_and_first_provider(
+                Option::Some(classes),
+            );
+            let first_provided_amt = provided_amt;
+
+            let mut spy = spy_events();
+
+            assert(absorber.is_operational(), 'should be operational');
+
+            // total shares is equal to amount provided
+            let before_total_shares: Wad = first_provided_amt;
+            let before_gate_balances: Span<u128> = absorber_utils::get_gate_balances(sentinel, yangs);
+
+            let expected_absorption_id = 1;
+
+            // Simulate absorption
+            let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
+            absorber_utils::simulate_update_with_pct_to_drain(
+                shrine, absorber, yangs, first_update_assets, *percentage_to_drain,
+            );
+
+            let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+                yangs, first_update_assets,
+            );
+            let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+                reward_tokens, reward_amts_per_blessing,
+            );
+            let expected_recipient_shares = before_total_shares - absorber_contract::INITIAL_SHARES.into();
+            let mut expected_events = array![
+                (
+                    absorber.contract_address,
+                    absorber_contract::Event::Gain(
+                        absorber_contract::Gain {
+                            assets: expected_absorbed_assets,
+                            total_recipient_shares: expected_recipient_shares,
+                            epoch: 1,
+                            absorption_id: expected_absorption_id,
+                        },
+                    ),
+                ),
+                (
+                    absorber.contract_address,
+                    absorber_contract::Event::Bestow(
+                        absorber_contract::Bestow {
+                            assets: expected_rewarded_assets,
+                            total_recipient_shares: expected_recipient_shares,
+                            epoch: 1,
+                        },
+                    ),
+                ),
+            ];
+
+            let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
+
+            let expected_epoch = if is_fully_absorbed {
+                absorber_contract::FIRST_EPOCH + 1
+            } else {
+                absorber_contract::FIRST_EPOCH
             };
+            let expected_total_shares: Wad = if is_fully_absorbed {
+                Zero::zero()
+            } else {
+                first_provided_amt // total shares is equal to amount provided
+            };
+
+            if is_fully_absorbed {
+                expected_events
+                    .append(
+                        (
+                            absorber.contract_address,
+                            absorber_contract::Event::EpochChanged(
+                                absorber_contract::EpochChanged {
+                                    old_epoch: absorber_contract::FIRST_EPOCH, new_epoch: expected_epoch,
+                                },
+                            ),
+                        ),
+                    );
+            }
+
+            spy.assert_emitted(@expected_events);
+
+            assert(absorber.get_absorptions_count() == expected_absorption_id, 'wrong absorption id');
+
+            absorber_utils::assert_update_is_correct(
+                sentinel,
+                absorber,
+                expected_absorption_id,
+                expected_recipient_shares,
+                yangs,
+                first_update_assets,
+                before_gate_balances,
+            );
+
+            let expected_blessings_multiplier: Ray = RAY_SCALE.into();
+            let absorption_epoch = absorber_contract::FIRST_EPOCH;
+            absorber_utils::assert_reward_cumulative_updated(
+                absorber,
+                expected_recipient_shares,
+                absorption_epoch,
+                reward_tokens,
+                reward_amts_per_blessing,
+                expected_blessings_multiplier,
+            );
+
+            assert(absorber.get_total_shares_for_current_epoch() == expected_total_shares, 'wrong total shares');
+            assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
+
+            let before_absorbed_bals = common::get_token_balances(yangs, provider.into());
+            let before_reward_bals = common::get_token_balances(reward_tokens, provider.into());
+            let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+            let before_absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
+
+            // Perform three different actions
+            // (in the following order if the number of test cases is a multiple of 3):
+            // 1. `provide`
+            // 2. `request` and `remove`
+            // 3. `reap`
+            // and check that the provider receives rewards and absorbed assets
+
+            let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(provider);
+
+            let mut remove_as_second_action: bool = false;
+            let mut provide_as_second_action: bool = false;
+            start_cheat_caller_address(absorber.contract_address, provider);
+            if percentages_to_drain.len() % 3 == 2 {
+                absorber.provide(WAD_SCALE.into());
+                provide_as_second_action = true;
+            } else if percentages_to_drain.len() % 3 == 1 {
+                absorber.request();
+                start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
+                absorber.remove(Bounded::MAX);
+                remove_as_second_action = true;
+            } else {
+                absorber.reap();
+            }
+
+            // One distribution from `update` and another distribution from
+            // `reap`/`remove`/`provide` if not fully absorbed
+            let expected_blessings_multiplier = if is_fully_absorbed {
+                RAY_SCALE.into()
+            } else {
+                (RAY_SCALE * 2).into()
+            };
+
+            // Check rewards
+            let error_margin: u128 = 10000;
+            absorber_utils::assert_provider_received_absorbed_assets(
+                absorber, provider, first_update_assets, before_absorbed_bals, preview_absorbed_assets, error_margin,
+            );
+
+            let error_margin: u128 = 500;
+            absorber_utils::assert_provider_received_rewards(
+                absorber,
+                provider,
+                reward_amts_per_blessing,
+                before_reward_bals,
+                preview_reward_assets,
+                expected_blessings_multiplier,
+                error_margin,
+            );
+            absorber_utils::assert_provider_reward_cumulatives_updated(absorber, provider, reward_tokens);
+
+            let (_, after_preview_reward_assets) = absorber.preview_reap(provider);
+            if is_fully_absorbed {
+                if provide_as_second_action {
+                    // Updated preview amount should increase because of addition of error
+                    // from previous redistribution
+                    assert(
+                        *after_preview_reward_assets.at(0).amount > *preview_reward_assets.at(0).amount,
+                        'preview amount should decrease',
+                    );
+                    assert(absorber.is_operational(), 'should be operational');
+                } else {
+                    assert(after_preview_reward_assets.len().is_zero(), 'should not have rewards');
+                    absorber_utils::assert_reward_errors_propagated_to_next_epoch(
+                        absorber, expected_epoch - 1, reward_tokens,
+                    );
+                    assert(!absorber.is_operational(), 'should not be operational');
+                }
+            } else if after_preview_reward_assets.len().is_non_zero() {
+                // Sanity check that updated preview reward amount is lower than before
+                assert(
+                    (*after_preview_reward_assets.at(0)).amount < (*preview_reward_assets.at(0)).amount,
+                    'preview amount should decrease',
+                );
+            }
+
+            // If the second action was `remove`, check that the yin balances of absorber
+            // and provider are updated.
+            if remove_as_second_action {
+                let expected_removed_amt: Wad = wadray::rmul_wr(
+                    first_provided_amt - absorber_contract::INITIAL_SHARES.into(),
+                    (RAY_SCALE.into() - *percentage_to_drain),
+                );
+                let error_margin: Wad = 1000_u128.into();
+                common::assert_equalish(
+                    shrine.get_yin(provider),
+                    before_provider_yin_bal + expected_removed_amt,
+                    error_margin,
+                    'wrong provider yin balance',
+                );
+
+                let expected_absorber_yin: Wad = before_absorber_yin_bal - expected_removed_amt;
+                common::assert_equalish(
+                    shrine.get_yin(absorber.contract_address),
+                    expected_absorber_yin,
+                    error_margin,
+                    'wrong absorber yin balance',
+                );
+
+                // Check `request` is used
+                assert(!absorber.get_provider_request(provider).is_valid, 'request should be fulfilled');
+            }
         };
     }
 
@@ -1483,7 +1463,7 @@ mod test_absorber {
     fn test_after_threshold_absorption_between_initial_and_minimum_shares() {
         let classes = absorber_utils::declare_contracts();
 
-        let mut remaining_yin_amts: Array<Wad> = array![
+        let remaining_yin_amts: Array<Wad> = array![
             // lower bound for remaining yin without total shares being zeroed
             (absorber_contract::INITIAL_SHARES + 1)
                 .into(), // upper bound for remaining yin before rewards are distributed
@@ -1491,99 +1471,83 @@ mod test_absorber {
         ];
         let mut remaining_yin_amts = remaining_yin_amts.span();
 
-        loop {
-            match remaining_yin_amts.pop_front() {
-                Option::Some(remaining_yin_amt) => {
-                    let (
-                        AbsorberTestConfig {
-                            shrine, absorber, yangs, ..,
-                            }, AbsorberRewardsTestConfig {
-                            reward_tokens, reward_amts_per_blessing, provider, provided_amt, ..,
-                        },
-                    ) =
-                        absorber_utils::absorber_with_rewards_and_first_provider(
-                        Option::Some(classes),
-                    );
-                    let first_provider = provider;
-                    let first_provided_amt = provided_amt;
-
-                    let mut spy = spy_events();
-
-                    // Step 2
-                    let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
-                    let burn_amt: Wad = first_provided_amt - *remaining_yin_amt;
-                    absorber_utils::simulate_update_with_amt_to_drain(
-                        shrine, absorber, yangs, first_update_assets, burn_amt,
-                    );
-
-                    assert(!absorber.is_operational(), 'should not be operational');
-
-                    // Check epoch and total shares after threshold absorption
-                    let expected_epoch: u32 = absorber_contract::FIRST_EPOCH + 1;
-                    assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
-                    // New total shares should be equivalent to remaining yin in Absorber
-                    assert(absorber.get_total_shares_for_current_epoch() == *remaining_yin_amt, 'wrong total shares');
-
-                    absorber_utils::assert_reward_errors_propagated_to_next_epoch(
-                        absorber, expected_epoch - 1, reward_tokens,
-                    );
-
-                    let expected_events = array![
-                        (
-                            absorber.contract_address,
-                            absorber_contract::Event::EpochChanged(
-                                absorber_contract::EpochChanged {
-                                    old_epoch: absorber_contract::FIRST_EPOCH, new_epoch: expected_epoch,
-                                },
-                            ),
-                        ),
-                    ];
-                    spy.assert_emitted(@expected_events);
-
-                    // Step 3
-                    let first_provider_before_reward_bals = common::get_token_balances(
-                        reward_tokens, first_provider.into(),
-                    );
-
-                    start_cheat_caller_address(absorber.contract_address, first_provider);
-                    let (_, preview_reward_assets) = absorber.preview_reap(first_provider);
-
-                    // Trigger an update of the provider's Provision
-                    absorber.reap();
-                    let first_provider_info: Provision = absorber.get_provision(first_provider);
-                    let expected_provider_shares: Wad = *remaining_yin_amt - absorber_contract::INITIAL_SHARES.into();
-                    common::assert_equalish(
-                        first_provider_info.shares,
-                        expected_provider_shares,
-                        1_u128.into(), // error margin for loss of precision from rounding down
-                        'wrong provider shares',
-                    );
-                    assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
-
-                    let expected_first_provider_blessings_multiplier: Ray = RAY_SCALE.into();
-                    let error_margin: u128 = 1000;
-                    absorber_utils::assert_provider_received_rewards(
-                        absorber,
-                        first_provider,
-                        reward_amts_per_blessing,
-                        first_provider_before_reward_bals,
-                        preview_reward_assets,
-                        expected_first_provider_blessings_multiplier,
-                        error_margin,
-                    );
-
-                    let (_, mut preview_reward_assets) = absorber.preview_reap(first_provider);
-                    loop {
-                        match preview_reward_assets.pop_front() {
-                            Option::Some(reward_asset) => {
-                                assert((*reward_asset.amount).is_zero(), 'expected rewards should be 0');
-                            },
-                            Option::None => { break; },
-                        };
-                    };
+        for remaining_yin_amt in remaining_yin_amts {
+            let (
+                AbsorberTestConfig {
+                    shrine, absorber, yangs, ..,
+                    }, AbsorberRewardsTestConfig {
+                    reward_tokens, reward_amts_per_blessing, provider, provided_amt, ..,
                 },
-                Option::None => { break; },
-            };
+            ) =
+                absorber_utils::absorber_with_rewards_and_first_provider(
+                Option::Some(classes),
+            );
+            let first_provider = provider;
+            let first_provided_amt = provided_amt;
+
+            let mut spy = spy_events();
+
+            // Step 2
+            let first_update_assets: Span<u128> = absorber_utils::first_update_assets();
+            let burn_amt: Wad = first_provided_amt - *remaining_yin_amt;
+            absorber_utils::simulate_update_with_amt_to_drain(shrine, absorber, yangs, first_update_assets, burn_amt);
+
+            assert(!absorber.is_operational(), 'should not be operational');
+
+            // Check epoch and total shares after threshold absorption
+            let expected_epoch: u32 = absorber_contract::FIRST_EPOCH + 1;
+            assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
+            // New total shares should be equivalent to remaining yin in Absorber
+            assert(absorber.get_total_shares_for_current_epoch() == *remaining_yin_amt, 'wrong total shares');
+
+            absorber_utils::assert_reward_errors_propagated_to_next_epoch(absorber, expected_epoch - 1, reward_tokens);
+
+            let expected_events = array![
+                (
+                    absorber.contract_address,
+                    absorber_contract::Event::EpochChanged(
+                        absorber_contract::EpochChanged {
+                            old_epoch: absorber_contract::FIRST_EPOCH, new_epoch: expected_epoch,
+                        },
+                    ),
+                ),
+            ];
+            spy.assert_emitted(@expected_events);
+
+            // Step 3
+            let first_provider_before_reward_bals = common::get_token_balances(reward_tokens, first_provider.into());
+
+            start_cheat_caller_address(absorber.contract_address, first_provider);
+            let (_, preview_reward_assets) = absorber.preview_reap(first_provider);
+
+            // Trigger an update of the provider's Provision
+            absorber.reap();
+            let first_provider_info: Provision = absorber.get_provision(first_provider);
+            let expected_provider_shares: Wad = *remaining_yin_amt - absorber_contract::INITIAL_SHARES.into();
+            common::assert_equalish(
+                first_provider_info.shares,
+                expected_provider_shares,
+                1_u128.into(), // error margin for loss of precision from rounding down
+                'wrong provider shares',
+            );
+            assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
+
+            let expected_first_provider_blessings_multiplier: Ray = RAY_SCALE.into();
+            let error_margin: u128 = 1000;
+            absorber_utils::assert_provider_received_rewards(
+                absorber,
+                first_provider,
+                reward_amts_per_blessing,
+                first_provider_before_reward_bals,
+                preview_reward_assets,
+                expected_first_provider_blessings_multiplier,
+                error_margin,
+            );
+
+            let (_, preview_reward_assets) = absorber.preview_reap(first_provider);
+            for reward_asset in preview_reward_assets {
+                assert((*reward_asset.amount).is_zero(), 'expected rewards should be 0');
+            }
         };
     }
 
@@ -1791,11 +1755,7 @@ mod test_absorber {
         let mut idx: u128 = 0;
         let mut expected_timelock = absorber_contract::REQUEST_BASE_TIMELOCK;
         let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
-        loop {
-            if idx == 6 {
-                break;
-            }
-
+        while idx != 6 {
             let current_ts = get_block_timestamp();
             absorber.request();
 

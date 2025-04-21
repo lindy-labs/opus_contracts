@@ -497,32 +497,24 @@ pub mod purger_utils {
     }
 
     // Update thresholds for all yangs to the given value
-    pub fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
+    pub fn set_thresholds(shrine: IShrineDispatcher, yangs: Span<ContractAddress>, threshold: Ray) {
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
-                Option::None => { break; },
-            };
+        for yang in yangs {
+            shrine.set_threshold(*yang, threshold);
         }
         stop_cheat_caller_address(shrine.contract_address);
     }
 
     // Helper function to decrease yang prices by the given percentage
     pub fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, seer: ISeerDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray,
+        shrine: IShrineDispatcher, seer: ISeerDispatcher, yangs: Span<ContractAddress>, pct_decrease: Ray,
     ) {
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
-                    shrine.advance(*yang, new_price);
-                    seer_utils::mock_valid_price_update(seer, *yang, new_price);
-                },
-                Option::None => { break; },
-            };
+        for yang in yangs {
+            let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+            let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
+            shrine.advance(*yang, new_price);
+            seer_utils::mock_valid_price_update(seer, *yang, new_price);
         }
         stop_cheat_caller_address(shrine.contract_address);
     }
@@ -674,22 +666,17 @@ pub mod purger_utils {
         message: felt252,
     ) {
         assert_eq!(before_asset_bals.len(), after_asset_bals.len(), "balances array sanity check #1");
-        loop {
-            match expected_freed_assets.pop_front() {
-                Option::Some(expected_freed_asset) => {
-                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
-                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
-                    assert_eq!(before_asset_bal_arr.len(), after_asset_bal_arr.len(), "balances array sanity check #2");
+        for expected_freed_asset in expected_freed_assets {
+            let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
+            let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
+            assert_eq!(before_asset_bal_arr.len(), after_asset_bal_arr.len(), "balances array sanity check #2");
 
-                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
-                    let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
+            let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
+            let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;
 
-                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
+            let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
-                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
-                },
-                Option::None => { break; },
-            };
+            common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, message);
         };
     }
 
@@ -698,14 +685,9 @@ pub mod purger_utils {
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, mut amounts: Span<Wad>,
     ) -> Wad {
         let mut sum: Wad = Zero::zero();
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    sum = sum + yang_price * *amounts.pop_front().unwrap();
-                },
-                Option::None => { break sum; },
-            }
+        for yang in yangs {
+            let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+            sum = sum + yang_price * *amounts.pop_front().unwrap();
         }
     }
 

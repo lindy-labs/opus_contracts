@@ -407,11 +407,7 @@ mod test_seer {
         let suspension_grace_period_quarter = (shrine_contract::SUSPENSION_GRACE_PERIOD / period_div);
 
         let mut last_delisted_yang_interval: u64 = 0;
-        loop {
-            if period_div.is_zero() {
-                break;
-            }
-
+        while period_div != 0 {
             next_ts += suspension_grace_period_quarter;
             start_cheat_block_timestamp_global(next_ts);
 

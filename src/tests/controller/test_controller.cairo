@@ -448,31 +448,26 @@ mod test_controller {
             1000016092469468056100000000_u128.into(),
         ];
 
-        loop {
-            match prices.pop_front() {
-                Option::Some(price) => {
-                    controller_utils::fast_forward_1_hour();
-                    controller_utils::set_yin_spot_price(shrine, price);
+        for price in prices {
+            controller_utils::fast_forward_1_hour();
+            controller_utils::set_yin_spot_price(shrine, price);
 
-                    let i_term: SignedRay = controller.get_i_term();
-                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+            let i_term: SignedRay = controller.get_i_term();
+            let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
 
-                    let p_term: SignedRay = controller.get_p_term();
-                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+            let p_term: SignedRay = controller.get_p_term();
+            let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
 
-                    let multiplier: Ray = controller.get_current_multiplier();
-                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
-                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+            let multiplier: Ray = controller.get_current_multiplier();
+            let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+            common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
 
-                    controller.update_multiplier();
+            controller.update_multiplier();
 
-                    let (shrine_multiplier, _, _) = shrine.get_current_multiplier();
-                    assert_eq!(multiplier, shrine_multiplier, "wrong multiplier in shrine");
-                },
-                Option::None => { break; },
-            };
+            let (shrine_multiplier, _, _) = shrine.get_current_multiplier();
+            assert_eq!(multiplier, shrine_multiplier, "wrong multiplier in shrine");
         };
     }
 
@@ -538,11 +533,8 @@ mod test_controller {
         let mut current_interval: u64 = 1;
         let end_interval: u64 = 10;
 
-        loop {
-            if current_interval > end_interval {
-                break;
-            }
-
+        let loop_end = end_interval + 1;
+        while current_interval != loop_end {
             let mut multiplier: Ray = controller.get_current_multiplier();
             let mut i_term = controller.get_i_term();
             if update_intervals.len() > 0 {
@@ -583,7 +575,7 @@ mod test_controller {
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
         // Loading our ground truth into arrays for comparison
-        let mut prices: Array<Wad> = array![
+        let prices: Span<Wad> = array![
             1010000000000000000_u128.into(),
             1009070214084160000_u128.into(),
             1008140856336630000_u128.into(),
@@ -605,7 +597,8 @@ mod test_controller {
             999281991878406000_u128.into(),
             999576275080028000_u128.into(),
             999875348924666000_u128.into(),
-        ];
+        ]
+            .span();
 
         let mut expected_p_terms_for_update: Array<SignedRay> = array![
             -(1000000000000000000000000000_u128.into()),
@@ -679,28 +672,23 @@ mod test_controller {
             1000116110096610000000000000_u128.into(),
         ];
 
-        loop {
-            match prices.pop_front() {
-                Option::Some(price) => {
-                    controller_utils::fast_forward_1_hour();
-                    controller_utils::set_yin_spot_price(shrine, price);
+        for price in prices {
+            controller_utils::fast_forward_1_hour();
+            controller_utils::set_yin_spot_price(shrine, *price);
 
-                    let p_term: SignedRay = controller.get_p_term();
-                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+            let p_term: SignedRay = controller.get_p_term();
+            let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
 
-                    let i_term: SignedRay = controller.get_i_term();
-                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+            let i_term: SignedRay = controller.get_i_term();
+            let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
 
-                    let multiplier: Ray = controller.get_current_multiplier();
-                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
-                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+            let multiplier: Ray = controller.get_current_multiplier();
+            let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+            common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
 
-                    controller.update_multiplier();
-                },
-                Option::None => { break; },
-            };
+            controller.update_multiplier();
         };
     }
 
@@ -715,7 +703,7 @@ mod test_controller {
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
-        let mut seconds_since_last_update_arr: Array<u64> = array![60, 138, 222, 300, 126, 78, 42, 420, 246];
+        let seconds_since_last_update_arr: Array<u64> = array![60, 138, 222, 300, 126, 78, 42, 420, 246];
 
         let mut prices: Array<Wad> = array![
             999000000000000000_u128.into(),
@@ -772,30 +760,25 @@ mod test_controller {
         controller.update_multiplier();
 
         // Multiple updates in the second hour
-        loop {
-            match seconds_since_last_update_arr.pop_front() {
-                Option::Some(seconds_since_last_update) => {
-                    start_cheat_block_timestamp_global(get_block_timestamp() + seconds_since_last_update);
+        for seconds_since_last_update in seconds_since_last_update_arr {
+            start_cheat_block_timestamp_global(get_block_timestamp() + seconds_since_last_update);
 
-                    let price: Wad = prices.pop_front().unwrap();
-                    controller_utils::set_yin_spot_price(shrine, price);
+            let price: Wad = prices.pop_front().unwrap();
+            controller_utils::set_yin_spot_price(shrine, price);
 
-                    let p_term: SignedRay = controller.get_p_term();
-                    let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
+            let p_term: SignedRay = controller.get_p_term();
+            let expected_p_term_for_update: SignedRay = expected_p_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(p_term, expected_p_term_for_update, ERROR_MARGIN.into(), 'Wrong p term');
 
-                    let i_term: SignedRay = controller.get_i_term();
-                    let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
-                    common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
+            let i_term: SignedRay = controller.get_i_term();
+            let expected_i_term_for_update: SignedRay = expected_i_terms_for_update.pop_front().unwrap();
+            common::assert_equalish(i_term, expected_i_term_for_update, ERROR_MARGIN.into(), 'Wrong i term');
 
-                    let multiplier: Ray = controller.get_current_multiplier();
-                    let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
-                    common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
+            let multiplier: Ray = controller.get_current_multiplier();
+            let expected_multiplier: Ray = expected_multipliers.pop_front().unwrap();
+            common::assert_equalish(multiplier, expected_multiplier, ERROR_MARGIN.into(), 'Wrong multiplier');
 
-                    controller.update_multiplier();
-                },
-                Option::None => { break; },
-            };
+            controller.update_multiplier();
         };
     }
 

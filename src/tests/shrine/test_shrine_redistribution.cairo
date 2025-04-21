@@ -85,46 +85,41 @@ mod test_shrine_redistribution {
         let mut cumulative_redistributed_debt: Wad = Zero::zero();
         let mut cumulative_error = Zero::zero();
 
-        loop {
-            match yang_addrs.pop_front() {
-                Option::Some(yang) => {
-                    // Calculate value liquidated for each yang
-                    let deposited = shrine.get_deposit(*yang, trove);
-                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    let yang_value = yang_price * deposited;
+        for yang in yang_addrs {
+            // Calculate value liquidated for each yang
+            let deposited = shrine.get_deposit(*yang, trove);
+            let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+            let yang_value = yang_price * deposited;
 
-                    trove_yang_values.append(yang_price * deposited);
+            trove_yang_values.append(yang_price * deposited);
 
-                    // Calculate redistributed unit debt and error after redistributing debt
-                    // for each yang
-                    let mut expected_yang_debt = wadray::rmul_rw(
-                        wadray::rdiv_ww(yang_value, trove_health.value), trove_health.debt,
-                    );
-                    cumulative_redistributed_debt += expected_yang_debt;
-                    let remainder = trove_health.debt - cumulative_redistributed_debt;
-                    if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
-                        expected_yang_debt += remainder;
-                        cumulative_redistributed_debt += remainder;
-                    }
+            // Calculate redistributed unit debt and error after redistributing debt
+            // for each yang
+            let mut expected_yang_debt = wadray::rmul_rw(
+                wadray::rdiv_ww(yang_value, trove_health.value), trove_health.debt,
+            );
+            cumulative_redistributed_debt += expected_yang_debt;
+            let remainder = trove_health.debt - cumulative_redistributed_debt;
+            if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
+                expected_yang_debt += remainder;
+                cumulative_redistributed_debt += remainder;
+            }
 
-                    let expected_remaining_yang = shrine.get_yang_total(*yang)
-                        - deposited
-                        - shrine.get_protocol_owned_yang_amt(*yang);
-                    let expected_unit_debt = expected_yang_debt / expected_remaining_yang;
-                    expected_remaining_yangs.append(expected_remaining_yang);
-                    expected_unit_debts.append(expected_unit_debt);
+            let expected_remaining_yang = shrine.get_yang_total(*yang)
+                - deposited
+                - shrine.get_protocol_owned_yang_amt(*yang);
+            let expected_unit_debt = expected_yang_debt / expected_remaining_yang;
+            expected_remaining_yangs.append(expected_remaining_yang);
+            expected_unit_debts.append(expected_unit_debt);
 
-                    let actual_redistributed_debt = expected_unit_debt * expected_remaining_yang;
-                    let expected_error = expected_yang_debt - actual_redistributed_debt;
+            let actual_redistributed_debt = expected_unit_debt * expected_remaining_yang;
+            let expected_error = expected_yang_debt - actual_redistributed_debt;
 
-                    cumulative_error += expected_error;
+            cumulative_error += expected_error;
 
-                    if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
-                        break;
-                    }
-                },
-                Option::None => { break; },
-            };
+            if remainder < shrine_contract::ROUNDING_THRESHOLD.into() {
+                break;
+            }
         }
         (trove_yang_values.span(), expected_unit_debts.span(), expected_remaining_yangs.span(), cumulative_error)
     }

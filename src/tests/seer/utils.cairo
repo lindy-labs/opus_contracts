@@ -115,11 +115,8 @@ pub mod seer_utils {
 
     pub fn set_price_types_to_vault(seer: ISeerDispatcher, mut vaults: Span<ContractAddress>) {
         start_cheat_caller_address(seer.contract_address, ADMIN);
-        loop {
-            match vaults.pop_front() {
-                Option::Some(vault) => { seer.set_yang_price_type(*vault, PriceType::Vault); },
-                Option::None => { break; },
-            };
+        for vault in vaults {
+            seer.set_yang_price_type(*vault, PriceType::Vault);
         }
         stop_cheat_caller_address(seer.contract_address);
     }
