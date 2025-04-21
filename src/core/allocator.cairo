@@ -150,26 +150,20 @@ pub mod allocator {
             let mut total_percentage: Ray = Zero::zero();
             let mut idx: u32 = LOOP_START;
 
-            let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
-            loop {
-                match recipients_copy.pop_front() {
-                    Option::Some(recipient) => {
-                        let recipient_key: felt252 = (*recipient).into();
-                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address');
-                        recipients_dict.insert(recipient_key, idx);
+            for recipient in recipients {
+                let recipient_key: felt252 = (*recipient).into();
+                assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address');
+                recipients_dict.insert(recipient_key, idx);
 
-                        self.recipients.write(idx, *recipient);
+                self.recipients.write(idx, *recipient);
 
-                        let percentage: Ray = *(percentages_copy.pop_front().unwrap());
-                        self.percentages.write(*recipient, percentage);
+                let percentage: Ray = *(percentages_copy.pop_front().unwrap());
+                self.percentages.write(*recipient, percentage);
 
-                        total_percentage += percentage;
+                total_percentage += percentage;
 
-                        idx += 1;
-                    },
-                    Option::None => { break; },
-                };
+                idx += 1;
             }
 
             assert(total_percentage == RAY_ONE.into(), 'AL: sum(percentages) != RAY_ONE');

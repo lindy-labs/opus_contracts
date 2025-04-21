@@ -50,18 +50,13 @@ pub mod flash_liquidator {
     #[abi(embed_v0)]
     impl IFlashLiquidatorImpl of super::IFlashLiquidator<ContractState> {
         fn flash_liquidate(
-            ref self: ContractState, trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>,
+            ref self: ContractState, trove_id: u64, yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>,
         ) {
             // Approve gate for tokens
-            loop {
-                match yangs.pop_front() {
-                    Option::Some(yang) => {
-                        let gate: IGateDispatcher = *gates.pop_front().unwrap();
-                        let token = IERC20Dispatcher { contract_address: *yang };
-                        token.approve(gate.contract_address, Bounded::MAX);
-                    },
-                    Option::None => { break; },
-                };
+            for yang in yangs {
+                let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                let token = IERC20Dispatcher { contract_address: *yang };
+                token.approve(gate.contract_address, Bounded::MAX);
             }
 
             let purger: IPurgerDispatcher = self.purger.read();
@@ -105,20 +100,14 @@ pub mod flash_liquidator {
 
             let mut provider_assets: Span<u128> = provider_assets();
             let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
-            let mut freed_assets_copy = freed_assets;
-            loop {
-                match freed_assets_copy.pop_front() {
-                    Option::Some(freed_asset) => {
-                        updated_assets
-                            .append(
-                                AssetBalance {
-                                    address: *freed_asset.address,
-                                    amount: *freed_asset.amount + *provider_assets.pop_front().unwrap(),
-                                },
-                            );
-                    },
-                    Option::None => { break; },
-                };
+            for freed_asset in freed_assets {
+                updated_assets
+                    .append(
+                        AssetBalance {
+                            address: *freed_asset.address,
+                            amount: *freed_asset.amount + *provider_assets.pop_front().unwrap(),
+                        },
+                    );
             }
 
             // Open a trove with funded and freed assets, and mint the loan amount.

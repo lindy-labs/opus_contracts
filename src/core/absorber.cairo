@@ -562,21 +562,15 @@ pub mod absorber {
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
 
-            let mut asset_balances_copy = asset_balances;
-            loop {
-                match asset_balances_copy.pop_front() {
-                    Option::Some(asset_balance) => {
-                        let error: u128 = self
-                            .update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
+            for asset_balance in asset_balances {
+                let error: u128 = self
+                    .update_absorbed_asset(current_absorption_id, total_recipient_shares, *asset_balance);
 
-                        // Transfer any excess error back to the Gate
-                        if error.is_non_zero() {
-                            let gate: ContractAddress = sentinel.get_gate_address(*asset_balance.address);
-                            IERC20Dispatcher { contract_address: *asset_balance.address }.transfer(gate, error.into());
-                        }
-                    },
-                    Option::None => { break; },
-                };
+                // Transfer any excess error back to the Gate
+                if error.is_non_zero() {
+                    let gate: ContractAddress = sentinel.get_gate_address(*asset_balance.address);
+                    IERC20Dispatcher { contract_address: *asset_balance.address }.transfer(gate, error.into());
+                }
             }
 
             //
@@ -822,58 +816,46 @@ pub mod absorber {
 
             // Loop over all assets and calculate the amount of
             // each asset that the provider is entitled to
-            let mut assets_copy = assets;
-            loop {
-                match assets_copy.pop_front() {
-                    Option::Some(asset) => {
-                        // Loop over all absorptions from `provided_absorption_id` for the current asset and add
-                        // the amount of the asset that the provider is entitled to for each absorption to
-                        // `absorbed_amt`.
-                        let mut absorbed_amt: u128 = 0;
-                        let mut start_absorption_id = provided_absorption_id;
+            for asset in assets {
+                // Loop over all absorptions from `provided_absorption_id` for the current asset and add
+                // the amount of the asset that the provider is entitled to for each absorption to
+                // `absorbed_amt`.
+                let mut absorbed_amt: u128 = 0;
+                let mut start_absorption_id = provided_absorption_id;
 
-                        loop {
-                            if start_absorption_id == current_absorption_id {
-                                break;
-                            }
+                while start_absorption_id != current_absorption_id {
+                    let absorption_epoch: u32 = self.absorption_epoch.read(start_absorption_id);
 
-                            start_absorption_id += 1;
-                            let absorption_epoch: u32 = self.absorption_epoch.read(start_absorption_id);
+                    // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
+                    let adjusted_shares: Wad = self
+                        .convert_epoch_shares(provision.epoch, absorption_epoch, provision.shares);
 
-                            // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
-                            let adjusted_shares: Wad = self
-                                .convert_epoch_shares(provision.epoch, absorption_epoch, provision.shares);
+                    // Terminate if provider does not have any shares for current epoch
+                    if adjusted_shares.is_zero() {
+                        break;
+                    }
 
-                            // Terminate if provider does not have any shares for current epoch
-                            if adjusted_shares.is_zero() {
-                                break;
-                            }
+                    let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
 
-                            let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
+                    absorbed_amt += u128_wmul(adjusted_shares.into(), asset_amt_per_share);
 
-                            absorbed_amt += u128_wmul(adjusted_shares.into(), asset_amt_per_share);
-                        }
+                    start_absorption_id += 1;
+                }
 
-                        absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
-                    },
-                    Option::None => { break absorbed_assets.span(); },
-                };
+                absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
             }
+
+            absorbed_assets.span()
         }
 
         // Helper function to iterate over an array of assets to transfer to an address
-        fn transfer_assets(ref self: ContractState, to: ContractAddress, mut asset_balances: Span<AssetBalance>) {
-            loop {
-                match asset_balances.pop_front() {
-                    Option::Some(asset_balance) => {
-                        if (*asset_balance.amount).is_non_zero() {
-                            IERC20Dispatcher { contract_address: *asset_balance.address }
-                                .transfer(to, (*asset_balance.amount).into());
-                        }
-                    },
-                    Option::None => { break; },
-                };
-            };
+        fn transfer_assets(ref self: ContractState, to: ContractAddress, asset_balances: Span<AssetBalance>) {
+            for asset_balance in asset_balances {
+                if (*asset_balance.amount).is_non_zero() {
+                    IERC20Dispatcher { contract_address: *asset_balance.address }
+                        .transfer(to, (*asset_balance.amount).into());
+                }
+            }
         }
 
         //
@@ -923,14 +905,11 @@ pub mod absorber {
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
-            loop {
-                if current_rewards_id == loop_end {
-                    break;
-                }
-
+            while current_rewards_id != loop_end {
                 let reward: Reward = self.rewards.read(current_rewards_id);
+
+                current_rewards_id += 1;
                 if !reward.is_active {
-                    current_rewards_id += 1;
                     continue;
                 }
 
@@ -959,8 +938,6 @@ pub mod absorber {
                             DistributionInfo { asset_amt_per_share: updated_asset_amt_per_share, error },
                         );
                 }
-
-                current_rewards_id += 1;
             }
 
             if blessed_assets.len().is_non_zero() {
@@ -985,24 +962,16 @@ pub mod absorber {
             let outer_loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
             let current_epoch: u32 = self.current_epoch.read();
             let inner_loop_end: u32 = current_epoch + 1;
-            loop {
-                if current_rewards_id == outer_loop_end {
-                    break reward_assets.span();
-                }
-
+            while current_rewards_id != outer_loop_end {
                 let reward: Reward = self.rewards.read(current_rewards_id);
                 let mut reward_amt: u128 = 0;
                 let mut epoch: u32 = provision.epoch;
                 let mut epoch_shares: Wad = provision.shares;
 
-                loop {
-                    // Terminate after the current epoch because we need to calculate rewards for the current
-                    // epoch first
-                    // There is also an early termination if the provider has no shares in current epoch
-                    if (epoch == inner_loop_end) || epoch_shares.is_zero() {
-                        break;
-                    }
-
+                // Terminate after the current epoch because we need to calculate rewards for the current
+                // epoch first
+                // There is also an early termination if the provider has no shares in current epoch
+                while (epoch != inner_loop_end) && epoch_shares.is_non_zero() {
                     let epoch_reward_info: DistributionInfo = self
                         .cumulative_reward_amt_by_epoch
                         .read((reward.asset, epoch));
@@ -1037,6 +1006,8 @@ pub mod absorber {
 
                 current_rewards_id += 1;
             }
+
+            reward_assets.span()
         }
 
         // Update a provider's cumulative rewards to the given epoch
@@ -1047,11 +1018,7 @@ pub mod absorber {
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
             let epoch: u32 = self.current_epoch.read();
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
-            loop {
-                if current_rewards_id == loop_end {
-                    break;
-                }
-
+            while current_rewards_id != loop_end {
                 let reward: Reward = self.rewards.read(current_rewards_id);
                 let epoch_reward_info: DistributionInfo = self
                     .cumulative_reward_amt_by_epoch
@@ -1069,11 +1036,7 @@ pub mod absorber {
         fn propagate_reward_errors(ref self: ContractState, epoch: u32) {
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
-            loop {
-                if current_rewards_id == loop_end {
-                    break;
-                }
-
+            while current_rewards_id != loop_end {
                 let reward: Reward = self.rewards.read(current_rewards_id);
                 let epoch_reward_info: DistributionInfo = self
                     .cumulative_reward_amt_by_epoch

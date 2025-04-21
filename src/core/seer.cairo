@@ -251,62 +251,55 @@ pub mod seer {
             // the expectation is that the primary oracle will provide a
             // valid price in most cases, but if not, we can fallback to other oracles
             let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-            loop {
-                match yangs.pop_front() {
-                    Option::Some(yang) => {
-                        if shrine.get_yang_suspension_status(*yang) == YangSuspensionStatus::Permanent {
-                            continue;
-                        }
+            for yang in yangs.pop_front() {
+                if shrine.get_yang_suspension_status(*yang) == YangSuspensionStatus::Permanent {
+                    continue;
+                }
 
-                        let price_type = self.yang_price_types.read(*yang);
-                        let asset = match price_type {
-                            InternalPriceType::Direct => *yang,
-                            InternalPriceType::Vault(info) => info.asset,
-                        };
+                let price_type = self.yang_price_types.read(*yang);
+                let asset = match price_type {
+                    InternalPriceType::Direct => *yang,
+                    InternalPriceType::Vault(info) => info.asset,
+                };
 
-                        let mut oracle_index: u32 = LOOP_START;
-                        loop {
-                            let oracle: IOracleDispatcher = self.oracles.read(oracle_index);
-                            if oracle.contract_address.is_zero() {
-                                // if branch happens, it means no oracle was able to
-                                // fetch a price for yang, i.e. we're missing a price update
-                                self.emit(PriceUpdateMissed { yang: *yang });
-                                break;
-                            }
+                let mut oracle_index: u32 = LOOP_START;
+                loop {
+                    let oracle: IOracleDispatcher = self.oracles.read(oracle_index);
+                    if oracle.contract_address.is_zero() {
+                        // if branch happens, it means no oracle was able to
+                        // fetch a price for yang, i.e. we're missing a price update
+                        self.emit(PriceUpdateMissed { yang: *yang });
+                        break;
+                    }
 
-                            // TODO: when possible in Cairo, fetch_price should be wrapped
-                            //       in a try-catch block so that an exception does not
-                            //       prevent all other price updates
+                    // TODO: when possible in Cairo, fetch_price should be wrapped
+                    //       in a try-catch block so that an exception does not
+                    //       prevent all other price updates
 
-                            match oracle.fetch_price(asset) {
-                                Result::Ok(oracle_price) => {
-                                    let asset_price: Wad = match price_type {
-                                        InternalPriceType::Direct => oracle_price,
-                                        InternalPriceType::Vault(info) => {
-                                            let unscaled_conversion_rate: u128 = IERC4626Dispatcher {
-                                                contract_address: *yang,
-                                            }
-                                                .convert_to_assets(WAD_ONE.into())
-                                                .try_into()
-                                                .unwrap();
-                                            let scaled_conversion_rate: u128 = unscaled_conversion_rate
-                                                * info.conversion_rate_scale;
-                                            oracle_price * scaled_conversion_rate.into()
-                                        },
-                                    };
-
-                                    let asset_amt_per_yang: Wad = sentinel.get_asset_amt_per_yang(*yang);
-                                    let price: Wad = asset_price * asset_amt_per_yang;
-                                    shrine.advance(*yang, price);
-                                    self.emit(PriceUpdate { oracle: oracle.contract_address, yang: *yang, price });
-                                    break;
+                    match oracle.fetch_price(asset) {
+                        Result::Ok(oracle_price) => {
+                            let asset_price: Wad = match price_type {
+                                InternalPriceType::Direct => oracle_price,
+                                InternalPriceType::Vault(info) => {
+                                    let unscaled_conversion_rate: u128 = IERC4626Dispatcher { contract_address: *yang }
+                                        .convert_to_assets(WAD_ONE.into())
+                                        .try_into()
+                                        .unwrap();
+                                    let scaled_conversion_rate: u128 = unscaled_conversion_rate
+                                        * info.conversion_rate_scale;
+                                    oracle_price * scaled_conversion_rate.into()
                                 },
-                                // try next oracle for this yang
-                                Result::Err(_) => { oracle_index += 1; },
-                            }
-                        };
-                    },
-                    Option::None => { break; },
+                            };
+
+                            let asset_amt_per_yang: Wad = sentinel.get_asset_amt_per_yang(*yang);
+                            let price: Wad = asset_price * asset_amt_per_yang;
+                            shrine.advance(*yang, price);
+                            self.emit(PriceUpdate { oracle: oracle.contract_address, yang: *yang, price });
+                            break;
+                        },
+                        // try next oracle for this yang
+                        Result::Err(_) => { oracle_index += 1; },
+                    }
                 };
             }
 

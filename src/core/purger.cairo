@@ -189,10 +189,7 @@ pub mod purger {
         fn is_absorbable(self: @ContractState, trove_id: u64) -> bool {
             let trove_health: Health = self.shrine.read().get_trove_health(trove_id);
 
-            match self.preview_absorb_internal(trove_health) {
-                Option::Some((_, _, _, _, _, _)) => true,
-                Option::None => false,
-            }
+            self.preview_absorb_internal(trove_health).is_some()
         }
 
         fn get_penalty_scalar(self: @ContractState) -> Ray {
@@ -395,27 +392,20 @@ pub mod purger {
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             let mut freed_assets: Array<AssetBalance> = ArrayTrait::new();
 
-            let mut yangs_copy: Span<ContractAddress> = yangs;
-
             // Loop through yang addresses and transfer to recipient
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
+            for yang in yangs {
+                let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
-                        let freed_asset_amt: u128 = if deposited_yang_amt.is_zero() {
-                            0
-                        } else {
-                            let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
-                            let exit_amt: u128 = sentinel.exit(*yang, recipient, freed_yang);
-                            shrine.seize(*yang, trove_id, freed_yang);
-                            exit_amt
-                        };
-
-                        freed_assets.append(AssetBalance { address: *yang, amount: freed_asset_amt });
-                    },
-                    Option::None => { break; },
+                let freed_asset_amt: u128 = if deposited_yang_amt.is_zero() {
+                    0
+                } else {
+                    let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
+                    let exit_amt: u128 = sentinel.exit(*yang, recipient, freed_yang);
+                    shrine.seize(*yang, trove_id, freed_yang);
+                    exit_amt
                 };
+
+                freed_assets.append(AssetBalance { address: *yang, amount: freed_asset_amt });
             }
 
             self.reentrancy_guard.end();

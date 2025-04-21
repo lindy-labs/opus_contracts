@@ -205,24 +205,19 @@ pub mod receptor {
         fn update_yin_price_internal(ref self: ContractState) {
             let quotes = self.get_quotes();
 
-            let mut quotes_copy = quotes;
-            loop {
-                match quotes_copy.pop_front() {
-                    Option::Some(quote) => { if quote.is_zero() {
-                        self.emit(InvalidQuotes { quotes });
-                        break;
-                    } },
-                    Option::None => {
-                        let yin_price: Wad = median_of_three(quotes);
-                        self.shrine.read().update_yin_spot_price(yin_price);
+            for quote in quotes {
+                if quote.is_zero() {
+                    self.emit(InvalidQuotes { quotes });
+                    break;
+                }
+            }
 
-                        self.last_update_yin_price_call_timestamp.write(get_block_timestamp());
+            let yin_price: Wad = median_of_three(quotes);
+            self.shrine.read().update_yin_spot_price(yin_price);
 
-                        self.emit(ValidQuotes { quotes });
-                        break;
-                    },
-                };
-            };
+            self.last_update_yin_price_call_timestamp.write(get_block_timestamp());
+
+            self.emit(ValidQuotes { quotes });
         }
     }
 }

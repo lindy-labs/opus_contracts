@@ -133,22 +133,16 @@ pub mod ekubo_oracle_adapter_component {
             assert(quote_tokens.len() == NUM_QUOTE_TOKENS, 'EOC: Not 3 quote tokens');
 
             let mut index = LOOP_START;
-            let mut quote_tokens_copy = quote_tokens;
             let mut quote_tokens_info: Array<QuoteTokenInfo> = Default::default();
-            loop {
-                match quote_tokens_copy.pop_front() {
-                    Option::Some(quote_token) => {
-                        let token = IERC20Dispatcher { contract_address: *quote_token };
-                        let decimals: u8 = token.decimals();
-                        assert(decimals <= WAD_DECIMALS, 'EOC: Too many decimals');
+            for quote_token in quote_tokens {
+                let token = IERC20Dispatcher { contract_address: *quote_token };
+                let decimals: u8 = token.decimals();
+                assert(decimals <= WAD_DECIMALS, 'EOC: Too many decimals');
 
-                        let quote_token_info = QuoteTokenInfo { address: *quote_token, decimals };
-                        self.quote_tokens.write(index, quote_token_info);
-                        quote_tokens_info.append(quote_token_info);
-                        index += 1;
-                    },
-                    Option::None => { break; },
-                }
+                let quote_token_info = QuoteTokenInfo { address: *quote_token, decimals };
+                self.quote_tokens.write(index, quote_token_info);
+                quote_tokens_info.append(quote_token_info);
+                index += 1;
             }
 
             self.emit(QuoteTokensUpdated { quote_tokens: quote_tokens_info.span() });

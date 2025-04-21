@@ -183,18 +183,12 @@ pub mod equalizer {
             let (recipients, percentages) = allocator.get_allocation();
 
             let mut amount_allocated: Wad = Zero::zero();
-            let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
-            loop {
-                match recipients_copy.pop_front() {
-                    Option::Some(recipient) => {
-                        let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
+            for recipient in recipients {
+                let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
 
-                        yin.transfer(*recipient, amount.into());
-                        amount_allocated += amount;
-                    },
-                    Option::None => { break; },
-                };
+                yin.transfer(*recipient, amount.into());
+                amount_allocated += amount;
             }
 
             self.emit(Allocate { recipients, percentages, amount: amount_allocated });

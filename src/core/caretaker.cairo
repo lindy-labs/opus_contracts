@@ -130,24 +130,20 @@ pub mod caretaker {
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
             let mut releasable_assets: Array<AssetBalance> = ArrayTrait::new();
-            let mut yangs_copy = yangs;
 
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
+            for yang in yangs {
+                let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
 
-                        let asset_amt: u128 = if deposited_yang.is_zero() {
-                            0
-                        } else {
-                            sentinel.convert_to_assets(*yang, deposited_yang)
-                        };
-
-                        releasable_assets.append(AssetBalance { address: *yang, amount: asset_amt });
-                    },
-                    Option::None => { break releasable_assets.span(); },
+                let asset_amt: u128 = if deposited_yang.is_zero() {
+                    0
+                } else {
+                    sentinel.convert_to_assets(*yang, deposited_yang)
                 };
+
+                releasable_assets.append(AssetBalance { address: *yang, amount: asset_amt });
             }
+
+            releasable_assets.span()
         }
 
         // Simulates the effects of `reclaim` at the current on-chain conditions.
@@ -169,18 +165,14 @@ pub mod caretaker {
 
             let mut reclaimable_assets: Array<AssetBalance> = ArrayTrait::new();
             let caretaker = get_contract_address();
-            let mut yangs_copy = yangs;
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let asset = IERC20Dispatcher { contract_address: *yang };
-                        let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
-                        let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
-                        reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.into() });
-                    },
-                    Option::None => { break (capped_yin, reclaimable_assets.span()); },
-                };
+            for yang in yangs {
+                let asset = IERC20Dispatcher { contract_address: *yang };
+                let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
+                let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
+                reclaimable_assets.append(AssetBalance { address: *yang, amount: asset_amt.into() });
             }
+
+            (capped_yin, reclaimable_assets.span())
         }
 
         //
@@ -227,16 +219,10 @@ pub mod caretaker {
 
             let mut ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();
 
-            let mut yangs_copy = yangs;
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let backed_yang: Wad = wadray::rmul_rw(capped_backing_pct, shrine.get_yang_total(*yang));
-                        let amount: u128 = sentinel.exit(*yang, caretaker, backed_yang);
-                        ringfenced_assets.append(AssetBalance { address: *yang, amount });
-                    },
-                    Option::None => { break; },
-                };
+            for yang in yangs {
+                let backed_yang: Wad = wadray::rmul_rw(capped_backing_pct, shrine.get_yang_total(*yang));
+                let amount: u128 = sentinel.exit(*yang, caretaker, backed_yang);
+                ringfenced_assets.append(AssetBalance { address: *yang, amount });
             }
 
             // Kill modules
@@ -279,27 +265,21 @@ pub mod caretaker {
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
             let mut released_assets: Array<AssetBalance> = ArrayTrait::new();
-            let mut yangs_copy = yangs;
 
             // Loop over yangs deposited in trove and transfer to trove owner
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                        let asset_amt: u128 = if deposited_yang.is_zero() {
-                            0
-                        } else {
-                            let exit_amt: u128 = sentinel.exit(*yang, trove_owner, deposited_yang);
-                            // Seize the collateral only after assets have been
-                            // transferred so that the asset amount per yang in Gate
-                            // does not change and user receives the correct amount
-                            shrine.seize(*yang, trove_id, deposited_yang);
-                            exit_amt
-                        };
-                        released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
-                    },
-                    Option::None => { break; },
+            for yang in yangs {
+                let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
+                let asset_amt: u128 = if deposited_yang.is_zero() {
+                    0
+                } else {
+                    let exit_amt: u128 = sentinel.exit(*yang, trove_owner, deposited_yang);
+                    // Seize the collateral only after assets have been
+                    // transferred so that the asset amount per yang in Gate
+                    // does not change and user receives the correct amount
+                    shrine.seize(*yang, trove_id, deposited_yang);
+                    exit_amt
                 };
+                released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
             }
 
             self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
@@ -346,20 +326,14 @@ pub mod caretaker {
 
             // Loop through yangs and transfer a proportionate share of each yang asset in
             // the Caretaker to caller
-            let mut reclaimable_assets_copy = reclaimable_assets;
-            loop {
-                match reclaimable_assets_copy.pop_front() {
-                    Option::Some(reclaimable_asset) => {
-                        if (*reclaimable_asset.amount).is_zero() {
-                            continue;
-                        }
+            for reclaimable_asset in reclaimable_assets {
+                if (*reclaimable_asset.amount).is_zero() {
+                    continue;
+                }
 
-                        let success: bool = IERC20Dispatcher { contract_address: *reclaimable_asset.address }
-                            .transfer(caller, (*reclaimable_asset.amount).into());
-                        assert(success, 'CA: Asset transfer failed');
-                    },
-                    Option::None => { break; },
-                };
+                let success: bool = IERC20Dispatcher { contract_address: *reclaimable_asset.address }
+                    .transfer(caller, (*reclaimable_asset.amount).into());
+                assert(success, 'CA: Asset transfer failed');
             }
 
             self.emit(Reclaim { user: caller, yin_amt: reclaimable_yin, assets: reclaimable_assets });
