@@ -28,6 +28,8 @@ mod test_purger {
     use starknet::{ContractAddress, get_block_timestamp};
     use wadray::{RAY_ONE, RAY_PERCENT, Ray, WAD_ONE, Wad};
 
+    const BOOL_PARAMETRIZED: [bool; 2] = [true, false];
+
     //
     // Tests - Setup
     //
@@ -849,8 +851,6 @@ mod test_purger {
         ]
             .span();
 
-        let is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-
         for threshold in interesting_thresholds {
             let mut target_ltv_arr = *target_ltvs.pop_front().unwrap();
             let target_ltv = *target_ltv_arr.pop_front().unwrap();
@@ -858,7 +858,7 @@ mod test_purger {
             let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
             let expected_rm_max_close_amt_lower_bound = *expected_rm_max_close_amts_lower_bound.pop_front().unwrap();
 
-            for is_recovery_mode in is_recovery_mode_fuzz {
+            for is_recovery_mode in BOOL_PARAMETRIZED.span() {
                 let PurgerTestConfig {
                     shrine, abbot, seer, absorber, purger, yangs, gates,
                 } = purger_utils::purger_deploy(classes);
@@ -1064,8 +1064,6 @@ mod test_purger {
         let classes = Option::Some(purger_utils::declare_contracts());
 
         let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let is_recovery_mode_fuzz: Span<bool> = array![false, true].span();
-        let kill_absorber_fuzz: Span<bool> = array![true, false].span();
 
         for target_trove_yang_asset_amts in target_trove_yang_asset_amts_cases {
             let recipient_trove_yang_asset_amts_cases = recipient_trove_yang_asset_amts_param;
@@ -1076,8 +1074,8 @@ mod test_purger {
                 );
 
                 for absorber_start_yin in absorber_yin_cases {
-                    for is_recovery_mode in is_recovery_mode_fuzz {
-                        for kill_absorber in kill_absorber_fuzz {
+                    for is_recovery_mode in BOOL_PARAMETRIZED.span() {
+                        for kill_absorber in BOOL_PARAMETRIZED.span() {
                             let PurgerTestConfig {
                                 shrine, abbot, seer, absorber, purger, yangs, gates,
                             } = purger_utils::purger_deploy(classes);
@@ -1490,12 +1488,10 @@ mod test_purger {
             let mut absorber_start_yin: Wad = if absorber_yin_idx == 0 {
                 // Fund the absorber with 1/3 of the max close amount
                 (max_close_amt.into() / 3_u128).into()
+            } else if absorber_yin_idx == 1 {
+                minimum_operational_shares
             } else {
-                if absorber_yin_idx == 1 {
-                    minimum_operational_shares
-                } else {
-                    max_close_amt - 1_u128.into()
-                }
+                max_close_amt - 1_u128.into()
             };
 
             let close_amt = absorber_start_yin;
@@ -2584,12 +2580,11 @@ mod test_purger {
 
         let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
         let absorber_yin_cases: Span<Wad> = purger_utils::inoperational_absorber_yin_cases();
-        let kill_absorber_fuzz: Span<bool> = array![true, false].span();
 
         for target_trove_yang_asset_amts in target_trove_yang_asset_amts_cases {
             for yang_asset_amts in recipient_trove_yang_asset_amts {
                 for absorber_start_yin in absorber_yin_cases {
-                    for kill_absorber in kill_absorber_fuzz {
+                    for kill_absorber in BOOL_PARAMETRIZED.span() {
                         let PurgerTestConfig {
                             shrine, abbot, seer, absorber, purger, yangs, gates,
                         } = purger_utils::purger_deploy(classes);

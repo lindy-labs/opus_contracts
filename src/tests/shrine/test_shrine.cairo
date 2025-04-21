@@ -1880,10 +1880,10 @@ mod test_shrine {
         // Manually set the prices
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
-        let mut yang_prices: Array<Wad> = array![yang1_price, yang2_price];
+        let yang_prices: Span<Wad> = array![yang1_price, yang2_price].span();
 
         let mut yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs();
-        let mut yang_prices_copy: Span<Wad> = yang_prices.span();
+        let mut yang_prices_copy = yang_prices;
 
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         for yang_amt in yang_amts {
@@ -1892,12 +1892,13 @@ mod test_shrine {
 
             shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
         }
-        let mut yang_thresholds: Array<Ray> = array![
+        let yang_thresholds: Span<Ray> = array![
             shrine_utils::YANG1_THRESHOLD.into(), shrine_utils::YANG2_THRESHOLD.into(),
-        ];
+        ]
+            .span();
 
         let (expected_threshold, expected_value) = shrine_utils::calculate_trove_threshold_and_value(
-            yang_prices.span(), yang_amts.span(), yang_thresholds.span(),
+            yang_prices, yang_amts, yang_thresholds,
         );
         let trove_health: Health = shrine.get_trove_health(common::TROVE_1);
         assert(trove_health.threshold == expected_threshold, 'wrong threshold');
@@ -1928,28 +1929,24 @@ mod test_shrine {
     fn test_get_shrine_health() {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
 
-        let yang1_addr: ContractAddress = shrine_utils::YANG1_ADDR;
-        let yang2_addr: ContractAddress = shrine_utils::YANG2_ADDR;
-
-        let mut yangs: Array<ContractAddress> = array![yang1_addr, yang2_addr];
-
-        let mut yang_amts: Array<Wad> = array![
+        let mut yangs: Span<ContractAddress> = shrine_utils::two_yang_addrs();
+        let yang_amts: Span<Wad> = array![
             shrine_utils::TROVE1_YANG1_DEPOSIT.into(), shrine_utils::TROVE1_YANG2_DEPOSIT.into(),
-        ];
+        ]
+            .span();
 
         // Manually set the prices
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
         let mut yang_prices: Array<Wad> = array![yang1_price, yang2_price];
 
-        let mut yangs_copy: Span<ContractAddress> = yangs.span();
         let mut yang_prices_copy: Span<Wad> = yang_prices.span();
 
         // Deposit into troves 1 and 2, with trove 2 getting twice
         // the amount of trove 1
         start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         for yang_amt in yang_amts {
-            let yang: ContractAddress = *yangs_copy.pop_front().unwrap();
+            let yang: ContractAddress = *yangs.pop_front().unwrap();
             shrine.deposit(yang, common::TROVE_1, *yang_amt);
             // Deposit twice the amount into trove 2
             shrine.deposit(yang, common::TROVE_2, *yang_amt * (2 * WAD_ONE).into());
