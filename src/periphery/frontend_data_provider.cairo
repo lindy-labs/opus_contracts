@@ -133,46 +133,37 @@ pub mod frontend_data_provider {
             let health: Health = shrine.get_trove_health(trove_id);
 
             let mut shrine_yang_balances: Span<YangBalance> = shrine.get_shrine_deposits();
-            let mut trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
+            let trove_yang_balances: Span<YangBalance> = shrine.get_trove_deposits(trove_id);
             let mut yang_addresses: Span<ContractAddress> = sentinel.get_yang_addresses();
 
             assert(trove_yang_balances.len() == yang_addresses.len(), 'FDP: Length mismatch');
 
             let mut asset_infos: Array<TroveAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
-            loop {
-                match trove_yang_balances.pop_front() {
-                    Option::Some(yang_balance) => {
-                        let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
-                        assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
+            for yang_balance in trove_yang_balances {
+                let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
+                assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (shrine_asset_info, yang_price) = self
-                            .get_shrine_asset_info_helper(
-                                shrine,
-                                sentinel,
-                                yang,
-                                (*shrine_yang_balances.pop_front().unwrap()).amount,
-                                current_rate_era,
-                            );
+                let (shrine_asset_info, yang_price) = self
+                    .get_shrine_asset_info_helper(
+                        shrine, sentinel, yang, (*shrine_yang_balances.pop_front().unwrap()).amount, current_rate_era,
+                    );
 
-                        let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
-                        let trove_asset_info = TroveAssetInfo {
-                            shrine_asset_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
-                        };
-                        asset_infos.append(trove_asset_info);
-                    },
-                    Option::None => {
-                        break TroveInfo {
-                            trove_id,
-                            owner: trove_owner,
-                            max_forge_amt,
-                            is_liquidatable,
-                            is_absorbable,
-                            health,
-                            assets: asset_infos.span(),
-                        };
-                    },
-                }
+                let asset_amt: u128 = sentinel.convert_to_assets(yang, *yang_balance.amount);
+                let trove_asset_info = TroveAssetInfo {
+                    shrine_asset_info, amount: asset_amt, value: *yang_balance.amount * yang_price,
+                };
+                asset_infos.append(trove_asset_info);
+            }
+
+            TroveInfo {
+                trove_id,
+                owner: trove_owner,
+                max_forge_amt,
+                is_liquidatable,
+                is_absorbable,
+                health,
+                assets: asset_infos.span(),
             }
         }
 
@@ -188,21 +179,16 @@ pub mod frontend_data_provider {
 
             let mut asset_infos: Array<ShrineAssetInfo> = ArrayTrait::new();
             let current_rate_era: u64 = shrine.get_current_rate_era();
-            loop {
-                match shrine_yang_balances.pop_front() {
-                    Option::Some(yang_balance) => {
-                        let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
-                        assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
+            for yang_balance in shrine_yang_balances {
+                let yang: ContractAddress = *yang_addresses.pop_front().unwrap();
+                assert(sentinel.get_yang(*yang_balance.yang_id) == yang, 'FDP: Address mismatch');
 
-                        let (shrine_asset_info, _) = self
-                            .get_shrine_asset_info_helper(
-                                shrine, sentinel, yang, *yang_balance.amount, current_rate_era,
-                            );
-                        asset_infos.append(shrine_asset_info);
-                    },
-                    Option::None => { break asset_infos.span(); },
-                }
+                let (shrine_asset_info, _) = self
+                    .get_shrine_asset_info_helper(shrine, sentinel, yang, *yang_balance.amount, current_rate_era);
+                asset_infos.append(shrine_asset_info);
             }
+
+            asset_infos.span()
         }
     }
 
