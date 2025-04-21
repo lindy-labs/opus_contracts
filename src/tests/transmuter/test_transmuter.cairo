@@ -403,86 +403,72 @@ mod test_transmuter {
 
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        loop {
-            match transmuters.pop_front() {
-                Option::Some(transmuter) => {
-                    let transmuter = *transmuter;
-                    let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
+        for transmuter in transmuters {
+            let transmuter = *transmuter;
+            let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
-                    let mut spy = spy_events();
+            let mut spy = spy_events();
 
-                    // approve Transmuter to transfer user's mock USD stable
-                    start_cheat_caller_address(asset.contract_address, user);
-                    asset.approve(transmuter.contract_address, Bounded::MAX);
-                    stop_cheat_caller_address(asset.contract_address);
+            // approve Transmuter to transfer user's mock USD stable
+            start_cheat_caller_address(asset.contract_address, user);
+            asset.approve(transmuter.contract_address, Bounded::MAX);
+            stop_cheat_caller_address(asset.contract_address);
 
-                    // Set up transmute amount to be equivalent to 1_000 (Wad) yin
-                    let asset_decimals: u8 = asset.decimals();
-                    let transmute_amt: u128 = real_transmute_amt * pow(10, asset_decimals);
+            // Set up transmute amount to be equivalent to 1_000 (Wad) yin
+            let asset_decimals: u8 = asset.decimals();
+            let transmute_amt: u128 = real_transmute_amt * pow(10, asset_decimals);
 
-                    let mut transmute_fees_copy = transmute_fees;
-                    let mut expected_wad_transmuted_amts_copy = expected_wad_transmuted_amts;
+            let mut expected_wad_transmuted_amts_copy = expected_wad_transmuted_amts;
 
-                    loop {
-                        match transmute_fees_copy.pop_front() {
-                            Option::Some(transmute_fee) => {
-                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
-                                transmuter.set_transmute_fee(*transmute_fee);
+            for transmute_fee in transmute_fees {
+                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
+                transmuter.set_transmute_fee(*transmute_fee);
 
-                                start_cheat_caller_address(transmuter.contract_address, user);
+                start_cheat_caller_address(transmuter.contract_address, user);
 
-                                // check preview
-                                let preview: Wad = transmuter.preview_transmute(transmute_amt);
-                                let expected: Wad = *expected_wad_transmuted_amts_copy.pop_front().unwrap();
-                                common::assert_equalish(
-                                    preview,
-                                    expected,
-                                    (WAD_ONE / 100).into(), // error margin
-                                    'wrong preview transmute amt',
-                                );
+                // check preview
+                let preview: Wad = transmuter.preview_transmute(transmute_amt);
+                let expected: Wad = *expected_wad_transmuted_amts_copy.pop_front().unwrap();
+                common::assert_equalish(
+                    preview, expected, (WAD_ONE / 100).into(), // error margin
+                    'wrong preview transmute amt',
+                );
 
-                                // transmute
-                                let expected_fee: Wad = transmute_amt_wad - preview;
+                // transmute
+                let expected_fee: Wad = transmute_amt_wad - preview;
 
-                                let before_user_yin_bal: Wad = shrine.get_yin(user);
-                                let before_total_yin: Wad = shrine.get_total_yin();
-                                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
-                                let before_shrine_budget: SignedWad = shrine.get_budget();
-                                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
+                let before_user_yin_bal: Wad = shrine.get_yin(user);
+                let before_total_yin: Wad = shrine.get_total_yin();
+                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
+                let before_shrine_budget: SignedWad = shrine.get_budget();
+                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
 
-                                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
+                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
 
-                                transmuter.transmute(transmute_amt);
-                                assert(shrine.get_yin(user) == before_user_yin_bal + preview, 'wrong user yin');
-                                assert(shrine.get_total_yin() == before_total_yin + preview, 'wrong total yin');
-                                assert(shrine.get_budget() == expected_budget, 'wrong budget');
-                                assert(
-                                    transmuter.get_total_transmuted() == before_total_transmuted + transmute_amt_wad,
-                                    'wrong total transmuted',
-                                );
-                                assert(
-                                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal
-                                        + transmute_amt.into(),
-                                    'wrong transmuter asset bal',
-                                );
+                transmuter.transmute(transmute_amt);
+                assert(shrine.get_yin(user) == before_user_yin_bal + preview, 'wrong user yin');
+                assert(shrine.get_total_yin() == before_total_yin + preview, 'wrong total yin');
+                assert(shrine.get_budget() == expected_budget, 'wrong budget');
+                assert(
+                    transmuter.get_total_transmuted() == before_total_transmuted + transmute_amt_wad,
+                    'wrong total transmuted',
+                );
+                assert(
+                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal + transmute_amt.into(),
+                    'wrong transmuter asset bal',
+                );
 
-                                let expected_events = array![
-                                    (
-                                        transmuter.contract_address,
-                                        transmuter_contract::Event::Transmute(
-                                            transmuter_contract::Transmute {
-                                                user, asset_amt: transmute_amt, yin_amt: preview, fee: expected_fee,
-                                            },
-                                        ),
-                                    ),
-                                ];
-                                spy.assert_emitted(@expected_events);
+                let expected_events = array![
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Transmute(
+                            transmuter_contract::Transmute {
+                                user, asset_amt: transmute_amt, yin_amt: preview, fee: expected_fee,
                             },
-                            Option::None => { break; },
-                        };
-                    };
-                },
-                Option::None => { break; },
+                        ),
+                    ),
+                ];
+                spy.assert_emitted(@expected_events);
             };
         };
     }
@@ -593,119 +579,103 @@ mod test_transmuter {
 
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        loop {
-            match transmuters.pop_front() {
-                Option::Some(transmuter) => {
-                    let transmuter = *transmuter;
-                    let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
+        for transmuter in transmuters {
+            let transmuter = *transmuter;
+            let asset = IERC20Dispatcher { contract_address: transmuter.get_asset() };
 
-                    // approve Transmuter to transfer user's mock USD stable
-                    start_cheat_caller_address(asset.contract_address, user);
-                    asset.approve(transmuter.contract_address, Bounded::MAX);
-                    stop_cheat_caller_address(asset.contract_address);
+            // approve Transmuter to transfer user's mock USD stable
+            start_cheat_caller_address(asset.contract_address, user);
+            asset.approve(transmuter.contract_address, Bounded::MAX);
+            stop_cheat_caller_address(asset.contract_address);
 
-                    // Transmute an amount of yin to set up Transmuter for reverse
-                    let asset_decimals: u8 = asset.decimals();
-                    let real_transmute_amt: u128 = reverse_fees.len().into() * real_reverse_amt;
-                    let asset_decimal_scale: u128 = pow(10, asset_decimals);
-                    let transmute_amt: u128 = real_transmute_amt * asset_decimal_scale;
+            // Transmute an amount of yin to set up Transmuter for reverse
+            let asset_decimals: u8 = asset.decimals();
+            let real_transmute_amt: u128 = reverse_fees.len().into() * real_reverse_amt;
+            let asset_decimal_scale: u128 = pow(10, asset_decimals);
+            let transmute_amt: u128 = real_transmute_amt * asset_decimal_scale;
 
-                    start_cheat_caller_address(transmuter.contract_address, user);
-                    transmuter.transmute(transmute_amt);
-                    stop_cheat_caller_address(transmuter.contract_address);
+            start_cheat_caller_address(transmuter.contract_address, user);
+            transmuter.transmute(transmute_amt);
+            stop_cheat_caller_address(transmuter.contract_address);
 
-                    let mut expected_reversed_asset_amts: Span<u128> = array![
-                        wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
-                        wad_to_fixed_point(reverse_yin_amt, asset_decimals)
-                            .into(), // 1E-27% fee (loss of precision), 1000
-                        wad_to_fixed_point(reverse_yin_amt - WAD_ONE.into(), asset_decimals), // 0.1% fee, 999.00
-                        wad_to_fixed_point(
-                            reverse_yin_amt - 2345000000000000000_u128.into(), asset_decimals,
-                        ), // 0.2345% fee, 997.655...
-                        wad_to_fixed_point(reverse_yin_amt - (10 * WAD_ONE).into(), asset_decimals) // 1% fee, 990.00
-                    ]
-                        .span();
+            let mut expected_reversed_asset_amts: Span<u128> = array![
+                wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 0% fee, 1000
+                wad_to_fixed_point(reverse_yin_amt, asset_decimals).into(), // 1E-27% fee (loss of precision), 1000
+                wad_to_fixed_point(reverse_yin_amt - WAD_ONE.into(), asset_decimals), // 0.1% fee, 999.00
+                wad_to_fixed_point(
+                    reverse_yin_amt - 2345000000000000000_u128.into(), asset_decimals,
+                ), // 0.2345% fee, 997.655...
+                wad_to_fixed_point(reverse_yin_amt - (10 * WAD_ONE).into(), asset_decimals) // 1% fee, 990.00
+            ]
+                .span();
 
-                    let mut cumulative_asset_fees: u128 = 0;
-                    let mut cumulative_yin_fees = Zero::zero();
-                    let mut reverse_fees_copy = reverse_fees;
-                    loop {
-                        match reverse_fees_copy.pop_front() {
-                            Option::Some(reverse_fee) => {
-                                let mut spy = spy_events();
+            let mut cumulative_asset_fees: u128 = 0;
+            let mut cumulative_yin_fees = Zero::zero();
 
-                                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
-                                transmuter.set_reverse_fee(*reverse_fee);
-                                stop_cheat_caller_address(transmuter.contract_address);
+            for reverse_fee in reverse_fees {
+                let mut spy = spy_events();
 
-                                start_cheat_caller_address(transmuter.contract_address, user);
+                start_cheat_caller_address(transmuter.contract_address, transmuter_utils::ADMIN);
+                transmuter.set_reverse_fee(*reverse_fee);
+                stop_cheat_caller_address(transmuter.contract_address);
 
-                                // check preview
-                                let preview: u128 = transmuter.preview_reverse(reverse_yin_amt);
-                                let expected: u128 = *expected_reversed_asset_amts.pop_front().unwrap();
-                                common::assert_equalish(
-                                    preview,
-                                    expected,
-                                    (asset_decimal_scale / 100), // error margin
-                                    'wrong preview reverse amt',
-                                );
+                start_cheat_caller_address(transmuter.contract_address, user);
 
-                                // transmute
-                                let expected_fee: Wad = wadray::rmul_rw(*reverse_fee, reverse_yin_amt);
+                // check preview
+                let preview: u128 = transmuter.preview_reverse(reverse_yin_amt);
+                let expected: u128 = *expected_reversed_asset_amts.pop_front().unwrap();
+                common::assert_equalish(
+                    preview, expected, (asset_decimal_scale / 100), // error margin
+                    'wrong preview reverse amt',
+                );
 
-                                let before_user_yin_bal: Wad = shrine.get_yin(user);
-                                let before_total_yin: Wad = shrine.get_total_yin();
-                                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
-                                let before_shrine_budget: SignedWad = shrine.get_budget();
-                                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
+                // transmute
+                let expected_fee: Wad = wadray::rmul_rw(*reverse_fee, reverse_yin_amt);
 
-                                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
+                let before_user_yin_bal: Wad = shrine.get_yin(user);
+                let before_total_yin: Wad = shrine.get_total_yin();
+                let before_total_transmuted: Wad = transmuter.get_total_transmuted();
+                let before_shrine_budget: SignedWad = shrine.get_budget();
+                let before_transmuter_asset_bal: u256 = asset.balance_of(transmuter.contract_address);
 
-                                transmuter.reverse(reverse_yin_amt);
-                                assert(shrine.get_yin(user) == before_user_yin_bal - reverse_yin_amt, 'wrong user yin');
-                                assert(shrine.get_total_yin() == before_total_yin - reverse_yin_amt, 'wrong total yin');
-                                assert(shrine.get_budget() == expected_budget, 'wrong budget');
-                                assert(
-                                    transmuter.get_total_transmuted() == before_total_transmuted
-                                        - reverse_yin_amt
-                                        + expected_fee,
-                                    'wrong total transmuted',
-                                );
-                                assert(
-                                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal
-                                        - preview.into(),
-                                    'wrong transmuter asset bal',
-                                );
+                let expected_budget: SignedWad = before_shrine_budget + expected_fee.into();
 
-                                let expected_events = array![
-                                    (
-                                        transmuter.contract_address,
-                                        transmuter_contract::Event::Reverse(
-                                            transmuter_contract::Reverse {
-                                                user, asset_amt: preview, yin_amt: reverse_yin_amt, fee: expected_fee,
-                                            },
-                                        ),
-                                    ),
-                                ];
-                                spy.assert_emitted(@expected_events);
+                transmuter.reverse(reverse_yin_amt);
+                assert(shrine.get_yin(user) == before_user_yin_bal - reverse_yin_amt, 'wrong user yin');
+                assert(shrine.get_total_yin() == before_total_yin - reverse_yin_amt, 'wrong total yin');
+                assert(shrine.get_budget() == expected_budget, 'wrong budget');
+                assert(
+                    transmuter.get_total_transmuted() == before_total_transmuted - reverse_yin_amt + expected_fee,
+                    'wrong total transmuted',
+                );
+                assert(
+                    asset.balance_of(transmuter.contract_address) == before_transmuter_asset_bal - preview.into(),
+                    'wrong transmuter asset bal',
+                );
 
-                                cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale) - preview;
-                                cumulative_yin_fees += expected_fee;
-
-                                stop_cheat_caller_address(transmuter.contract_address);
+                let expected_events = array![
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Reverse(
+                            transmuter_contract::Reverse {
+                                user, asset_amt: preview, yin_amt: reverse_yin_amt, fee: expected_fee,
                             },
-                            Option::None => { break; },
-                        };
-                    }
+                        ),
+                    ),
+                ];
+                spy.assert_emitted(@expected_events);
 
-                    assert(
-                        asset.balance_of(transmuter.contract_address) == cumulative_asset_fees.into(),
-                        'wrong cumulative asset fees',
-                    );
-                    assert(transmuter.get_total_transmuted() == cumulative_yin_fees, 'wrong cumulative yin fees');
-                },
-                Option::None => { break; },
-            };
+                cumulative_asset_fees += (real_reverse_amt * asset_decimal_scale) - preview;
+                cumulative_yin_fees += expected_fee;
+
+                stop_cheat_caller_address(transmuter.contract_address);
+            }
+
+            assert(
+                asset.balance_of(transmuter.contract_address) == cumulative_asset_fees.into(),
+                'wrong cumulative asset fees',
+            );
+            assert(transmuter.get_total_transmuted() == cumulative_yin_fees, 'wrong cumulative yin fees');
         };
     }
 
@@ -762,98 +732,74 @@ mod test_transmuter {
 
         let mut transmuter_ids: Span<u32> = array![0, 1].span();
 
-        loop {
-            match transmuter_ids.pop_front() {
-                Option::Some(transmuter_id) => {
-                    // parametrize transmuter and asset
-                    let asset = if *transmuter_id == 0 {
-                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
-                    } else {
-                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
-                    };
-                    let asset_decimals: u8 = asset.decimals();
+        for transmuter_id in transmuter_ids {
+            // parametrize transmuter and asset
+            let asset = if *transmuter_id == 0 {
+                transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
+            } else {
+                transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
+            };
+            let asset_decimals: u8 = asset.decimals();
 
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
+            let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
+            let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
+            );
+
+            let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+            let seed_amt: Wad = (100000 * WAD_ONE).into();
+
+            transmuter_utils::setup_shrine_with_transmuter(
+                shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+            );
+
+            let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
+
+            for transmute_asset_amt in transmute_asset_amts {
+                let mut spy = spy_events();
+
+                // parametrize amount to sweep
+                let mut sweep_amts: Array<u128> = array![0, 1, *transmute_asset_amt, *transmute_asset_amt + 1];
+
+                if (*transmute_asset_amt).is_non_zero() {
+                    sweep_amts.append(*transmute_asset_amt - 1);
+                }
+
+                for sweep_amt in sweep_amts.span() {
+                    start_cheat_caller_address(transmuter.contract_address, user);
+                    transmuter.transmute(*transmute_asset_amt);
+
+                    let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
+
+                    start_cheat_caller_address(transmuter.contract_address, admin);
+                    transmuter.sweep(*sweep_amt);
+
+                    let adjusted_sweep_amt: u128 = min(*transmute_asset_amt, *sweep_amt);
+
+                    assert(
+                        asset.balance_of(receiver) == before_receiver_asset_bal + adjusted_sweep_amt.into(),
+                        'wrong receiver asset bal',
                     );
 
-                    let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
-                    let seed_amt: Wad = (100000 * WAD_ONE).into();
+                    if adjusted_sweep_amt.is_non_zero() {
+                        let expected_events = array![
+                            (
+                                transmuter.contract_address,
+                                transmuter_contract::Event::Sweep(
+                                    transmuter_contract::Sweep { recipient: receiver, asset_amt: adjusted_sweep_amt },
+                                ),
+                            ),
+                        ];
+                        spy.assert_emitted(@expected_events);
+                    }
 
-                    transmuter_utils::setup_shrine_with_transmuter(
-                        shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
-                    );
+                    // reset by sweeping all remaining amount
+                    transmuter.sweep(Bounded::MAX);
+                    assert(asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check');
 
-                    let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
-
-                    loop {
-                        match transmute_asset_amts.pop_front() {
-                            Option::Some(transmute_asset_amt) => {
-                                let mut spy = spy_events();
-
-                                // parametrize amount to sweep
-                                let mut sweep_amts: Array<u128> = array![
-                                    0, 1, *transmute_asset_amt, *transmute_asset_amt + 1,
-                                ];
-
-                                if (*transmute_asset_amt).is_non_zero() {
-                                    sweep_amts.append(*transmute_asset_amt - 1);
-                                }
-
-                                let mut sweep_amts: Span<u128> = sweep_amts.span();
-
-                                loop {
-                                    match sweep_amts.pop_front() {
-                                        Option::Some(sweep_amt) => {
-                                            start_cheat_caller_address(transmuter.contract_address, user);
-                                            transmuter.transmute(*transmute_asset_amt);
-
-                                            let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
-
-                                            start_cheat_caller_address(transmuter.contract_address, admin);
-                                            transmuter.sweep(*sweep_amt);
-
-                                            let adjusted_sweep_amt: u128 = min(*transmute_asset_amt, *sweep_amt);
-
-                                            assert(
-                                                asset.balance_of(receiver) == before_receiver_asset_bal
-                                                    + adjusted_sweep_amt.into(),
-                                                'wrong receiver asset bal',
-                                            );
-
-                                            if adjusted_sweep_amt.is_non_zero() {
-                                                let expected_events = array![
-                                                    (
-                                                        transmuter.contract_address,
-                                                        transmuter_contract::Event::Sweep(
-                                                            transmuter_contract::Sweep {
-                                                                recipient: receiver, asset_amt: adjusted_sweep_amt,
-                                                            },
-                                                        ),
-                                                    ),
-                                                ];
-                                                spy.assert_emitted(@expected_events);
-                                            }
-
-                                            // reset by sweeping all remaining amount
-                                            transmuter.sweep(Bounded::MAX);
-                                            assert(
-                                                asset.balance_of(transmuter.contract_address).is_zero(), 'sanity check',
-                                            );
-
-                                            stop_cheat_caller_address(transmuter.contract_address);
-                                        },
-                                        Option::None => { break; },
-                                    };
-                                };
-                            },
-                            Option::None => { break; },
-                        };
-                    };
-                },
-                Option::None => { break; },
+                    stop_cheat_caller_address(transmuter.contract_address);
+                };
             };
         };
     }
@@ -875,114 +821,85 @@ mod test_transmuter {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
         let asset = transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class));
 
-        let mut secondary_asset_decimals: Span<u8> = array![6, 18].span();
+        let secondary_asset_decimals: Span<u8> = array![6, 18].span();
+        let kill_transmuter_toggle: Span<bool> = array![true, false].span();
 
-        loop {
-            match secondary_asset_decimals.pop_front() {
-                Option::Some(secondary_asset_decimal) => {
-                    let mut kill_transmuter: Span<bool> = array![true, false].span();
-                    loop {
-                        match kill_transmuter.pop_front() {
-                            Option::Some(kill_transmuter) => {
-                                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                                    Option::Some(transmuter_class),
-                                    shrine.contract_address,
-                                    asset.contract_address,
-                                    receiver,
-                                );
+        for secondary_asset_decimal in secondary_asset_decimals {
+            for kill_transmuter in kill_transmuter_toggle {
+                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                    Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
+                );
 
-                                // parametrize transmuter and asset
-                                let secondary_asset: ContractAddress = common::deploy_token(
-                                    'Secondary Asset',
-                                    'sASSET',
-                                    (*secondary_asset_decimal).into(),
-                                    WAD_ONE.into(),
-                                    transmuter_utils::ADMIN,
-                                    Option::Some(token_class),
-                                );
-                                let secondary_asset_erc20 = IERC20Dispatcher { contract_address: secondary_asset };
-                                let secondary_asset_amt: u128 = pow(10, *secondary_asset_decimal);
+                // parametrize transmuter and asset
+                let secondary_asset: ContractAddress = common::deploy_token(
+                    'Secondary Asset',
+                    'sASSET',
+                    (*secondary_asset_decimal).into(),
+                    WAD_ONE.into(),
+                    transmuter_utils::ADMIN,
+                    Option::Some(token_class),
+                );
+                let secondary_asset_erc20 = IERC20Dispatcher { contract_address: secondary_asset };
+                let secondary_asset_amt: u128 = pow(10, *secondary_asset_decimal);
 
-                                let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
-                                let seed_amt: Wad = (100000 * WAD_ONE).into();
+                let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+                let seed_amt: Wad = (100000 * WAD_ONE).into();
 
-                                transmuter_utils::setup_shrine_with_transmuter(
-                                    shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
-                                );
+                transmuter_utils::setup_shrine_with_transmuter(
+                    shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+                );
 
-                                let mut spy = spy_events();
+                let mut spy = spy_events();
 
-                                // parametrize amount to withdraw
-                                let mut withdraw_secondary_amts: Span<u128> = array![
-                                    0, 1, secondary_asset_amt, secondary_asset_amt + 1,
-                                ]
-                                    .span();
+                // parametrize amount to withdraw
+                let withdraw_secondary_amts: Span<u128> = array![0, 1, secondary_asset_amt, secondary_asset_amt + 1]
+                    .span();
 
-                                if *kill_transmuter {
-                                    start_cheat_caller_address(transmuter.contract_address, admin);
-                                    transmuter.kill();
-                                    stop_cheat_caller_address(transmuter.contract_address);
-                                }
+                if *kill_transmuter {
+                    start_cheat_caller_address(transmuter.contract_address, admin);
+                    transmuter.kill();
+                    stop_cheat_caller_address(transmuter.contract_address);
+                }
 
-                                loop {
-                                    match withdraw_secondary_amts.pop_front() {
-                                        Option::Some(withdraw_secondary_amt) => {
-                                            IMintableDispatcher { contract_address: secondary_asset }
-                                                .mint(transmuter.contract_address, secondary_asset_amt.into());
+                for withdraw_secondary_amt in withdraw_secondary_amts {
+                    IMintableDispatcher { contract_address: secondary_asset }
+                        .mint(transmuter.contract_address, secondary_asset_amt.into());
 
-                                            start_cheat_caller_address(transmuter.contract_address, user);
+                    start_cheat_caller_address(transmuter.contract_address, user);
 
-                                            let before_receiver_asset_bal: u256 = secondary_asset_erc20
-                                                .balance_of(receiver);
+                    let before_receiver_asset_bal: u256 = secondary_asset_erc20.balance_of(receiver);
 
-                                            start_cheat_caller_address(transmuter.contract_address, admin);
-                                            transmuter
-                                                .withdraw_secondary_asset(secondary_asset, *withdraw_secondary_amt);
+                    start_cheat_caller_address(transmuter.contract_address, admin);
+                    transmuter.withdraw_secondary_asset(secondary_asset, *withdraw_secondary_amt);
 
-                                            let adjusted_secondary_amt: u128 = min(
-                                                secondary_asset_amt, *withdraw_secondary_amt,
-                                            );
+                    let adjusted_secondary_amt: u128 = min(secondary_asset_amt, *withdraw_secondary_amt);
 
-                                            assert(
-                                                secondary_asset_erc20.balance_of(receiver) == before_receiver_asset_bal
-                                                    + adjusted_secondary_amt.into(),
-                                                'wrong receiver asset bal',
-                                            );
+                    assert(
+                        secondary_asset_erc20.balance_of(receiver) == before_receiver_asset_bal
+                            + adjusted_secondary_amt.into(),
+                        'wrong receiver asset bal',
+                    );
 
-                                            if adjusted_secondary_amt.is_non_zero() {
-                                                let expected_events = array![
-                                                    (
-                                                        transmuter.contract_address,
-                                                        transmuter_contract::Event::WithdrawSecondaryAsset(
-                                                            transmuter_contract::WithdrawSecondaryAsset {
-                                                                recipient: receiver,
-                                                                asset: secondary_asset,
-                                                                asset_amt: adjusted_secondary_amt,
-                                                            },
-                                                        ),
-                                                    ),
-                                                ];
-                                                spy.assert_emitted(@expected_events);
-                                            }
+                    if adjusted_secondary_amt.is_non_zero() {
+                        let expected_events = array![
+                            (
+                                transmuter.contract_address,
+                                transmuter_contract::Event::WithdrawSecondaryAsset(
+                                    transmuter_contract::WithdrawSecondaryAsset {
+                                        recipient: receiver, asset: secondary_asset, asset_amt: adjusted_secondary_amt,
+                                    },
+                                ),
+                            ),
+                        ];
+                        spy.assert_emitted(@expected_events);
+                    }
 
-                                            // reset by sweeping all remaining amount
-                                            transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX);
-                                            assert(
-                                                secondary_asset_erc20.balance_of(transmuter.contract_address).is_zero(),
-                                                'sanity check',
-                                            );
+                    // reset by sweeping all remaining amount
+                    transmuter.withdraw_secondary_asset(secondary_asset, Bounded::MAX);
+                    assert(secondary_asset_erc20.balance_of(transmuter.contract_address).is_zero(), 'sanity check');
 
-                                            stop_cheat_caller_address(transmuter.contract_address);
-                                        },
-                                        Option::None => { break; },
-                                    };
-                                };
-                            },
-                            Option::None => { break; },
-                        };
-                    };
-                },
-                Option::None => { break; },
+                    stop_cheat_caller_address(transmuter.contract_address);
+                };
             };
         };
     }
@@ -1041,114 +958,93 @@ mod test_transmuter {
         };
         let asset_decimals: u8 = asset.decimals();
 
-        let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
+        let transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
 
-        loop {
-            match transmute_asset_amts.pop_front() {
-                Option::Some(transmute_asset_amt) => {
-                    // parametrize amount of yin in Transmuter at time of settlement
-                    let mut transmuter_yin_amts: Array<Wad> = array![
-                        Zero::zero(),
-                        1_u128.into(),
-                        fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
-                        fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
-                    ];
+        for transmute_asset_amt in transmute_asset_amts {
+            // parametrize amount of yin in Transmuter at time of settlement
+            let mut transmuter_yin_amts: Array<Wad> = array![
+                Zero::zero(),
+                1_u128.into(),
+                fixed_point_to_wad(*transmute_asset_amt, asset_decimals),
+                fixed_point_to_wad(*transmute_asset_amt + 1, asset_decimals),
+            ];
 
-                    if (*transmute_asset_amt).is_non_zero() {
-                        transmuter_yin_amts.append(fixed_point_to_wad(*transmute_asset_amt - 1, asset_decimals));
-                    }
+            if (*transmute_asset_amt).is_non_zero() {
+                transmuter_yin_amts.append(fixed_point_to_wad(*transmute_asset_amt - 1, asset_decimals));
+            }
 
-                    let mut transmuter_yin_amts: Span<Wad> = transmuter_yin_amts.span();
+            let mut transmuter_yin_amts: Span<Wad> = transmuter_yin_amts.span();
 
-                    loop {
-                        match transmuter_yin_amts.pop_front() {
-                            Option::Some(transmuter_yin_amt) => {
-                                let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(
-                                    Option::Some(shrine_class),
-                                );
+            for transmuter_yin_amt in transmuter_yin_amts {
+                let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 
-                                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                                    Option::Some(transmuter_class),
-                                    shrine.contract_address,
-                                    asset.contract_address,
-                                    receiver,
-                                );
+                let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                    Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
+                );
 
-                                let mut spy = spy_events();
+                let mut spy = spy_events();
 
-                                let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
-                                let seed_amt: Wad = (100000 * WAD_ONE).into();
+                let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+                let seed_amt: Wad = (100000 * WAD_ONE).into();
 
-                                transmuter_utils::setup_shrine_with_transmuter(
-                                    shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
-                                );
+                transmuter_utils::setup_shrine_with_transmuter(
+                    shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+                );
 
-                                start_cheat_caller_address(transmuter.contract_address, user);
+                start_cheat_caller_address(transmuter.contract_address, user);
 
-                                // transmute some amount
-                                transmuter.transmute(*transmute_asset_amt);
-                                let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
+                // transmute some amount
+                transmuter.transmute(*transmute_asset_amt);
+                let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
 
-                                stop_cheat_caller_address(transmuter.contract_address);
+                stop_cheat_caller_address(transmuter.contract_address);
 
-                                // set up the transmuter with the necessary yin amt
-                                start_cheat_caller_address(shrine.contract_address, shrine_admin);
-                                shrine.inject(transmuter.contract_address, *transmuter_yin_amt);
-                                stop_cheat_caller_address(shrine.contract_address);
+                // set up the transmuter with the necessary yin amt
+                start_cheat_caller_address(shrine.contract_address, shrine_admin);
+                shrine.inject(transmuter.contract_address, *transmuter_yin_amt);
+                stop_cheat_caller_address(shrine.contract_address);
 
-                                let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
-                                let before_receiver_yin_bal: Wad = shrine.get_yin(receiver);
-                                let before_budget: SignedWad = shrine.get_budget();
+                let before_receiver_asset_bal: u256 = asset.balance_of(receiver);
+                let before_receiver_yin_bal: Wad = shrine.get_yin(receiver);
+                let before_budget: SignedWad = shrine.get_budget();
 
-                                start_cheat_caller_address(transmuter.contract_address, transmuter_admin);
-                                transmuter.settle();
+                start_cheat_caller_address(transmuter.contract_address, transmuter_admin);
+                transmuter.settle();
 
-                                let mut expected_budget_adjustment = Zero::zero();
-                                let mut leftover_yin_amt = Zero::zero();
+                let mut expected_budget_adjustment = Zero::zero();
+                let mut leftover_yin_amt = Zero::zero();
 
-                                if *transmuter_yin_amt < transmuted_yin_amt {
-                                    expected_budget_adjustment = -((transmuted_yin_amt - *transmuter_yin_amt).into());
-                                } else {
-                                    leftover_yin_amt = *transmuter_yin_amt - transmuted_yin_amt;
-                                }
+                if *transmuter_yin_amt < transmuted_yin_amt {
+                    expected_budget_adjustment = -((transmuted_yin_amt - *transmuter_yin_amt).into());
+                } else {
+                    leftover_yin_amt = *transmuter_yin_amt - transmuted_yin_amt;
+                }
 
-                                assert(
-                                    shrine.get_budget() == before_budget + expected_budget_adjustment, 'wrong budget',
-                                );
-                                assert(
-                                    shrine.get_yin(receiver) == before_receiver_yin_bal + leftover_yin_amt,
-                                    'wrong receiver yin',
-                                );
-                                assert(shrine.get_yin(transmuter.contract_address).is_zero(), 'wrong transmuter yin');
-                                assert(
-                                    asset.balance_of(receiver) == before_receiver_asset_bal
-                                        + (*transmute_asset_amt).into(),
-                                    'wrong receiver asset',
-                                );
+                assert(shrine.get_budget() == before_budget + expected_budget_adjustment, 'wrong budget');
+                assert(shrine.get_yin(receiver) == before_receiver_yin_bal + leftover_yin_amt, 'wrong receiver yin');
+                assert(shrine.get_yin(transmuter.contract_address).is_zero(), 'wrong transmuter yin');
+                assert(
+                    asset.balance_of(receiver) == before_receiver_asset_bal + (*transmute_asset_amt).into(),
+                    'wrong receiver asset',
+                );
 
-                                assert(transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted');
-                                assert(!transmuter.get_live(), 'not killed');
+                assert(transmuter.get_total_transmuted().is_zero(), 'wrong total transmuted');
+                assert(!transmuter.get_live(), 'not killed');
 
-                                let deficit: Wad = if expected_budget_adjustment.is_negative() {
-                                    (-expected_budget_adjustment).try_into().unwrap()
-                                } else {
-                                    Zero::zero()
-                                };
-                                let expected_events = array![
-                                    (
-                                        transmuter.contract_address,
-                                        transmuter_contract::Event::Settle(transmuter_contract::Settle { deficit }),
-                                    ),
-                                ];
-                                spy.assert_emitted(@expected_events);
+                let deficit: Wad = if expected_budget_adjustment.is_negative() {
+                    (-expected_budget_adjustment).try_into().unwrap()
+                } else {
+                    Zero::zero()
+                };
+                let expected_events = array![
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Settle(transmuter_contract::Settle { deficit }),
+                    ),
+                ];
+                spy.assert_emitted(@expected_events);
 
-                                stop_cheat_caller_address(transmuter.contract_address);
-                            },
-                            Option::None => { break; },
-                        };
-                    };
-                },
-                Option::None => { break; },
+                stop_cheat_caller_address(transmuter.contract_address);
             };
         };
     }
@@ -1229,165 +1125,151 @@ mod test_transmuter {
         let receiver: ContractAddress = transmuter_utils::RECEIVER;
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        let mut transmuter_ids: Span<u32> = array![0, 1].span();
+        let transmuter_ids: Span<u32> = array![0, 1].span();
 
-        loop {
-            match transmuter_ids.pop_front() {
-                Option::Some(transmuter_id) => {
-                    // parametrize transmuter and asset
-                    let asset = if *transmuter_id == 0 {
-                        transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
-                    } else {
-                        transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
-                    };
-                    let asset_decimals: u8 = asset.decimals();
-                    let asset_decimal_scale: u128 = pow(10, asset_decimals);
-                    let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
-
-                    let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
-
-                    let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
-                        Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
-                    );
-
-                    let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
-                    let seed_amt: Wad = (100000 * WAD_ONE).into();
-
-                    transmuter_utils::setup_shrine_with_transmuter(
-                        shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
-                    );
-
-                    let mut spy = spy_events();
-
-                    start_cheat_caller_address(transmuter.contract_address, user);
-
-                    // transmute some amount
-                    transmuter.transmute(transmute_asset_amt);
-                    let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
-
-                    start_cheat_caller_address(transmuter.contract_address, admin);
-                    transmuter.kill();
-
-                    assert(!transmuter.get_live(), 'not killed');
-
-                    let expected_events = array![
-                        (
-                            transmuter.contract_address,
-                            transmuter_contract::Event::Killed(transmuter_contract::Killed {}),
-                        ),
-                    ];
-                    spy.assert_emitted(@expected_events);
-
-                    transmuter.enable_reclaim();
-
-                    start_cheat_caller_address(transmuter.contract_address, user);
-
-                    let asset_error_margin: u128 = asset_decimal_scale / 100;
-                    let mut expected_events = ArrayTrait::new();
-
-                    // first reclaim for 10% of original transmuted amount
-                    let before_user_asset_bal: u256 = asset.balance_of(user);
-                    let before_user_yin_bal: Wad = shrine.get_yin(user);
-
-                    let first_reclaim_pct: Ray = (RAY_PERCENT * 10).into();
-                    let first_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, first_reclaim_pct);
-                    let preview: u128 = transmuter.preview_reclaim(first_reclaim_yin_amt);
-                    let expected_first_reclaim_asset_amt: u128 = wadray::rmul_wr(
-                        transmute_asset_amt.into(), first_reclaim_pct,
-                    )
-                        .into();
-                    common::assert_equalish(
-                        preview, expected_first_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #1',
-                    );
-
-                    transmuter.reclaim(first_reclaim_yin_amt);
-                    let first_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(first_user_asset_bal == before_user_asset_bal + preview.into(), 'wrong reclaim amt #1');
-
-                    let first_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(first_user_yin_bal == before_user_yin_bal - first_reclaim_yin_amt, 'wrong user yin #1');
-
-                    expected_events
-                        .append(
-                            (
-                                transmuter.contract_address,
-                                transmuter_contract::Event::Reclaim(
-                                    transmuter_contract::Reclaim {
-                                        user, asset_amt: preview, yin_amt: first_reclaim_yin_amt,
-                                    },
-                                ),
-                            ),
-                        );
-
-                    // second reclaim for 35% of original transmuted amount
-                    let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
-                    let second_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, second_reclaim_pct);
-                    let preview: u128 = transmuter.preview_reclaim(second_reclaim_yin_amt);
-                    let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
-                        transmute_asset_amt.into(), second_reclaim_pct,
-                    )
-                        .into();
-                    common::assert_equalish(
-                        preview, expected_second_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #2',
-                    );
-
-                    transmuter.reclaim(second_reclaim_yin_amt);
-                    let second_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(second_user_asset_bal == first_user_asset_bal + preview.into(), 'wrong reclaim amt #2');
-
-                    let second_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(second_user_yin_bal == first_user_yin_bal - second_reclaim_yin_amt, 'wrong user yin #2');
-
-                    expected_events
-                        .append(
-                            (
-                                transmuter.contract_address,
-                                transmuter_contract::Event::Reclaim(
-                                    transmuter_contract::Reclaim {
-                                        user, asset_amt: preview, yin_amt: second_reclaim_yin_amt,
-                                    },
-                                ),
-                            ),
-                        );
-
-                    // third reclaim for 100% of original transmuted amount, which should be capped
-                    // to what is remaining
-                    let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
-                    let reclaimable_yin: Wad = transmuter.get_total_transmuted();
-                    let preview: u128 = transmuter.preview_reclaim(third_reclaim_yin_amt);
-                    let expected_third_reclaim_asset_amt: u128 = asset
-                        .balance_of(transmuter.contract_address)
-                        .try_into()
-                        .unwrap();
-                    common::assert_equalish(
-                        preview, expected_third_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #3',
-                    );
-
-                    transmuter.reclaim(third_reclaim_yin_amt);
-                    let third_user_asset_bal: u256 = asset.balance_of(user);
-                    assert(third_user_asset_bal == second_user_asset_bal + preview.into(), 'wrong reclaim amt #3');
-
-                    let third_user_yin_bal: Wad = shrine.get_yin(user);
-                    assert(third_user_yin_bal == second_user_yin_bal - reclaimable_yin, 'wrong user yin #3');
-
-                    expected_events
-                        .append(
-                            (
-                                transmuter.contract_address,
-                                transmuter_contract::Event::Reclaim(
-                                    transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin },
-                                ),
-                            ),
-                        );
-                    spy.assert_emitted(@expected_events);
-
-                    // preview reclaim when transmuter has no assets
-                    assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
-
-                    stop_cheat_caller_address(transmuter.contract_address);
-                },
-                Option::None => { break; },
+        for transmuter_id in transmuter_ids {
+            // parametrize transmuter and asset
+            let asset = if *transmuter_id == 0 {
+                transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
+            } else {
+                transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
             };
+            let asset_decimals: u8 = asset.decimals();
+            let asset_decimal_scale: u128 = pow(10, asset_decimals);
+            let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
+
+            let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
+
+            let transmuter: ITransmuterDispatcher = transmuter_utils::transmuter_deploy(
+                Option::Some(transmuter_class), shrine.contract_address, asset.contract_address, receiver,
+            );
+
+            let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
+            let seed_amt: Wad = (100000 * WAD_ONE).into();
+
+            transmuter_utils::setup_shrine_with_transmuter(
+                shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
+            );
+
+            let mut spy = spy_events();
+
+            start_cheat_caller_address(transmuter.contract_address, user);
+
+            // transmute some amount
+            transmuter.transmute(transmute_asset_amt);
+            let transmuted_yin_amt: Wad = transmuter.get_total_transmuted();
+
+            start_cheat_caller_address(transmuter.contract_address, admin);
+            transmuter.kill();
+
+            assert(!transmuter.get_live(), 'not killed');
+
+            let expected_events = array![
+                (transmuter.contract_address, transmuter_contract::Event::Killed(transmuter_contract::Killed {})),
+            ];
+            spy.assert_emitted(@expected_events);
+
+            transmuter.enable_reclaim();
+
+            start_cheat_caller_address(transmuter.contract_address, user);
+
+            let asset_error_margin: u128 = asset_decimal_scale / 100;
+            let mut expected_events = ArrayTrait::new();
+
+            // first reclaim for 10% of original transmuted amount
+            let before_user_asset_bal: u256 = asset.balance_of(user);
+            let before_user_yin_bal: Wad = shrine.get_yin(user);
+
+            let first_reclaim_pct: Ray = (RAY_PERCENT * 10).into();
+            let first_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, first_reclaim_pct);
+            let preview: u128 = transmuter.preview_reclaim(first_reclaim_yin_amt);
+            let expected_first_reclaim_asset_amt: u128 = wadray::rmul_wr(transmute_asset_amt.into(), first_reclaim_pct)
+                .into();
+            common::assert_equalish(
+                preview, expected_first_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #1',
+            );
+
+            transmuter.reclaim(first_reclaim_yin_amt);
+            let first_user_asset_bal: u256 = asset.balance_of(user);
+            assert(first_user_asset_bal == before_user_asset_bal + preview.into(), 'wrong reclaim amt #1');
+
+            let first_user_yin_bal: Wad = shrine.get_yin(user);
+            assert(first_user_yin_bal == before_user_yin_bal - first_reclaim_yin_amt, 'wrong user yin #1');
+
+            expected_events
+                .append(
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Reclaim(
+                            transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: first_reclaim_yin_amt },
+                        ),
+                    ),
+                );
+
+            // second reclaim for 35% of original transmuted amount
+            let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
+            let second_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, second_reclaim_pct);
+            let preview: u128 = transmuter.preview_reclaim(second_reclaim_yin_amt);
+            let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
+                transmute_asset_amt.into(), second_reclaim_pct,
+            )
+                .into();
+            common::assert_equalish(
+                preview, expected_second_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #2',
+            );
+
+            transmuter.reclaim(second_reclaim_yin_amt);
+            let second_user_asset_bal: u256 = asset.balance_of(user);
+            assert(second_user_asset_bal == first_user_asset_bal + preview.into(), 'wrong reclaim amt #2');
+
+            let second_user_yin_bal: Wad = shrine.get_yin(user);
+            assert(second_user_yin_bal == first_user_yin_bal - second_reclaim_yin_amt, 'wrong user yin #2');
+
+            expected_events
+                .append(
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Reclaim(
+                            transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: second_reclaim_yin_amt },
+                        ),
+                    ),
+                );
+
+            // third reclaim for 100% of original transmuted amount, which should be capped
+            // to what is remaining
+            let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
+            let reclaimable_yin: Wad = transmuter.get_total_transmuted();
+            let preview: u128 = transmuter.preview_reclaim(third_reclaim_yin_amt);
+            let expected_third_reclaim_asset_amt: u128 = asset
+                .balance_of(transmuter.contract_address)
+                .try_into()
+                .unwrap();
+            common::assert_equalish(
+                preview, expected_third_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #3',
+            );
+
+            transmuter.reclaim(third_reclaim_yin_amt);
+            let third_user_asset_bal: u256 = asset.balance_of(user);
+            assert(third_user_asset_bal == second_user_asset_bal + preview.into(), 'wrong reclaim amt #3');
+
+            let third_user_yin_bal: Wad = shrine.get_yin(user);
+            assert(third_user_yin_bal == second_user_yin_bal - reclaimable_yin, 'wrong user yin #3');
+
+            expected_events
+                .append(
+                    (
+                        transmuter.contract_address,
+                        transmuter_contract::Event::Reclaim(
+                            transmuter_contract::Reclaim { user, asset_amt: preview, yin_amt: reclaimable_yin },
+                        ),
+                    ),
+                );
+            spy.assert_emitted(@expected_events);
+
+            // preview reclaim when transmuter has no assets
+            assert(transmuter.preview_reclaim(third_reclaim_yin_amt).is_zero(), 'preview should be zero');
+
+            stop_cheat_caller_address(transmuter.contract_address);
         };
     }
 

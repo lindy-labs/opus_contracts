@@ -218,13 +218,8 @@ pub mod shrine_utils {
 
         let mut yang_feeds: Array<Span<Wad>> = ArrayTrait::new();
 
-        let mut yangs_copy = yangs;
-        let mut yang_prices_copy = yang_prices;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(_) => { yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap())); },
-                Option::None => { break; },
-            };
+        for yang_price in yang_prices {
+            yang_feeds.append(generate_yang_feed(*yang_price));
         }
         let yang_feeds = yang_feeds.span();
 
@@ -233,20 +228,12 @@ pub mod shrine_utils {
         let mut timestamp: u64 = get_block_timestamp();
 
         start_cheat_caller_address(shrine.contract_address, ADMIN);
-        loop {
-            if idx == feed_len {
-                break;
-            }
-
+        while idx != feed_len {
             start_cheat_block_timestamp_global(timestamp);
 
-            let mut yangs_copy = yangs;
             let mut yang_feeds_copy = yang_feeds;
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => { shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx)); },
-                    Option::None => { break; },
-                };
+            for yang in yangs {
+                shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
             }
 
             shrine.set_multiplier(RAY_ONE.into());
@@ -318,22 +305,13 @@ pub mod shrine_utils {
         let mut next_ts: u64 = get_block_timestamp();
 
         start_cheat_caller_address(shrine.contract_address, ADMIN);
-        loop {
-            if num_periods.is_zero() {
-                break;
-            }
+        while num_periods != 0 {
             next_ts += time_per_period;
             start_cheat_block_timestamp_global(next_ts);
 
-            let mut yangs_copy = yangs;
-            loop {
-                match yangs_copy.pop_front() {
-                    Option::Some(yang) => {
-                        let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                        shrine.advance(*yang, yang_price);
-                    },
-                    Option::None => { break; },
-                }
+            for yang in yangs {
+                let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                shrine.advance(*yang, yang_price);
             }
 
             shrine.set_multiplier(RAY_ONE.into());
@@ -365,11 +343,7 @@ pub mod shrine_utils {
         let price_hash: felt252 = LegacyHash::hash(price_u128.into(), price_u128);
         let mut price_hash: u256 = price_hash.into();
 
-        loop {
-            if idx == FEED_LEN {
-                break prices.span();
-            }
-
+        while idx != FEED_LEN {
             let price_change: Wad = wadray::rmul_wr(price, PRICE_CHANGE.into());
             let increase_price: bool = consume_first_bit(ref price_hash);
             if increase_price {
@@ -381,19 +355,16 @@ pub mod shrine_utils {
 
             idx += 1;
         }
+
+        prices.span()
     }
 
     // Helper function to get the prices for an array of yangs
     pub fn get_yang_prices(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>) -> Span<Wad> {
         let mut yang_prices: Array<Wad> = ArrayTrait::new();
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    yang_prices.append(yang_price);
-                },
-                Option::None => { break; },
-            };
+        for yang in yangs {
+            let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+            yang_prices.append(yang_price);
         }
         yang_prices.span()
     }
@@ -419,19 +390,16 @@ pub mod shrine_utils {
         let mut cumulative_value = Zero::zero();
         let mut cumulative_threshold = Zero::zero();
 
-        loop {
-            match yang_prices.pop_front() {
-                Option::Some(yang_price) => {
-                    let amt: Wad = *yang_amts.pop_front().unwrap();
-                    let threshold: Ray = *yang_thresholds.pop_front().unwrap();
+        for yang_price in yang_prices {
+            let amt: Wad = *yang_amts.pop_front().unwrap();
+            let threshold: Ray = *yang_thresholds.pop_front().unwrap();
 
-                    let value = amt * *yang_price;
-                    cumulative_value += value;
-                    cumulative_threshold += wadray::wmul_wr(value, threshold);
-                },
-                Option::None => { break (wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value); },
-            };
+            let value = amt * *yang_price;
+            cumulative_value += value;
+            cumulative_threshold += wadray::wmul_wr(value, threshold);
         }
+
+        (wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value)
     }
 
     /// Helper function to calculate the compounded debt over a given set of intervals.
@@ -484,18 +452,13 @@ pub mod shrine_utils {
         assert(yang_base_rates_history.len() == yang_avg_prices.len(), 'array length mismatch');
         assert(yang_base_rates_history.len() == avg_multipliers.len(), 'array length mismatch');
         assert((*yang_base_rates_history.at(0)).len() == yang_amts.len(), 'array length mismatch');
-        let mut yang_base_rates_history_copy = yang_base_rates_history;
+
         let mut yang_avg_prices_copy = yang_avg_prices;
-        loop {
-            match yang_base_rates_history_copy.pop_front() {
-                Option::Some(base_rates_history) => {
-                    assert(
-                        (*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(),
-                        'array length mismatch',
-                    );
-                },
-                Option::None => { break; },
-            };
+        for base_rates_history in yang_base_rates_history {
+            assert(
+                (*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(),
+                'array length mismatch',
+            );
         }
 
         // Start of tests
@@ -504,19 +467,12 @@ pub mod shrine_utils {
         let yangs_count: usize = yang_amts.len();
 
         let mut i: usize = 0;
-        loop {
-            if i == eras_count {
-                break debt;
-            }
-
+        while i != eras_count {
             let mut weighted_rate_sum: Ray = Zero::zero();
             let mut total_avg_yang_value: Wad = Zero::zero();
 
             let mut j: usize = 0;
-            loop {
-                if j == yangs_count {
-                    break;
-                }
+            while j != yangs_count {
                 let yang_value: Wad = *yang_amts[j] * *yang_avg_prices.at(i)[j];
                 total_avg_yang_value += yang_value;
 
@@ -552,6 +508,8 @@ pub mod shrine_utils {
             debt *= exp(wadray::rmul_rw(rate, t.into()));
             i += 1;
         }
+
+        debt
     }
 
     // Compound function for a single yang, within a single era
@@ -643,15 +601,10 @@ pub mod shrine_utils {
 
         start_cheat_caller_address(shrine.contract_address, ADMIN);
 
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
-                    shrine.advance(*yang, new_price);
-                },
-                Option::None => { break; },
-            };
+        for yang in yangs {
+            let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+            let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - decrease_pct));
+            shrine.advance(*yang, new_price);
         }
 
         stop_cheat_caller_address(shrine.contract_address);
@@ -692,32 +645,23 @@ pub mod shrine_utils {
         let troves_loop_end: u64 = troves_count + 1;
 
         let mut yang_id: u32 = 1;
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let initial_amt: Wad = shrine.get_protocol_owned_yang_amt(*yang);
+        for yang in yangs {
+            let initial_amt: Wad = shrine.get_protocol_owned_yang_amt(*yang);
 
-                    let mut trove_id: u64 = 1;
-                    let mut troves_cumulative_amt: Wad = Zero::zero();
-                    loop {
-                        if trove_id == troves_loop_end {
-                            break;
-                        }
+            let mut trove_id: u64 = 1;
+            let mut troves_cumulative_amt: Wad = Zero::zero();
+            while trove_id != troves_loop_end {
+                let trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
+                troves_cumulative_amt += trove_amt;
 
-                        let trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
-                        troves_cumulative_amt += trove_amt;
+                trove_id += 1;
+            }
 
-                        trove_id += 1;
-                    }
+            let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
+            let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
+            assert_eq!(derived_yang_amt, actual_yang_amt, "yang invariant failed");
 
-                    let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
-                    let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
-                    assert_eq!(derived_yang_amt, actual_yang_amt, "yang invariant failed");
-
-                    yang_id += 1;
-                },
-                Option::None => { break; },
-            };
+            yang_id += 1;
         };
     }
 
@@ -732,11 +676,7 @@ pub mod shrine_utils {
         let mut trove_id: u64 = 1;
 
         start_cheat_caller_address(shrine.contract_address, ADMIN);
-        loop {
-            if trove_id == troves_loop_end {
-                break;
-            }
-
+        while trove_id != troves_loop_end {
             // Accrue interest on trove
             shrine.melt(ADMIN, trove_id, Zero::zero());
 
