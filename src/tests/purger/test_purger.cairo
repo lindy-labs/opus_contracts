@@ -1073,7 +1073,7 @@ mod test_purger {
                         match recipient_trove_yang_asset_amts_cases.pop_front() {
                             Option::Some(yang_asset_amts) => {
                                 let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
-                                let absorber_yin_cases: Span<Wad> =
+                                let mut absorber_yin_cases: Span<Wad> =
                                     purger_utils::generate_operational_absorber_yin_cases(
                                     initial_trove_debt,
                                 );
