@@ -208,7 +208,7 @@ pub mod receptor {
             for quote in quotes {
                 if quote.is_zero() {
                     self.emit(InvalidQuotes { quotes });
-                    break;
+                    return;
                 }
             }
 
