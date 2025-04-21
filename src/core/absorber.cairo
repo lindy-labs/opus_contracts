@@ -824,6 +824,8 @@ pub mod absorber {
                 let mut start_absorption_id = provided_absorption_id;
 
                 while start_absorption_id != current_absorption_id {
+                    start_absorption_id += 1;
+
                     let absorption_epoch: u32 = self.absorption_epoch.read(start_absorption_id);
 
                     // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
@@ -838,8 +840,6 @@ pub mod absorber {
                     let asset_amt_per_share: u128 = self.asset_absorption.read((*asset, start_absorption_id));
 
                     absorbed_amt += u128_wmul(adjusted_shares.into(), asset_amt_per_share);
-
-                    start_absorption_id += 1;
                 }
 
                 absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
