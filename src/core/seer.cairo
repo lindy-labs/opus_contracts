@@ -250,8 +250,8 @@ pub mod seer {
             // valid price update is fetched, in which case, call shrine.advance()
             // the expectation is that the primary oracle will provide a
             // valid price in most cases, but if not, we can fallback to other oracles
-            let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-            for yang in yangs.pop_front() {
+            let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
+            for yang in yangs {
                 if shrine.get_yang_suspension_status(*yang) == YangSuspensionStatus::Permanent {
                     continue;
                 }

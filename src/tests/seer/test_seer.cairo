@@ -295,11 +295,11 @@ mod test_seer {
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
         let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
         let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
-        assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
-        assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
+        assert_eq!(shrine_eth_price, eth_price, "wrong eth price in shrine 1");
+        assert_eq!(shrine_wbtc_price, wbtc_price, "wrong wbtc price in shrine 1");
         // Vault prices should be identical at 1 : 1 conversion rate
-        assert(shrine_eth_vault_price == eth_price, 'wrong eth(v) price in shrine 1');
-        assert(shrine_wbtc_vault_price == wbtc_price, 'wrong wbtc(v) price in shrine 1');
+        assert_eq!(shrine_eth_vault_price, eth_price, "wrong eth(v) price in shrine 1");
+        assert_eq!(shrine_wbtc_vault_price, wbtc_price, "wrong wbtc(v) price in shrine 1");
 
         let expected_events_seer = array![
             (
