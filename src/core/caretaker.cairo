@@ -124,7 +124,7 @@ pub mod caretaker {
         fn preview_release(self: @ContractState, trove_id: u64) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            assert(shrine.get_live() == false, 'CA: System is live');
+            assert(shrine.get_live(), 'CA: System is live');
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
@@ -157,7 +157,7 @@ pub mod caretaker {
         fn preview_reclaim(self: @ContractState, yin: Wad) -> (Wad, Span<AssetBalance>) {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            assert(shrine.get_live() == false, 'CA: System is live');
+            assert(shrine.get_live(), 'CA: System is live');
 
             // Cap percentage of amount to be reclaimed to 100% to catch
             // invalid values beyond total yin
@@ -262,7 +262,7 @@ pub mod caretaker {
         fn release(ref self: ContractState, trove_id: u64) -> Span<AssetBalance> {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            assert(shrine.get_live() == false, 'CA: System is live');
+            assert(shrine.get_live(), 'CA: System is live');
 
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();
@@ -328,7 +328,7 @@ pub mod caretaker {
         fn reclaim(ref self: ContractState, yin: Wad) -> (Wad, Span<AssetBalance>) {
             let shrine: IShrineDispatcher = self.shrine.read();
 
-            assert(shrine.get_live() == false, 'CA: System is live');
+            assert(shrine.get_live(), 'CA: System is live');
 
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();
