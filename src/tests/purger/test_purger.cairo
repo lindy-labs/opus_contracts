@@ -1123,7 +1123,6 @@ mod test_purger {
             let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
             let recipient_trove_start_health: Health = shrine.get_trove_health(recipient_trove);
-            let recipient_trove_eth_yang_start = shrine.get_deposit(*yangs[0], recipient_trove);
 
             purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, target_trove_updated_start_health);
 
