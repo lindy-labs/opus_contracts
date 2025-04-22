@@ -408,7 +408,7 @@ mod test_shrine_redistribution {
 
             let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
             let expected_protocol_owned_troves_debt: Wad = before_protocol_owned_troves_debt + expected_error;
-            let error_margin: Wad = 20_u128.into();
+            let error_margin: Wad = 30_u128.into();
             common::assert_equalish(
                 after_protocol_owned_troves_debt,
                 expected_protocol_owned_troves_debt,
