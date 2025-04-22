@@ -24,49 +24,47 @@ pub mod equalizer_utils {
     //
 
     pub fn initial_recipients() -> Span<ContractAddress> {
-        let mut recipients: Array<ContractAddress> = array![
-            'recipient 1'.try_into().unwrap(), 'recipient 2'.try_into().unwrap(), 'recipient 3'.try_into().unwrap(),
-        ];
-        recipients.span()
+        array!['recipient 1'.try_into().unwrap(), 'recipient 2'.try_into().unwrap(), 'recipient 3'.try_into().unwrap()]
+            .span()
     }
 
     pub fn new_recipients() -> Span<ContractAddress> {
-        let mut recipients: Array<ContractAddress> = array![
+        array![
             'new recipient 1'.try_into().unwrap(),
             'new recipient 2'.try_into().unwrap(),
             'new recipient 3'.try_into().unwrap(),
             'new recipient 4'.try_into().unwrap(),
-        ];
-        recipients.span()
+        ]
+            .span()
     }
 
     pub fn initial_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = array![
+        array![
             150000000000000000000000000_u128.into(), // 15% (Ray)
             500000000000000000000000000_u128.into(), // 50% (Ray)
             350000000000000000000000000_u128.into() // 35% (Ray)
-        ];
-        percentages.span()
+        ]
+            .span()
     }
 
     pub fn new_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = array![
+        array![
             125000000000000000000000000_u128.into(), // 12.5% (Ray)
             372500000000000000000000000_u128.into(), // 37.25% (Ray)
             216350000000000000000000000_u128.into(), // 21.635% (Ray)
             286150000000000000000000000_u128.into() // 28.615% (Ray)
-        ];
-        percentages.span()
+        ]
+            .span()
     }
 
     // Percentages do not add to 1
     pub fn invalid_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = array![
+        array![
             150000000000000000000000000_u128.into(), // 15% (Ray)
             500000000000000000000000000_u128.into(), // 50% (Ray)
             350000000000000000000000001_u128.into() // (35 + 1E-27)% (Ray)
-        ];
-        percentages.span()
+        ]
+            .span()
     }
 
     //

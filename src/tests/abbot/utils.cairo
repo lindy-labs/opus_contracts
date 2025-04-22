@@ -59,18 +59,15 @@ pub mod abbot_utils {
     //
 
     pub fn initial_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10];
-        asset_amts.span()
+        array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10].span()
     }
 
     pub fn open_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT];
-        asset_amts.span()
+        array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT].span()
     }
 
     pub fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
-        asset_amts.span()
+        array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT].span()
     }
 
     //
