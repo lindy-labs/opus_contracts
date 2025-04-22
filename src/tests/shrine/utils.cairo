@@ -1,6 +1,5 @@
 pub mod shrine_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::hash::LegacyHash;
     use core::num::traits::Zero;
     use core::traits::DivRem;
     use opus::core::roles::shrine_roles;
@@ -10,6 +9,7 @@ pub mod shrine_utils {
     use opus::tests::common;
     use opus::types::Health;
     use opus::utils::exp::exp;
+    use snforge_std::fuzzable::generate_arg;
     use snforge_std::{
         ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global,
         start_cheat_caller_address, stop_cheat_caller_address,
@@ -339,14 +339,11 @@ pub mod shrine_utils {
         let mut prices: Array<Wad> = ArrayTrait::new();
         let mut idx: u64 = 0;
 
-        let price_u128: u128 = price.into();
-        let price_hash: felt252 = LegacyHash::hash(price_u128.into(), price_u128);
-        let mut price_hash: u256 = price_hash.into();
-
         while idx != FEED_LEN {
             let price_change: Wad = wadray::rmul_wr(price, PRICE_CHANGE.into());
-            let increase_price: bool = consume_first_bit(ref price_hash);
-            if increase_price {
+
+            let increase_price = generate_arg(0, 1);
+            if increase_price == 1 {
                 price += price_change;
             } else {
                 price -= price_change;
