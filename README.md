@@ -43,8 +43,8 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Purger      | `0x02cef5286b554f4122a2070bbd492a95ad810774903c92633979ed54d51b04ca` | `v1.1.0` |
 | Receptor    | `0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678` | `v1.1.0` |
 | Seer        | `0x076baf9a48986ae11b144481aec7699823d7ebc5843f30cf47b053ebfe579824` | `v1.1.0` as `seer_v2` |
-| Sentinel    | `0x06428ec3221f369792df13e7d59580902f1bfabd56a81d30224f4f282ba380cd` | `v1.0.0 |
-| Shrine      | `0x0498edfaf50ca5855666a700c25dd629d577eb9afccdf3b5977aec79aee55ada` | `v1.0.0 |
+| Sentinel    | `0x06428ec3221f369792df13e7d59580902f1bfabd56a81d30224f4f282ba380cd` | `v1.0.0` |
+| Shrine      | `0x0498edfaf50ca5855666a700c25dd629d577eb9afccdf3b5977aec79aee55ada` | `v1.0.0` |
 | Transmuter[USDC] (Restricted) | `0x033b98cd86f65329ef8db5dce2ee229061925613f5c15101b520c0343d906c0b` | `v1.1.0` as `transmuter_v2` |
 
 
