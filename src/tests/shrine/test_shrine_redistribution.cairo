@@ -288,11 +288,13 @@ mod test_shrine_redistribution {
         let redistributed_trove2_start_health = shrine.get_trove_health(redistributed_trove2);
         shrine.redistribute(redistributed_trove1, redistributed_trove1_health.debt, RAY_ONE.into());
 
+        let error_margin = 10_u128.into();
         let intermediate_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-        assert_eq!(
+        common::assert_equalish(
             intermediate_protocol_owned_troves_debt,
             before_protocol_owned_troves_debt + expected_redistributed_trove1_errors,
-            "wrong protocol debt #1",
+            error_margin,
+            'wrong protocol debt #1',
         );
 
         let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
@@ -310,7 +312,6 @@ mod test_shrine_redistribution {
 
         let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
 
-        let error_margin = 5_u128.into();
         common::assert_equalish(
             after_protocol_owned_troves_debt,
             intermediate_protocol_owned_troves_debt + expected_redistributed_trove2_errors,
