@@ -295,19 +295,6 @@ pub fn deploy_pragma_v2(
     deploy_pragma.contract_address
 }
 
-pub fn deploy_switchboard(admin: ContractAddress, oracle: ContractAddress) -> ContractAddress {
-    let declare_switchboard = declare("switchboard", Option::Some(MAX_FEE), Option::None)
-        .expect('failed switchboard declare');
-    let calldata: Array<felt252> = array![admin.into(), oracle.into()];
-
-    let deploy_switchboard = deploy(
-        declare_switchboard.class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None
-    )
-        .expect('failed switchboard deploy');
-
-    deploy_switchboard.contract_address
-}
-
 // Note that this works only for mainnet because Sepolia only has USDC and USDT so we are unable
 // to have 3 quote tokens in the first place. Also, USDT/EKUBO pool is not initialized.
 pub fn deploy_ekubo(admin: ContractAddress, oracle: ContractAddress) -> ContractAddress {
