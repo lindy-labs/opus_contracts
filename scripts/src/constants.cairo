@@ -69,6 +69,6 @@ pub const PRAGMA_SSTRK_PAIR_SETTINGS: PairSettings = PairSettings {
 };
 
 // Chain constants
-pub const fn erc20_class_hash() -> ClassHash {
-    0x11374319A6E07B4F2738FA3BFA8CF2181BFB0DBB4D800215BAA87B83A57877E.try_into().expect('invalid ERC20 class hash')
-}
+pub const ERC20_CLASS_HASH: ClassHash = 0x11374319A6E07B4F2738FA3BFA8CF2181BFB0DBB4D800215BAA87B83A57877E
+    .try_into()
+    .unwrap();

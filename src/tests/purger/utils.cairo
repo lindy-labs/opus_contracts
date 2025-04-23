@@ -222,26 +222,28 @@ pub mod purger_utils {
     // Refer to https://www.desmos.com/calculator/b8drqdb32a.
     // Note that thresholds >= 90% will be absorbable once LTV >= threshold
     pub fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
-        let mut thresholds: Array<Ray> = array![
+        let mut thresholds: Span<Ray> = array![
             (65 * RAY_PERCENT).into(),
             (70 * RAY_PERCENT).into(),
             (75 * RAY_PERCENT).into(),
             787400000000000000000000000_u128.into(), // 78.74% (Ray)
             787500000000000000000000000_u128.into(), // 78.75% (Ray)
             (80 * RAY_PERCENT).into(),
-        ];
+        ]
+            .span();
 
         // The LTV at which the maximum penalty is reached minus 0.01%
-        let mut trove_ltvs: Array<Ray> = array![
+        let mut trove_ltvs: Span<Ray> = array![
             711700000000000000000000000_u128.into(), // 71.17% (Ray)
             766400000000000000000000000_u128.into(), // 76.64% (Ray)
             821200000000000000000000000_u128.into(), // 82.12% (Ray)
             859200000000000000000000000_u128.into(), // 85.92% (Ray)
             862200000000000000000000000_u128.into(), // 86.22% (Ray)
             868900000000000000000000000_u128.into() // 86.89% (Ray)
-        ];
+        ]
+            .span();
 
-        (thresholds.span(), trove_ltvs.span())
+        (thresholds, trove_ltvs)
     }
 
     pub fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {

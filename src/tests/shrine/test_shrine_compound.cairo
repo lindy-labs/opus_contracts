@@ -766,50 +766,57 @@ mod test_shrine_compound {
         //     the first rate update interval.
 
         // Add initial base rates for rates history to calculate compound interest
-        let mut first_rate_history_to_compound: Array<Ray> = array![
+        let first_rate_history_to_compound: Span<Ray> = array![
             shrine_utils::YANG1_BASE_RATE.into(),
             shrine_utils::YANG2_BASE_RATE.into(),
             shrine_utils::YANG3_BASE_RATE.into(),
-        ];
+        ]
+            .span();
 
         // For first rate update, yang 1 is updated and yang 2 uses previous base rate
         let yang1_first_rate_update: Ray = 25000000000000000000000000_u128.into(); // 2.5% (Ray)
-        let mut first_rate_history_to_update: Array<Ray> = array![
+        let first_rate_history_to_update: Span<Ray> = array![
             yang1_first_rate_update, (RAY_SCALE + 1).into(), (RAY_SCALE + 1).into(),
-        ];
-        let mut second_rate_history_to_compound: Array<Ray> = array![
+        ]
+            .span();
+        let second_rate_history_to_compound: Span<Ray> = array![
             yang1_first_rate_update, shrine_utils::YANG2_BASE_RATE.into(), shrine_utils::YANG3_BASE_RATE.into(),
-        ];
+        ]
+            .span();
 
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
         let yang2_second_rate_update: Ray = 43500000000000000000000000_u128.into(); // 4.35% (Ray)
-        let mut second_rate_history_to_update: Array<Ray> = array![
+        let second_rate_history_to_update: Span<Ray> = array![
             (RAY_SCALE + 1).into(), yang2_second_rate_update, (RAY_SCALE + 1).into(),
-        ];
-        let mut third_rate_history_to_compound: Array<Ray> = array![
+        ]
+            .span();
+        let third_rate_history_to_compound: Span<Ray> = array![
             yang1_first_rate_update, yang2_second_rate_update, shrine_utils::YANG3_BASE_RATE.into(),
-        ];
+        ]
+            .span();
 
         // For third rate update, yang 1 is updated and yang 2 uses previous base rate
         let yang1_third_rate_update: Ray = 27500000000000000000000000_u128.into(); // 2.75% (Ray)
-        let mut third_rate_history_to_update: Array<Ray> = array![
+        let third_rate_history_to_update: Span<Ray> = array![
             yang1_third_rate_update, (RAY_SCALE + 1).into(), (RAY_SCALE + 1).into(),
-        ];
-        let mut fourth_rate_history_to_compound: Array<Ray> = array![
+        ]
+            .span();
+        let fourth_rate_history_to_compound: Span<Ray> = array![
             yang1_third_rate_update, yang2_second_rate_update, shrine_utils::YANG3_BASE_RATE.into(),
-        ];
+        ]
+            .span();
 
-        let mut yang_base_rates_history_to_update: Array<Span<Ray>> = array![
-            first_rate_history_to_update.span(),
-            second_rate_history_to_update.span(),
-            third_rate_history_to_update.span(),
-        ];
-        let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = array![
-            first_rate_history_to_compound.span(),
-            second_rate_history_to_compound.span(),
-            third_rate_history_to_compound.span(),
-            fourth_rate_history_to_compound.span(),
-        ];
+        let yang_base_rates_history_to_update: Span<Span<Ray>> = array![
+            first_rate_history_to_update, second_rate_history_to_update, third_rate_history_to_update,
+        ]
+            .span();
+        let yang_base_rates_history_to_compound: Span<Span<Ray>> = array![
+            first_rate_history_to_compound,
+            second_rate_history_to_compound,
+            third_rate_history_to_compound,
+            fourth_rate_history_to_compound,
+        ]
+            .span();
 
         // The number of base rate updates
         let num_base_rate_updates: u64 = 3;
@@ -850,10 +857,10 @@ mod test_shrine_compound {
 
         let before_budget: SignedWad = shrine.get_budget();
 
-        let mut yangs_deposited: Array<Wad> = array![yang1_deposit_amt, yang2_deposit_amt, Zero::zero()];
+        let yangs_deposited: Span<Wad> = array![yang1_deposit_amt, yang2_deposit_amt, Zero::zero()].span();
 
-        let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> = yang_base_rates_history_to_update.span();
-        let mut yang_base_rates_history_to_compound_copy: Span<Span<Ray>> = yang_base_rates_history_to_compound.span();
+        let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> = yang_base_rates_history_to_update;
+        let mut yang_base_rates_history_to_compound_copy: Span<Span<Ray>> = yang_base_rates_history_to_compound;
 
         let mut i = 0;
         let mut era_start_interval: u64 = start_interval;
@@ -932,9 +939,9 @@ mod test_shrine_compound {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let expected_debt: Wad = shrine_utils::compound(
-            yang_base_rates_history_to_compound.span(),
+            yang_base_rates_history_to_compound,
             rate_update_intervals.span(),
-            yangs_deposited.span(),
+            yangs_deposited,
             avg_yang_prices_by_era.span(),
             avg_multipliers.span(),
             start_interval,

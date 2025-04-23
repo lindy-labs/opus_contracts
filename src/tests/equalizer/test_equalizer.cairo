@@ -148,15 +148,15 @@ mod test_equalizer {
         let recipients = equalizer_utils::initial_recipients();
         let percentages = equalizer_utils::initial_percentages();
 
-        let mut tokens: Array<ContractAddress> = array![shrine.contract_address];
-        let mut before_balances = common::get_token_balances(tokens.span(), recipients);
+        let tokens: Span<ContractAddress> = array![shrine.contract_address].span();
+        let mut before_balances = common::get_token_balances(tokens, recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
         stop_cheat_caller_address(shrine.contract_address);
 
         equalizer.allocate();
 
-        let mut after_balances = common::get_token_balances(tokens.span(), recipients);
+        let mut after_balances = common::get_token_balances(tokens, recipients);
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
         let mut allocated = Zero::zero();

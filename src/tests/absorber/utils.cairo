@@ -64,28 +64,23 @@ pub mod absorber_utils {
 
     #[inline(always)]
     pub fn provider_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![20 * WAD_ONE, // 20 (Wad) - ETH
+        array![20 * WAD_ONE, // 20 (Wad) - ETH
         100000000 // 1 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+        ].span()
     }
 
     #[inline(always)]
     pub fn first_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            1230000000000000000, // 1.23 (Wad) - ETH
-            23700000 // 0.237 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+        array![1230000000000000000, // 1.23 (Wad) - ETH
+        23700000 // 0.237 (10 ** 8) - BTC
+        ].span()
     }
 
     #[inline(always)]
     pub fn second_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![
-            572000000000000000, // 0.572 (Wad) - ETH
-            65400000 // 0.654 (10 ** 8) - BTC
-        ];
-        asset_amts.span()
+        array![572000000000000000, // 0.572 (Wad) - ETH
+        65400000 // 0.654 (10 ** 8) - BTC
+        ].span()
     }
 
     //
@@ -162,16 +157,12 @@ pub mod absorber_utils {
 
     // Convenience fixture for reward token addresses constants
     pub fn reward_tokens_deploy(token_class: Option<ContractClass>) -> Span<ContractAddress> {
-        let mut reward_tokens: Array<ContractAddress> = array![
-            opus_token_deploy(token_class), veopus_token_deploy(token_class),
-        ];
-        reward_tokens.span()
+        array![opus_token_deploy(token_class), veopus_token_deploy(token_class)].span()
     }
 
     // Convenience fixture for reward amounts
     pub fn reward_amts_per_blessing() -> Span<u128> {
-        let mut bless_amts: Array<u128> = array![OPUS_BLESS_AMT, veOPUS_BLESS_AMT];
-        bless_amts.span()
+        array![OPUS_BLESS_AMT, veOPUS_BLESS_AMT].span()
     }
 
     // Helper function to deploy a blesser for a token.

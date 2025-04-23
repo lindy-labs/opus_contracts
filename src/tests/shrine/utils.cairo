@@ -110,26 +110,22 @@ pub mod shrine_utils {
     }
 
     pub fn two_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![YANG1_ADDR, YANG2_ADDR];
-        yang_addrs.span()
+        array![YANG1_ADDR, YANG2_ADDR].span()
     }
 
     pub fn three_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![YANG1_ADDR, YANG2_ADDR, YANG3_ADDR];
-        yang_addrs.span()
+        array![YANG1_ADDR, YANG2_ADDR, YANG3_ADDR].span()
     }
 
     // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
     pub fn two_yang_addrs_reversed() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![YANG2_ADDR, YANG1_ADDR];
-        yang_addrs.span()
+        array![YANG2_ADDR, YANG1_ADDR].span()
     }
 
     pub fn three_yang_addrs_reversed() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![YANG3_ADDR, YANG2_ADDR, YANG1_ADDR];
-        yang_addrs.span()
+        array![YANG3_ADDR, YANG2_ADDR, YANG1_ADDR].span()
     }
 
     pub fn three_yang_start_prices() -> Span<Wad> {
