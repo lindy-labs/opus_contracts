@@ -19,7 +19,7 @@ pub trait ISentinel<TContractState> {
         yang_threshold: Ray,
         yang_price: Wad,
         yang_rate: Ray,
-        gate: ContractAddress
+        gate: ContractAddress,
     );
     fn set_yang_asset_max(ref self: TContractState, yang: ContractAddress, new_asset_max: u128);
     fn enter(ref self: TContractState, yang: ContractAddress, user: ContractAddress, asset_amt: u128) -> Wad;

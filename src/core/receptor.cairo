@@ -4,15 +4,14 @@ pub mod receptor {
     use core::num::traits::Zero;
     use opus::core::roles::receptor_roles;
     use opus::external::interfaces::ITask;
-    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IReceptor::IReceptor;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::QuoteTokenInfo;
-    use opus::utils::ekubo_oracle_adapter::{ekubo_oracle_adapter_component, IEkuboOracleAdapter};
+    use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapter, ekubo_oracle_adapter_component};
     use opus::utils::math::median_of_three;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_block_timestamp};
-    use wadray::{Wad, WAD_DECIMALS};
+    use wadray::Wad;
 
     //
     // Components
@@ -71,18 +70,18 @@ pub mod receptor {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct InvalidQuotes {
-        pub quotes: Span<Wad>
+        pub quotes: Span<Wad>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct ValidQuotes {
-        pub quotes: Span<Wad>
+        pub quotes: Span<Wad>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct UpdateFrequencyUpdated {
         pub old_frequency: u64,
-        pub new_frequency: u64
+        pub new_frequency: u64,
     }
 
     //
@@ -97,9 +96,9 @@ pub mod receptor {
         oracle_extension: ContractAddress,
         update_frequency: u64,
         twap_duration: u64,
-        quote_tokens: Span<ContractAddress>
+        quote_tokens: Span<ContractAddress>,
     ) {
-        self.access_control.initializer(admin, Option::Some(receptor_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(receptor_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
 
@@ -165,7 +164,7 @@ pub mod receptor {
             self.access_control.assert_has_role(receptor_roles::SET_UPDATE_FREQUENCY);
             assert(
                 LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
-                'REC: Frequency out of bounds'
+                'REC: Frequency out of bounds',
             );
 
             self.set_update_frequency_helper(new_frequency);
@@ -206,24 +205,19 @@ pub mod receptor {
         fn update_yin_price_internal(ref self: ContractState) {
             let quotes = self.get_quotes();
 
-            let mut quotes_copy = quotes;
-            loop {
-                match quotes_copy.pop_front() {
-                    Option::Some(quote) => { if quote.is_zero() {
-                        self.emit(InvalidQuotes { quotes });
-                        break;
-                    } },
-                    Option::None => {
-                        let yin_price: Wad = median_of_three(quotes);
-                        self.shrine.read().update_yin_spot_price(yin_price);
+            for quote in quotes {
+                if quote.is_zero() {
+                    self.emit(InvalidQuotes { quotes });
+                    return;
+                }
+            }
 
-                        self.last_update_yin_price_call_timestamp.write(get_block_timestamp());
+            let yin_price: Wad = median_of_three(quotes);
+            self.shrine.read().update_yin_spot_price(yin_price);
 
-                        self.emit(ValidQuotes { quotes });
-                        break;
-                    }
-                };
-            };
+            self.last_update_yin_price_call_timestamp.write(get_block_timestamp());
+
+            self.emit(ValidQuotes { quotes });
         }
     }
 }

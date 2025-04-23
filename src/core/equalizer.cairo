@@ -8,7 +8,7 @@ pub mod equalizer {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEqualizer::IEqualizer;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::Health;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use wadray::{Ray, Signed, SignedWad, Wad};
 
@@ -49,32 +49,32 @@ pub mod equalizer {
         Allocate: Allocate,
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
-        Normalize: Normalize
+        Normalize: Normalize,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct AllocatorUpdated {
         pub old_address: ContractAddress,
-        pub new_address: ContractAddress
+        pub new_address: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Equalize {
-        pub yin_amt: Wad
+        pub yin_amt: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Normalize {
         #[key]
         pub caller: ContractAddress,
-        pub yin_amt: Wad
+        pub yin_amt: Wad,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct Allocate {
         pub recipients: Span<ContractAddress>,
         pub percentages: Span<Ray>,
-        pub amount: Wad
+        pub amount: Wad,
     }
 
     //
@@ -83,9 +83,9 @@ pub mod equalizer {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress
+        ref self: ContractState, admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress,
     ) {
-        self.access_control.initializer(admin, Option::Some(equalizer_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(equalizer_roles::ADMIN));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
@@ -138,10 +138,10 @@ pub mod equalizer {
 
             let minted_surplus: Wad = budget.try_into().unwrap();
 
-            // temporarily increase the debt ceiling by the injected amount 
+            // temporarily increase the debt ceiling by the injected amount
             // so that surplus debt can still be minted when total yin is at
-            // or exceeds the debt ceiling. Note that we need to adjust the 
-            // budget first or the Shrine would double-count the injected amount 
+            // or exceeds the debt ceiling. Note that we need to adjust the
+            // budget first or the Shrine would double-count the injected amount
             // and revert because the debt ceiling would be exceeded
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
@@ -150,7 +150,7 @@ pub mod equalizer {
                 shrine.set_debt_ceiling(total_yin + minted_surplus);
             }
 
-            shrine.adjust_budget(SignedWad { val: minted_surplus.val, sign: true });
+            shrine.adjust_budget(-minted_surplus.into());
             shrine.inject(get_contract_address(), minted_surplus);
 
             if adjust_ceiling {
@@ -162,7 +162,7 @@ pub mod equalizer {
             minted_surplus
         }
 
-        // Allocate the yin balance of the Equalizer to the recipients in the allocation 
+        // Allocate the yin balance of the Equalizer to the recipients in the allocation
         // retrieved from the Allocator according to their respective percentage share.
         // Assumes the allocation from the Allocator has already been checked:
         // - both arrays of recipient addresses and percentages are of equal length;
@@ -183,19 +183,13 @@ pub mod equalizer {
             let (recipients, percentages) = allocator.get_allocation();
 
             let mut amount_allocated: Wad = Zero::zero();
-            let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
-            loop {
-                match recipients_copy.pop_front() {
-                    Option::Some(recipient) => {
-                        let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
+            for recipient in recipients {
+                let amount: Wad = wadray::rmul_wr(balance, *(percentages_copy.pop_front().unwrap()));
 
-                        yin.transfer(*recipient, amount.into());
-                        amount_allocated += amount;
-                    },
-                    Option::None => { break; }
-                };
-            };
+                yin.transfer(*recipient, amount.into());
+                amount_allocated += amount;
+            }
 
             self.emit(Allocate { recipients, percentages, amount: amount_allocated });
         }
@@ -207,7 +201,7 @@ pub mod equalizer {
             let shrine: IShrineDispatcher = self.shrine.read();
             let budget: SignedWad = shrine.get_budget();
             if budget.is_negative() {
-                let wipe_amt: Wad = min(yin_amt, budget.val.into());
+                let wipe_amt: Wad = min(yin_amt, (-budget).try_into().unwrap());
                 let caller: ContractAddress = get_caller_address();
                 shrine.eject(caller, wipe_amt);
                 shrine.adjust_budget(wipe_amt.into());

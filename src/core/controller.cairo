@@ -6,8 +6,9 @@ pub mod controller {
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::math;
-    use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use wadray::{Ray, RAY_ONE, SignedRay, Wad, wad_to_signed_ray};
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{RAY_ONE, Ray, Signed, SignedRay, Wad, wad_to_signed_ray};
 
     //
     // Components
@@ -69,14 +70,14 @@ pub mod controller {
     pub struct ParameterUpdated {
         #[key]
         pub name: felt252,
-        pub value: u8
+        pub value: u8,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct GainUpdated {
         #[key]
         pub name: felt252,
-        pub value: Ray
+        pub value: Ray,
     }
 
     #[constructor]
@@ -91,7 +92,7 @@ pub mod controller {
         alpha_i: u8,
         beta_i: u8,
     ) {
-        self.access_control.initializer(admin, Option::Some(controller_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(controller_roles::ADMIN));
 
         // Setting `i_term_last_updated` to the current timestamp to
         // ensure that the integral term is correctly updated
@@ -158,7 +159,7 @@ pub mod controller {
         fn get_parameters(self: @ContractState) -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
             (
                 (self.p_gain.read(), self.i_gain.read()),
-                (self.alpha_p.read(), self.beta_p.read(), self.alpha_i.read(), self.beta_i.read())
+                (self.alpha_p.read(), self.beta_p.read(), self.alpha_i.read(), self.beta_i.read()),
             )
         }
 
@@ -186,7 +187,7 @@ pub mod controller {
             }
 
             // Updating the previous yin price for the next integral term update
-            self.yin_previous_price.write(shrine.get_yin_spot_price().into());
+            self.yin_previous_price.write(shrine.get_yin_spot_price());
 
             let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
             shrine.set_multiplier(multiplier_ray);
@@ -286,7 +287,11 @@ pub mod controller {
 
     #[inline(always)]
     fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
-        let error_ray: Ray = Ray { val: error.val };
+        let error_ray: Ray = if error.is_negative() {
+            (-error).try_into().unwrap()
+        } else {
+            error.try_into().unwrap()
+        };
         let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
         math::pow(error, alpha) / denominator
     }

@@ -1,5 +1,5 @@
 use scripts::constants::MAX_FEE;
-use sncast_std::{declare, DeclareResult, deploy, DeployResult, DisplayClassHash, DisplayContractAddress};
+use sncast_std::{DeclareResultTrait, DisplayClassHash, DisplayContractAddress, FeeSettingsTrait, declare, deploy};
 use starknet::{ClassHash, ContractAddress};
 
 
@@ -8,11 +8,16 @@ use starknet::{ClassHash, ContractAddress};
 //
 
 pub fn deploy_mock_pragma() -> ContractAddress {
-    let declare_mock_pragma = declare("mock_pragma", Option::Some(MAX_FEE), Option::None)
+    let declare_mock_pragma = declare("mock_pragma", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
         .expect('failed mock_pragma declare');
 
     let deploy_mock_pragma = deploy(
-        declare_mock_pragma.class_hash, array![], Option::None, true, Option::Some(MAX_FEE), Option::None
+        *declare_mock_pragma.class_hash(),
+        array![],
+        Option::None,
+        true,
+        FeeSettingsTrait::max_fee(MAX_FEE),
+        Option::None,
     )
         .expect('failed mock pragma deploy');
 
@@ -20,7 +25,9 @@ pub fn deploy_mock_pragma() -> ContractAddress {
 }
 
 pub fn declare_erc20_mintable() -> ClassHash {
-    declare("erc20_mintable", Option::Some(MAX_FEE), Option::None).expect('failed erc20 mintable declare').class_hash
+    *declare("erc20_mintable", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
+        .expect('failed erc20 mintable declare')
+        .class_hash()
 }
 
 pub fn deploy_erc20_mintable(
@@ -29,10 +36,12 @@ pub fn deploy_erc20_mintable(
     symbol: felt252,
     decimals: u8,
     initial_supply: u128,
-    recipient: ContractAddress
+    recipient: ContractAddress,
 ) -> ContractAddress {
     let calldata: Array<felt252> = array![name, symbol, decimals.into(), initial_supply.into(), 0, recipient.into()];
-    let declare_erc20_mintable = deploy(class_hash, calldata, Option::None, true, Option::Some(MAX_FEE), Option::None)
+    let declare_erc20_mintable = deploy(
+        class_hash, calldata, Option::None, true, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,
+    )
         .expect('failed erc20 mintable deploy');
 
     declare_erc20_mintable.contract_address

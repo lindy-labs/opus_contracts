@@ -1,18 +1,20 @@
 #[starknet::contract]
 pub mod abbot {
-    use core::integer::BoundedInt;
-    use core::num::traits::Zero;
+    use core::num::traits::{Bounded, Zero};
     use opus::interfaces::IAbbot::IAbbot;
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::AssetBalance;
     use opus::utils::reentrancy_guard::reentrancy_guard_component;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::{ContractAddress, get_caller_address};
     use wadray::Wad;
 
-    // 
-    // Components 
-    // 
+    //
+    // Components
+    //
 
     component!(path: reentrancy_guard_component, storage: reentrancy_guard, event: ReentrancyGuardEvent);
 
@@ -34,16 +36,16 @@ pub mod abbot {
         // the total number of troves of a particular address;
         // used to build the tuple key of `user_troves` variable
         // (user) -> (number of troves opened)
-        user_troves_count: LegacyMap<ContractAddress, u64>,
+        user_troves_count: Map<ContractAddress, u64>,
         // a mapping of an address and index to a trove ID
         // belonging to this address; the index is a number from 0
         // up to `user_troves_count` for that address
         // (user, idx) -> (trove ID)
-        user_troves: LegacyMap<(ContractAddress, u64), u64>,
+        user_troves: Map<(ContractAddress, u64), u64>,
         // a mapping of a trove ID to the contract address which
         // was used to open the trove
         // (trove ID) -> (owner)
-        trove_owner: LegacyMap<u64, ContractAddress>,
+        trove_owner: Map<u64, ContractAddress>,
     }
 
     //
@@ -70,7 +72,7 @@ pub mod abbot {
         #[key]
         pub yang: ContractAddress,
         pub yang_amt: Wad,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -82,7 +84,7 @@ pub mod abbot {
         #[key]
         pub yang: ContractAddress,
         pub yang_amt: Wad,
-        pub asset_amt: u128
+        pub asset_amt: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -90,13 +92,13 @@ pub mod abbot {
         #[key]
         pub user: ContractAddress,
         #[key]
-        pub trove_id: u64
+        pub trove_id: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TroveClosed {
         #[key]
-        pub trove_id: u64
+        pub trove_id: u64,
     }
 
     //
@@ -158,7 +160,7 @@ pub mod abbot {
         // Note that since the forge amount must be greater than zero, the Shrine would also enforce
         // that the minimum trove value has been deposited.
         fn open_trove(
-            ref self: ContractState, mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
+            ref self: ContractState, yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad,
         ) -> u64 {
             assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
             assert(forge_amount.is_non_zero(), 'ABB: No debt forged');
@@ -175,12 +177,9 @@ pub mod abbot {
             self.trove_owner.write(new_trove_id, user);
 
             // deposit all requested Yangs into the system
-            loop {
-                match yang_assets.pop_front() {
-                    Option::Some(yang_asset) => { self.deposit_helper(new_trove_id, user, *yang_asset); },
-                    Option::None => { break; }
-                };
-            };
+            for yang_asset in yang_assets {
+                self.deposit_helper(new_trove_id, user, *yang_asset);
+            }
 
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
@@ -197,22 +196,17 @@ pub mod abbot {
 
             let shrine = self.shrine.read();
             // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-            shrine.melt(user, trove_id, BoundedInt::max());
+            shrine.melt(user, trove_id, Bounded::MAX);
 
-            let mut yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
             // withdraw each and every Yang belonging to the trove from the system
-            loop {
-                match yangs.pop_front() {
-                    Option::Some(yang) => {
-                        let yang_amount: Wad = shrine.get_deposit(*yang, trove_id);
-                        if yang_amount.is_zero() {
-                            continue;
-                        }
-                        self.withdraw_helper(trove_id, user, *yang, yang_amount);
-                    },
-                    Option::None => { break; }
-                };
-            };
+            let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
+            for yang in yangs {
+                let yang_amount: Wad = shrine.get_deposit(*yang, trove_id);
+                if yang_amount.is_zero() {
+                    continue;
+                }
+                self.withdraw_helper(trove_id, user, *yang, yang_amount);
+            }
 
             self.emit(TroveClosed { trove_id });
         }
@@ -280,7 +274,7 @@ pub mod abbot {
 
         #[inline(always)]
         fn withdraw_helper(
-            ref self: ContractState, trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad
+            ref self: ContractState, trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad,
         ) {
             // reentrancy guard is used as a precaution
             self.reentrancy_guard.start();

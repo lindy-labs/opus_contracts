@@ -9,7 +9,10 @@ pub mod sentinel {
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
     use opus::utils::math::{fixed_point_to_wad, pow};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_caller_address};
     use wadray::{Ray, Wad};
 
     //
@@ -40,19 +43,19 @@ pub mod sentinel {
         #[substorage(v0)]
         access_control: access_control_component::Storage,
         // mapping between a yang address and our deployed Gate
-        yang_to_gate: LegacyMap::<ContractAddress, IGateDispatcher>,
+        yang_to_gate: Map<ContractAddress, IGateDispatcher>,
         // length of the yang_addresses array
         yang_addresses_count: u32,
         // array of yang addresses added to the Shrine via this Sentinel
         // starts from index 1
-        yang_addresses: LegacyMap::<u32, ContractAddress>,
+        yang_addresses: Map<u32, ContractAddress>,
         // The Shrine associated with this Sentinel
         shrine: IShrineDispatcher,
         // mapping between a yang address and the cap on the yang's asset in the
         // asset's decimals
-        yang_asset_max: LegacyMap::<ContractAddress, u128>,
+        yang_asset_max: Map<ContractAddress, u128>,
         // mapping between a yang address and whether its Gate is live
-        yang_is_live: LegacyMap::<ContractAddress, bool>,
+        yang_is_live: Map<ContractAddress, bool>,
     }
 
     //
@@ -72,7 +75,7 @@ pub mod sentinel {
     pub struct YangAdded {
         #[key]
         pub yang: ContractAddress,
-        pub gate: ContractAddress
+        pub gate: ContractAddress,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -80,14 +83,14 @@ pub mod sentinel {
         #[key]
         pub yang: ContractAddress,
         pub old_max: u128,
-        pub new_max: u128
+        pub new_max: u128,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct GateKilled {
         #[key]
         pub yang: ContractAddress,
-        pub gate: ContractAddress
+        pub gate: ContractAddress,
     }
 
     //
@@ -96,7 +99,7 @@ pub mod sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        self.access_control.initializer(admin, Option::Some(sentinel_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(sentinel_roles::ADMIN));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
@@ -152,7 +155,7 @@ pub mod sentinel {
         // View functions
         //
 
-        // This can be used to simulate the effects of `enter`. 
+        // This can be used to simulate the effects of `enter`.
         // However, it does not check if (1) the yang is suspended; and/or (2) depositing
         // the amount would exceed the maximum amount of assets allowed.
         fn convert_to_yang(self: @ContractState, yang: ContractAddress, asset_amt: u128) -> Wad {
@@ -179,7 +182,7 @@ pub mod sentinel {
             yang_threshold: Ray,
             yang_price: Wad,
             yang_rate: Ray,
-            gate: ContractAddress
+            gate: ContractAddress,
         ) {
             self.access_control.assert_has_role(sentinel_roles::ADD_YANG);
             assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');

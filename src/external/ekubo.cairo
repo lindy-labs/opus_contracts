@@ -2,13 +2,11 @@
 pub mod ekubo {
     use access_control::access_control_component;
     use core::num::traits::Zero;
-    use opus::external::interfaces::{IEkuboOracleExtensionDispatcher, IEkuboOracleExtensionDispatcherTrait};
     use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IEkubo::IEkubo;
     use opus::interfaces::IOracle::IOracle;
     use opus::types::QuoteTokenInfo;
-    use opus::utils::ekubo_oracle_adapter::{ekubo_oracle_adapter_component, IEkuboOracleAdapter};
+    use opus::utils::ekubo_oracle_adapter::{IEkuboOracleAdapter, ekubo_oracle_adapter_component};
     use opus::utils::math::median_of_three;
     use starknet::ContractAddress;
     use wadray::Wad;
@@ -49,13 +47,13 @@ pub mod ekubo {
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
         EkuboOracleAdapterEvent: ekubo_oracle_adapter_component::Event,
-        InvalidPriceUpdate: InvalidPriceUpdate
+        InvalidPriceUpdate: InvalidPriceUpdate,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct InvalidPriceUpdate {
         pub yang: ContractAddress,
-        pub quotes: Span<Wad>
+        pub quotes: Span<Wad>,
     }
 
     //
@@ -68,9 +66,9 @@ pub mod ekubo {
         admin: ContractAddress,
         oracle_extension: ContractAddress,
         twap_duration: u64,
-        quote_tokens: Span<ContractAddress>
+        quote_tokens: Span<ContractAddress>,
     ) {
-        self.access_control.initializer(admin, Option::Some(ekubo_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(ekubo_roles::ADMIN));
 
         self.ekubo_oracle_adapter.set_oracle_extension(oracle_extension);
         self.ekubo_oracle_adapter.set_twap_duration(twap_duration);
@@ -131,7 +129,7 @@ pub mod ekubo {
         fn fetch_price(ref self: ContractState, yang: ContractAddress) -> Result<Wad, felt252> {
             let quotes = self.get_quotes(yang);
 
-            // As long as the median price is non-zero (i.e. at least two prices are non-zero), 
+            // As long as the median price is non-zero (i.e. at least two prices are non-zero),
             // it is treated as valid because liveness is prioritized for Ekubo's on-chain oracle.
             // Otherwise, emit an event about the update being invalid.
             let median_price: Wad = median_of_three(quotes);

@@ -9,41 +9,26 @@ pub fn pepe_token_addr() -> ContractAddress {
 }
 
 pub mod pragma_utils {
-    use core::num::traits::Zero;
     use core::traits::Into;
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
-    use opus::core::roles::shrine_roles;
-    use opus::external::pragma::pragma as pragma_contract;
-    use opus::external::roles::pragma_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IPragma::{
-        IPragmaDispatcher, IPragmaDispatcherTrait, IPragmaV2Dispatcher, IPragmaV2DispatcherTrait
-    };
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::mock_pragma::{
-        mock_pragma as mock_pragma_contract, IMockPragmaDispatcher, IMockPragmaDispatcherTrait
-    };
+    use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
+    use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
-    use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::tests::shrine::utils::shrine_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
     use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
+    use snforge_std::{
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
+    use starknet::{ContractAddress, get_block_timestamp};
+    use wadray::{WAD_DECIMALS, Wad};
 
     #[derive(Copy, Drop)]
     pub struct PragmaTestConfig {
         pub pragma: IPragmaDispatcher,
-        pub mock_pragma: IMockPragmaDispatcher
-    }
-
-    #[derive(Copy, Drop)]
-    pub struct PragmaV2TestConfig {
-        pub pragma: IPragmaV2Dispatcher,
-        pub mock_pragma: IMockPragmaDispatcher
+        pub mock_pragma: IMockPragmaDispatcher,
     }
 
     //
@@ -60,10 +45,7 @@ pub mod pragma_utils {
     // Constant addresses
     //
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
-        'pragma owner'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'pragma owner'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -74,7 +56,7 @@ pub mod pragma_utils {
 
         let mock_pragma_class = match mock_pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("mock_pragma").unwrap(),
+            Option::None => *declare("mock_pragma").unwrap().contract_class(),
         };
 
         let (mock_pragma_addr, _) = mock_pragma_class.deploy(@calldata).expect('mock pragma deploy failed');
@@ -83,11 +65,11 @@ pub mod pragma_utils {
     }
 
     pub fn pragma_deploy(
-        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
+        pragma_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>,
     ) -> PragmaTestConfig {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             mock_pragma.contract_address.into(),
             mock_pragma.contract_address.into(),
             FRESHNESS_THRESHOLD.into(),
@@ -96,38 +78,14 @@ pub mod pragma_utils {
 
         let pragma_class = match pragma_class {
             Option::Some(class) => class,
-            Option::None => declare("pragma").unwrap(),
+            Option::None => *declare("pragma").unwrap().contract_class(),
         };
 
-        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma deploy failed');
+        let (pragma_addr, _) = pragma_class.deploy(@calldata).expect('pragma  deploy failed');
 
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
-        PragmaTestConfig { pragma, mock_pragma }
-    }
-
-    pub fn pragma_v2_deploy(
-        pragma_v2_class: Option<ContractClass>, mock_pragma_class: Option<ContractClass>
-    ) -> PragmaV2TestConfig {
-        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy(mock_pragma_class);
-        let mut calldata: Array<felt252> = array![
-            admin().into(),
-            mock_pragma.contract_address.into(),
-            mock_pragma.contract_address.into(),
-            FRESHNESS_THRESHOLD.into(),
-            SOURCES_THRESHOLD.into(),
-        ];
-
-        let pragma_v2_class = match pragma_v2_class {
-            Option::Some(class) => class,
-            Option::None => declare("pragma_v2").unwrap(),
-        };
-
-        let (pragma_v2_addr, _) = pragma_v2_class.deploy(@calldata).expect('pragma v2 deploy failed');
-
-        let pragma_v2 = IPragmaV2Dispatcher { contract_address: pragma_v2_addr };
-
-        PragmaV2TestConfig { pragma: pragma_v2, mock_pragma }
+        PragmaTestConfig { pragma: pragma, mock_pragma }
     }
 
     pub fn add_yangs(pragma: ContractAddress, yangs: Span<ContractAddress>) {
@@ -143,33 +101,13 @@ pub mod pragma_utils {
         mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
 
         // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma), admin());
+        start_cheat_caller_address(pragma, ADMIN);
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
-        pragma_dispatcher.set_yang_pair_id(eth_yang, ETH_USD_PAIR_ID);
-        pragma_dispatcher.set_yang_pair_id(wbtc_yang, WBTC_USD_PAIR_ID);
-        stop_prank(CheatTarget::One(pragma));
-    }
-
-    pub fn add_yangs_v2(pragma: ContractAddress, yangs: Span<ContractAddress>) {
-        // assuming yangs are always ordered as ETH, WBTC
-        let eth_yang = *yangs.at(0);
-        let wbtc_yang = *yangs.at(1);
-
-        // add_yang does an assert on the response decimals, so we
-        // need to provide a valid mock response for it to pass
-        let oracle = IOracleDispatcher { contract_address: pragma };
-        let mock_pragma = IMockPragmaDispatcher { contract_address: *oracle.get_oracles().at(0) };
-        mock_valid_price_update(mock_pragma, eth_yang, ETH_INIT_PRICE.into(), get_block_timestamp());
-        mock_valid_price_update(mock_pragma, wbtc_yang, WBTC_INIT_PRICE.into(), get_block_timestamp());
-
-        // Add yangs to Pragma
-        start_prank(CheatTarget::One(pragma), admin());
-        let pragma_dispatcher = IPragmaV2Dispatcher { contract_address: pragma };
         let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
         pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
         pragma_dispatcher.set_yang_pair_settings(wbtc_yang, wbtc_pair_settings);
-        stop_prank(CheatTarget::One(pragma));
+        stop_cheat_caller_address(pragma);
     }
 
     //
@@ -178,7 +116,7 @@ pub mod pragma_utils {
 
     pub fn convert_price_to_pragma_scale(price: Wad) -> u128 {
         let scale: u128 = pow(10_u128, WAD_DECIMALS - PRAGMA_DECIMALS);
-        price.val / scale
+        price.into() / scale
     }
 
     pub fn get_pair_id_for_yang(yang: ContractAddress) -> felt252 {
@@ -197,10 +135,9 @@ pub mod pragma_utils {
     }
 
     // Helper function to add a valid price update to the mock Pragma oracle
-    // for both `get_data_median()` (v1) and `get_data()` (v2)
     // using default values for decimals and number of sources.
     pub fn mock_valid_price_update(
-        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64
+        mock_pragma: IMockPragmaDispatcher, yang: ContractAddress, price: Wad, timestamp: u64,
     ) {
         let price = convert_price_to_pragma_scale(price);
         let response = PragmaPricesResponse {
@@ -212,40 +149,22 @@ pub mod pragma_utils {
         };
         let pair_id: felt252 = get_pair_id_for_yang(yang);
         mock_pragma.next_get_data(pair_id, response);
-        mock_pragma.next_get_data_median(pair_id, response);
         mock_pragma.next_calculate_twap(pair_id, (price, PRAGMA_DECIMALS.into()));
     }
 }
 
 pub mod ekubo_utils {
-    use core::num::traits::Zero;
-    use core::traits::Into;
-    use opus::core::roles::shrine_roles;
-    use opus::external::ekubo::ekubo as ekubo_contract;
-    use opus::external::roles::ekubo_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IEkubo::{IEkuboDispatcher, IEkuboDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::mock::mock_ekubo_oracle_extension::{
-        mock_ekubo_oracle_extension as mock_ekubo_oracle_extension_contract, IMockEkuboOracleExtensionDispatcher,
-        IMockEkuboOracleExtensionDispatcherTrait
-    };
+    use opus::interfaces::IEkubo::IEkuboDispatcher;
+    use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher;
     use opus::tests::common;
-    use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
-    use opus::tests::sentinel::utils::sentinel_utils;
-    use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::math::pow;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
-    use starknet::{ContractAddress, get_block_timestamp,};
-    use wadray::{Wad, WAD_DECIMALS, WAD_SCALE};
+    use snforge_std::{ContractClass, ContractClassTrait, DeclareResultTrait, declare};
+    use starknet::ContractAddress;
 
     #[derive(Copy, Drop)]
     pub struct EkuboTestConfig {
         pub ekubo: IEkuboDispatcher,
         pub mock_ekubo: IMockEkuboOracleExtensionDispatcher,
-        pub quote_tokens: Span<ContractAddress>
+        pub quote_tokens: Span<ContractAddress>,
     }
 
     //
@@ -259,10 +178,7 @@ pub mod ekubo_utils {
     // Constant addresses
     //
 
-    #[inline(always)]
-    pub fn admin() -> ContractAddress {
-        'ekubo owner'.try_into().unwrap()
-    }
+    pub const ADMIN: ContractAddress = 'ekubo owner'.try_into().unwrap();
 
     //
     // Test setup helpers
@@ -271,14 +187,14 @@ pub mod ekubo_utils {
     pub fn ekubo_deploy(
         ekubo_class: Option<ContractClass>,
         mock_ekubo_oracle_extension_class: Option<ContractClass>,
-        token_class: Option<ContractClass>
+        token_class: Option<ContractClass>,
     ) -> EkuboTestConfig {
         let mock_ekubo: IMockEkuboOracleExtensionDispatcher = common::mock_ekubo_oracle_extension_deploy(
-            mock_ekubo_oracle_extension_class
+            mock_ekubo_oracle_extension_class,
         );
         let quote_tokens: Span<ContractAddress> = common::quote_tokens(token_class);
         let mut calldata: Array<felt252> = array![
-            admin().into(),
+            ADMIN.into(),
             mock_ekubo.contract_address.into(),
             TWAP_DURATION.into(),
             quote_tokens.len().into(),
@@ -289,7 +205,7 @@ pub mod ekubo_utils {
 
         let ekubo_class = match ekubo_class {
             Option::Some(class) => class,
-            Option::None => declare("ekubo").unwrap(),
+            Option::None => *declare("ekubo").unwrap().contract_class(),
         };
         let (ekubo_addr, _) = ekubo_class.deploy(@calldata).expect('ekubo deploy failed');
         let ekubo = IEkuboDispatcher { contract_address: ekubo_addr };

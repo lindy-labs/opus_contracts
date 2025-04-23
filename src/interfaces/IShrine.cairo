@@ -1,4 +1,4 @@
-use opus::types::{Health, Trove, YangBalance, YangSuspensionStatus};
+use opus::types::{Health, YangBalance, YangSuspensionStatus};
 use starknet::ContractAddress;
 use wadray::{Ray, SignedWad, Wad};
 
@@ -38,7 +38,7 @@ pub trait IShrine<TContractState> {
         threshold: Ray,
         start_price: Wad,
         initial_rate: Ray,
-        initial_yang_amt: Wad
+        initial_yang_amt: Wad,
     );
     fn set_threshold(ref self: TContractState, yang: ContractAddress, new_threshold: Ray);
     fn suspend_yang(ref self: TContractState, yang: ContractAddress);

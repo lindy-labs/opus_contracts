@@ -1,11 +1,15 @@
 #[starknet::contract]
 pub mod allocator {
     use access_control::access_control_component;
+    use core::dict::Felt252Dict;
     use core::num::traits::Zero;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocator;
     use starknet::ContractAddress;
-    use wadray::{Ray, RAY_ONE};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use wadray::{RAY_ONE, Ray};
 
     //
     // Components
@@ -42,10 +46,10 @@ pub mod allocator {
         // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
-        recipients: LegacyMap::<u32, ContractAddress>,
+        recipients: Map<u32, ContractAddress>,
         // Keeps track of the percentage for each recipient by address
         // (Recipient Address) -> (percentage)
-        percentages: LegacyMap::<ContractAddress, Ray>,
+        percentages: Map<ContractAddress, Ray>,
     }
 
     //
@@ -62,7 +66,7 @@ pub mod allocator {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct AllocationUpdated {
         pub recipients: Span<ContractAddress>,
-        pub percentages: Span<Ray>
+        pub percentages: Span<Ray>,
     }
 
     //
@@ -71,9 +75,9 @@ pub mod allocator {
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
+        ref self: ContractState, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>,
     ) {
-        self.access_control.initializer(admin, Option::Some(allocator_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(allocator_roles::ADMIN));
 
         self.set_allocation_helper(recipients, percentages);
     }
@@ -146,27 +150,21 @@ pub mod allocator {
             let mut total_percentage: Ray = Zero::zero();
             let mut idx: u32 = LOOP_START;
 
-            let mut recipients_copy = recipients;
             let mut percentages_copy = percentages;
-            loop {
-                match recipients_copy.pop_front() {
-                    Option::Some(recipient) => {
-                        let recipient_key: felt252 = (*recipient).into();
-                        assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address',);
-                        recipients_dict.insert(recipient_key, idx);
+            for recipient in recipients {
+                let recipient_key: felt252 = (*recipient).into();
+                assert(recipients_dict.get(recipient_key).is_zero(), 'AL: Duplicate address');
+                recipients_dict.insert(recipient_key, idx);
 
-                        self.recipients.write(idx, *recipient);
+                self.recipients.write(idx, *recipient);
 
-                        let percentage: Ray = *(percentages_copy.pop_front().unwrap());
-                        self.percentages.write(*recipient, percentage);
+                let percentage: Ray = *(percentages_copy.pop_front().unwrap());
+                self.percentages.write(*recipient, percentage);
 
-                        total_percentage += percentage;
+                total_percentage += percentage;
 
-                        idx += 1;
-                    },
-                    Option::None => { break; }
-                };
-            };
+                idx += 1;
+            }
 
             assert(total_percentage == RAY_ONE.into(), 'AL: sum(percentages) != RAY_ONE');
 

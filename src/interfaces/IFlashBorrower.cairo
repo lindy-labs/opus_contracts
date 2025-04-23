@@ -9,6 +9,6 @@ pub trait IFlashBorrower<TContractState> {
         token: ContractAddress,
         amount: u256,
         fee: u256,
-        call_data: Span<felt252>
+        call_data: Span<felt252>,
     ) -> u256;
 }

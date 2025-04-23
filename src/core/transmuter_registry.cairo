@@ -1,7 +1,6 @@
 #[starknet::contract]
 pub mod transmuter_registry {
     use access_control::access_control_component;
-    use core::num::traits::Zero;
     use opus::core::roles::transmuter_registry_roles;
     use opus::interfaces::ITransmuter::ITransmuterRegistry;
     use opus::utils::address_registry::address_registry_component;
@@ -50,7 +49,7 @@ pub mod transmuter_registry {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress) {
-        self.access_control.initializer(admin, Option::Some(transmuter_registry_roles::default_admin_role()));
+        self.access_control.initializer(admin, Option::Some(transmuter_registry_roles::ADMIN));
     }
 
     //

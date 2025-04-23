@@ -21,8 +21,10 @@ pub mod ekubo_oracle_adapter_component {
     use opus::types::QuoteTokenInfo;
     use opus::utils::math::convert_ekubo_oracle_price_to_wad;
     use starknet::ContractAddress;
-    use super::IEkuboOracleAdapter;
-    use wadray::{Wad, WAD_DECIMALS};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use wadray::{WAD_DECIMALS, Wad};
 
     //
     // Constants
@@ -38,15 +40,15 @@ pub mod ekubo_oracle_adapter_component {
     //
 
     #[storage]
-    struct Storage {
+    pub struct Storage {
         // Ekubo oracle extension for reading TWAP
         oracle_extension: IEkuboOracleExtensionDispatcher,
         // Collection of quote tokens, in no particular order
         // Starts from 1
         // (idx) -> (token to be quoted per yang)
-        quote_tokens: LegacyMap<u32, QuoteTokenInfo>,
+        quote_tokens: Map<u32, QuoteTokenInfo>,
         // The duration in seconds for reading TWAP from Ekubo
-        twap_duration: u64
+        twap_duration: u64,
     }
 
     //
@@ -62,13 +64,13 @@ pub mod ekubo_oracle_adapter_component {
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct QuoteTokensUpdated {
-        pub quote_tokens: Span<QuoteTokenInfo>
+        pub quote_tokens: Span<QuoteTokenInfo>,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     pub struct TwapDurationUpdated {
         pub old_duration: u64,
-        pub new_duration: u64
+        pub new_duration: u64,
     }
 
     //
@@ -77,7 +79,7 @@ pub mod ekubo_oracle_adapter_component {
 
     #[generate_trait]
     pub impl EkuboOracleAdapterHelpers<
-        TContractState, +HasComponent<TContractState>
+        TContractState, +HasComponent<TContractState>,
     > of EkuboOracleAdapterHelpersTrait<TContractState> {
         fn get_oracle_extension(self: @ComponentState<TContractState>) -> IEkuboOracleExtensionDispatcher {
             self.oracle_extension.read()
@@ -116,7 +118,7 @@ pub mod ekubo_oracle_adapter_component {
                         let scaled_quote: Wad = convert_ekubo_oracle_price_to_wad(quote, base_decimals, *info.decimals);
                         quotes.append(scaled_quote);
                     },
-                    Option::None => { break quotes.span(); }
+                    Option::None => { break quotes.span(); },
                 };
             }
         }
@@ -131,23 +133,17 @@ pub mod ekubo_oracle_adapter_component {
             assert(quote_tokens.len() == NUM_QUOTE_TOKENS, 'EOC: Not 3 quote tokens');
 
             let mut index = LOOP_START;
-            let mut quote_tokens_copy = quote_tokens;
             let mut quote_tokens_info: Array<QuoteTokenInfo> = Default::default();
-            loop {
-                match quote_tokens_copy.pop_front() {
-                    Option::Some(quote_token) => {
-                        let token = IERC20Dispatcher { contract_address: *quote_token };
-                        let decimals: u8 = token.decimals();
-                        assert(decimals <= WAD_DECIMALS, 'EOC: Too many decimals');
+            for quote_token in quote_tokens {
+                let token = IERC20Dispatcher { contract_address: *quote_token };
+                let decimals: u8 = token.decimals();
+                assert(decimals <= WAD_DECIMALS, 'EOC: Too many decimals');
 
-                        let quote_token_info = QuoteTokenInfo { address: *quote_token, decimals };
-                        self.quote_tokens.write(index, quote_token_info);
-                        quote_tokens_info.append(quote_token_info);
-                        index += 1;
-                    },
-                    Option::None => { break; }
-                }
-            };
+                let quote_token_info = QuoteTokenInfo { address: *quote_token, decimals };
+                self.quote_tokens.write(index, quote_token_info);
+                quote_tokens_info.append(quote_token_info);
+                index += 1;
+            }
 
             self.emit(QuoteTokensUpdated { quote_tokens: quote_tokens_info.span() });
         }

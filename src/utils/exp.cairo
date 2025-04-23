@@ -1,6 +1,7 @@
-use wadray::{Wad, WAD_ONE};
+use wadray::{WAD_ONE, Wad};
 
-// PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
+// PORTED FROM:
+// https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
 //
 // Constants
@@ -44,7 +45,7 @@ const a9: u128 = 106449445891785942956; // eˆ(x9)
 //   it may not be necessary for our purposes.
 
 pub fn exp(x: Wad) -> Wad {
-    let mut x: u128 = x.val;
+    let mut x: u128 = x.into();
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
 
@@ -156,8 +157,7 @@ pub fn exp(x: Wad) -> Wad {
     // and then drop two digits to return an 18 decimal value.
 
     let result: u256 = (((product * series_sum) / ONE_20) * firstAN) / 100.into();
-
-    Wad { val: result.try_into().unwrap() }
+    result.try_into().unwrap()
 }
 
 // Computes 1/exp(x) = exp(-x)

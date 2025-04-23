@@ -1,18 +1,19 @@
 pub mod abbot_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
-    use opus::core::abbot::abbot as abbot_contract;
     use opus::core::roles::{sentinel_roles, shrine_roles};
-    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IAbbot::IAbbotDispatcher;
+    use opus::interfaces::IGate::IGateDispatcher;
+    use opus::interfaces::ISentinel::ISentinelDispatcher;
+    use opus::interfaces::IShrine::IShrineDispatcher;
     use opus::tests::common;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use snforge_std::{declare, ContractClass, ContractClassTrait, start_prank, stop_prank, CheatTarget};
+    use snforge_std::{
+        ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
+        stop_cheat_caller_address,
+    };
     use starknet::ContractAddress;
-    use wadray::Wad;
+    use wadray::{WAD_ONE, Wad};
 
     // Struct to group together all contract classes
     // needed for abbot tests
@@ -31,7 +32,7 @@ pub mod abbot_utils {
         pub sentinel: ISentinelDispatcher,
         pub shrine: IShrineDispatcher,
         pub yangs: Span<ContractAddress>,
-        pub gates: Span<IGateDispatcher>
+        pub gates: Span<IGateDispatcher>,
     }
 
     #[derive(Copy, Drop)]
@@ -46,8 +47,8 @@ pub mod abbot_utils {
     // Constants
     //
 
-    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
-    pub const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    pub const OPEN_TROVE_FORGE_AMT: u128 = 2000 * WAD_ONE; // 2_000 (Wad)
+    pub const ETH_DEPOSIT_AMT: u128 = 10 * WAD_ONE; // 10 (Wad);
     pub const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
 
     pub const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
@@ -58,18 +59,15 @@ pub mod abbot_utils {
     //
 
     pub fn initial_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10,];
-        asset_amts.span()
+        array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10].span()
     }
 
     pub fn open_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT];
-        asset_amts.span()
+        array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT].span()
     }
 
     pub fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT];
-        asset_amts.span()
+        array![SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT].span()
     }
 
     //
@@ -78,11 +76,11 @@ pub mod abbot_utils {
 
     pub fn declare_contracts() -> AbbotTestClasses {
         AbbotTestClasses {
-            abbot: Option::Some(declare("abbot").unwrap()),
-            sentinel: Option::Some(declare("sentinel").unwrap()),
-            token: Option::Some(declare("erc20_mintable").unwrap()),
-            gate: Option::Some(declare("gate").unwrap()),
-            shrine: Option::Some(declare("shrine").unwrap()),
+            abbot: Option::Some(*declare("abbot").unwrap().contract_class()),
+            sentinel: Option::Some(*declare("sentinel").unwrap().contract_class()),
+            token: Option::Some(common::declare_token()),
+            gate: Option::Some(*declare("gate").unwrap().contract_class()),
+            shrine: Option::Some(*declare("shrine").unwrap().contract_class()),
         }
     }
 
@@ -91,14 +89,16 @@ pub mod abbot_utils {
             Option::Some(classes) => classes,
             Option::None => declare_contracts(),
         };
-        let sentinel_utils::SentinelTestConfig { sentinel, shrine, yangs, gates } =
+        let sentinel_utils::SentinelTestConfig {
+            sentinel, shrine, yangs, gates,
+        } =
             sentinel_utils::deploy_sentinel_with_gates(
-            Option::Some(
-                sentinel_utils::SentinelTestClasses {
-                    sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine
-                }
-            )
-        );
+                Option::Some(
+                    sentinel_utils::SentinelTestClasses {
+                        sentinel: classes.sentinel, token: classes.token, gate: classes.gate, shrine: classes.shrine,
+                    },
+                ),
+            );
         shrine_utils::setup_debt_ceiling(shrine.contract_address);
 
         let calldata: Array<felt252> = array![shrine.contract_address.into(), sentinel.contract_address.into()];
@@ -108,23 +108,23 @@ pub mod abbot_utils {
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
 
         // Grant Shrine roles to Abbot
-        start_prank(CheatTarget::One(shrine.contract_address), shrine_utils::admin());
+        start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
-        shrine_ac.grant_role(shrine_roles::abbot(), abbot_addr);
+        shrine_ac.grant_role(shrine_roles::ABBOT, abbot_addr);
+        stop_cheat_caller_address(shrine.contract_address);
 
         // Grant Sentinel roles to Abbot
-        start_prank(CheatTarget::One(sentinel.contract_address), sentinel_utils::admin());
+        start_cheat_caller_address(sentinel.contract_address, sentinel_utils::ADMIN);
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        sentinel_ac.grant_role(sentinel_roles::abbot(), abbot_addr);
-
-        stop_prank(CheatTarget::Multiple(array![shrine.contract_address, sentinel.contract_address]));
+        sentinel_ac.grant_role(sentinel_roles::ABBOT, abbot_addr);
+        stop_cheat_caller_address(sentinel.contract_address);
 
         AbbotTestConfig { shrine, sentinel, abbot, yangs, gates }
     }
 
     pub fn deploy_abbot_and_open_trove(classes: Option<AbbotTestClasses>) -> (AbbotTestConfig, AbbotTestTrove) {
         let abbot_test_config = abbot_deploy(classes);
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let trove_owner: ContractAddress = common::TROVE1_OWNER_ADDR;
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, abbot_test_config.yangs, initial_asset_amts());
@@ -135,7 +135,7 @@ pub mod abbot_utils {
             abbot_test_config.yangs,
             yang_asset_amts,
             abbot_test_config.gates,
-            forge_amt
+            forge_amt,
         );
 
         (abbot_test_config, AbbotTestTrove { trove_owner, trove_id, yang_asset_amts, forge_amt })

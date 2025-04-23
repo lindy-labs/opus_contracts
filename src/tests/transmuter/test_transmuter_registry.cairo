@@ -1,17 +1,14 @@
 mod test_transmuter_registry {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use opus::core::roles::transmuter_registry_roles;
-    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::interfaces::ITransmuter::{ITransmuterRegistryDispatcher, ITransmuterRegistryDispatcherTrait};
+    use opus::interfaces::ITransmuter::ITransmuterRegistryDispatcherTrait;
     use opus::tests::common;
-    use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
-    use snforge_std::{declare, CheatTarget, ContractClass, ContractClassTrait, start_prank, stop_prank};
+    use snforge_std::{ContractClass, start_cheat_caller_address};
     use starknet::ContractAddress;
 
     //
-    // Tests - Deployment 
+    // Tests - Deployment
     //
 
     // Check constructor function
@@ -22,11 +19,11 @@ mod test_transmuter_registry {
         assert(registry.get_transmuters() == array![].span(), 'should be empty');
 
         let registry_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: registry.contract_address
+            contract_address: registry.contract_address,
         };
-        let admin: ContractAddress = transmuter_utils::admin();
+        let admin: ContractAddress = transmuter_utils::ADMIN;
         assert(registry_ac.get_admin() == admin, 'wrong admin');
-        assert(registry_ac.get_roles(admin) == transmuter_registry_roles::default_admin_role(), 'wrong admin roles');
+        assert(registry_ac.get_roles(admin) == transmuter_registry_roles::ADMIN, 'wrong admin roles');
     }
 
     //
@@ -36,24 +33,26 @@ mod test_transmuter_registry {
     #[test]
     fn test_add_and_remove_transmuters() {
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
-        let token_class = declare("erc20_mintable").unwrap();
+        let token_class = common::declare_token();
 
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let transmuter_utils::TransmuterTestConfig { shrine, transmuter, .. } =
+        let transmuter_utils::TransmuterTestConfig {
+            shrine, transmuter, ..,
+        } =
             transmuter_utils::shrine_with_wad_usd_stable_transmuter(
-            Option::Some(transmuter_class), Option::Some(token_class)
-        );
+                Option::Some(transmuter_class), Option::Some(token_class),
+            );
         let first_transmuter = transmuter;
         let nonwad_usd_stable = transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class));
         let second_transmuter = transmuter_utils::transmuter_deploy(
             Option::Some(transmuter_class),
             shrine.contract_address,
             nonwad_usd_stable.contract_address,
-            transmuter_utils::receiver()
+            transmuter_utils::RECEIVER,
         );
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::ADMIN);
         registry.add_transmuter(first_transmuter.contract_address);
 
         assert(registry.get_transmuters() == array![first_transmuter.contract_address].span(), 'wrong transmuters #1');
@@ -64,7 +63,7 @@ mod test_transmuter_registry {
             registry
                 .get_transmuters() == array![first_transmuter.contract_address, second_transmuter.contract_address]
                 .span(),
-            'wrong transmuters #2'
+            'wrong transmuters #2',
         );
 
         registry.remove_transmuter(first_transmuter.contract_address);
@@ -77,7 +76,7 @@ mod test_transmuter_registry {
             registry
                 .get_transmuters() == array![second_transmuter.contract_address, first_transmuter.contract_address]
                 .span(),
-            'wrong transmuters #4'
+            'wrong transmuters #4',
         );
 
         registry.remove_transmuter(first_transmuter.contract_address);
@@ -86,31 +85,29 @@ mod test_transmuter_registry {
     }
 
     #[test]
-    #[should_panic(expected: ('TRR: Transmuter already exists',))]
+    #[should_panic(expected: 'TRR: Transmuter already exists')]
     fn test_add_duplicate_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
-            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
-            Option::None, Option::None
-        );
+        let transmuter_utils::TransmuterTestConfig {
+            transmuter, ..,
+        } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::ADMIN);
         registry.add_transmuter(transmuter.contract_address);
         registry.add_transmuter(transmuter.contract_address);
     }
 
     #[test]
-    #[should_panic(expected: ('TRR: Transmuter does not exist',))]
+    #[should_panic(expected: 'TRR: Transmuter does not exist')]
     fn test_remove_nonexistent_transmuter_fail() {
         let registry = transmuter_utils::transmuter_registry_deploy();
 
-        let transmuter_utils::TransmuterTestConfig { transmuter, .. } =
-            transmuter_utils::shrine_with_wad_usd_stable_transmuter(
-            Option::None, Option::None
-        );
+        let transmuter_utils::TransmuterTestConfig {
+            transmuter, ..,
+        } = transmuter_utils::shrine_with_wad_usd_stable_transmuter(Option::None, Option::None);
 
-        start_prank(CheatTarget::One(registry.contract_address), transmuter_utils::admin());
+        start_cheat_caller_address(registry.contract_address, transmuter_utils::ADMIN);
         registry.remove_transmuter(transmuter.contract_address);
     }
 }

@@ -1,9 +1,5 @@
 pub mod core_deployment;
 mod deploy_devnet;
-mod deploy_mainnet;
-mod deploy_oracles_v2_mainnet;
-mod deploy_oracles_v2_sepolia;
-mod deploy_sepolia;
 pub mod mock_deployment;
 pub mod periphery_deployment;
 mod upgrade_fdp_devnet;

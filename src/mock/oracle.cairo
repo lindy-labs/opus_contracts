@@ -20,7 +20,7 @@ pub mod mock_oracle {
         known_tokens: LegacyMap<u8, ContractAddress>,
         known_tokens_count: u8,
         latest_prices: LegacyMap<ContractAddress, Wad>,
-        shrine: IShrineDispatcher
+        shrine: IShrineDispatcher,
     }
 
     #[constructor]
@@ -44,7 +44,7 @@ pub mod mock_oracle {
                 }
 
                 i -= 1;
-            };
+            }
 
             self.latest_prices.write(token, price);
         }
