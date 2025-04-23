@@ -1,7 +1,7 @@
 #[starknet::contract]
 pub mod controller {
     use access_control::access_control_component;
-    use core::num::traits::Zero;
+    use core::num::traits::{Sqrt, Zero};
     use opus::core::roles::controller_roles;
     use opus::interfaces::IController::IController;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -292,7 +292,7 @@ pub mod controller {
         } else {
             error.try_into().unwrap()
         };
-        let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
+        let denominator: SignedRay = Sqrt::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
         math::pow(error, alpha) / denominator
     }
 

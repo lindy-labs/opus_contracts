@@ -1,13 +1,9 @@
-use core::num::traits::{One, Sqrt};
+use core::num::traits::One;
 use wadray::{Ray, WAD_DECIMALS, WAD_SCALE, Wad, u128_rdiv, u128_rmul};
 
 
 const TWO_POW_128: u256 = 0x100000000000000000000000000000000;
 
-pub fn sqrt(x: Ray) -> Ray {
-    let scaled_val: u256 = x.into() * wadray::RAY_SCALE.into();
-    Sqrt::sqrt(scaled_val).into()
-}
 
 pub fn pow<T, impl TMul: Mul<T>, impl TOne: One<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(x: T, mut n: u8) -> T {
     if n == 0 {
