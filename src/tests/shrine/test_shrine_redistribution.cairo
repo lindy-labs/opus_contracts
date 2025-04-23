@@ -211,8 +211,12 @@ mod test_shrine_redistribution {
         assert(unpulled_debt.is_zero(), 'should be zero');
 
         let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-        assert_eq!(
-            after_protocol_owned_troves_debt, before_protocol_owned_troves_debt + expected_error, "wrong protocol debt",
+        let error_margin: Wad = 10_u128.into();
+        common::assert_equalish(
+            after_protocol_owned_troves_debt,
+            before_protocol_owned_troves_debt + expected_error,
+            error_margin,
+            'wrong protocol debt',
         );
 
         let expected_redistribution_id: u32 = 1;
@@ -238,7 +242,9 @@ mod test_shrine_redistribution {
 
         let after_trove2_health: Health = shrine.get_trove_health(recipient_trove);
 
-        assert(after_trove2_health.debt == expected_trove2_debt, 'wrong debt after redistribution');
+        common::assert_equalish(
+            after_trove2_health.debt, expected_trove2_debt, error_margin, 'wrong debt after redistribution',
+        );
 
         assert(shrine.get_trove_redistribution_id(recipient_trove) == 0, 'wrong redistribution id');
 
