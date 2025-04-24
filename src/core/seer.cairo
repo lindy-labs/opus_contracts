@@ -1,7 +1,7 @@
 #[starknet::contract]
 pub mod seer {
     use access_control::access_control_component;
-    use core::num::traits::Zero;
+    use core::num::traits::{Pow, Zero};
     use opus::core::roles::seer_roles;
     use opus::external::interfaces::ITask;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -11,7 +11,6 @@ pub mod seer {
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::{ConversionRateInfo, InternalPriceType, PriceType, YangSuspensionStatus};
-    use opus::utils::math::pow;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
@@ -205,7 +204,7 @@ pub mod seer {
 
                     let asset_decimals: u8 = IERC20Dispatcher { contract_address: asset }.decimals();
                     assert(asset_decimals <= WAD_DECIMALS, 'SEER: Too many decimals');
-                    let conversion_rate_scale: u128 = pow(10_u128, (WAD_DECIMALS - asset_decimals).into());
+                    let conversion_rate_scale: u128 = 10_u128.pow((WAD_DECIMALS - asset_decimals).into());
 
                     InternalPriceType::Vault(ConversionRateInfo { asset, conversion_rate_scale })
                 },

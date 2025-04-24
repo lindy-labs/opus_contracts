@@ -1,7 +1,7 @@
 mod test_transmuter {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::min;
-    use core::num::traits::{Bounded, Zero};
+    use core::num::traits::{Bounded, Pow, Zero};
     use opus::core::roles::transmuter_roles;
     use opus::core::transmuter::transmuter as transmuter_contract;
     use opus::interfaces::IERC20::{
@@ -13,7 +13,7 @@ mod test_transmuter {
     use opus::tests::shrine::utils::shrine_utils;
     use opus::tests::transmuter::utils::transmuter_utils;
     use opus::tests::transmuter::utils::transmuter_utils::TransmuterTestConfig;
-    use opus::utils::math::{fixed_point_to_wad, pow, wad_to_fixed_point};
+    use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use snforge_std::{
         ContractClass, EventSpyAssertionsTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
     };
@@ -416,7 +416,7 @@ mod test_transmuter {
 
             // Set up transmute amount to be equivalent to 1_000 (Wad) yin
             let asset_decimals: u8 = asset.decimals();
-            let transmute_amt: u128 = real_transmute_amt * pow(10, asset_decimals);
+            let transmute_amt: u128 = real_transmute_amt * 10_u128.pow(asset_decimals.into());
 
             let mut expected_wad_transmuted_amts_copy = expected_wad_transmuted_amts;
 
@@ -591,7 +591,7 @@ mod test_transmuter {
             // Transmute an amount of yin to set up Transmuter for reverse
             let asset_decimals: u8 = asset.decimals();
             let real_transmute_amt: u128 = reverse_fees.len().into() * real_reverse_amt;
-            let asset_decimal_scale: u128 = pow(10, asset_decimals);
+            let asset_decimal_scale: u128 = 10_u128.pow(asset_decimals.into());
             let transmute_amt: u128 = real_transmute_amt * asset_decimal_scale;
 
             start_cheat_caller_address(transmuter.contract_address, user);
@@ -754,7 +754,7 @@ mod test_transmuter {
                 shrine, transmuter, shrine_debt_ceiling, seed_amt, receiver, user,
             );
 
-            let mut transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
+            let mut transmute_asset_amts: Span<u128> = array![0, 1000 * 10_u128.pow(asset_decimals.into())].span();
 
             for transmute_asset_amt in transmute_asset_amts {
                 let mut spy = spy_events();
@@ -840,7 +840,7 @@ mod test_transmuter {
                     Option::Some(token_class),
                 );
                 let secondary_asset_erc20 = IERC20Dispatcher { contract_address: secondary_asset };
-                let secondary_asset_amt: u128 = pow(10, *secondary_asset_decimal);
+                let secondary_asset_amt: u128 = 10_u128.pow((*secondary_asset_decimal).into());
 
                 let shrine_debt_ceiling: Wad = transmuter_utils::INITIAL_CEILING.into();
                 let seed_amt: Wad = (100000 * WAD_ONE).into();
@@ -958,7 +958,7 @@ mod test_transmuter {
         };
         let asset_decimals: u8 = asset.decimals();
 
-        let transmute_asset_amts: Span<u128> = array![0, 1000 * pow(10, asset_decimals)].span();
+        let transmute_asset_amts: Span<u128> = array![0, 1000 * 10_u128.pow(asset_decimals.into())].span();
 
         for transmute_asset_amt in transmute_asset_amts {
             // parametrize amount of yin in Transmuter at time of settlement
@@ -1135,8 +1135,8 @@ mod test_transmuter {
                 transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
             };
             let asset_decimals: u8 = asset.decimals();
-            let asset_decimal_scale: u128 = pow(10, asset_decimals);
-            let transmute_asset_amt: u128 = 1000 * pow(10, asset_decimals);
+            let asset_decimal_scale: u128 = 10_u128.pow(asset_decimals.into());
+            let transmute_asset_amt: u128 = 1000 * asset_decimal_scale;
 
             let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::Some(shrine_class));
 

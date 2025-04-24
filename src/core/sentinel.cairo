@@ -1,14 +1,14 @@
 #[starknet::contract]
 pub mod sentinel {
     use access_control::access_control_component;
-    use core::num::traits::Zero;
+    use core::num::traits::{Pow, Zero};
     use opus::core::roles::sentinel_roles;
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::ISentinel::ISentinel;
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::types::YangSuspensionStatus;
-    use opus::utils::math::{fixed_point_to_wad, pow};
+    use opus::utils::math::fixed_point_to_wad;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
@@ -203,7 +203,7 @@ pub mod sentinel {
             // Require an initial deposit when adding a yang to prevent first depositor from front-running
             let yang_erc20 = IERC20Dispatcher { contract_address: yang };
             let yang_decimals = yang_erc20.decimals();
-            let initial_deposit_amt: u128 = pow(10_u128, yang_decimals / 2);
+            let initial_deposit_amt: u128 = 10_u128.pow((yang_decimals / 2).into());
 
             // scale `asset_amt` up by the difference to match `Wad` precision of yang
             let initial_yang_amt: Wad = fixed_point_to_wad(initial_deposit_amt, yang_decimals);

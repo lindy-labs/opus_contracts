@@ -1,6 +1,6 @@
 mod test_pragma {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Zero;
+    use core::num::traits::{Pow, Zero};
     use core::result::ResultTrait;
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS};
     use opus::core::shrine::shrine;
@@ -15,7 +15,6 @@ mod test_pragma {
     use opus::tests::seer::utils::seer_utils;
     use opus::tests::sentinel::utils::sentinel_utils;
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
-    use opus::utils::math::pow;
     use snforge_std::{
         EventSpyAssertionsTrait, spy_events, start_cheat_block_timestamp_global, start_cheat_caller_address,
         stop_cheat_caller_address,
@@ -24,6 +23,7 @@ mod test_pragma {
     use wadray::{WAD_DECIMALS, WAD_SCALE, Wad};
 
     const TS: u64 = 1700000000; // arbitrary timestamp
+    const PRAGMA_SCALE: u128 = 10_u128.pow(PRAGMA_DECIMALS.into());
 
     //
     // Tests - Deployment and setters
@@ -160,7 +160,7 @@ mod test_pragma {
             'Pepe', 'PEPE', 18, 0.into(), common::NON_ZERO_ADDR, Option::None,
         );
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
-        let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
+        let price: u128 = 999 * PRAGMA_SCALE;
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_settings` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
@@ -196,7 +196,7 @@ mod test_pragma {
         let pepe_token_pair_id: felt252 = pragma_utils::PEPE_USD_PAIR_ID;
         let pair_settings = PairSettings { pair_id: pepe_token_pair_id, aggregation_mode: AggregationMode::Median };
 
-        let price: u128 = 999 * pow(10_u128, PRAGMA_DECIMALS);
+        let price: u128 = 999 * PRAGMA_SCALE;
         let current_ts: u64 = get_block_timestamp();
         // Seed first price update for PEPE token so that `Pragma.set_yang_pair_settings` passes
         pragma_utils::mock_valid_price_update(mock_pragma, pepe_token, price.into(), current_ts);
@@ -307,9 +307,7 @@ mod test_pragma {
     fn test_set_yang_pair_settings_spot_too_many_decimals_fail() {
         let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
-        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
-
-        let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
+        let pepe_price: u128 = 1000000 * PRAGMA_SCALE; // random price
         let invalid_decimals: u32 = (WAD_DECIMALS + 1).into();
         let pepe_response = PragmaPricesResponse {
             price: pepe_price,
@@ -333,9 +331,7 @@ mod test_pragma {
     fn test_set_yang_pair_settings_twap_too_many_decimals_fail() {
         let PragmaTestConfig { pragma, mock_pragma } = pragma_utils::pragma_deploy(Option::None, Option::None);
 
-        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
-
-        let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
+        let pepe_price: u128 = 1000000 * PRAGMA_SCALE; // random price
         let pepe_spot_response = PragmaPricesResponse {
             price: pepe_price,
             decimals: PRAGMA_DECIMALS.into(),

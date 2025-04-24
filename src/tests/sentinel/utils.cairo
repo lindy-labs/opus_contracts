@@ -1,6 +1,6 @@
 pub mod sentinel_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::num::traits::Bounded;
+    use core::num::traits::{Bounded, Pow};
     use opus::core::roles::{sentinel_roles, shrine_roles};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::IGateDispatcher;
@@ -9,7 +9,6 @@ pub mod sentinel_utils {
     use opus::tests::common;
     use opus::tests::gate::utils::gate_utils;
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::utils::math::pow;
     use snforge_std::{
         ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
         stop_cheat_caller_address,
@@ -310,6 +309,6 @@ pub mod sentinel_utils {
     }
 
     pub fn get_initial_asset_amt(asset_addr: ContractAddress) -> u128 {
-        pow(10_u128, IERC20Dispatcher { contract_address: asset_addr }.decimals() / 2)
+        10_u128.pow((IERC20Dispatcher { contract_address: asset_addr }.decimals() / 2).into())
     }
 }

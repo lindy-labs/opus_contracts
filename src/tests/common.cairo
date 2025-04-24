@@ -1,4 +1,4 @@
-use core::num::traits::Zero;
+use core::num::traits::{Pow, Zero};
 use opus::constants::{DAI_DECIMALS, LUSD_DECIMALS, USDC_DECIMALS, USDT_DECIMALS};
 use opus::core::shrine::shrine;
 use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -10,7 +10,6 @@ use opus::mock::mock_ekubo_oracle_extension::IMockEkuboOracleExtensionDispatcher
 use opus::tests::sentinel::utils::sentinel_utils;
 use opus::tests::shrine::utils::shrine_utils;
 use opus::types::{AssetBalance, Reward};
-use opus::utils::math::pow;
 use snforge_std::{
     ContractClass, ContractClassTrait, DeclareResultTrait, Event, declare, start_cheat_block_timestamp_global,
     start_cheat_caller_address, stop_cheat_caller_address,
@@ -242,7 +241,9 @@ pub fn deploy_vault(
 
     // Mock initial conversion rate of 1 : 1
     IMockERC4626Dispatcher { contract_address: vault_addr }
-        .set_convert_to_assets_per_wad_scale(pow(10, IERC20Dispatcher { contract_address: asset }.decimals()));
+        .set_convert_to_assets_per_wad_scale(
+            10_u128.pow(IERC20Dispatcher { contract_address: asset }.decimals().into()).into(),
+        );
 
     vault_addr
 }
