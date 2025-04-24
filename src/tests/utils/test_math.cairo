@@ -1,30 +1,7 @@
 mod test_math {
     use opus::tests::common::assert_equalish;
-    use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three, pow};
-    use wadray::{RAY_ONE, Ray, Wad};
-
-    #[test]
-    fn test_pow() {
-        // u128 tests
-        assert(pow(5_u128, 3) == 125_u128, 'wrong pow #1');
-        assert(pow(5_u128, 0) == 1_u128, 'wrong pow #2');
-        assert(pow(5_u128, 1) == 5_u128, 'wrong pow #3');
-        assert(pow(5_u128, 2) == 25_u128, 'wrong pow #4');
-
-        // Ray tests
-        let ERROR_MARGIN = 1000_u128.into();
-
-        assert_equalish(
-            pow::<Ray>(3141592653589793238462643383_u128.into(), 2),
-            9869604401089358618834490999_u128.into(),
-            ERROR_MARGIN,
-            'wrong pow #5',
-        );
-
-        assert_equalish(
-            pow::<Ray>(1414213562373095048801688724_u128.into(), 4), (4 * RAY_ONE).into(), ERROR_MARGIN, 'wrong pow #6',
-        );
-    }
+    use opus::utils::math::{convert_ekubo_oracle_price_to_wad, median_of_three};
+    use wadray::Wad;
 
     #[test]
     fn test_convert_ekubo_oracle_price_to_wad() {

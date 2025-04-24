@@ -48,6 +48,5 @@ dependencies = [
 
 [[package]]
 name = "wadray"
-version = "0.5.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:efdcf25d14a3fdeed662a0f8de17b89a998166e3f884139197b4367337c2e8e2"
+version = "0.6.1"
+source = "git+https://github.com/tserg/cairo-wadray.git?branch=bump%2Fv0.6.1#6e7c125b969678ac32ef068bebc61e4a8c3ca810"

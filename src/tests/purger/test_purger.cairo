@@ -1,7 +1,7 @@
 mod test_purger {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::cmp::{max, min};
-    use core::num::traits::{Bounded, Zero};
+    use core::num::traits::{Bounded, Pow, Zero};
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::purger::purger as purger_contract;
     use opus::core::roles::purger_roles;
@@ -20,7 +20,7 @@ mod test_purger {
     use opus::tests::purger::utils::purger_utils::PurgerTestConfig;
     use opus::tests::shrine::utils::shrine_utils;
     use opus::types::{AssetBalance, Health, HealthTrait};
-    use opus::utils::math::{pow, scale_u128_by_ray};
+    use opus::utils::math::scale_u128_by_ray;
     use snforge_std::{
         EventSpyAssertionsTrait, EventSpyTrait, EventsFilterTrait, spy_events, start_cheat_block_timestamp_global,
         start_cheat_caller_address, stop_cheat_caller_address,
@@ -291,7 +291,7 @@ mod test_purger {
             } else {
                 let target_trove_yang_amts: Span<Wad> = array![
                     purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                    (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
+                    (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * 10_u128.pow(10)).into(),
                 ]
                     .span();
 
@@ -536,7 +536,7 @@ mod test_purger {
                 // not lowering it.
                 let target_trove_yang_amts: Span<Wad> = array![
                     purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                    (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * pow(10_u128, 10)).into(),
+                    (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * 10_u128.pow(10)).into(),
                 ]
                     .span();
 
@@ -1937,9 +1937,8 @@ mod test_purger {
                 let remainder_trove_yang: Wad = shrine.get_deposit(*yangs_copy.pop_front().unwrap(), target_trove);
                 let remainder_asset_amt: u128 = gate.convert_to_assets(remainder_trove_yang);
 
-                let error_margin: u128 = pow(
-                    10_u128, IERC20Dispatcher { contract_address: gate.get_asset() }.decimals() / 2,
-                );
+                let error_margin: u128 = 10_u128
+                    .pow((IERC20Dispatcher { contract_address: gate.get_asset() }.decimals() / 2).into());
                 common::assert_equalish(
                     remainder_asset_amt, *expected_asset_amt, error_margin, 'wrong remainder yang asset',
                 );

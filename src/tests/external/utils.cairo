@@ -9,7 +9,7 @@ pub fn pepe_token_addr() -> ContractAddress {
 }
 
 pub mod pragma_utils {
-    use core::traits::Into;
+    use core::num::traits::Pow;
     use opus::constants::{ETH_USD_PAIR_ID, PRAGMA_DECIMALS, WBTC_USD_PAIR_ID};
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -17,7 +17,6 @@ pub mod pragma_utils {
     use opus::mock::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait};
     use opus::tests::seer::utils::seer_utils::{ETH_INIT_PRICE, WBTC_INIT_PRICE};
     use opus::types::pragma::{AggregationMode, PairSettings, PragmaPricesResponse};
-    use opus::utils::math::pow;
     use snforge_std::{
         ContractClass, ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
         stop_cheat_caller_address,
@@ -115,7 +114,7 @@ pub mod pragma_utils {
     //
 
     pub fn convert_price_to_pragma_scale(price: Wad) -> u128 {
-        let scale: u128 = pow(10_u128, WAD_DECIMALS - PRAGMA_DECIMALS);
+        let scale: u128 = 10_u128.pow((WAD_DECIMALS - PRAGMA_DECIMALS).into());
         price.into() / scale
     }
 

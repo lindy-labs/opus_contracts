@@ -20,7 +20,7 @@ sierra-replace-ids = true
 
 [dependencies]
 starknet = ">= 2.11.4"
-wadray = ">= 0.5.0"
+wadray = ">= 0.6.1"
 access_control = ">= 0.4.0"
 
 [dev-dependencies]
