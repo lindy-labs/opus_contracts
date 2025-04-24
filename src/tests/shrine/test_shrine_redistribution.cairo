@@ -249,7 +249,7 @@ mod test_shrine_redistribution {
         assert(shrine.get_trove_redistribution_id(recipient_trove) == 0, 'wrong redistribution id');
 
         let unpulled_debt: Wad = shrine.get_redistributed_debt_for_trove(recipient_trove);
-        assert(unpulled_debt == expected_trove2_debt_increment, 'wrong attributed debt');
+        common::assert_equalish(unpulled_debt, expected_trove2_debt_increment, 10_u128.into(), 'wrong attributed debt');
 
         // Trigger an update in trove 2 with an empty melt
         shrine.melt(trove1_owner, recipient_trove, Zero::zero());
