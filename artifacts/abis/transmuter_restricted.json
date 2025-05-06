@@ -296,6 +296,22 @@
       },
       {
         "type": "function",
+        "name": "withdraw_secondary_asset",
+        "inputs": [
+          {
+            "name": "asset",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "asset_amt",
+            "type": "core::integer::u128"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
         "name": "settle",
         "inputs": [],
         "outputs": [],
@@ -791,6 +807,28 @@
   },
   {
     "type": "event",
+    "name": "opus::core::transmuter_restricted::transmuter_restricted::WithdrawSecondaryAsset",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "recipient",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "asset",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "asset_amt",
+        "type": "core::integer::u128",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "opus::core::transmuter_restricted::transmuter_restricted::Event",
     "kind": "enum",
     "variants": [
@@ -857,6 +895,11 @@
       {
         "name": "TransmuteFeeUpdated",
         "type": "opus::core::transmuter_restricted::transmuter_restricted::TransmuteFeeUpdated",
+        "kind": "nested"
+      },
+      {
+        "name": "WithdrawSecondaryAsset",
+        "type": "opus::core::transmuter_restricted::transmuter_restricted::WithdrawSecondaryAsset",
         "kind": "nested"
       }
     ]

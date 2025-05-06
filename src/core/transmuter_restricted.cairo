@@ -332,6 +332,8 @@ pub mod transmuter_restricted {
         // 4. Yin's price is below 1; or
         // 5. Shrine's ceiling will be exceeded.
         fn transmute(ref self: ContractState, asset_amt: u128) {
+            self.access_control.assert_has_role(transmuter_roles::TRANSMUTE);
+
             // `preview_transmute_helper` checks for liveness
             let (yin_amt, fee) = self.preview_transmute_helper(asset_amt);
 
@@ -358,6 +360,8 @@ pub mod transmuter_restricted {
         // 2. User has insufficient yin; or
         // 3. Transmuter has insufficent assets corresponding to the burnt yin.
         fn reverse(ref self: ContractState, yin_amt: Wad) {
+            self.access_control.assert_has_role(transmuter_roles::REVERSE);
+
             // `preview_reverse_helper` checks for liveness and reversibility
             let (asset_amt, fee) = self.preview_reverse_helper(yin_amt);
 
@@ -511,13 +515,12 @@ pub mod transmuter_restricted {
         #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
             let shrine: IShrineDispatcher = self.shrine.read();
-            let yin_price_ge_peg: bool = shrine.get_yin_spot_price() >= WAD_ONE.into();
 
             let ceiling: Wad = self.ceiling.read();
             let minted: Wad = self.total_transmuted.read();
             let is_lt_ceiling: bool = minted + amt_to_mint <= ceiling;
 
-            assert(yin_price_ge_peg && is_lt_ceiling, 'TR: Transmute is paused');
+            assert(is_lt_ceiling, 'TR: Transmute is paused');
         }
 
         fn set_ceiling_helper(ref self: ContractState, ceiling: Wad) {
