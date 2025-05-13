@@ -5,20 +5,56 @@
     "interface_name": "opus::interfaces::IPragma::IPragma"
   },
   {
+    "type": "enum",
+    "name": "opus::types::pragma::AggregationMode",
+    "variants": [
+      {
+        "name": "Median",
+        "type": "()"
+      },
+      {
+        "name": "Mean",
+        "type": "()"
+      },
+      {
+        "name": "ConversionRate",
+        "type": "()"
+      },
+      {
+        "name": "Error",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "opus::types::pragma::PairSettings",
+    "members": [
+      {
+        "name": "pair_id",
+        "type": "core::felt252"
+      },
+      {
+        "name": "aggregation_mode",
+        "type": "opus::types::pragma::AggregationMode"
+      }
+    ]
+  },
+  {
     "type": "interface",
     "name": "opus::interfaces::IPragma::IPragma",
     "items": [
       {
         "type": "function",
-        "name": "set_yang_pair_id",
+        "name": "set_yang_pair_settings",
         "inputs": [
           {
             "name": "yang",
             "type": "core::starknet::contract_address::ContractAddress"
           },
           {
-            "name": "pair_id",
-            "type": "core::felt252"
+            "name": "pair_settings",
+            "type": "opus::types::pragma::PairSettings"
           }
         ],
         "outputs": [],
@@ -398,6 +434,11 @@
         "kind": "key"
       },
       {
+        "name": "aggregation_mode",
+        "type": "opus::types::pragma::AggregationMode",
+        "kind": "data"
+      },
+      {
         "name": "price",
         "type": "wadray::wadray::Wad",
         "kind": "data"
@@ -447,7 +488,7 @@
   },
   {
     "type": "event",
-    "name": "opus::external::pragma::pragma::YangPairIdSet",
+    "name": "opus::external::pragma::pragma::YangPairSettingsUpdated",
     "kind": "struct",
     "members": [
       {
@@ -456,8 +497,8 @@
         "kind": "data"
       },
       {
-        "name": "pair_id",
-        "type": "core::felt252",
+        "name": "pair_settings",
+        "type": "opus::types::pragma::PairSettings",
         "kind": "data"
       }
     ]
@@ -483,8 +524,8 @@
         "kind": "nested"
       },
       {
-        "name": "YangPairIdSet",
-        "type": "opus::external::pragma::pragma::YangPairIdSet",
+        "name": "YangPairSettingsUpdated",
+        "type": "opus::external::pragma::pragma::YangPairSettingsUpdated",
         "kind": "nested"
       }
     ]

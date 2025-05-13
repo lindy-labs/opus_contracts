@@ -15,6 +15,20 @@
     ]
   },
   {
+    "type": "enum",
+    "name": "opus::types::PriceType",
+    "variants": [
+      {
+        "name": "Direct",
+        "type": "()"
+      },
+      {
+        "name": "Vault",
+        "type": "()"
+      }
+    ]
+  },
+  {
     "type": "interface",
     "name": "opus::interfaces::ISeer::ISeer",
     "items": [
@@ -42,6 +56,22 @@
       },
       {
         "type": "function",
+        "name": "get_yang_price_type",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "opus::types::PriceType"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
         "name": "set_oracles",
         "inputs": [
           {
@@ -59,6 +89,22 @@
           {
             "name": "new_frequency",
             "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_yang_price_type",
+        "inputs": [
+          {
+            "name": "yang",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "price_type",
+            "type": "opus::types::PriceType"
           }
         ],
         "outputs": [],
@@ -429,6 +475,23 @@
   },
   {
     "type": "event",
+    "name": "opus::core::seer::seer::YangPriceTypeUpdated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "yang",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "key"
+      },
+      {
+        "name": "price_type",
+        "type": "opus::types::PriceType",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
     "name": "opus::core::seer::seer::Event",
     "kind": "enum",
     "variants": [
@@ -455,6 +518,11 @@
       {
         "name": "UpdatePricesDone",
         "type": "opus::core::seer::seer::UpdatePricesDone",
+        "kind": "nested"
+      },
+      {
+        "name": "YangPriceTypeUpdated",
+        "type": "opus::core::seer::seer::YangPriceTypeUpdated",
         "kind": "nested"
       }
     ]
