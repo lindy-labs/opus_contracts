@@ -30,7 +30,7 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Ekubo       | `0x048a1cc699025faec330b85ab74a7586e424206a481daed14160982b57567cce` | `v1.1.0` |
 | Equalizer   | `0x066e3e2ea2095b2a0424b9a2272e4058f30332df5ff226518d19c20d3ab8e842` | `v1.0.0` |
 | Flash Mint  | `0x05e57a033bb3a03e8ac919cbb4e826faf8f3d6a58e76ff7a13854ffc78264681` | `v1.0.0` |
-| Frontend Data Provider | `0x023037703b187f6ff23b883624a0a9f266c9d44671e762048c70100c2f128ab9` | `v1.1.0` |
+| Frontend Data Provider | `0x023037703b187f6ff23b883624a0a9f266c9d44671e762048c70100c2f128ab9` | `main` branch |
 | Gate[ETH]   | `0x0315ce9c5d3e5772481181441369d8eea74303b9710a6c72e3fcbbdb83c0dab1` | `v1.0.0` |
 | Gate[STRK]  | `0x031a96fe18fe3fdab28822c82c81471f1802800723c8f3e209f1d9da53bc637d` | `v1.0.0` |
 | Gate[WBTC]  | `0x05bc1c8a78667fac3bf9617903dbf2c1bfe3937e1d37ada3d8b86bf70fb7926e` | `v1.0.0` |
