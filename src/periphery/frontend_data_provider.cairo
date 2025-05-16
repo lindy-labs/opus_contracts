@@ -1,7 +1,9 @@
 #[starknet::contract]
 pub mod frontend_data_provider {
     use access_control::access_control_component;
+    use core::num::traits::Pow;
     use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -13,7 +15,7 @@ pub mod frontend_data_provider {
     use opus::utils::upgradeable::{IUpgradeable, upgradeable_component};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress};
-    use wadray::{Ray, Wad};
+    use wadray::{Ray, WAD_DECIMALS, Wad};
 
     //
     // Components
@@ -213,7 +215,10 @@ pub mod frontend_data_provider {
 
             let (yang_price, _, _) = shrine.get_current_yang_price(yang);
             let yang_value: Wad = yang_amt * yang_price;
-            let asset_price: Wad = yang_value / deposited.into();
+            // Scale deposited to Wad
+            let decimals: u8 = IERC20Dispatcher { contract_address: yang }.decimals();
+            let deposited_scaled: u128 = deposited * 10_u128.pow((WAD_DECIMALS - decimals).into());
+            let asset_price: Wad = yang_value / deposited_scaled.into();
 
             let threshold: Ray = shrine.get_yang_threshold(yang);
             let base_rate: Ray = shrine.get_yang_rate(yang, current_rate_era);
