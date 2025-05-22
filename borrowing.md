@@ -18,6 +18,7 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 | STRK   | 6%        | 63%                |
 | xSTRK  | 7.5%      | 60%                |
 | EKUBO  | 5%        | 70%                |
+| LORDS  | 9%        | 54%                |
 
 {% hint style="info" %}
 New collateral types will be added in short order.
