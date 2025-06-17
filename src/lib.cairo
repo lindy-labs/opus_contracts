@@ -4,7 +4,10 @@ pub mod types;
 pub mod core {
     pub mod abbot;
     pub mod absorber;
-    pub mod allocator;
+    pub mod allocators {
+        pub mod allocator;
+        pub mod tcr_allocator;
+    }
     pub mod caretaker;
     pub mod controller;
     pub mod equalizer;
@@ -103,6 +106,7 @@ mod tests {
     mod equalizer {
         mod test_allocator;
         mod test_equalizer;
+        mod test_tcr_allocator;
         pub mod utils;
     }
     mod external {

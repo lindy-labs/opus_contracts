@@ -20,7 +20,7 @@ sierra = true
 build-external-contracts = [
     "opus::core::abbot::abbot",
     "opus::core::absorber::absorber",
-    "opus::core::allocator::allocator",
+    "opus::core::allocators::allocator::allocator",
     "opus::core::caretaker::caretaker",
     "opus::core::controller::controller",
     "opus::core::equalizer::equalizer",
