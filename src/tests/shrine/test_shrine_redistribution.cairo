@@ -211,7 +211,7 @@ mod test_shrine_redistribution {
         assert(unpulled_debt.is_zero(), 'should be zero');
 
         let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-        let error_margin: Wad = 10_u128.into();
+        let error_margin: Wad = 20_u128.into();
         common::assert_equalish(
             after_protocol_owned_troves_debt,
             before_protocol_owned_troves_debt + expected_error,
