@@ -1,6 +1,6 @@
 mod test_allocator {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use opus::core::allocator::allocator as allocator_contract;
+    use opus::core::allocators::allocator::allocator as allocator_contract;
     use opus::core::roles::allocator_roles;
     use opus::interfaces::IAllocator::IAllocatorDispatcherTrait;
     use opus::tests::common;
