@@ -1,0 +1,98 @@
+[
+  {
+    "type": "impl",
+    "name": "IAllocatorImpl",
+    "interface_name": "opus::interfaces::IAllocator::IAllocator"
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<core::starknet::contract_address::ContractAddress>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<core::starknet::contract_address::ContractAddress>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "wadray::wadray::Ray",
+    "members": [
+      {
+        "name": "val",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<wadray::wadray::Ray>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<wadray::wadray::Ray>"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "opus::interfaces::IAllocator::IAllocator",
+    "items": [
+      {
+        "type": "function",
+        "name": "get_allocation",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "(core::array::Span::<core::starknet::contract_address::ContractAddress>, core::array::Span::<wadray::wadray::Ray>)"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "set_allocation",
+        "inputs": [
+          {
+            "name": "recipients",
+            "type": "core::array::Span::<core::starknet::contract_address::ContractAddress>"
+          },
+          {
+            "name": "percentages",
+            "type": "core::array::Span::<wadray::wadray::Ray>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "shrine",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "admin_fee_recipient",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "absorber",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "stabilizer",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "opus::core::allocators::tcr_allocator::tcr_allocator::Event",
+    "kind": "enum",
+    "variants": []
+  }
+]
