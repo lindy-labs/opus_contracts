@@ -24,7 +24,7 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | ------ | ------- | ------- |
 | Abbot       | `0x04d0bb0a4c40012384e7c419e6eb3c637b28e8363fb66958b60d90505b9c072f` | `v1.0.0` |
 | Absorber    | `0x000a5e1c1ffe1384b30a464a61b1af631e774ec52c0e7841b9b5f02c6a729bc0` | `v1.0.0` |
-| Allocator   | `0x06a3593f7115f8f5e0728995d8924229cb1c4109ea477655bad281b36a760f41` | `v1.0.0` |
+| Allocator   | `0x03d2550dbbcc3a6c5e9e7c99c8b546908d96174cb2f59276e0634d8269f30c84` | `main` branch |
 | Caretaker   | `0x012a5efcb820803ba700503329567fcdddd7731e0d05e06217ed1152f956dbb0` | `v1.0.0` |
 | Controller  | `0x07558a9da2fac57f5a4381fef8c36c92ca66adc20978063982382846f72a4448` | `v1.0.0` |
 | Ekubo       | `0x048a1cc699025faec330b85ab74a7586e424206a481daed14160982b57567cce` | `v1.1.0` |
