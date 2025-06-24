@@ -1,5 +1,6 @@
 pub mod equalizer_utils {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use core::num::traits::{One, Zero};
     use opus::core::roles::{equalizer_roles, shrine_roles};
     use opus::interfaces::IAllocator::IAllocatorDispatcher;
     use opus::interfaces::IEqualizer::IEqualizerDispatcher;
@@ -95,6 +96,25 @@ pub mod equalizer_utils {
         IAllocatorDispatcher { contract_address: allocator_addr }
     }
 
+    pub fn tcr_allocator_deploy(
+        shrine: ContractAddress,
+        absorber: ContractAddress,
+        stabilizer: ContractAddress,
+        tcr_allocator_class: Option<ContractClass>,
+    ) -> IAllocatorDispatcher {
+        let mut calldata: Array<felt252> = array![
+            shrine.into(), shrine_utils::ADMIN.into(), absorber.into(), stabilizer.into(),
+        ];
+
+        let tcr_allocator_class = match tcr_allocator_class {
+            Option::Some(class) => class,
+            Option::None => *declare("tcr_allocator").unwrap().contract_class(),
+        };
+        let (tcr_allocator_addr, _) = tcr_allocator_class.deploy(@calldata).expect('failed tcr allocator deploy');
+
+        IAllocatorDispatcher { contract_address: tcr_allocator_addr }
+    }
+
     pub fn equalizer_deploy(allocator_class: Option<ContractClass>) -> EqualizerTestConfig {
         let shrine: IShrineDispatcher = shrine_utils::shrine_setup_with_feed(Option::None);
         equalizer_deploy_with_shrine(shrine.contract_address, allocator_class)
@@ -128,5 +148,15 @@ pub mod equalizer_utils {
             equalizer: IEqualizerDispatcher { contract_address: equalizer_addr },
             allocator,
         }
+    }
+
+    // Assertion helpers
+
+    pub fn sums_to_one(percentages: Span<Ray>) {
+        let mut sum: Ray = Zero::zero();
+        for percentage in percentages {
+            sum += *percentage;
+        }
+        assert!(sum.is_one(), "percentage sum not 100%");
     }
 }
