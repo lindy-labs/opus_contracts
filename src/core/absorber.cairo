@@ -15,11 +15,11 @@ pub mod absorber {
     use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+    use opus::types::{AssetBalance, DistributionInfo, Provision, Reward};
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use wadray::{Ray, Wad, u128_wdiv, u128_wmul};
 
     //
@@ -51,27 +51,6 @@ pub mod absorber {
 
     // First epoch of the Absorber
     pub const FIRST_EPOCH: u32 = 1;
-
-    // Amount of time, in seconds, that needs to elapse after request is submitted before removal
-    pub const REQUEST_BASE_TIMELOCK: u64 = 60;
-
-    // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
-    // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    pub const REQUEST_MAX_TIMELOCK: u64 = 7 * 24 * 60 * 60;
-
-    // Multiplier for each request's timelock from the last value if a new request is submitted
-    // before the cooldown of the previous request has elapsed
-    pub const REQUEST_TIMELOCK_MULTIPLIER: u64 = 5;
-
-    // Amount of time, in seconds, for which a withdrawal can be made for a request after the timelock
-    // has elapsed
-    // 60 minutes * 60 seconds per minute
-    pub const REQUEST_WITHDRAWAL_PERIOD: u64 = 60 * 60;
-
-    // Amount of time that needs to elapse after a request is submitted before the timelock
-    // for the next request is reset to the base value.
-    // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    pub const REQUEST_COOLDOWN: u64 = 7 * 24 * 60 * 60;
 
     // Helper constant to set the starting index for iterating over the Rewards
     // in the order they were added
@@ -135,8 +114,6 @@ pub mod absorber {
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
         provider_last_reward_cumulative: Map<(ContractAddress, ContractAddress), u128>,
-        // Mapping from a provider to its latest request for removal
-        provider_request: Map<ContractAddress, Request>,
     }
 
     //
@@ -150,7 +127,6 @@ pub mod absorber {
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,
         Provide: Provide,
-        RequestSubmitted: RequestSubmitted,
         Remove: Remove,
         Reap: Reap,
         Gain: Gain,
@@ -179,14 +155,6 @@ pub mod absorber {
         pub provider: ContractAddress,
         pub epoch: u32,
         pub yin: Wad,
-    }
-
-    #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct RequestSubmitted {
-        #[key]
-        pub provider: ContractAddress,
-        pub timestamp: u64,
-        pub timelock: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -292,10 +260,6 @@ pub mod absorber {
             self.provider_last_absorption.read(provider)
         }
 
-        fn get_provider_request(self: @ContractState, provider: ContractAddress) -> Request {
-            self.provider_request.read(provider)
-        }
-
         fn get_asset_absorption(self: @ContractState, asset: ContractAddress, absorption_id: u32) -> u128 {
             self.asset_absorption.read((asset, absorption_id))
         }
@@ -315,7 +279,6 @@ pub mod absorber {
         fn get_live(self: @ContractState) -> bool {
             self.is_live.read()
         }
-
 
         //
         // View
@@ -422,11 +385,6 @@ pub mod absorber {
             // Update total shares for current epoch
             self.total_shares.write(self.total_shares.read() + issued_shares);
 
-            // Reset request
-            let mut request: Request = self.provider_request.read(provider);
-            request.is_valid = false;
-            self.provider_request.write(provider, request);
-
             // Perform transfer of yin
             let absorber: ContractAddress = get_contract_address();
 
@@ -437,44 +395,17 @@ pub mod absorber {
             self.emit(Provide { provider, epoch: current_epoch, yin: amount });
         }
 
-
-        // Submit a request to `remove` that is valid for a fixed period of time after a variable timelock.
-        // - This is intended to prevent atomic removals to avoid risk-free yield (from rewards and interest)
-        //   front-running tactics.
-        //   The timelock increases if another request is submitted before the previous has cooled down.
-        // - A request is expended by either (1) a removal; (2) expiry; (3) submitting a new request;
-        //   or (4) a provision.
-        // - Note: A request may become valid in the next epoch if a provider in the previous epoch
-        //         submitted a request, a draining absorption occurs, and the provider provides again
-        //         in the next epoch. This is expected to be rare, and the maximum risk-free profit is
-        //         in any event greatly limited.
-        fn request(ref self: ContractState) {
-            let provider: ContractAddress = get_caller_address();
-            assert_provider(self.provisions.read(provider));
-
-            let request: Request = self.provider_request.read(provider);
-            let current_timestamp: u64 = get_block_timestamp();
-
-            let mut timelock: u64 = REQUEST_BASE_TIMELOCK;
-            if request.timestamp + REQUEST_COOLDOWN > current_timestamp {
-                timelock = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
-            }
-
-            let capped_timelock: u64 = min(timelock, REQUEST_MAX_TIMELOCK);
-            self
-                .provider_request
-                .write(provider, Request { timestamp: current_timestamp, timelock: capped_timelock, is_valid: true });
-            self.emit(RequestSubmitted { provider, timestamp: current_timestamp, timelock: capped_timelock });
-        }
-
         // Withdraw yin (if any) and all absorbed collateral assets from the absorber.
         fn remove(ref self: ContractState, amount: Wad) {
             let provider: ContractAddress = get_caller_address();
             let provision: Provision = self.provisions.read(provider);
             assert_provider(provision);
 
-            let mut request: Request = self.provider_request.read(provider);
-            self.assert_can_remove(request);
+            let shrine = self.shrine.read();
+            // Removal is not allowed if Shrine is live and in recovery mode.
+            if shrine.get_live() {
+                assert(!shrine.is_recovery_mode(), 'ABS: Recovery Mode active');
+            }
 
             // Withdraw absorbed collateral before updating shares
             self.reap_helper(provider, provision);
@@ -517,8 +448,6 @@ pub mod absorber {
                 assert(success, 'ABS: Transfer failed');
             }
 
-            request.is_valid = false;
-            self.provider_request.write(provider, request);
             self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
         }
 
@@ -856,29 +785,6 @@ pub mod absorber {
                         .transfer(to, (*asset_balance.amount).into());
                 }
             }
-        }
-
-        //
-        // Internal - helpers for remove
-        //
-
-        fn assert_can_remove(self: @ContractState, request: Request) {
-            let shrine = self.shrine.read();
-            // Removal is not allowed if Shrine is live and in recovery mode.
-            if shrine.get_live() {
-                assert(!shrine.is_recovery_mode(), 'ABS: Recovery Mode active');
-            }
-
-            assert(request.timestamp.is_non_zero(), 'ABS: No request found');
-            assert(request.is_valid, 'ABS: Request is no longer valid');
-
-            let current_timestamp: u64 = starknet::get_block_timestamp();
-            let removal_start_timestamp: u64 = request.timestamp + request.timelock;
-            assert(removal_start_timestamp <= current_timestamp, 'ABS: Before withdrawal period');
-            assert(
-                current_timestamp <= removal_start_timestamp + REQUEST_WITHDRAWAL_PERIOD,
-                'ABS: Withdrawal period elapsed',
-            );
         }
 
         //
