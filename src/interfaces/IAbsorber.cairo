@@ -1,4 +1,4 @@
-use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+use opus::types::{AssetBalance, DistributionInfo, Provision, Reward};
 use starknet::ContractAddress;
 use wadray::Wad;
 
@@ -13,7 +13,6 @@ pub trait IAbsorber<TContractState> {
     fn get_total_shares_for_current_epoch(self: @TContractState) -> Wad;
     fn get_provision(self: @TContractState, provider: ContractAddress) -> Provision;
     fn get_provider_last_absorption(self: @TContractState, provider: ContractAddress) -> u32;
-    fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
     fn get_asset_absorption(self: @TContractState, asset: ContractAddress, absorption_id: u32) -> u128;
     fn get_cumulative_reward_amt_by_epoch(
         self: @TContractState, asset: ContractAddress, epoch: u32,
@@ -28,7 +27,6 @@ pub trait IAbsorber<TContractState> {
     // external
     fn set_reward(ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool);
     fn provide(ref self: TContractState, amount: Wad);
-    fn request(ref self: TContractState);
     fn remove(ref self: TContractState, amount: Wad);
     fn reap(ref self: TContractState);
     fn update(ref self: TContractState, asset_balances: Span<AssetBalance>);
