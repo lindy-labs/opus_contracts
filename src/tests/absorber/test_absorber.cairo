@@ -1,6 +1,5 @@
 mod test_absorber {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use core::cmp::min;
     use core::num::traits::{Bounded, Zero};
     use opus::core::absorber::absorber as absorber_contract;
     use opus::core::roles::absorber_roles;
@@ -12,12 +11,11 @@ mod test_absorber {
     use opus::tests::common;
     use opus::tests::common::{AddressIntoSpan, RewardPartialEq};
     use opus::tests::shrine::utils::shrine_utils;
-    use opus::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+    use opus::types::{AssetBalance, DistributionInfo, Provision, Reward};
     use snforge_std::{
-        EventSpyAssertionsTrait, EventSpyTrait, spy_events, start_cheat_block_timestamp_global,
-        start_cheat_caller_address, stop_cheat_caller_address,
+        EventSpyAssertionsTrait, EventSpyTrait, spy_events, start_cheat_caller_address, stop_cheat_caller_address,
     };
-    use starknet::{ContractAddress, get_block_timestamp};
+    use starknet::ContractAddress;
     use wadray::{RAY_ONE, RAY_SCALE, Ray, WAD_ONE, WAD_SCALE, Wad};
     //
     // Tests - Setup
@@ -173,8 +171,6 @@ mod test_absorber {
         // Check provider can remove
         let before_provider_yin_bal: Wad = shrine.get_yin(provider);
         start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         // Loss of precision
@@ -479,7 +475,7 @@ mod test_absorber {
             // Perform three different actions
             // (in the following order if the number of test cases is a multiple of 3):
             // 1. `provide`
-            // 2. `request` and `remove`
+            // 2. `remove`
             // 3. `reap`
             // and check that the provider receives rewards and absorbed assets
 
@@ -492,8 +488,6 @@ mod test_absorber {
                 absorber.provide(WAD_SCALE.into());
                 provide_as_second_action = true;
             } else if percentages_to_drain.len() % 3 == 1 {
-                absorber.request();
-                start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
                 absorber.remove(Bounded::MAX);
                 remove_as_second_action = true;
             } else {
@@ -573,9 +567,6 @@ mod test_absorber {
                     error_margin,
                     'wrong absorber yin balance',
                 );
-
-                // Check `request` is used
-                assert(!absorber.get_provider_request(provider).is_valid, 'request should be fulfilled');
             }
         };
     }
@@ -596,7 +587,7 @@ mod test_absorber {
     }
 
     //
-    // Tests - Provider functions (provide, request, remove, reap)
+    // Tests - Provider functions (provide, remove, reap)
     //
 
     #[test]
@@ -1153,9 +1144,6 @@ mod test_absorber {
         start_cheat_caller_address(absorber.contract_address, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(first_provider);
 
-        let request_timestamp = get_block_timestamp();
-        absorber.request();
-        start_cheat_block_timestamp_global(request_timestamp + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1168,9 +1156,6 @@ mod test_absorber {
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
-
-        let request: Request = absorber.get_provider_request(first_provider);
-        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1401,8 +1386,6 @@ mod test_absorber {
         start_cheat_caller_address(absorber.contract_address, first_provider);
         let (preview_absorbed_assets, preview_reward_assets) = absorber.preview_reap(first_provider);
 
-        absorber.request();
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         assert(absorber.is_operational(), 'should be operational');
@@ -1413,9 +1396,6 @@ mod test_absorber {
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
-
-        let request: Request = absorber.get_provider_request(first_provider);
-        assert(!request.is_valid, 'request should be fulfilled');
 
         let error_margin: u128 = 10000;
         absorber_utils::assert_provider_received_absorbed_assets(
@@ -1742,60 +1722,6 @@ mod test_absorber {
     }
 
     #[test]
-    fn test_request_pass() {
-        let classes = absorber_utils::declare_contracts();
-        let (AbsorberTestConfig { absorber, .. }, AbsorberRewardsTestConfig { provider, .. }) =
-            absorber_utils::absorber_with_rewards_and_first_provider(
-            Option::Some(classes),
-        );
-
-        let mut spy = spy_events();
-
-        start_cheat_caller_address(absorber.contract_address, provider);
-        let mut idx: u128 = 0;
-        let mut expected_timelock = absorber_contract::REQUEST_BASE_TIMELOCK;
-        let mut expected_events: Array<(ContractAddress, absorber_contract::Event)> = ArrayTrait::new();
-        while idx != 6 {
-            let current_ts = get_block_timestamp();
-            absorber.request();
-
-            expected_timelock = min(expected_timelock, absorber_contract::REQUEST_MAX_TIMELOCK);
-
-            let request: Request = absorber.get_provider_request(provider);
-            assert(request.timestamp == current_ts, 'wrong timestamp');
-            assert(request.timelock == expected_timelock, 'wrong timelock');
-
-            let removal_ts = current_ts + expected_timelock;
-            start_cheat_block_timestamp_global(removal_ts);
-
-            // This should not revert
-            if idx % 2 == 0 {
-                absorber.remove(1_u128.into());
-            } else {
-                absorber.provide(1_u128.into());
-            }
-            let request: Request = absorber.get_provider_request(provider);
-            assert(!request.is_valid, 'request should not be valid');
-
-            expected_events
-                .append(
-                    (
-                        absorber.contract_address,
-                        absorber_contract::Event::RequestSubmitted(
-                            absorber_contract::RequestSubmitted {
-                                provider: provider, timestamp: current_ts, timelock: expected_timelock,
-                            },
-                        ),
-                    ),
-                );
-
-            expected_timelock *= absorber_contract::REQUEST_TIMELOCK_MULTIPLIER;
-            idx += 1;
-        }
-        spy.assert_emitted(@expected_events);
-    }
-
-    #[test]
     fn test_shrine_killed_and_remove_pass() {
         let (
             AbsorberTestConfig {
@@ -1819,8 +1745,6 @@ mod test_absorber {
         // Check provider can remove
         let before_provider_yin_bal: Wad = shrine.get_yin(provider);
         start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
 
         // Loss of precision
@@ -1852,79 +1776,7 @@ mod test_absorber {
         assert(shrine.is_recovery_mode(), 'sanity check for RM threshold');
 
         start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
         absorber.remove(Bounded::MAX);
-    }
-
-    #[test]
-    #[should_panic(expected: 'ABS: No request found')]
-    fn test_remove_no_request_fail() {
-        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
-        let absorber = config.absorber;
-        let provider = rewards_config.provider;
-
-        start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.remove(Bounded::MAX);
-    }
-
-    #[test]
-    #[should_panic(expected: 'ABS: Request is no longer valid')]
-    fn test_remove_fulfilled_request_fail() {
-        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
-        let absorber = config.absorber;
-        let provider = rewards_config.provider;
-
-        start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK);
-        // This should succeed
-        absorber.remove(1_u128.into());
-
-        // This should fail
-        absorber.remove(1_u128.into());
-    }
-
-    #[test]
-    #[should_panic(expected: 'ABS: Before withdrawal period')]
-    fn test_remove_request_not_valid_yet_fail() {
-        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
-        let absorber = config.absorber;
-        let provider = rewards_config.provider;
-
-        start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        // Early by 1 second
-        start_cheat_block_timestamp_global(get_block_timestamp() + absorber_contract::REQUEST_BASE_TIMELOCK - 1);
-        absorber.remove(1_u128.into());
-    }
-
-    #[test]
-    #[should_panic(expected: 'ABS: Withdrawal period elapsed')]
-    fn test_remove_request_expired_fail() {
-        let (config, rewards_config) = absorber_utils::absorber_with_rewards_and_first_provider(Option::None);
-        let absorber = config.absorber;
-        let provider = rewards_config.provider;
-
-        start_cheat_caller_address(absorber.contract_address, provider);
-        absorber.request();
-        // 1 second after validity period
-        start_cheat_block_timestamp_global(
-            get_block_timestamp()
-                + absorber_contract::REQUEST_BASE_TIMELOCK
-                + absorber_contract::REQUEST_WITHDRAWAL_PERIOD
-                + 1,
-        );
-        absorber.remove(1_u128.into());
-    }
-
-    #[test]
-    #[should_panic(expected: 'ABS: Not a provider')]
-    fn test_non_provider_request_fail() {
-        let AbsorberTestConfig { absorber, .. } = absorber_utils::absorber_deploy(Option::None);
-
-        start_cheat_caller_address(absorber.contract_address, common::BAD_GUY);
-        absorber.request();
     }
 
     #[test]
