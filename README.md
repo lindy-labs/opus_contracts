@@ -39,6 +39,14 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[xSTRK] | `0x04a3e7dffd8e74a706be9abe6474e07fbbcf41e1be71387514c4977d54dbc428` | `v1.0.0` |
 | Gate[sSTRK] | `0x03b709f3ab9bc072a195b907fb2c27688723b6e4abb812a8941def819f929bd8` | `v1.0.0` |
 | Gate[EKUBO] | `0x06d44c6172f6b68fda893348d33be58b69f0add83ed480d1192d19bc4188c8f6` | `v1.0.0` |
+| Gate[tBTC]  | `0x07b0b47cb98d8282b6c86d267cb575c81a50f603cd07bb8c1e692e77eacc4c26` | `v1.0.0  |
+| Gate[SolvBTC]  | `0x01f556ed83aa7b204301d1aeb290f9755b79fdb5b7d7a56854c81d3dd736c695` | `v1.0.0  |
+| Gate[LBTC]  | `0x0764d5947a816bd2f5b0a3262405508a40c4afd026aa50a1e24c8cb234630ac0` | `v1.0.0  |
+| Gate[uniBTC]  | `0x01583087431138e16a49c70cb64d05d876f46b06178b200ff6c57e1da571719c` | `v1.0.0  |
+| Gate[xWBTC]  | `0x02ad9fef1109565064334bf16632158c73ca6ae0bd8eedfaae652544e73e47e4` | `v1.0.0  |
+| Gate[xtBTC]  | `0x0073348c89345735938f1ebc5b237f034bb63874e895311c5db0b29a15e9908a` | `v1.0.0  |
+| Gate[xLBTC]  | `0x0616551ebe73c1ea97ad2d7c7c9575039cc456fea5c8529701a39cc9c0ad4805` | `v1.0.0  |
+| Gate[xsBTC]  | `0x06a5bac0cdaa7126e32dd478c86f84906f4a7ff597cbaa9b0d537312887f5a19` | `v1.0.0  |
 | Pragma      | `0x0532f8b442e90eae93493a4f3e4f6d3bf2579e56a75238b786a5e90cb82fdfe9` | `v1.1.0` as `pragma_v2` |
 | Purger      | `0x02cef5286b554f4122a2070bbd492a95ad810774903c92633979ed54d51b04ca` | `v1.1.0` |
 | Receptor    | `0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678` | `v1.1.0` |
