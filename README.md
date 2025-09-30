@@ -42,7 +42,6 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[tBTC]  | `0x07b0b47cb98d8282b6c86d267cb575c81a50f603cd07bb8c1e692e77eacc4c26` | `v1.0.0  |
 | Gate[SolvBTC]  | `0x01f556ed83aa7b204301d1aeb290f9755b79fdb5b7d7a56854c81d3dd736c695` | `v1.0.0  |
 | Gate[LBTC]  | `0x0764d5947a816bd2f5b0a3262405508a40c4afd026aa50a1e24c8cb234630ac0` | `v1.0.0  |
-| Gate[pumpBTC]  | `0x052dcb7becae5735192e7cc811db8230609579140cf47e4e6ed7a5fea362ba4e` | `v1.0.0  |
 | Gate[uniBTC]  | `0x01583087431138e16a49c70cb64d05d876f46b06178b200ff6c57e1da571719c` | `v1.0.0  |
 | Gate[xWBTC]  | `0x02ad9fef1109565064334bf16632158c73ca6ae0bd8eedfaae652544e73e47e4` | `v1.0.0  |
 | Gate[xtBTC]  | `0x0073348c89345735938f1ebc5b237f034bb63874e895311c5db0b29a15e9908a` | `v1.0.0  |
