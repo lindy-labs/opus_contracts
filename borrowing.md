@@ -10,19 +10,7 @@ It is important to note that your Trove can be liquidated if its loan-to-value (
 
 ## What collateral is accepted?
 
-| Asset  | Base Rate | Base LTV Threshold |
-| ------ | --------- | ------------------ |
-| ETH    | 2.5%      | 85%                |
-| wBTC   | 3%        | 78%                |
-| wstETH | 4%        | 79%                |
-| STRK   | 6%        | 63%                |
-| xSTRK  | 7.5%      | 60%                |
-| EKUBO  | 5%        | 70%                |
-| LORDS  | 9%        | 54%                |
-
-{% hint style="info" %}
-New collateral types will be added in short order.
-{% endhint %}
+<table><thead><tr><th>Asset</th><th>Base Rate</th><th>Base LTV Threshold</th><th data-type="checkbox">DeFi Spring Rewards</th><th data-type="checkbox">BTCFi Supply Incentives</th><th data-type="checkbox">BTCFi Borrowing Incentives</th></tr></thead><tbody><tr><td>ETH</td><td>2%</td><td>90%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>wstETH</td><td>2.75%</td><td>82%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>STRK</td><td>6%</td><td>63%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>xSTRK</td><td>7.5%</td><td>60%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>EKUBO</td><td>5%</td><td>70%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>LORDS</td><td>9%</td><td>54%</td><td>true</td><td>false</td><td>false</td></tr><tr><td>WBTC</td><td>2.5%</td><td>85%</td><td>false</td><td>true</td><td>true</td></tr><tr><td>LBTC</td><td>2.5%</td><td>85%</td><td>false</td><td>true</td><td>true</td></tr><tr><td>SolvBTC</td><td>2.5%</td><td>82%</td><td>false</td><td>true</td><td>true</td></tr><tr><td>tBTC</td><td>2.5%</td><td>82%</td><td>false</td><td>true</td><td>true</td></tr><tr><td>uniBTC</td><td>2.5%</td><td>85%</td><td>false</td><td>true</td><td>true</td></tr><tr><td>xWBTC</td><td>3.25%</td><td>80%</td><td>false</td><td>false</td><td>true</td></tr><tr><td>xsBTC</td><td>3.25%</td><td>80%</td><td>false</td><td>false</td><td>true</td></tr><tr><td>xtBTC</td><td>3.25%</td><td>80%</td><td>false</td><td>false</td><td>true</td></tr><tr><td>xLBTC</td><td>3.25%</td><td>80%</td><td>false</td><td>false</td><td>true</td></tr></tbody></table>
 
 An asset's risk profile (i.e. base rate, threshold, cap) will be determined in accordance with the [onboarding guidelines](technical-documentation/governance/onboarding-collateral.md).
 
