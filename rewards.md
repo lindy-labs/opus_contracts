@@ -39,17 +39,15 @@ Users will receive STRK rewards as part of the [Starknet BTCFi ](https://btcfise
    2. LBTC
    3. SolvBTC
    4. tBTC
-   5. uniBTC
 2. borrow CASH with the following BTC collateral
    1. WBTC
    2. LBTC
    3. SolvBTC
    4. tBTC
-   5. uniBTC
-   6. xLBTC
-   7. xsBTC
-   8. xtBTC
-   9. xWBTC
+   5. xLBTC
+   6. xsBTC
+   7. xtBTC
+   8. xWBTC
 
 Each action will have its own allocation of rewards, and users will share proportionally in it based on the methodology described below.
 
