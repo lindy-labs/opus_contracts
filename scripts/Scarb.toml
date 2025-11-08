@@ -7,14 +7,14 @@ edition = "2024_07"
 members = ["deployment", "simulation"]
 
 [dependencies]
-sncast_std = ">=0.41.0"
-starknet = ">=2.11.4"
+sncast_std = ">=0.52.0"
+starknet = ">=2.13.0"
 wadray = ">=0.6.1"
 opus = { path = "../" }
 
 [workspace.dependencies]
-sncast_std = ">=0.41.0"
-starknet = ">=2.11.4"
+sncast_std = ">=0.52.0"
+starknet = ">=2.13.0"
 wadray = ">=0.6.1"
 opus = { path = "../" }
 scripts = { path = "./" }
