@@ -491,6 +491,23 @@ mod test_purger {
     // 1. LTV has decreased
     // 2. trove's debt is reduced by the close amount
     // 3. If it is not a full liquidation, then the post-liquidation LTV is at the target safety margin
+    #[test]
+    #[test_case(name: "threshold1_a", *purger_utils::interesting_thresholds_for_liquidation()[0], true)]
+    #[test_case(name: "threshold1_b", *purger_utils::interesting_thresholds_for_liquidation()[0], false)]
+    #[test_case(name: "threshold2_a", *purger_utils::interesting_thresholds_for_liquidation()[1], true)]
+    #[test_case(name: "threshold2_b", *purger_utils::interesting_thresholds_for_liquidation()[1], false)]
+    #[test_case(name: "threshold3_a", *purger_utils::interesting_thresholds_for_liquidation()[2], true)]
+    #[test_case(name: "threshold3_b", *purger_utils::interesting_thresholds_for_liquidation()[2], false)]
+    #[test_case(name: "threshold4_a", *purger_utils::interesting_thresholds_for_liquidation()[3], true)]
+    #[test_case(name: "threshold4_b", *purger_utils::interesting_thresholds_for_liquidation()[3], false)]
+    #[test_case(name: "threshold5_a", *purger_utils::interesting_thresholds_for_liquidation()[4], true)]
+    #[test_case(name: "threshold5_b", *purger_utils::interesting_thresholds_for_liquidation()[4], false)]
+    #[test_case(name: "threshold6_a", *purger_utils::interesting_thresholds_for_liquidation()[5], true)]
+    #[test_case(name: "threshold6_b", *purger_utils::interesting_thresholds_for_liquidation()[5], false)]
+    #[test_case(name: "threshold7_a", *purger_utils::interesting_thresholds_for_liquidation()[6], true)]
+    #[test_case(name: "threshold7_b", *purger_utils::interesting_thresholds_for_liquidation()[6], false)]
+    #[test_case(name: "threshold8_a", *purger_utils::interesting_thresholds_for_liquidation()[7], true)]
+    #[test_case(name: "threshold8_b", *purger_utils::interesting_thresholds_for_liquidation()[7], false)]
     fn test_liquidate(threshold: Ray, is_recovery_mode: bool) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
@@ -500,8 +517,7 @@ mod test_purger {
             (threshold.into() + 1_u128).into(), //just above threshold
             threshold + RAY_PERCENT.into(), // 1% above threshold
             // halfway between threshold and 100%
-            threshold + ((RAY_ONE - threshold.into()) / 2_u128).into(),
-            (RAY_ONE - RAY_PERCENT).into(), // 99%
+            threshold + ((RAY_ONE - threshold.into()) / 2_u128).into(), (RAY_ONE - RAY_PERCENT).into(), // 99%
             (RAY_ONE + RAY_PERCENT).into() // 101%
         ]
             .span();
@@ -627,104 +643,6 @@ mod test_purger {
 
             shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
         };
-    }
-
-    // We split this test up ito take advantage of parallelization and because
-    // blockifier has a limit of 1000 events
-    #[test]
-    fn test_liquidate_parametrized_threshold1_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[0], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold1_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[0], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold2_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[1], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold2_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[1], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold3_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[2], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold3_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[2], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold4_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[3], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold4_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[3], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold5_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[4], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold5_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[4], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold6_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[5], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold6_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[5], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold7_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[6], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold7_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[6], false);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold8_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[7], true);
-    }
-
-    #[test]
-    fn test_liquidate_parametrized_threshold8_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-        test_liquidate(*thresholds[7], false);
     }
 
     #[test]
@@ -1058,13 +976,52 @@ mod test_purger {
         shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
+
+    #[test]
+    #[test_case(0, 0, true, true)]
+    #[test_case(0, 0, true, false)]
+    #[test_case(0, 0, false, false)]
+    #[test_case(0, 0, false, true)]
+    #[test_case(0, 1, true, true)]
+    #[test_case(0, 1, true, false)]
+    #[test_case(0, 1, false, false)]
+    #[test_case(0, 1, false, true)]
+    #[test_case(1, 0, true, true)]
+    #[test_case(1, 0, true, false)]
+    #[test_case(1, 0, false, false)]
+    #[test_case(1, 0, false, true)]
+    #[test_case(1, 1, true, true)]
+    #[test_case(1, 1, true, false)]
+    #[test_case(1, 1, false, false)]
+    #[test_case(1, 1, false, true)]
+    #[test_case(2, 0, true, true)]
+    #[test_case(2, 0, true, false)]
+    #[test_case(2, 0, false, false)]
+    #[test_case(2, 0, false, true)]
+    #[test_case(2, 1, true, true)]
+    #[test_case(2, 1, true, false)]
+    #[test_case(2, 1, false, false)]
+    #[test_case(2, 1, false, true)]
+    #[test_case(3, 0, true, true)]
+    #[test_case(3, 0, true, false)]
+    #[test_case(3, 0, false, false)]
+    #[test_case(3, 0, false, true)]
+    #[test_case(3, 1, true, true)]
+    #[test_case(3, 1, true, false)]
+    #[test_case(3, 1, false, false)]
+    #[test_case(3, 1, false, true)]
     fn test_partial_absorb_with_redistribution_entire_trove_debt(
-        recipient_trove_yang_asset_amts: Span<u128>,
-        target_trove_yang_asset_amts: Span<u128>,
+        recipient_trove_yang_asset_amts_idx: usize,
+        target_trove_yang_asset_amts_idx: usize,
         kill_absorber: bool,
         is_recovery_mode: bool,
     ) {
         let classes = Option::Some(purger_utils::declare_contracts());
+
+        let recipient_trove_yang_asset_amts: Span<u128> = *purger_utils::interesting_yang_amts_for_recipient_trove()
+            .at(recipient_trove_yang_asset_amts_idx);
+        let target_trove_yang_asset_amts: Span<u128> = *purger_utils::interesting_yang_amts_for_redistributed_trove()
+            .at(target_trove_yang_asset_amts_idx);
 
         let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
         let absorber_yin_cases: Span<Wad> = purger_utils::generate_operational_absorber_yin_cases(initial_trove_debt);
@@ -1295,358 +1252,6 @@ mod test_purger {
         };
     }
 
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized1() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[0], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized2() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[0], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized3() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[0], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized4() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[0], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized5() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[1], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized6() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[1], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized7() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[1], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized8() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[0], *target_trove_yang_asset_amts_cases[1], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized9() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[0], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized10() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[0], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized11() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[0], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized12() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[0], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized13() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[1], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized14() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[1], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized15() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[1], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized16() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[1], *target_trove_yang_asset_amts_cases[1], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized17() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[0], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized18() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[0], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized19() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[0], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized20() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[0], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized21() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[1], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized22() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[1], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized23() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[1], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized24() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[2], *target_trove_yang_asset_amts_cases[1], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized25() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[0], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized26() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[0], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized27() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[0], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized28() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[0], false, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized29() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[1], true, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized30() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[1], true, false,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized31() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[1], false, true,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized32() {
-        let recipient_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_recipient_trove();
-        let target_trove_yang_asset_amts_cases: Span<Span<u128>> =
-            purger_utils::interesting_yang_amts_for_redistributed_trove();
-        test_partial_absorb_with_redistribution_entire_trove_debt(
-            *recipient_trove_yang_asset_amts_cases[3], *target_trove_yang_asset_amts_cases[1], false, false,
-        );
-    }
-
     // Regarding `absorber_yin_idx`:
     //
     //  - Index 0 is a dummy value for the absorber yin
@@ -1657,14 +1262,116 @@ mod test_purger {
     //    minus the smallest unit of Wad (which would amount to
     //    1001 wei after including the initial amount in Absorber)
 
+    #[test]
+    #[test_case(0, 0, false, false, 0)]
+    #[test_case(0, 0, false, false, 1)]
+    #[test_case(0, 0, false, false, 2)]
+    #[test_case(0, 0, false, true, 0)]
+    #[test_case(0, 0, false, true, 1)]
+    #[test_case(0, 0, false, true, 2)]
+    #[test_case(0, 0, true, false, 0)]
+    #[test_case(0, 0, true, false, 1)]
+    #[test_case(0, 0, true, false, 2)]
+    #[test_case(0, 0, true, true, 0)]
+    #[test_case(0, 0, true, true, 1)]
+    #[test_case(0, 0, true, true, 2)]
+    #[test_case(0, 1, false, false, 0)]
+    #[test_case(0, 1, false, false, 1)]
+    #[test_case(0, 1, false, false, 2)]
+    #[test_case(0, 1, false, true, 0)]
+    #[test_case(0, 1, false, true, 1)]
+    #[test_case(0, 1, false, true, 2)]
+    #[test_case(0, 1, true, false, 0)]
+    #[test_case(0, 1, true, false, 1)]
+    #[test_case(0, 1, true, false, 2)]
+    #[test_case(0, 1, true, true, 0)]
+    #[test_case(0, 1, true, true, 1)]
+    #[test_case(0, 1, true, true, 2)]
+    #[test_case(0, 2, false, false, 0)]
+    #[test_case(0, 2, false, false, 1)]
+    #[test_case(0, 2, false, false, 2)]
+    #[test_case(0, 2, false, true, 0)]
+    #[test_case(0, 2, false, true, 1)]
+    #[test_case(0, 2, false, true, 2)]
+    #[test_case(0, 2, true, false, 0)]
+    #[test_case(0, 2, true, false, 1)]
+    #[test_case(0, 2, true, false, 2)]
+    #[test_case(0, 2, true, true, 0)]
+    #[test_case(0, 2, true, true, 1)]
+    #[test_case(0, 2, true, true, 2)]
+    #[test_case(0, 3, false, false, 0)]
+    #[test_case(0, 3, false, false, 1)]
+    #[test_case(0, 3, false, false, 2)]
+    #[test_case(0, 3, false, true, 0)]
+    #[test_case(0, 3, false, true, 1)]
+    #[test_case(0, 3, false, true, 2)]
+    #[test_case(0, 3, true, false, 0)]
+    #[test_case(0, 3, true, false, 1)]
+    #[test_case(0, 3, true, false, 2)]
+    #[test_case(0, 3, true, true, 0)]
+    #[test_case(0, 3, true, true, 1)]
+    #[test_case(0, 3, true, true, 2)]
+    #[test_case(1, 0, false, false, 0)]
+    #[test_case(1, 0, false, false, 1)]
+    #[test_case(1, 0, false, false, 2)]
+    #[test_case(1, 0, false, true, 0)]
+    #[test_case(1, 0, false, true, 1)]
+    #[test_case(1, 0, false, true, 2)]
+    #[test_case(1, 0, true, false, 0)]
+    #[test_case(1, 0, true, false, 1)]
+    #[test_case(1, 0, true, false, 2)]
+    #[test_case(1, 0, true, true, 0)]
+    #[test_case(1, 0, true, true, 1)]
+    #[test_case(1, 0, true, true, 2)]
+    #[test_case(1, 1, false, false, 0)]
+    #[test_case(1, 1, false, false, 1)]
+    #[test_case(1, 1, false, false, 2)]
+    #[test_case(1, 1, false, true, 0)]
+    #[test_case(1, 1, false, true, 1)]
+    #[test_case(1, 1, false, true, 2)]
+    #[test_case(1, 1, true, false, 0)]
+    #[test_case(1, 1, true, false, 1)]
+    #[test_case(1, 1, true, false, 2)]
+    #[test_case(1, 1, true, true, 0)]
+    #[test_case(1, 1, true, true, 1)]
+    #[test_case(1, 1, true, true, 2)]
+    #[test_case(1, 2, false, false, 0)]
+    #[test_case(1, 2, false, false, 1)]
+    #[test_case(1, 2, false, false, 2)]
+    #[test_case(1, 2, false, true, 0)]
+    #[test_case(1, 2, false, true, 1)]
+    #[test_case(1, 2, false, true, 2)]
+    #[test_case(1, 2, true, false, 0)]
+    #[test_case(1, 2, true, false, 1)]
+    #[test_case(1, 2, true, false, 2)]
+    #[test_case(1, 2, true, true, 0)]
+    #[test_case(1, 2, true, true, 1)]
+    #[test_case(1, 2, true, true, 2)]
+    #[test_case(1, 3, false, false, 0)]
+    #[test_case(1, 3, false, false, 1)]
+    #[test_case(1, 3, false, false, 2)]
+    #[test_case(1, 3, false, true, 0)]
+    #[test_case(1, 3, false, true, 1)]
+    #[test_case(1, 3, false, true, 2)]
+    #[test_case(1, 3, true, false, 0)]
+    #[test_case(1, 3, true, false, 1)]
+    #[test_case(1, 3, true, false, 2)]
+    #[test_case(1, 3, true, true, 0)]
+    #[test_case(1, 3, true, true, 1)]
+    #[test_case(1, 3, true, true, 2)]
     fn test_partial_absorb_with_redistribution_below_trove_debt(
-        target_trove_yang_asset_amts: Span<u128>,
-        recipient_trove_yang_asset_amts: Span<u128>,
+        target_trove_yang_asset_amts_idx: usize,
+        recipient_trove_yang_asset_amts_idx: usize,
         is_recovery_mode: bool,
         kill_absorber: bool,
         absorber_yin_idx: usize,
     ) {
         let classes = Option::Some(purger_utils::declare_contracts());
+
+        let target_trove_yang_asset_amts: Span<u128> = *purger_utils::interesting_yang_amts_for_redistributed_trove()
+            .at(target_trove_yang_asset_amts_idx);
+        let recipient_trove_yang_asset_amts: Span<u128> = *purger_utils::interesting_yang_amts_for_recipient_trove()
+            .at(recipient_trove_yang_asset_amts_idx);
 
         let mut interesting_thresholds = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
         let mut target_ltvs: Span<Span<Ray>> =
@@ -1989,1131 +1696,242 @@ mod test_purger {
         };
     }
 
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_00_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[0], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_01_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[1], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_02_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[2], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_03_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[0], *recipient_trove_yang_asset_amts_cases[3], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_10_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[0], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_11_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[1], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_12_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[2], true, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_a() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_b() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_c() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_d() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_e() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_f() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], false, true, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_g() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, false, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_h() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, false, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_i() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, false, 2,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_j() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, true, 0,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_k() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, true, 1,
-        );
-    }
-
-    #[test]
-    fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized_13_l() {
-        let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
-        let recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_partial_absorb_with_redistribution_below_trove_debt(
-            *target_trove_yang_asset_amts_cases[1], *recipient_trove_yang_asset_amts_cases[3], true, true, 2,
-        );
-    }
 
     // Note that the absorber has zero shares in this test because no provider has
     // provided yin yet.
-    fn test_absorb_full_redistribution(recipient_trove_yang_asset_amts: Span<Span<u128>>, kill_absorber: bool) {
+    #[test]
+    #[test_case(0, true)]
+    #[test_case(0, false)]
+    #[test_case(1, true)]
+    #[test_case(1, false)]
+    #[test_case(2, true)]
+    #[test_case(2, false)]
+    #[test_case(3, true)]
+    #[test_case(3, false)]
+    fn test_absorb_full_redistribution(recipient_trove_yang_asset_amts_idx: usize, kill_absorber: bool) {
         let classes = Option::Some(purger_utils::declare_contracts());
+
+        let recipient_trove_yang_asset_amts: Span<u128> = *purger_utils::interesting_yang_amts_for_recipient_trove()
+            .at(recipient_trove_yang_asset_amts_idx);
 
         let target_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_redistributed_trove();
         let absorber_yin_cases: Span<Wad> = purger_utils::inoperational_absorber_yin_cases();
 
         for target_trove_yang_asset_amts in target_trove_yang_asset_amts_cases {
-            for yang_asset_amts in recipient_trove_yang_asset_amts {
-                for absorber_start_yin in absorber_yin_cases {
-                    let PurgerTestConfig {
-                        shrine, abbot, seer, absorber, purger, yangs, gates,
-                    } = purger_utils::purger_deploy(classes);
+            for absorber_start_yin in absorber_yin_cases {
+                let PurgerTestConfig {
+                    shrine, abbot, seer, absorber, purger, yangs, gates,
+                } = purger_utils::purger_deploy(classes);
 
-                    let mut spy = spy_events();
+                let mut spy = spy_events();
 
-                    start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
-                    shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
-                    stop_cheat_caller_address(shrine.contract_address);
+                start_cheat_caller_address(shrine.contract_address, shrine_utils::ADMIN);
+                shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
+                stop_cheat_caller_address(shrine.contract_address);
 
-                    let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
-                    let target_trove_owner: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
-                    common::fund_user(target_trove_owner, yangs, *target_trove_yang_asset_amts);
-                    let target_trove: u64 = common::open_trove_helper(
-                        abbot,
-                        target_trove_owner,
-                        yangs,
-                        *target_trove_yang_asset_amts,
-                        gates,
-                        purger_utils::TARGET_TROVE_YIN.into(),
+                let initial_trove_debt: Wad = purger_utils::TARGET_TROVE_YIN.into();
+                let target_trove_owner: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
+                common::fund_user(target_trove_owner, yangs, *target_trove_yang_asset_amts);
+                let target_trove: u64 = common::open_trove_helper(
+                    abbot,
+                    target_trove_owner,
+                    yangs,
+                    *target_trove_yang_asset_amts,
+                    gates,
+                    purger_utils::TARGET_TROVE_YIN.into(),
+                );
+
+                let recipient_trove_owner: ContractAddress = absorber_utils::PROVIDER_1;
+                let recipient_trove: u64 = absorber_utils::provide_to_absorber(
+                    shrine,
+                    abbot,
+                    absorber,
+                    recipient_trove_owner,
+                    yangs,
+                    recipient_trove_yang_asset_amts,
+                    gates,
+                    *absorber_start_yin,
+                );
+
+                // Accrue some interest
+                common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+
+                let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+                let accrued_interest: Wad = target_trove_start_health.debt - initial_trove_debt;
+                // Sanity check that some interest has accrued
+                assert(accrued_interest.is_non_zero(), 'no interest accrued');
+
+                let shrine_health: Health = shrine.get_shrine_health();
+                let before_total_debt: Wad = shrine_health.debt;
+
+                let target_ltv: Ray = (purger_contract::ABSORPTION_THRESHOLD + 1).into();
+                purger_utils::lower_prices_to_raise_trove_ltv(
+                    shrine, seer, yangs, target_trove_start_health.value, target_trove_start_health.debt, target_ltv,
+                );
+
+                let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+
+                let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
+
+                let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+
+                purger_utils::assert_trove_is_absorbable(
+                    shrine, purger, target_trove, target_trove_updated_start_health,
+                );
+
+                let caller: ContractAddress = common::NON_ZERO_ADDR;
+                let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
+                    yangs, array![caller].span(),
+                );
+
+                if kill_absorber {
+                    absorber_utils::kill_absorber(absorber);
+                    assert(!absorber.get_live(), 'sanity check');
+                }
+
+                let (_, _, expected_compensation_value) = purger
+                    .preview_absorb(target_trove)
+                    .expect('Should be absorbable');
+
+                start_cheat_caller_address(purger.contract_address, caller);
+                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+
+                // Assert that total debt includes accrued interest on liquidated
+                // trove
+                let after_total_debt: Wad = shrine.get_shrine_health().debt;
+                assert(after_total_debt == before_total_debt + accrued_interest, 'wrong total debt');
+
+                // Check that caller has received compensation
+                let expected_compensation_amts: Span<u128> = purger_utils::get_expected_compensation_assets(
+                    *target_trove_yang_asset_amts, target_trove_updated_start_health.value, expected_compensation_value,
+                );
+                let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
+                    yangs, expected_compensation_amts,
+                );
+                purger_utils::assert_received_assets(
+                    before_caller_asset_bals,
+                    common::get_token_balances(yangs, array![caller].span()),
+                    expected_compensation,
+                    10_u128, // error margin
+                    'wrong caller asset balance',
+                );
+
+                common::assert_asset_balances_equalish(
+                    compensation, expected_compensation, 10_u128, // error margin
+                    'wrong freed asset amount',
+                );
+
+                let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
+                assert(target_trove_after_health.is_healthy(), 'should be healthy');
+                assert(target_trove_after_health.ltv.is_zero(), 'LTV should be 0');
+                assert(target_trove_after_health.value.is_zero(), 'value should be 0');
+                assert(target_trove_after_health.debt.is_zero(), 'debt should be 0');
+
+                // Check no absorption occured
+                assert(absorber.get_absorptions_count() == 0, 'wrong absorptions count');
+
+                // Check redistribution occured
+                assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
+
+                let expected_redistribution_id = 1;
+
+                // Check if the redistribution was exceptional for all yangs
+                // i.e. all value went to initial yangs and all debt went to
+                // troves' deficit
+                let yang1_redistribution: Wad = shrine
+                    .get_redistribution_for_yang(*yangs[0], expected_redistribution_id);
+                let yang2_redistribution: Wad = shrine
+                    .get_redistribution_for_yang(*yangs[1], expected_redistribution_id);
+                let is_full_exceptional_redistribution: bool = yang1_redistribution.is_zero()
+                    && yang2_redistribution.is_zero();
+
+                if is_full_exceptional_redistribution {
+                    let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
+                    let expected_protocol_owned_troves_debt = before_protocol_owned_troves_debt
+                        + target_trove_start_health.debt;
+                    assert_eq!(
+                        after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong troves deficit",
+                    );
+                } else {
+                    // Check recipient trove's value and debt
+                    let after_recipient_trove_health = shrine.get_trove_health(recipient_trove);
+                    assert(
+                        after_recipient_trove_health.debt > before_recipient_trove_health.debt,
+                        'wrong recipient trove debt',
                     );
 
-                    let recipient_trove_owner: ContractAddress = absorber_utils::PROVIDER_1;
-                    let recipient_trove: u64 = absorber_utils::provide_to_absorber(
-                        shrine,
-                        abbot,
-                        absorber,
-                        recipient_trove_owner,
-                        yangs,
-                        *yang_asset_amts,
-                        gates,
-                        *absorber_start_yin,
+                    assert(
+                        after_recipient_trove_health.value > before_recipient_trove_health.value,
+                        'wrong recipient trove value',
                     );
+                }
 
-                    // Accrue some interest
-                    common::advance_intervals_and_refresh_prices_and_multiplier(shrine, yangs, 500);
+                // Check Purger events
+                let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
 
-                    let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
-                    let accrued_interest: Wad = target_trove_start_health.debt - initial_trove_debt;
-                    // Sanity check that some interest has accrued
-                    assert(accrued_interest.is_non_zero(), 'no interest accrued');
+                common::assert_event_not_emitted_by_name(purger_events.span(), selector!("Purged"));
 
-                    let shrine_health: Health = shrine.get_shrine_health();
-                    let before_total_debt: Wad = shrine_health.debt;
-
-                    let target_ltv: Ray = (purger_contract::ABSORPTION_THRESHOLD + 1).into();
-                    purger_utils::lower_prices_to_raise_trove_ltv(
-                        shrine,
-                        seer,
-                        yangs,
-                        target_trove_start_health.value,
-                        target_trove_start_health.debt,
-                        target_ltv,
-                    );
-
-                    let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-
-                    let before_recipient_trove_health: Health = shrine.get_trove_health(recipient_trove);
-
-                    let before_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-
-                    purger_utils::assert_trove_is_absorbable(
-                        shrine, purger, target_trove, target_trove_updated_start_health,
-                    );
-
-                    let caller: ContractAddress = common::NON_ZERO_ADDR;
-                    let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-                        yangs, array![caller].span(),
-                    );
-
-                    if kill_absorber {
-                        absorber_utils::kill_absorber(absorber);
-                        assert(!absorber.get_live(), 'sanity check');
-                    }
-
-                    let (_, _, expected_compensation_value) = purger
-                        .preview_absorb(target_trove)
-                        .expect('Should be absorbable');
-
-                    start_cheat_caller_address(purger.contract_address, caller);
-                    let compensation: Span<AssetBalance> = purger.absorb(target_trove);
-
-                    // Assert that total debt includes accrued interest on liquidated
-                    // trove
-                    let after_total_debt: Wad = shrine.get_shrine_health().debt;
-                    assert(after_total_debt == before_total_debt + accrued_interest, 'wrong total debt');
-
-                    // Check that caller has received compensation
-                    let expected_compensation_amts: Span<u128> = purger_utils::get_expected_compensation_assets(
-                        *target_trove_yang_asset_amts,
-                        target_trove_updated_start_health.value,
-                        expected_compensation_value,
-                    );
-                    let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
-                        yangs, expected_compensation_amts,
-                    );
-                    purger_utils::assert_received_assets(
-                        before_caller_asset_bals,
-                        common::get_token_balances(yangs, array![caller].span()),
-                        expected_compensation,
-                        10_u128, // error margin
-                        'wrong caller asset balance',
-                    );
-
-                    common::assert_asset_balances_equalish(
-                        compensation, expected_compensation, 10_u128, // error margin
-                        'wrong freed asset amount',
-                    );
-
-                    let target_trove_after_health: Health = shrine.get_trove_health(target_trove);
-                    assert(target_trove_after_health.is_healthy(), 'should be healthy');
-                    assert(target_trove_after_health.ltv.is_zero(), 'LTV should be 0');
-                    assert(target_trove_after_health.value.is_zero(), 'value should be 0');
-                    assert(target_trove_after_health.debt.is_zero(), 'debt should be 0');
-
-                    // Check no absorption occured
-                    assert(absorber.get_absorptions_count() == 0, 'wrong absorptions count');
-
-                    // Check redistribution occured
-                    assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
-
-                    let expected_redistribution_id = 1;
-
-                    // Check if the redistribution was exceptional for all yangs
-                    // i.e. all value went to initial yangs and all debt went to
-                    // troves' deficit
-                    let yang1_redistribution: Wad = shrine
-                        .get_redistribution_for_yang(*yangs[0], expected_redistribution_id);
-                    let yang2_redistribution: Wad = shrine
-                        .get_redistribution_for_yang(*yangs[1], expected_redistribution_id);
-                    let is_full_exceptional_redistribution: bool = yang1_redistribution.is_zero()
-                        && yang2_redistribution.is_zero();
-
-                    if is_full_exceptional_redistribution {
-                        let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-                        let expected_protocol_owned_troves_debt = before_protocol_owned_troves_debt
-                            + target_trove_start_health.debt;
-                        assert_eq!(
-                            after_protocol_owned_troves_debt,
-                            expected_protocol_owned_troves_debt,
-                            "wrong troves deficit",
-                        );
-                    } else {
-                        // Check recipient trove's value and debt
-                        let after_recipient_trove_health = shrine.get_trove_health(recipient_trove);
-                        assert(
-                            after_recipient_trove_health.debt > before_recipient_trove_health.debt,
-                            'wrong recipient trove debt',
-                        );
-
-                        assert(
-                            after_recipient_trove_health.value > before_recipient_trove_health.value,
-                            'wrong recipient trove value',
-                        );
-                    }
-
-                    // Check Purger events
-                    let purger_events = spy.get_events().emitted_by(purger.contract_address).events;
-
-                    common::assert_event_not_emitted_by_name(purger_events.span(), selector!("Purged"));
-
-                    let expected_events = array![
-                        (
-                            purger.contract_address,
-                            purger_contract::Event::Compensate(
-                                purger_contract::Compensate { recipient: caller, compensation },
-                            ),
+                let expected_events = array![
+                    (
+                        purger.contract_address,
+                        purger_contract::Event::Compensate(
+                            purger_contract::Compensate { recipient: caller, compensation },
                         ),
-                    ];
-                    spy.assert_emitted(@expected_events);
+                    ),
+                ];
+                spy.assert_emitted(@expected_events);
 
-                    // Check Shrine event
-                    let expected_events = array![
-                        (
-                            shrine.contract_address,
-                            shrine_contract::Event::TroveRedistributed(
-                                shrine_contract::TroveRedistributed {
-                                    redistribution_id: expected_redistribution_id,
-                                    trove_id: target_trove,
-                                    debt: target_trove_updated_start_health.debt,
-                                },
-                            ),
+                // Check Shrine event
+                let expected_events = array![
+                    (
+                        shrine.contract_address,
+                        shrine_contract::Event::TroveRedistributed(
+                            shrine_contract::TroveRedistributed {
+                                redistribution_id: expected_redistribution_id,
+                                trove_id: target_trove,
+                                debt: target_trove_updated_start_health.debt,
+                            },
                         ),
-                    ];
+                    ),
+                ];
 
-                    spy.assert_emitted(@expected_events);
+                spy.assert_emitted(@expected_events);
 
-                    shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
-                };
+                shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
             };
         };
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized1a() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[0]].span(), true);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized1b() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[0]].span(), false);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized2a() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[1]].span(), true);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized2b() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[1]].span(), false);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized3a() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[2]].span(), true);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized3b() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[2]].span(), false);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized4a() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[3]].span(), true);
-    }
-
-    #[test]
-    fn test_absorb_full_redistribution_parametrized4b() {
-        let mut recipient_trove_yang_asset_amts_cases = purger_utils::interesting_yang_amts_for_recipient_trove();
-        test_absorb_full_redistribution(array![*recipient_trove_yang_asset_amts_cases[3]].span(), false);
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
     // and the LTV at liquidation, and checks for the following for thresholds up to 78.74%:
     // 1. LTV has decreased to the target safety margin
     // 2. trove's debt is reduced by the close amount, which is less than the trove's debt
+    #[test]
+    #[test_case(0, 0, true, true)]
+    #[test_case(0, 0, true, false)]
+    #[test_case(0, 0, false, false)]
+    #[test_case(0, 0, false, true)]
+    #[test_case(1, 1, true, true)]
+    #[test_case(1, 1, true, false)]
+    #[test_case(1, 1, false, false)]
+    #[test_case(1, 1, false, true)]
+    #[test_case(2, 2, true, true)]
+    #[test_case(2, 2, true, false)]
+    #[test_case(2, 2, false, false)]
+    #[test_case(2, 2, false, true)]
+    #[test_case(3, 3, true, true)]
+    #[test_case(3, 3, true, false)]
+    #[test_case(3, 3, false, false)]
+    #[test_case(3, 3, false, true)]
     fn test_absorb_less_than_trove_debt(
-        threshold: Ray, mut target_ltvs: Span<Ray>, is_recovery_mode: bool, kill_absorber: bool,
+        threshold_idx: usize, target_ltvs_idx: usize, is_recovery_mode: bool, kill_absorber: bool,
     ) {
         let classes = Option::Some(purger_utils::declare_contracts());
+
+        let threshold: Ray = *purger_utils::interesting_thresholds_for_absorption_below_trove_debt().at(threshold_idx);
+        let mut target_ltvs: Span<Ray> =
+            *purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt()
+            .at(target_ltvs_idx);
 
         for target_ltv in target_ltvs {
             let PurgerTestConfig {
@@ -3224,142 +2042,48 @@ mod test_purger {
         };
     }
 
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold1_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], true, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold1_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], true, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold1_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], false, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold1_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], false, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold2_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], true, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold2_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], true, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold2_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], false, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold2_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], false, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold3_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], true, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold3_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], true, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold3_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], false, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold3_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], false, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold4_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], true, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold4_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], true, false);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold4_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], false, true);
-    }
-
-    #[test]
-    fn test_absorb_less_than_trove_debt_parametrized_threshold4_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-        test_absorb_less_than_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], false, false);
-    }
-
-
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
     // and the LTV at liquidation, and checks that the trove's debt is absorbed in full for thresholds
     // from 78.74% onwards.
+    #[test]
+    #[test_case(0, 0, 0, false, false)]
+    #[test_case(0, 0, 0, false, true)]
+    #[test_case(0, 0, 0, true, false)]
+    #[test_case(0, 0, 0, true, true)]
+    #[test_case(1, 1, 1, false, false)]
+    #[test_case(1, 1, 1, false, true)]
+    #[test_case(1, 1, 1, true, false)]
+    #[test_case(1, 1, 1, true, true)]
+    #[test_case(2, 2, 2, false, false)]
+    #[test_case(2, 2, 2, false, true)]
+    #[test_case(2, 2, 2, true, false)]
+    #[test_case(2, 2, 2, true, true)]
+    #[test_case(3, 3, 3, false, false)]
+    #[test_case(3, 3, 3, false, true)]
+    #[test_case(3, 3, 3, true, false)]
+    #[test_case(3, 3, 3, true, true)]
+    #[test_case(4, 4, 4, false, false)]
+    #[test_case(4, 4, 4, false, true)]
+    #[test_case(4, 4, 4, true, false)]
+    #[test_case(4, 4, 4, true, true)]
+    #[test_case(5, 5, 5, false, false)]
+    #[test_case(5, 5, 5, false, true)]
+    #[test_case(5, 5, 5, true, false)]
+    #[test_case(5, 5, 5, true, true)]
     fn test_absorb_trove_debt(
-        threshold: Ray, mut target_ltvs: Span<Ray>, expected_penalty: Ray, is_recovery_mode: bool, kill_absorber: bool,
+        threshold_idx: usize,
+        target_ltvs_idx: usize,
+        expected_penalty_idx: usize,
+        is_recovery_mode: bool,
+        kill_absorber: bool,
     ) {
         let classes = Option::Some(purger_utils::declare_contracts());
+
+        let threshold: Ray = *purger_utils::interesting_thresholds_for_absorption_entire_trove_debt().at(threshold_idx);
+        let mut target_ltvs: Span<Ray> =
+            *purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt()
+            .at(target_ltvs_idx);
+        let expected_penalty: Ray = *purger_utils::absorb_trove_debt_test_expected_penalties().at(expected_penalty_idx);
 
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         for target_ltv in target_ltvs.pop_front() {
@@ -3472,222 +2196,6 @@ mod test_purger {
 
             shrine_utils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
         };
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold1_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold1_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold1_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold1_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[0], *target_ltvs_by_threshold[0], *expected_penalties[0], true, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold2_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold2_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold2_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold2_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[1], *target_ltvs_by_threshold[1], *expected_penalties[1], true, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold3_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold3_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold3_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold3_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[2], *target_ltvs_by_threshold[2], *expected_penalties[2], true, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold4_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold4_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold4_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold4_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[3], *target_ltvs_by_threshold[3], *expected_penalties[3], true, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold5_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold5_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold5_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold5_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[4], *target_ltvs_by_threshold[4], *expected_penalties[4], true, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold6_a() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], false, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold6_b() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], true, true);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold6_c() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], false, false);
-    }
-
-    #[test]
-    fn test_absorb_trove_debt_parametrized_threshold6_d() {
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_absorption_entire_trove_debt();
-        let target_ltvs_by_threshold: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
-        let expected_penalties: Span<Ray> = purger_utils::absorb_trove_debt_test_expected_penalties();
-        test_absorb_trove_debt(*thresholds[5], *target_ltvs_by_threshold[5], *expected_penalties[5], true, false);
     }
 
     #[test]
@@ -3868,6 +2376,18 @@ mod test_purger {
         );
     }
 
+    #[test]
+    #[test_case((50 * RAY_PERCENT).into(), true, true)]
+    #[test_case((50 * RAY_PERCENT).into(), true, false)]
+    #[test_case((50 * RAY_PERCENT).into(), false, true)]
+    #[test_case((50 * RAY_PERCENT).into(), false, false)]
+    // The minimum LTV for absorption at 1% threshold is approximately 1.097%, so it is rounded
+    // up to 1.1% for convenience to ensure the target trove is absorbable after adjusting the
+    // threshold to the desired value.
+    #[test_case((RAY_PERCENT + RAY_PERCENT / 10).into(), true, true)]
+    #[test_case((RAY_PERCENT + RAY_PERCENT / 10).into(), true, false)]
+    #[test_case((RAY_PERCENT + RAY_PERCENT / 10).into(), false, true)]
+    #[test_case((RAY_PERCENT + RAY_PERCENT / 10).into(), false, false)]
     fn test_liquidate_suspended_yang_threshold_near_zero(
         starting_ltv: Ray, liquidate_via_absorption: bool, is_recovery_mode: bool,
     ) {
@@ -3877,8 +2397,7 @@ mod test_purger {
 
         // We also parametrize the test with the desired threshold for liquidation
         let mut desired_threshold_params: Span<Ray> = array![
-            RAY_PERCENT.into(),
-            (RAY_PERCENT / 4).into(),
+            RAY_PERCENT.into(), (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
             // doesn't result in advancing the time enough to make
             // the suspension permanent
@@ -4001,56 +2520,13 @@ mod test_purger {
         };
     }
 
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized1() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, true);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized2() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, true);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized3() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), true, false);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized4() {
-        test_liquidate_suspended_yang_threshold_near_zero((50 * RAY_PERCENT).into(), false, false);
-    }
-
-    // The minimum LTV for absorption at 1% threshold is approximately 1.097%, so it is rounded
-    // up to 1.1% for convenience to ensure the target trove is absorbable after adjusting the
-    // threshold to the desired value.
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized5() {
-        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, true);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized6() {
-        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, true);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized7() {
-        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), true, false);
-    }
-
-    #[test]
-    fn test_liquidate_suspended_yang_threshold_near_zero_parametrized8() {
-        test_liquidate_suspended_yang_threshold_near_zero((RAY_PERCENT + RAY_PERCENT / 10).into(), false, false);
-    }
-
     #[derive(Copy, Drop, PartialEq)]
     enum AbsorbType {
         Full,
         Partial,
         None,
     }
-    
+
     #[test]
     #[test_case(name: "full_1", AbsorbType::Full, true)]
     #[test_case(name: "full_2", AbsorbType::Full, false)]
@@ -4275,6 +2751,4 @@ mod test_purger {
             };
         };
     }
-
-    
 }
