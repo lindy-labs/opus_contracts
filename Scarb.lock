@@ -3,13 +3,13 @@ version = 1
 
 [[package]]
 name = "access_control"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:6049cdb13bc3a2b45e714558da6f49745b61e70e29b81f932b2e532bf72a102d"
+checksum = "sha256:c0d72a9247e9833eee8ffaf32e85094c149ae479377e384a724a3505853a2b39"
 
 [[package]]
 name = "opus"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "access_control",
  "snforge_std",
@@ -18,7 +18,7 @@ dependencies = [
 
 [[package]]
 name = "scripts"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "opus",
  "sncast_std",
