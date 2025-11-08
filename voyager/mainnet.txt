@@ -1,6 +1,26 @@
 
 Verification History
 
+Job ID: e18c9e99-6f4f-4fe5-b694-ec4d1e741d73
+  Contract: transmuter_restricted
+  Class Hash: 0x0066073293d7d578c4a78f9ddfb71aa019671d0a5d31d2e4e9924c4d3615f1b6
+  Network: mainnet
+  Status: Success
+  Submitted: 2025-11-08 09:03:59 UTC
+  Completed: 2025-11-08 09:05:47 UTC
+  Package: opus
+  Cairo: 2.11.4, Scarb: 2.11.4
+
+Job ID: 9d6da858-5fdd-4858-8c7e-03de9a481d7b
+  Contract: tcr_allocator
+  Class Hash: 0x0281711aaef76fd21e99a11184ee44866465fb7bd18863b96a8b012a9c1f1fa0
+  Network: mainnet
+  Status: Success
+  Submitted: 2025-11-08 09:03:58 UTC
+  Completed: 2025-11-08 09:05:47 UTC
+  Package: opus
+  Cairo: 2.11.4, Scarb: 2.11.4
+
 Job ID: 2131b7f1-4ba3-4719-ae63-c2b0b4e48710
   Contract: receptor
   Class Hash: 0x03f08c94b1ba012701988790a727485828ffd0184dcf71b93db51d598a8d2046
