@@ -4050,7 +4050,14 @@ mod test_purger {
         Partial,
         None,
     }
-
+    
+    #[test]
+    #[test_case(name: "full_1", AbsorbType::Full, true)]
+    #[test_case(name: "full_2", AbsorbType::Full, false)]
+    #[test_case(name: "partial_1", AbsorbType::Partial, true)]
+    #[test_case(name: "partial_2", AbsorbType::Partial, false)]
+    #[test_case(name: "none_1", AbsorbType::None, true)]
+    #[test_case(name: "none_2", AbsorbType::None, false)]
     fn test_absorb_low_thresholds(absorb_type: AbsorbType, is_recovery_mode: bool) {
         let classes = Option::Some(purger_utils::declare_contracts());
 
@@ -4269,33 +4276,5 @@ mod test_purger {
         };
     }
 
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_full_1() {
-        test_absorb_low_thresholds(AbsorbType::Full, true);
-    }
-
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_full_2() {
-        test_absorb_low_thresholds(AbsorbType::Full, false);
-    }
-
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_partial_1() {
-        test_absorb_low_thresholds(AbsorbType::Partial, true);
-    }
-
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_partial_2() {
-        test_absorb_low_thresholds(AbsorbType::Partial, false);
-    }
-
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_none_1() {
-        test_absorb_low_thresholds(AbsorbType::None, true);
-    }
-
-    #[test]
-    fn test_absorb_low_thresholds_parametrized_none_2() {
-        test_absorb_low_thresholds(AbsorbType::None, false);
-    }
+    
 }
