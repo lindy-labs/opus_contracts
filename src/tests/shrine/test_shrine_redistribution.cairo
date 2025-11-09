@@ -376,8 +376,11 @@ mod test_shrine_redistribution {
         shrine_utils::assert_shrine_invariants(shrine, yangs, 3);
     }
 
-    // Parametrized test to check that partial redistribution of a trove results in the correct
-    // value and debt for the redistributed trove.
+    #[test]
+    #[test_case((15 * RAY_PERCENT).into())]
+    #[test_case((99 * RAY_PERCENT).into())]
+    #[test_case((100 * RAY_PERCENT).into())]
+    #[test_case(Zero::zero())]
     fn test_shrine_redistribution(pct_debt_to_redistribute: Ray) {
         let shrine_class = shrine_utils::declare_shrine();
 
@@ -501,26 +504,6 @@ mod test_shrine_redistribution {
         // asset amount per yang wad. Instead, refer to the tests for purger
         // for assertions on the redistributed trove's value.
         };
-    }
-
-    #[test]
-    fn test_shrine_redistribution_parametrized_1() {
-        test_shrine_redistribution((15 * RAY_PERCENT).into());
-    }
-
-    #[test]
-    fn test_shrine_redistribution_parametrized_2() {
-        test_shrine_redistribution((99 * RAY_PERCENT).into());
-    }
-
-    #[test]
-    fn test_shrine_redistribution_parametrized_3() {
-        test_shrine_redistribution((100 * RAY_PERCENT).into());
-    }
-
-    #[test]
-    fn test_shrine_redistribution_parametrized_4() {
-        test_shrine_redistribution(Zero::zero());
     }
 
     #[test]
