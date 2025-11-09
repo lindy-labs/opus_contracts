@@ -723,7 +723,7 @@ mod test_transmuter {
     #[test]
     #[test_case(0)]
     #[test_case(1)]
-    fn test_sweep_parametrized_pass(transmuter_id: usize) {
+    fn test_sweep_pass(transmuter_id: usize) {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
@@ -732,7 +732,6 @@ mod test_transmuter {
         let receiver: ContractAddress = transmuter_utils::RECEIVER;
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        // parametrize transmuter and asset
         let asset = match transmuter_id {
             1 => transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class)),
             _ => transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class)),
@@ -949,7 +948,6 @@ mod test_transmuter {
         let receiver: ContractAddress = transmuter_utils::RECEIVER;
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        // parametrize transmuter and asset
         let asset = match transmuter_id {
             1 => transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class)),
             _ => transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class)),
@@ -1106,7 +1104,7 @@ mod test_transmuter {
     #[test]
     #[test_case(0)]
     #[test_case(1)]
-    fn test_kill_and_reclaim_parametrized_pass(transmuter_id: usize) {
+    fn test_kill_and_reclaim_pass(transmuter_id: usize) {
         let shrine_class: ContractClass = shrine_utils::declare_shrine();
         let transmuter_class: ContractClass = transmuter_utils::declare_transmuter();
         let token_class = common::declare_token();
@@ -1115,11 +1113,9 @@ mod test_transmuter {
         let receiver: ContractAddress = transmuter_utils::RECEIVER;
         let user: ContractAddress = common::NON_ZERO_ADDR;
 
-        // parametrize transmuter and asset
-        let asset = if transmuter_id == 0 {
-            transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class))
-        } else {
-            transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class))
+        let asset = match transmuter_id {
+            1 => transmuter_utils::nonwad_usd_stable_deploy(Option::Some(token_class)),
+            _ => transmuter_utils::wad_usd_stable_deploy(Option::Some(token_class)),
         };
         let asset_decimals: u8 = asset.decimals();
         let asset_decimal_scale: u128 = 10_u128.pow(asset_decimals.into());
