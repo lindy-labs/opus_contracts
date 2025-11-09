@@ -38,6 +38,7 @@ allow-prebuilt-plugins = ["snforge_std"]
 [tool.fmt]
 sort-module-level-items = true
 max-line-length = 120
+breaking-behavior = { tuple = "LineByLine", fixed_array = "LineByLine", macro_call = "LineByLine" }
 
 [tool.snforge]
 max_n_steps = 15000000
