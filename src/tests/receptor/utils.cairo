@@ -45,10 +45,7 @@ pub mod receptor_utils {
     ) -> ContractAddress {
         let mut calldata: Array<felt252> = ArrayTrait::new();
 
-        let mock_ekubo_oracle_extension_class = match mock_ekubo_oracle_extension_class {
-            Option::Some(class) => class,
-            Option::None => common::declare_mock_ekubo_oracle_extension(),
-        };
+        let mock_ekubo_oracle_extension_class = mock_ekubo_oracle_extension_class.unwrap_or(common::declare_mock_ekubo_oracle_extension());
 
         let (mock_ekubo_oracle_extension_addr, _) = mock_ekubo_oracle_extension_class
             .deploy(@calldata)
@@ -79,10 +76,7 @@ pub mod receptor_utils {
             (*quote_tokens[2]).into(),
         ];
 
-        let receptor_class = match receptor_class {
-            Option::Some(class) => class,
-            Option::None => *declare("receptor").unwrap().contract_class(),
-        };
+        let receptor_class = receptor_class.unwrap_or(*declare("receptor").unwrap().contract_class());
         let (receptor_addr, _) = receptor_class.deploy(@calldata).expect('receptor deploy failed');
 
         // Grant UPDATE_YIN_SPOT_PRICE role to receptor contract

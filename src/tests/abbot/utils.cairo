@@ -85,10 +85,7 @@ pub mod abbot_utils {
     }
 
     pub fn abbot_deploy(classes: Option<AbbotTestClasses>) -> AbbotTestConfig {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
         let sentinel_utils::SentinelTestConfig {
             sentinel, shrine, yangs, gates,
         } =

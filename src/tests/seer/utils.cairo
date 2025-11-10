@@ -70,10 +70,7 @@ pub mod seer_utils {
             ADMIN.into(), shrine.into(), sentinel_dispatcher.contract_address.into(), UPDATE_FREQUENCY.into(),
         ];
 
-        let seer_class = match seer_class {
-            Option::Some(class) => class,
-            Option::None => *declare("seer").unwrap().contract_class(),
-        };
+        let seer_class = seer_class.unwrap_or(*declare("seer").unwrap().contract_class());
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
 
@@ -97,10 +94,7 @@ pub mod seer_utils {
             ADMIN.into(), shrine.into(), sentinel.into(), UPDATE_FREQUENCY.into(),
         ];
 
-        let seer_class = match seer_class {
-            Option::Some(class) => class,
-            Option::None => *declare("seer").unwrap().contract_class(),
-        };
+        let seer_class = seer_class.unwrap_or(*declare("seer").unwrap().contract_class());
 
         let (seer_addr, _) = seer_class.deploy(@calldata).expect('failed seer deploy');
 
@@ -124,10 +118,7 @@ pub mod seer_utils {
     pub fn add_oracles(
         seer: ISeerDispatcher, oracle_classes: Option<OracleTestClasses>, token_class: Option<ContractClass>,
     ) -> Span<ContractAddress> {
-        let oracle_classes = match oracle_classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_oracles(),
-        };
+        let oracle_classes = oracle_classes.unwrap_or(declare_oracles());
 
         let mut oracles: Array<ContractAddress> = ArrayTrait::new();
 

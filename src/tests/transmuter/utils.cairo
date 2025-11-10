@@ -59,10 +59,7 @@ pub mod transmuter_utils {
             ADMIN.into(), shrine.into(), asset.into(), receiver.into(), INITIAL_CEILING.into(),
         ];
 
-        let transmuter_class = match transmuter_class {
-            Option::Some(class) => class,
-            Option::None => declare_transmuter(),
-        };
+        let transmuter_class = transmuter_class.unwrap_or(declare_transmuter());
 
         let (transmuter_addr, _) = transmuter_class.deploy(@calldata).expect('transmuter deploy failed');
 
