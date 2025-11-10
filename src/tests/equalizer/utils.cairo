@@ -87,10 +87,7 @@ pub mod equalizer_utils {
             calldata.append(val.into());
         }
 
-        let allocator_class = match allocator_class {
-            Option::Some(class) => class,
-            Option::None => *declare("allocator").unwrap().contract_class(),
-        };
+        let allocator_class = allocator_class.unwrap_or(*declare("allocator").unwrap().contract_class());
         let (allocator_addr, _) = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
         IAllocatorDispatcher { contract_address: allocator_addr }
