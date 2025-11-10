@@ -175,7 +175,7 @@ pub mod absorber_utils {
             ADMIN.into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
         ];
 
-        let blesser_class = blesser_class.unwrap_or(*declare("mock_blesser").unwrap().contract_class());
+        let blesser_class = blesser_class.unwrap_or(*declare("blesser").unwrap().contract_class());
 
         let (mock_blesser_addr, _) = blesser_class.deploy(@calldata).expect('blesser deploy failed');
 
