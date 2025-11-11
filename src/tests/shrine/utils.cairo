@@ -137,10 +137,7 @@ pub mod shrine_utils {
     }
 
     pub fn shrine_deploy(shrine_class: Option<ContractClass>) -> ContractAddress {
-        let shrine_class = match shrine_class {
-            Option::Some(class) => class,
-            Option::None => declare_shrine(),
-        };
+        let shrine_class = shrine_class.unwrap_or(declare_shrine());
 
         let calldata: Array<felt252> = array![ADMIN.into(), YIN_NAME, YIN_SYMBOL];
 

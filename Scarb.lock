@@ -27,21 +27,21 @@ dependencies = [
 
 [[package]]
 name = "sncast_std"
-version = "0.41.0"
+version = "0.52.0"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:0884539863cd2b802eec9bcaecdb810fe130969e766f178d1e42220ddf65344d"
+checksum = "sha256:19aa29c5c8952f410d72357f165a04640c8cc0efd678b53ad70d222ab785fec4"
 
 [[package]]
 name = "snforge_scarb_plugin"
-version = "0.41.0"
+version = "0.52.0"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:7228a3ea74d8decfb2294cee9251b537bbd58b3e243e9327f55e72a99ab5fb53"
+checksum = "sha256:c33027f8ac078e4bbfc0bd1b7e7849ffe2e6bdd6c24649d0b5ede145095b4743"
 
 [[package]]
 name = "snforge_std"
-version = "0.41.0"
+version = "0.52.0"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:edf116cbf62cbe2487f188cf28ceb9f42b08cfa14e197524281c3ce932f4a5e6"
+checksum = "sha256:db8d395191bb2b526c44cee65b10a4044dc59e23a1c1d8009a73c7035760ed6b"
 dependencies = [
  "snforge_scarb_plugin",
 ]

@@ -10,7 +10,7 @@ pub mod transmuter_restricted {
     use opus::utils::math::{fixed_point_to_wad, wad_to_fixed_point};
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use wadray::{Ray, WAD_ONE, Wad};
+    use wadray::{Ray, Wad};
 
     //
     // Components
@@ -458,7 +458,7 @@ pub mod transmuter_restricted {
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
 
-            self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
+            let _ = self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })
@@ -514,8 +514,6 @@ pub mod transmuter_restricted {
         // on-chain conditions
         #[inline(always)]
         fn assert_can_transmute(self: @ContractState, amt_to_mint: Wad) {
-            let shrine: IShrineDispatcher = self.shrine.read();
-
             let ceiling: Wad = self.ceiling.read();
             let minted: Wad = self.total_transmuted.read();
             let is_lt_ceiling: bool = minted + amt_to_mint <= ceiling;

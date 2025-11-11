@@ -29,10 +29,7 @@ pub mod gate_utils {
 
         let calldata: Array<felt252> = array![shrine.into(), token.into(), sentinel.into()];
 
-        let gate_class = match gate_class {
-            Option::Some(class) => class,
-            Option::None => *declare("gate").unwrap().contract_class(),
-        };
+        let gate_class = gate_class.unwrap_or(*declare("gate").unwrap().contract_class());
         let (gate_addr, _) = gate_class.deploy(@calldata).expect('gate deploy failed');
         gate_addr
     }

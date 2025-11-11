@@ -87,10 +87,7 @@ pub mod equalizer_utils {
             calldata.append(val.into());
         }
 
-        let allocator_class = match allocator_class {
-            Option::Some(class) => class,
-            Option::None => *declare("allocator").unwrap().contract_class(),
-        };
+        let allocator_class = allocator_class.unwrap_or(*declare("allocator").unwrap().contract_class());
         let (allocator_addr, _) = allocator_class.deploy(@calldata).expect('failed allocator deploy');
 
         IAllocatorDispatcher { contract_address: allocator_addr }
@@ -106,10 +103,7 @@ pub mod equalizer_utils {
             shrine.into(), shrine_utils::ADMIN.into(), absorber.into(), stabilizer.into(),
         ];
 
-        let tcr_allocator_class = match tcr_allocator_class {
-            Option::Some(class) => class,
-            Option::None => *declare("tcr_allocator").unwrap().contract_class(),
-        };
+        let tcr_allocator_class = tcr_allocator_class.unwrap_or(*declare("tcr_allocator").unwrap().contract_class());
         let (tcr_allocator_addr, _) = tcr_allocator_class.deploy(@calldata).expect('failed tcr allocator deploy');
 
         IAllocatorDispatcher { contract_address: tcr_allocator_addr }

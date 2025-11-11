@@ -3892,7 +3892,7 @@ mod test_purger {
         let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
         let target_user: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
-        common::fund_user(target_user, array![eth].span(), array![(10 * eth_amt).into()].span());
+        common::fund_user(target_user, array![eth].span(), array![10 * eth_amt].span());
 
         // Have the searcher provide half of his yin to the absorber
         let searcher = purger_utils::SEARCHER;

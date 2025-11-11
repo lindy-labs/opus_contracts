@@ -121,10 +121,7 @@ pub mod flash_mint {
             // flash loans still work when total yin is at or exceeds the debt ceiling
             let ceiling: Wad = shrine.get_debt_ceiling();
             let total_yin: Wad = shrine.get_total_yin();
-            let budget_adjustment: Wad = match shrine.get_budget().try_into() {
-                Option::Some(surplus) => { surplus },
-                Option::None => { Zero::zero() },
-            };
+            let budget_adjustment: Wad = shrine.get_budget().try_into().unwrap_or(Zero::zero());
             let adjust_ceiling: bool = total_yin + amount_wad + budget_adjustment > ceiling;
             if adjust_ceiling {
                 shrine.set_debt_ceiling(total_yin + amount_wad + budget_adjustment);
