@@ -234,95 +234,73 @@ mod test_purger {
     // For low thresholds (arbitraily defined as 2% or less), the trove's debt is set based on the
     // value instead. See inline comments for more details.
     #[test]
-    fn test_preview_liquidate_parametrized() {
-        let classes = Option::Some(purger_utils::declare_contracts());
-
-        let thresholds: Span<Ray> = purger_utils::interesting_thresholds_for_liquidation();
-
+    #[test_case(0, 1_u128.into(), (12 * RAY_PERCENT + RAY_PERCENT / 2).into())] // 1 wei (0% threshold); 12.5% penalty
+    #[test_case(1, 13904898408200000000_u128.into(), (3 * RAY_PERCENT).into())] // 13.904... (1% threshold); 3% penalty
+    #[test_case(2, 284822000000000000000_u128.into(), (3 * RAY_PERCENT).into())] // 284.822 (70% threshold); 3% penalty
+    #[test_case(3, 386997000000000000000_u128.into(), (3 * RAY_PERCENT).into())] // 386.997 (80% threshold); 3% penalty
+    #[test_case(4, 603509000000000000000_u128.into(), (3 * RAY_PERCENT).into())] // 603.509 (90% threshold); 3% penalty
+    #[test_case(5, 908381000000000000000_u128.into(), (3 * RAY_PERCENT).into())] // 908.381 (96% threshold); 3% penalty
+    #[test_case(6, 992098000000000000000_u128.into(), (3 * RAY_PERCENT).into())] // 992.098 (97% threshold); 3% penalty
+    #[test_case(
+        7, (WAD_ONE * 1000).into(), 10101000000000000000000000_u128.into(),
+    )] // 1000 debt (99% threshold); 1.0101% penalty
+    fn test_preview_liquidate_parametrized(threshold_idx: usize, expected_max_close_amt: Wad, expected_penalty: Ray) {
+        let threshold: Ray = *purger_utils::interesting_thresholds_for_liquidation().at(threshold_idx);
         let default_trove_debt: Wad = (WAD_ONE * 1000).into();
 
-        // non-recovery mode
-        let mut expected_max_close_amts: Span<Wad> = array![
-            1_u128.into(), // 1 wei (0% threshold)
-            13904898408200000000_u128.into(), // 13.904... (1% threshold)
-            284822000000000000000_u128.into(), // 284.822 (70% threshold)
-            386997000000000000000_u128.into(), // 386.997 (80% threshold)
-            603509000000000000000_u128.into(), // 603.509 (90% threshold)
-            908381000000000000000_u128.into(), // 908.381 (96% threshold)
-            992098000000000000000_u128.into(), // 992.098 (97% threshold)
-            default_trove_debt // (99% threshold)
-        ]
-            .span();
+        let PurgerTestConfig {
+            shrine, abbot, seer, purger, yangs, gates, ..,
+        } = purger_utils::purger_deploy(Option::None);
 
-        let mut expected_penalty: Span<Ray> = array![
-            (12 * RAY_PERCENT + RAY_PERCENT / 2).into(), // 3% (0% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (1% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (70% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (80% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (90% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (96% threshold)
-            (3 * RAY_PERCENT).into(), // 3% (97% threshold)
-            10101000000000000000000000_u128.into() // 1.0101% (99% threshold)
-        ]
-            .span();
+        purger_utils::create_whale_trove(abbot, yangs, gates);
 
-        for threshold in thresholds {
-            let PurgerTestConfig {
-                shrine, abbot, seer, purger, yangs, gates, ..,
-            } = purger_utils::purger_deploy(classes);
+        // If the threshold is below 2%, we set the trove's debt such that
+        // we get the desired ltv for the trove from the get-go in order to
+        // avoid overflow issues in `lower_prices_to_raise_trove_ltv`.
+        //
+        // This is because `lower_prices_to_raise_trove_ltv` is designed for
+        // raising the trove's LTV to the given *higher* LTV,
+        // not lowering it.
+        //
+        // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
+        // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
+        // If more low thresholds were added that were above 2% but below the
+        // starting LTV of the trove, then this cutoff would need to be adjusted.
+        let target_threshold_above_cutoff = threshold > (RAY_PERCENT * 2).into();
+        let trove_debt = if target_threshold_above_cutoff {
+            default_trove_debt
+        } else {
+            let target_trove_yang_amts: Span<Wad> = array![
+                purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
+                (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * 10_u128.pow(10)).into(),
+            ]
+                .span();
 
-            purger_utils::create_whale_trove(abbot, yangs, gates);
+            let trove_value: Wad = purger_utils::get_sum_of_value(shrine, yangs, target_trove_yang_amts);
 
-            // If the threshold is below 2%, we set the trove's debt such that
-            // we get the desired ltv for the trove from the get-go in order to
-            // avoid overflow issues in `lower_prices_to_raise_trove_ltv`.
-            //
-            // This is because `lower_prices_to_raise_trove_ltv` is designed for
-            // raising the trove's LTV to the given *higher* LTV,
-            // not lowering it.
-            //
-            // NOTE: This 2% cut off is completely arbitrary and meant only for excluding
-            // the two test cases in `interesting_thresholds_for_liquidation`: 0% and 1%.
-            // If more low thresholds were added that were above 2% but below the
-            // starting LTV of the trove, then this cutoff would need to be adjusted.
-            let target_threshold_above_cutoff = *threshold > (RAY_PERCENT * 2).into();
-            let trove_debt = if target_threshold_above_cutoff {
-                default_trove_debt
-            } else {
-                let target_trove_yang_amts: Span<Wad> = array![
-                    purger_utils::TARGET_TROVE_ETH_DEPOSIT_AMT.into(),
-                    (purger_utils::TARGET_TROVE_WBTC_DEPOSIT_AMT * 10_u128.pow(10)).into(),
-                ]
-                    .span();
-
-                let trove_value: Wad = purger_utils::get_sum_of_value(shrine, yangs, target_trove_yang_amts);
-
-                wadray::rmul_wr(trove_value, *threshold) + 1_u128.into()
-            };
-
-            let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
-
-            purger_utils::set_thresholds(shrine, yangs, *threshold);
-
-            let target_trove_health: Health = shrine.get_trove_health(target_trove);
-
-            if target_threshold_above_cutoff {
-                purger_utils::lower_prices_to_raise_trove_ltv(
-                    shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, *threshold,
-                );
-            }
-
-            let target_trove_updated_health: Health = shrine.get_trove_health(target_trove);
-            purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_health);
-
-            let (penalty, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
-
-            let expected_penalty = *expected_penalty.pop_front().unwrap();
-            common::assert_equalish(penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty');
-
-            let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
-            common::assert_equalish(max_close_amt, expected_max_close_amt, (WAD_ONE * 2).into(), 'wrong max close amt');
+            wadray::rmul_wr(trove_value, threshold) + 1_u128.into()
         };
+
+        let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
+
+        purger_utils::set_thresholds(shrine, yangs, threshold);
+
+        let target_trove_health: Health = shrine.get_trove_health(target_trove);
+
+        if target_threshold_above_cutoff {
+            purger_utils::lower_prices_to_raise_trove_ltv(
+                shrine, seer, yangs, target_trove_health.value, target_trove_health.debt, threshold,
+            );
+        }
+
+        let target_trove_updated_health: Health = shrine.get_trove_health(target_trove);
+        purger_utils::assert_trove_is_liquidatable(shrine, purger, target_trove, target_trove_updated_health);
+
+        let (penalty, max_close_amt) = purger.preview_liquidate(target_trove).expect('Should be liquidatable');
+
+        common::assert_equalish(penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty');
+
+        common::assert_equalish(max_close_amt, expected_max_close_amt, (WAD_ONE * 2).into(), 'wrong max close amt');
     }
 
     #[test]
@@ -726,116 +704,109 @@ mod test_purger {
     // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
     // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
     // `lower_prices_to_raise_trove_ltv` may not put the trove in the exact LTV as the threshold.
+
     #[test]
-    fn test_preview_absorb_below_trove_debt_parametrized() {
-        let classes = Option::Some(purger_utils::declare_contracts());
-
-        let interesting_thresholds = purger_utils::interesting_thresholds_for_absorption_below_trove_debt();
-        let mut target_ltvs: Span<Span<Ray>> =
-            purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
-
-        let trove_debt: Wad = (WAD_ONE * 1000).into();
-        let expected_penalty: Ray = purger_contract::MAX_PENALTY.into();
-
-        let mut expected_max_close_amts: Span<Wad> = array![
-            593187000000000000000_u128.into(), // 593.187 (65% threshold, 71.18% LTV)
-            696105000000000000000_u128.into(), // 696.105 (70% threshold, 76.65% LTV)
-            842762000000000000000_u128.into(), // 842.762 (75% threshold, 82.13% LTV)
-            999945000000000000000_u128.into() // 999.945 (78.74% threshold, 86.2203% LTV)
-        ]
-            .span();
-
+    #[test_case(
+        0,
+        593187000000000000000_u128.into(), // 593.187 max close amount (65% threshold, 71.18% LTV)
+        415495925821860081925464354_u128.into(), // 65% * (70% * 65%/71.18%) = 41.54...% rm threshold upper bound
+        846603498063000000000_u128.into() // 896.358... rm max close amount lower bound
+    )]
+    #[test_case(
+        1,
+        696105000000000000000_u128.into(), // 696.105 max close amount (70% threshold, 76.65% LTV)
+        447488584474885783433232258_u128.into(), // 70% * (70% * 70%/76.65%) = 44.74...% rm threshold upper bound
+        896582503300000000000_u128.into() // 931.454... rm max close amount lower bound
+    )]
+    #[test_case(
+        2,
+        842762000000000000000_u128.into(), // 842.762 max close amount (75% threshold, 82.13% LTV)
+        479422866187751078323999842_u128.into(), // 75% * (70% * 75%/82.13%) = 47.94...% rm threshold upper bound
+        953004076318000000000_u128.into() // 969.503... rm max close amount lower bound
+    )]
+    #[test_case(
+        3,
+        999945000000000000000_u128.into(), // 999.945 max close amount (78.74% threshold, 86.2203% LTV)
+        503360730593607228930942959_u128
+            .into(), // 78.74% * (70% * 78.74%/86.2203%) = 50.33...% rm threshold upper bound
+        999985498568000000000_u128.into() // 999.985... rm max close amount lower bound
+    )]
+    fn test_preview_absorb_below_trove_debt_parametrized(
+        idx: usize,
+        expected_max_close_amt: Wad,
         // Since recovery mode buffer is exceeded by lowering yangs' prices, this would in turn
         // have a knock-on effect of further lowering the trove's threshold, which makes it difficult
         // to calculate the expected recovery mode threshold beforehand and max close amounts.
         // However, we can relax the strictness by checking that the actual recovery mode threhsold is
         // less than that the recovery mode threshold if recovery mode had been triggered based on the
         // trove's LTV right before prices were lowered to trigger recovery mode.
-        let mut expected_rm_thresholds_upper_bound: Span<Ray> = array![
-            415495925821860081925464354_u128.into(), // 65% * (70% * 65%/71.18%) = 41.54...%
-            447488584474885783433232258_u128.into(), // 70% * (70% * 70%/76.65%) = 44.74...%
-            479422866187751078323999842_u128.into(), // 75% * (70% * 75%/82.13%) = 47.94...%
-            503360730593607228930942959_u128.into() // 78.74% * (70% * 78.74%/86.2203%) = 50.33...%
-        ]
-            .span();
+        expected_rm_threshold_upper_bound: Ray,
+        // Since recovery mode buffer is exceeded by lowering yangs' prices, this would in turn
+        // have a knock-on effect of further lowering the trove's threshold, which makes it difficult
+        // to calculate the expected recovery mode threshold beforehand and max close amounts.
+        // However, we can relax the strictness by checking that the actual recovery mode threhsold is
+        // less than that the recovery mode threshold if recovery mode had been triggered based on the
+        // trove's LTV right before prices were lowered to trigger recovery mode.
+        expected_rm_max_close_amt_lower_bound: Wad,
+    ) {
+        let classes = Option::Some(purger_utils::declare_contracts());
 
-        // Similar to the upper bound on the recovery mode threshold, we can derive a lower bound on the max
-        // close amount. Since the trove's LTV will worsen when prices are lowered to trigger recovery mode,
-        // the max close amount should be greater than this lower bound.
-        let mut expected_rm_max_close_amts_lower_bound: Span<Wad> = array![
-            846603498063000000000_u128.into(), // 896.358... (65% threshold, 71.18% LTV, 41.54...% rm threshold)
-            896582503300000000000_u128.into(), // 931.454... (70% threshold, 76.65% LTV, 44.74...% rm threshold)
-            953004076318000000000_u128.into(), // 969.503... (75% threshold, 82.13% LTV, 47.94...% rm threshold)
-            999985498568000000000_u128.into() // 999.985... (78.74% threshold, 86.2203% LTV, 50.33...% rm threshold)
-        ]
-            .span();
+        let threshold: Ray = *purger_utils::interesting_thresholds_for_absorption_below_trove_debt().at(idx);
+        let mut target_ltvs: Span<Ray> =
+            *purger_utils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt()
+            .at(idx);
+        let target_ltv: Ray = *target_ltvs.pop_front().unwrap();
 
-        for threshold in interesting_thresholds {
-            let mut target_ltv_arr = *target_ltvs.pop_front().unwrap();
-            let target_ltv = *target_ltv_arr.pop_front().unwrap();
+        let trove_debt: Wad = (WAD_ONE * 1000).into();
+        let expected_penalty: Ray = purger_contract::MAX_PENALTY.into();
 
-            let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
-            let expected_rm_max_close_amt_lower_bound = *expected_rm_max_close_amts_lower_bound.pop_front().unwrap();
+        for is_recovery_mode in BOOL_PARAMETRIZED.span() {
+            let PurgerTestConfig {
+                shrine, abbot, seer, absorber, purger, yangs, gates,
+            } = purger_utils::purger_deploy(classes);
 
-            for is_recovery_mode in BOOL_PARAMETRIZED.span() {
-                let PurgerTestConfig {
-                    shrine, abbot, seer, absorber, purger, yangs, gates,
-                } = purger_utils::purger_deploy(classes);
+            let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
-                let target_trove: u64 = purger_utils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
+            if !(*is_recovery_mode) {
+                purger_utils::create_whale_trove(abbot, yangs, gates);
+            }
 
-                if !(*is_recovery_mode) {
-                    purger_utils::create_whale_trove(abbot, yangs, gates);
-                }
+            purger_utils::funded_absorber(shrine, abbot, absorber, yangs, gates, (trove_debt.into() * 2_u128).into());
+            purger_utils::set_thresholds(shrine, yangs, threshold);
 
-                purger_utils::funded_absorber(
-                    shrine, abbot, absorber, yangs, gates, (trove_debt.into() * 2_u128).into(),
-                );
-                purger_utils::set_thresholds(shrine, yangs, *threshold);
+            // Make the target trove absorbable
+            let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
+            purger_utils::lower_prices_to_raise_trove_ltv(
+                shrine, seer, yangs, target_trove_start_health.value, target_trove_start_health.debt, target_ltv,
+            );
 
-                // Make the target trove absorbable
-                let target_trove_start_health: Health = shrine.get_trove_health(target_trove);
-                purger_utils::lower_prices_to_raise_trove_ltv(
-                    shrine, seer, yangs, target_trove_start_health.value, target_trove_start_health.debt, target_ltv,
-                );
+            if (*is_recovery_mode) {
+                purger_utils::trigger_recovery_mode(shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer);
+            } else {
+                // sanity check
+                assert(!shrine.is_recovery_mode(), 'in recovery mode');
+            }
 
-                if (*is_recovery_mode) {
-                    purger_utils::trigger_recovery_mode(
-                        shrine, seer, yangs, common::RecoveryModeSetupType::ExceedsBuffer,
-                    );
-                } else {
-                    // sanity check
-                    assert(!shrine.is_recovery_mode(), 'in recovery mode');
-                }
+            let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
+            purger_utils::assert_trove_is_absorbable(shrine, purger, target_trove, target_trove_updated_start_health);
 
-                let target_trove_updated_start_health: Health = shrine.get_trove_health(target_trove);
-                purger_utils::assert_trove_is_absorbable(
-                    shrine, purger, target_trove, target_trove_updated_start_health,
+            let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
+            if *is_recovery_mode {
+                assert(
+                    target_trove_updated_start_health.threshold < expected_rm_threshold_upper_bound
+                        - (RAY_PERCENT / 100).into(),
+                    'wrong rm threshold',
                 );
 
-                let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove).expect('Should be absorbable');
-                if *is_recovery_mode {
-                    let expected_rm_threshold_upper_bound: Ray = *expected_rm_thresholds_upper_bound
-                        .pop_front()
-                        .unwrap();
-                    assert(
-                        target_trove_updated_start_health.threshold < expected_rm_threshold_upper_bound
-                            - (RAY_PERCENT / 100).into(),
-                        'wrong rm threshold',
-                    );
-
-                    assert(penalty < expected_penalty, 'rm penalty not lower');
-                    assert(max_close_amt > expected_rm_max_close_amt_lower_bound, 'rm max close amt too low');
-                } else {
-                    common::assert_equalish(
-                        penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
-                        'wrong penalty',
-                    );
-                    common::assert_equalish(
-                        max_close_amt, expected_max_close_amt, (WAD_ONE / 10).into(), 'wrong max close amt',
-                    );
-                }
-            };
+                assert(penalty < expected_penalty, 'rm penalty not lower');
+                assert(max_close_amt > expected_rm_max_close_amt_lower_bound, 'rm max close amt too low');
+            } else {
+                common::assert_equalish(penalty, expected_penalty, (RAY_PERCENT / 10).into(), // 0.1%
+                'wrong penalty');
+                common::assert_equalish(
+                    max_close_amt, expected_max_close_amt, (WAD_ONE / 10).into(), 'wrong max close amt',
+                );
+            }
         };
     }
 
