@@ -848,8 +848,7 @@ mod test_transmuter {
             let mut spy = spy_events();
 
             // parametrize amount to withdraw
-            let withdraw_secondary_amts: Span<u128> = array![0, 1, secondary_asset_amt, secondary_asset_amt + 1]
-                .span();
+            let withdraw_secondary_amts: Span<u128> = array![0, 1, secondary_asset_amt, secondary_asset_amt + 1].span();
 
             if *kill_transmuter {
                 start_cheat_caller_address(transmuter.contract_address, admin);
@@ -1193,9 +1192,7 @@ mod test_transmuter {
         let second_reclaim_pct: Ray = (RAY_PERCENT * 35).into();
         let second_reclaim_yin_amt: Wad = wadray::rmul_wr(transmuted_yin_amt, second_reclaim_pct);
         let preview: u128 = transmuter.preview_reclaim(second_reclaim_yin_amt);
-        let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(
-            transmute_asset_amt.into(), second_reclaim_pct,
-        )
+        let expected_second_reclaim_asset_amt: u128 = wadray::rmul_wr(transmute_asset_amt.into(), second_reclaim_pct)
             .into();
         common::assert_equalish(
             preview, expected_second_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #2',
@@ -1223,10 +1220,7 @@ mod test_transmuter {
         let third_reclaim_yin_amt: Wad = transmuted_yin_amt;
         let reclaimable_yin: Wad = transmuter.get_total_transmuted();
         let preview: u128 = transmuter.preview_reclaim(third_reclaim_yin_amt);
-        let expected_third_reclaim_asset_amt: u128 = asset
-            .balance_of(transmuter.contract_address)
-            .try_into()
-            .unwrap();
+        let expected_third_reclaim_asset_amt: u128 = asset.balance_of(transmuter.contract_address).try_into().unwrap();
         common::assert_equalish(
             preview, expected_third_reclaim_asset_amt, asset_error_margin, 'wrong preview reclaim amt #3',
         );

@@ -468,7 +468,7 @@ pub mod transmuter {
             let receiver: ContractAddress = self.receiver.read();
             yin.transfer(receiver, (yin_amt - settle_amt).into());
 
-            self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
+            let _ = self.transfer_asset_to_receiver(self.asset.read(), Bounded::MAX);
 
             // Emit event
             self.emit(Settle { deficit: total_transmuted })

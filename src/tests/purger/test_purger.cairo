@@ -517,7 +517,8 @@ mod test_purger {
             (threshold.into() + 1_u128).into(), //just above threshold
             threshold + RAY_PERCENT.into(), // 1% above threshold
             // halfway between threshold and 100%
-            threshold + ((RAY_ONE - threshold.into()) / 2_u128).into(), (RAY_ONE - RAY_PERCENT).into(), // 99%
+            threshold + ((RAY_ONE - threshold.into()) / 2_u128).into(),
+            (RAY_ONE - RAY_PERCENT).into(), // 99%
             (RAY_ONE + RAY_PERCENT).into() // 101%
         ]
             .span();
@@ -2397,7 +2398,8 @@ mod test_purger {
 
         // We also parametrize the test with the desired threshold for liquidation
         let mut desired_threshold_params: Span<Ray> = array![
-            RAY_PERCENT.into(), (RAY_PERCENT / 4).into(),
+            RAY_PERCENT.into(),
+            (RAY_PERCENT / 4).into(),
             // This is the smallest possible desired threshold that
             // doesn't result in advancing the time enough to make
             // the suspension permanent
@@ -2411,7 +2413,7 @@ mod test_purger {
         let eth_threshold: Ray = shrine_utils::YANG1_THRESHOLD.into();
 
         let target_user: ContractAddress = purger_utils::TARGET_TROVE_OWNER;
-        common::fund_user(target_user, array![eth].span(), array![(10 * eth_amt).into()].span());
+        common::fund_user(target_user, array![eth].span(), array![10 * eth_amt].span());
 
         // Have the searcher provide half of his yin to the absorber
         let searcher = purger_utils::SEARCHER;

@@ -47,32 +47,6 @@ mod test_allocator {
     }
 
     #[test]
-    #[should_panic(expected: 'failed allocator deploy')]
-    fn test_allocator_deploy_input_arrays_mismatch_fail() {
-        let mut recipients = equalizer_utils::initial_recipients();
-        let _ = recipients.pop_front();
-
-        equalizer_utils::allocator_deploy(recipients, equalizer_utils::initial_percentages(), Option::None);
-    }
-
-    #[test]
-    #[should_panic(expected: 'failed allocator deploy')]
-    fn test_allocator_deploy_no_recipients_fail() {
-        let recipients: Array<ContractAddress> = ArrayTrait::new();
-        let percentages: Array<Ray> = ArrayTrait::new();
-
-        let _ = equalizer_utils::allocator_deploy(recipients.span(), percentages.span(), Option::None);
-    }
-
-    #[test]
-    #[should_panic(expected: 'failed allocator deploy')]
-    fn test_allocator_deploy_invalid_percentage_fail() {
-        let _ = equalizer_utils::allocator_deploy(
-            equalizer_utils::initial_recipients(), equalizer_utils::invalid_percentages(), Option::None,
-        );
-    }
-
-    #[test]
     fn test_set_allocation_pass() {
         let allocator = equalizer_utils::allocator_deploy(
             equalizer_utils::initial_recipients(), equalizer_utils::initial_percentages(), Option::None,

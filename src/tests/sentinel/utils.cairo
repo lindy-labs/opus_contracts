@@ -60,10 +60,7 @@ pub mod sentinel_utils {
     }
 
     pub fn deploy_sentinel(classes: Option<SentinelTestClasses>) -> (ISentinelDispatcher, ContractAddress) {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
 
         let shrine_addr: ContractAddress = shrine_utils::shrine_deploy(classes.shrine);
 
@@ -88,10 +85,7 @@ pub mod sentinel_utils {
     }
 
     pub fn deploy_sentinel_with_gates(classes: Option<SentinelTestClasses>) -> SentinelTestConfig {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
         let (sentinel, shrine_addr) = deploy_sentinel(Option::Some(classes));
 
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);
@@ -189,12 +183,7 @@ pub mod sentinel_utils {
         eth: ContractAddress,
         wbtc: ContractAddress,
     ) -> (Span<ContractAddress>, Span<IGateDispatcher>) {
-        let vault_class = Option::Some(
-            match vault_class {
-                Option::Some(class) => class,
-                Option::None => *declare("erc4626_mintable").unwrap().contract_class(),
-            },
-        );
+        let vault_class = Option::Some(vault_class.unwrap_or(*declare("erc4626_mintable").unwrap().contract_class()));
 
         let (eth_vault, eth_vault_gate) = add_eth_vault_yang(
             sentinel, shrine.contract_address, vault_class, gate_class, eth,
@@ -210,10 +199,7 @@ pub mod sentinel_utils {
     }
 
     pub fn deploy_sentinel_with_eth_gate(classes: Option<SentinelTestClasses>) -> SentinelTestConfig {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
 
         let (sentinel, shrine_addr) = deploy_sentinel(Option::Some(classes));
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr, classes.token, classes.gate);

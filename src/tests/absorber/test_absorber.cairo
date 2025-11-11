@@ -381,9 +381,7 @@ mod test_absorber {
             shrine, absorber, yangs, first_update_assets, percentage_to_drain,
         );
 
-        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs, first_update_assets,
-        );
+        let expected_absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(yangs, first_update_assets);
         let expected_rewarded_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             reward_tokens, reward_amts_per_blessing,
         );
@@ -404,9 +402,7 @@ mod test_absorber {
                 absorber.contract_address,
                 absorber_contract::Event::Bestow(
                     absorber_contract::Bestow {
-                        assets: expected_rewarded_assets,
-                        total_recipient_shares: expected_recipient_shares,
-                        epoch: 1,
+                        assets: expected_rewarded_assets, total_recipient_shares: expected_recipient_shares, epoch: 1,
                     },
                 ),
             ),
@@ -495,7 +491,7 @@ mod test_absorber {
                 provide_as_second_action = true;
             },
             _ => { absorber.reap(); },
-        };
+        }
 
         // One distribution from `update` and another distribution from
         // `reap`/`remove`/`provide` if not fully absorbed
@@ -552,8 +548,7 @@ mod test_absorber {
         // and provider are updated.
         if remove_as_second_action {
             let expected_removed_amt: Wad = wadray::rmul_wr(
-                first_provided_amt - absorber_contract::INITIAL_SHARES.into(),
-                (RAY_SCALE.into() - percentage_to_drain),
+                first_provided_amt - absorber_contract::INITIAL_SHARES.into(), (RAY_SCALE.into() - percentage_to_drain),
             );
             let error_margin: Wad = 1000_u128.into();
             common::assert_equalish(
@@ -1448,7 +1443,7 @@ mod test_absorber {
     // 3. Provider 1 withdraws, no rewards should be distributed.
     #[test]
     // lower bound for remaining yin without total shares being zeroed
-    #[test_case((absorber_contract::INITIAL_SHARES + 1).into())] 
+    #[test_case((absorber_contract::INITIAL_SHARES + 1).into())]
     // upper bound for remaining yin before rewards are distributed
     #[test_case((absorber_contract::INITIAL_SHARES + absorber_contract::MINIMUM_RECIPIENT_SHARES - 1).into())]
     fn test_after_threshold_absorption_between_initial_and_minimum_shares(remaining_yin_amt: Wad) {

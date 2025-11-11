@@ -1,6 +1,6 @@
 [package]
 name = "scripts"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024_07"
 
 [workspace]
@@ -43,3 +43,4 @@ fmt.workspace = true
 [workspace.tool.fmt]
 sort-module-level-items = true
 max-line-length = 120
+breaking-behavior = { tuple = "LineByLine", fixed_array = "LineByLine", macro_call = "LineByLine" }

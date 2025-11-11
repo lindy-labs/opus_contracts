@@ -34,9 +34,9 @@ pub fn convert_ekubo_oracle_price_to_wad(n: u256, base_decimals: u8, quote_decim
     // Adjust the scale based on the difference in precision between the base asset
     // and the quote asset
     let adjusted_scale: u256 = if quote_decimals <= base_decimals {
-        WAD_SCALE.into() * 10_u256.pow((base_decimals - quote_decimals).into()).into()
+        WAD_SCALE.into() * 10_u256.pow((base_decimals - quote_decimals).into())
     } else {
-        WAD_SCALE.into() / 10_u256.pow((quote_decimals - base_decimals).into()).into()
+        WAD_SCALE.into() / 10_u256.pow((quote_decimals - base_decimals).into())
     };
 
     let val = n * adjusted_scale / TWO_POW_128;

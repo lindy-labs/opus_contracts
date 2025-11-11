@@ -339,10 +339,7 @@ pub mod purger_utils {
     }
 
     pub fn purger_deploy(classes: Option<PurgerTestClasses>) -> PurgerTestConfig {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
 
         let absorber_classes = absorber_utils::AbsorberTestClasses {
             abbot: classes.abbot,
@@ -445,10 +442,7 @@ pub mod purger_utils {
     ) -> IFlashLiquidatorDispatcher {
         let calldata = array![shrine.into(), abbot.into(), flashmint.into(), purger.into()];
 
-        let fl_class = match fl_class {
-            Option::Some(class) => class,
-            Option::None => *declare("flash_liquidator").unwrap().contract_class(),
-        };
+        let fl_class = fl_class.unwrap_or(*declare("flash_liquidator").unwrap().contract_class());
 
         let (flash_liquidator_addr, _) = fl_class.deploy(@calldata).expect('flash liquidator deploy failed');
 
@@ -650,10 +644,7 @@ pub mod purger_utils {
 
     pub fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray, error_margin: Option<Ray>) {
         let expected_ltv: Ray = purger_contract::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = match error_margin {
-            Option::Some(e) => { e },
-            Option::None => { (RAY_PERCENT / 10).into() } // 0.1%
-        };
+        let error_margin: Ray = error_margin.unwrap_or((RAY_PERCENT / 10).into()); // 0.1%
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 

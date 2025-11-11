@@ -109,10 +109,7 @@ pub mod absorber_utils {
     }
 
     pub fn absorber_deploy(classes: Option<AbsorberTestClasses>) -> AbsorberTestConfig {
-        let classes = match classes {
-            Option::Some(classes) => classes,
-            Option::None => declare_contracts(),
-        };
+        let classes = classes.unwrap_or(declare_contracts());
 
         let abbot_utils::AbbotTestConfig {
             shrine, sentinel, abbot, yangs, gates,
@@ -178,10 +175,7 @@ pub mod absorber_utils {
             ADMIN.into(), asset.into(), absorber.contract_address.into(), bless_amt.into(),
         ];
 
-        let blesser_class = match blesser_class {
-            Option::Some(class) => class,
-            Option::None => *declare("mock_blesser").unwrap().contract_class(),
-        };
+        let blesser_class = blesser_class.unwrap_or(*declare("blesser").unwrap().contract_class());
 
         let (mock_blesser_addr, _) = blesser_class.deploy(@calldata).expect('blesser deploy failed');
 
@@ -472,7 +466,7 @@ pub mod absorber_utils {
                 .try_into()
                 .unwrap();
             let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-            let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()) + blessed_amt.into();
+            let expected_bal: u128 = *before_bal_arr.pop_front().unwrap() + blessed_amt.into();
 
             common::assert_equalish(after_provider_bal, expected_bal, error_margin, 'wrong reward balance');
 
