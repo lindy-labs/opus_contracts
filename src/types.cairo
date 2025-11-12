@@ -155,31 +155,6 @@ impl ProvisionStorePacking of StorePacking<Provision, felt252> {
     }
 }
 
-#[derive(Copy, Debug, Drop, PartialEq, Serde)]
-pub struct Request {
-    pub timestamp: u64, // Timestamp of request
-    pub timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
-    pub is_valid: bool // Whether the request is still valid i.e. provider has not called `remove` or `provide`
-}
-
-impl RequestStorePacking of StorePacking<Request, felt252> {
-    fn pack(value: Request) -> felt252 {
-        value.timestamp.into() + (value.timelock.into() * TWO_POW_64) + (value.is_valid.into() * TWO_POW_128)
-    }
-
-    fn unpack(value: felt252) -> Request {
-        let value: u256 = value.into();
-        let shift: u256 = TWO_POW_64.into();
-        let shift: NonZero<u256> = shift.try_into().unwrap();
-        let (rest, timestamp) = DivRem::div_rem(value, shift);
-        let (is_valid, timelock) = DivRem::div_rem(rest, shift);
-
-        Request {
-            timestamp: timestamp.try_into().unwrap(), timelock: timelock.try_into().unwrap(), is_valid: is_valid == 1,
-        }
-    }
-}
-
 //
 // Receptor
 //

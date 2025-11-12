@@ -1,4 +1,4 @@
-use opus::types::{DistributionInfo, Health, HealthTrait, Provision, Request, Trove, YangBalance};
+use opus::types::{DistributionInfo, Health, HealthTrait, Provision, Trove, YangBalance};
 use starknet::storage_access::StorePacking;
 use wadray::Wad;
 
@@ -28,11 +28,6 @@ fn test_display_and_debug() {
     let expected = "Provision { epoch: 123, shares: 456 }";
     assert_eq!(format!("{}", p), expected, "Provision display");
     assert_eq!(format!("{:?}", p), expected, "Provision debug");
-
-    let r = Request { timestamp: 123, timelock: 456, is_valid: true };
-    let expected = "Request { timestamp: 123, timelock: 456, is_valid: true }";
-    assert_eq!(format!("{}", r), expected, "Provision display");
-    assert_eq!(format!("{:?}", r), expected, "Provision debug");
 }
 
 #[test]
@@ -90,12 +85,3 @@ fn test_provision_packing() {
     assert_eq!(provision, unpacked, "provision epoch packing failed");
 }
 
-#[test]
-fn test_request_packing() {
-    let timestamp: u64 = 0x8000040000000000;
-    let timelock: u64 = 0xea8888888888888;
-    let is_valid = true;
-    let request = Request { timestamp, timelock, is_valid };
-    let unpacked: Request = StorePacking::unpack(StorePacking::pack(request));
-    assert_eq!(request, unpacked, "request packing failed");
-}
