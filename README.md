@@ -53,7 +53,7 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Seer        | `0x076baf9a48986ae11b144481aec7699823d7ebc5843f30cf47b053ebfe579824` | `v1.1.0` as `seer_v2` |
 | Sentinel    | `0x06428ec3221f369792df13e7d59580902f1bfabd56a81d30224f4f282ba380cd` | `v1.0.0` |
 | Shrine      | `0x0498edfaf50ca5855666a700c25dd629d577eb9afccdf3b5977aec79aee55ada` | `v1.0.0` |
-| Transmuter[USDC] (Restricted) | `0x0560149706f72ce4560a170c5aa72d20d188c314ddca5763f9189adfc45e2557` | `v1.2.0` |
+| Transmuter[USDC] (Restricted) | `0x079eaeb2891acc0d884d22f2626adb734a0ab4038a56c5029c7127e4e9f59bd8` | `v1.2.0` |
 
 
 #### Sepolia
