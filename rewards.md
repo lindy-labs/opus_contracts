@@ -4,30 +4,6 @@ description: Incentives for borrowers.
 
 # Rewards
 
-## DeFi Spring
-
-### Introduction
-
-Users who borrow CASH receive STRK rewards as part of the [Starknet DeFi Spring](https://www.starknet.io/blog/defi-spring-2-0/) initiative, to the extent that such amount of CASH is backed by collateral not included in BTCFi borrowing incentives.
-
-### Methodology
-
-The Starknet Foundation determines the amount of incentives on a daily basis. Users who borrow CASH will earn a share of each day's incentives in proportion to the total CASH borrowed across all Troves for the day, to the extent that such amount of CASH is backed by collateral not included in BTCFi borrowing incentives. The amount of eligible CASH borrowed will be aggregated for each address i.e. if one address opens two Troves, the amount of eligible CASH borrowed will be summed up for that address. These will be calculated based on a snapshot taken at the end of each day.
-
-{% hint style="info" %}
-**Example:** _on a given day,_ if User A borrows 100 CASH with non-BTCFi-eligible collateral only, there is a total debt of 1000 CASH across all troves, of which 600 CASH is backed by BTCFi-eligible collateral, and the incentives are 500 STRK, then User A will be entitled to $$\frac{100}{1000 - 600} \cdot 500 = 125 \text{ STRK}$$ on that day.
-{% endhint %}
-
-The [protocol seeded TVL](technical-documentation/smart-contracts/transmuter-module.md) has been excluded from this initiative.
-
-### Participation
-
-Users are automatically part of this initiative if they are actively borrowing CASH. No further actions required.
-
-### Claiming
-
-Visit the [rewards page here.](https://app.opus.money/rewards)
-
 ## BTCFi
 
 ### Introduction
