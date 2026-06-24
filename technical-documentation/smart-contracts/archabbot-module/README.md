@@ -128,6 +128,10 @@ The rite must still invoke `on_rite_actions` at least once. The relative thresho
 
 * [#auto-topup-topup](./#auto-topup-topup "mention")
 
+### Using rites as keepers for arbitrary logic
+
+* Rites are flexible enough to be implemented as keepers that run some arbitrary logic for your use case. The only requirement is to make a single `None` action callback to the Archabbot. This lets anyone take advantage of the harness (e.g. incentives) and keeper network already on Opus
+
 ### Leverage
 
 Leverage uses flash loans from the [Flash Mint Module](../flash-mint-module.md).

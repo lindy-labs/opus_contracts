@@ -52,8 +52,10 @@ Since keepers execute the action for you, the keeper covers the gas cost and ear
 
 ### For developers
 
-Actions are implemented as external contracts conforming to the `IRite` interface. Each Trove can have at most one action attached. Developers can deploy new action contracts — the frontend supports whitelisted actions. Reach out on Discord if you'd like to whitelist yours.
+Actions are implemented as permissionless external contracts conforming to the `IRite` interface. f you would like to add your action to our frontend, reach out to us on Discord.
 
-The technical details — including the full execution flow, callback mechanism, and action types — are covered [here](technical-documentation/smart-contracts/archabbot-module/)
+Alternatively, anyone can deploy their own action contracts and attach it to their trove. In fact, actions can be used as keepers that perform some arbitrary logic without taking any action on the Trove at all.
+
+The technical details are covered [here](technical-documentation/smart-contracts/archabbot-module/)
 
 > Automation is early and evolving. More actions are coming. If you have an idea for one, we'd love to hear from you in Discord or [Telegram](https://t.me/Lucidx0).
