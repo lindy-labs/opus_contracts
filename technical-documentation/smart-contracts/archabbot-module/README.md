@@ -4,22 +4,15 @@ description: An upgraded Abbot enabling automation and leverage
 
 # Archabbot Module
 
-The Archabbot is an upgraded implementation of the Abbot — a trove manager — with support for automation (also known as **Rites**) and **flash-loan-powered leverage.**
+The Archabbot is an upgraded implementation of the Abbot — a trove manager — with support for automation (also known as **Rites**)**.**
 
 It implements the same `IAbbot` interface as the [Abbot](../abbot-module.md), so standard trove operations work the same way. This includes `deposit`, `withdraw`, `forge`, `melt`, and `close_trove`.
 
 Troves are still opened through the Abbot. `open_trove` is disabled on the Archabbot. This keeps the Abbot as the source of truth for trove ownership.
 
-### What the Archabbot adds
+## Automation
 
-* **Rites** — attachable automation modules that run predefined strategies.
-* **Keeper incentives** — permissionless rite execution with user-defined CASH rewards to incentivize decentralized execution.
-* **Per-trove safety config** — relative threshold and max forge fee controls for automation.
-* **Leverage** — lever up and lever down on a collateral type in one transaction.
-
-### Trove configuration for Rites
-
-Each trove has a `TroveConfig` for users to define the parameters of what the Rite attached to it can perform.
+Rites are attachable automation modules that run predefined strategies. These strategies can be executed by anyone in a permissionless manner as long as the specified conditions are satisfied, subject to the following parameters and limitations that the user configures in advance:
 
 | Field                | Type  | Description                                                                                                                                                                                                                                                                           |
 | -------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,9 +26,7 @@ A **Rite** is an external contract that implements `IRite`. It encodes an action
 
 Each trove can have at most one rite attached at a time. The trove owner can swap rites at any time. This prevents a buggy rite from bricking a trove.
 
-Rites can support arbitrary operations that do not interact with the trove at all. In this case, it behaves like a keeper-only workflow.
-
-Developers can deploy and attach their own Rites. The frontend will only allow users to select whitelisted Rites. If you wish to whitelist your Rite, please reach out to us on Discord.
+Developers can deploy and attach their own Rites. However, only whitelisted Rites will be displayed on the frontend. If you wish to whitelist your Rite, please reach out to us on Discord.
 
 #### The `IRite` interface
 
@@ -60,7 +51,10 @@ trait IRite<TContractState> {
 | `perform`                               | Executes the rite. It must call `archabbot.on_rite_actions(...)` at least once.                                |
 | `end`                                   | Settles a long-running rite. It is a no-op for one-off rites.                                                  |
 
-Rites must register the `IRITE_ID` interface through SRC5 before the Archabbot accepts them.
+In addition to implementing the `IRite` interface, a Rite must also satisfy the following requirements or execution will revert:
+
+* it must register the `IRITE_ID` interface through SRC5; and
+* it must make at least one callback with at least one action (could be `None`) to `archabbot.on_rite_actions(...)`.
 
 #### Rite execution flow
 
@@ -109,58 +103,10 @@ Rites instruct the Archabbot through `on_rite_actions`.
 
 The rite must still invoke `on_rite_actions` at least once. The relative threshold is **not** enforced after `end_rite`. This avoids bricking long-running rites that temporarily exceed the threshold during settlement.
 
-### Safety mechanisms
-
-* **Transient trove lock** to block concurrent rite execution on one trove.
-* **Callback nonce** to enforce at least one `on_rite_actions` call.
-* **SRC5 interface check** when setting a rite.
-* **Relative threshold enforcement** after each rite execution.
-* **Rite swapping at any time** to avoid permanent lock-in from buggy logic.
-
-### Design principles for rites
-
-* **No access control on execution.** Anyone can call `execute_rite`. Keeper incentives support decentralized execution.
-* **User-configured over permissioned.** Users define parameters instead of relying on whitelists or admin gates.
-* **One rite at a time.** Each trove has at most one active rite.
-* **Callback enforcement.** Every rite must call `on_rite_actions` at least once.
-
 ### Implemented rites
 
-* [#auto-topup-topup](./#auto-topup-topup "mention")
+* [topup-rite.md](topup-rite.md "mention")
 
-### Using rites as keepers for arbitrary logic
+### Using rites as keepers
 
-* Rites are flexible enough to be implemented as keepers that run some arbitrary logic for your use case. The only requirement is to make a single `None` action callback to the Archabbot. This lets anyone take advantage of the harness (e.g. incentives) and keeper network already on Opus
-
-### Leverage
-
-Leverage uses flash loans from the [Flash Mint Module](../flash-mint-module.md).
-
-These flows are user-initiated. They are not automated by rites. They are also **not** subject to the relative threshold check. The user chooses the risk boundary through `max_ltv`.
-
-#### Lever up
-
-Lever up borrows CASH with a flash mint, swaps into collateral on Ekubo, deposits the collateral, and repays the flash loan from the trove debt.
-
-| Field               | Description                                          |
-| ------------------- | ---------------------------------------------------- |
-| `trove_id`          | Target trove                                         |
-| `max_ltv`           | Revert if the resulting LTV exceeds this value       |
-| `yang`              | Collateral asset to acquire                          |
-| `max_forge_fee_pct` | Max protocol fee accepted for the forge step         |
-| `min_asset_amount`  | Minimum collateral to receive as slippage protection |
-| `swaps`             | Ekubo route with one or more hops                    |
-
-#### Lever down
-
-Lever down flash-mints CASH, repays trove debt, withdraws collateral, swaps the collateral for CASH on Ekubo, and repays the flash loan.
-
-Any remaining collateral is re-deposited. Any excess CASH is returned to the user.
-
-| Field      | Description                                               |
-| ---------- | --------------------------------------------------------- |
-| `trove_id` | Target trove                                              |
-| `max_ltv`  | Revert if the resulting LTV exceeds this value            |
-| `yang`     | Collateral asset to unwind                                |
-| `yang_amt` | Amount of collateral, in yang units, to withdraw and sell |
-| `swaps`    | Ekubo route with one or more hops                         |
+Rites can support arbitrary operations that do not interact with the trove at all. In this case, it behaves like a keeper-only workflow that runs some arbitrary logic for your use case. The only requirement is to make a single `None` action callback to the Archabbot. This lets anyone take advantage of the harness (e.g. incentives) and keeper network already on Opus.
