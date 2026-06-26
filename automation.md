@@ -22,11 +22,24 @@ When you set up automation on your Trove, you define guardrails that protect you
 
 You can stop the automation at any time.
 
-### Auto-Topup
+## Auto-Topup
 
-The first action available on Opus is **Auto-Topup** — it keeps any address funded with a token of your choice.
+The first action available on Opus is Topup — it keeps any address funded with a token of your choice. As we will be running a keeper to monitor and trigger this Topup action, users can enjoy a frictionless instantaneous **Auto-Topup** experience without having to incentivze keepers.
 
-Here's a real-world example: you have a Trove on Opus with some collateral deposited. You regularly use USDC to pay for things on your Ready Card. What if you realized you are out of USDC just as you are about to pay at the cashier? Instead of manually topping up USDC your balance runs low, you set up Auto-Topup to do it for you.
+At the moment, the following tokens are supported:
+
+* CASH
+* USDC
+
+If you would like a token to be supported, please reach out to us on Discord.
+
+### How is this useful to you?
+
+* Automatically topup USDC to your Ready Card.&#x20;
+  * You can use this as your main source of funding (borrow in advance and repay later).
+  * You can set it up as a fallback for everyday use so you never run out of cash when you are the cashier and without your wallet or Ledger.
+  * In circumstances where it is sensible to keep a low balance (e.g. travelling), and yet you still want cash to be readily available
+* Automatically fund your hot wallet via your cold wallet.
 
 **You configure:**
 
@@ -44,18 +57,10 @@ Here's a real-world example: you have a Trove on Opus with some collateral depos
 2. The CASH is swapped for your chosen token through Ekubo
 3. The token is delivered to your destination address
 
-You can disable Auto-Topup at any time by setting the amount to zero.
+You can disable Topup at any time by setting the amount to zero.
 
-{% hint style="info" %}
-Since keepers execute the action for you, the keeper covers the gas cost and earns your CASH reward in return.
-{% endhint %}
+## For developers
 
-### For developers
-
-Actions are implemented as permissionless external contracts conforming to the `IRite` interface. f you would like to add your action to our frontend, reach out to us on Discord.
-
-Alternatively, anyone can deploy their own action contracts and attach it to their trove. In fact, actions can be used as keepers that perform some arbitrary logic without taking any action on the Trove at all.
-
-The technical details are covered [here](technical-documentation/smart-contracts/archabbot-module/)
+Actions are implemented as permissionless external contracts. The technical details are covered [here](technical-documentation/smart-contracts/archabbot-module/).&#x20;
 
 > Automation is early and evolving. More actions are coming. If you have an idea for one, we'd love to hear from you in Discord or [Telegram](https://t.me/Lucidx0).
