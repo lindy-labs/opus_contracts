@@ -38,7 +38,7 @@ If you would like a token to be supported, please reach out to us on Discord.
 * Automatically topup USDC to your Ready Card.&#x20;
   * You can use this as your main source of funding (borrow in advance and repay later).
   * You can set it up as a fallback for everyday use so you never run out of cash when you are the cashier and without your wallet or Ledger.
-  * In circumstances where it is sensible to keep a low balance (e.g. travelling), and yet you still want cash to be readily available
+  * In circumstances where it is sensible to keep a low balance (e.g. travelling), and yet you still want cash to be readily available.
 * Automatically fund your hot wallet via your cold wallet.
 
 **You configure:**
