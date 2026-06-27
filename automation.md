@@ -24,7 +24,7 @@ You can stop the automation at any time.
 
 ## Auto-Topup
 
-The first action available on Opus is Topup — it keeps any address funded with a token of your choice. As we will be running a keeper to monitor and trigger this Topup action, users can enjoy a frictionless instantaneous **Auto-Topup** experience without having to incentivze keepers.
+The first action available on Opus is Topup — it keeps any address funded with a token of your choice. As we will be running a keeper to monitor and trigger this Topup action, users can enjoy a frictionless instantaneous **Auto-Topup** experience without having to incentivize keepers.
 
 At the moment, the following tokens are supported:
 
