@@ -38,5 +38,7 @@ Option (2) is intended to enable price updates when redistributions occur to ens
 Presently, the protocol relies on the following oracles in order of priority:
 
 1. [Pragma](https://www.pragma.build/) as the primary oracle, taking the lower of the spot price and the 7-days TWAP;
-2. [Ekubo](https://ekubo.org/) oracle pools as the fallback oracle if Pragma's spot price is determined to be invalid, taking the 1H TWAP.
+2. [Ekubo](https://ekubo.org/) oracle pools as the fallback oracle if Pragma's spot price is determined to be invalid, taking the 1H TWAP. As of 10 August 2026, the Ekubo oracle has been temporarily disabled pending a long-term fix to validate the price following the exploit inflating uniBTC's price on the oracle pool.
+
+
 
