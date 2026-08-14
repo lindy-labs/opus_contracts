@@ -8,7 +8,7 @@ pub mod ekubo_roles {
 
 pub mod pragma_roles {
     pub const ADD_YANG: u128 = 1;
-    pub const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 2;
+    pub const SET_FRESHNESS: u128 = 2;
 
-    pub const ADMIN: u128 = ADD_YANG + SET_PRICE_VALIDITY_THRESHOLDS;
+    pub const ADMIN: u128 = ADD_YANG + SET_FRESHNESS;
 }

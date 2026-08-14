@@ -221,20 +221,14 @@ pub mod pragma {
     }
 
     #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
-    pub struct PriceValidityThresholds {
-        // the maximum number of seconds between block timestamp and
-        // the last update timestamp (as reported by Pragma) for which
-        // we consider a price update valid
-        pub freshness: u64,
-        // the minimum number of data publishers used to aggregate the
-        // price value
-        pub sources: u32,
-    }
-
-    #[derive(Copy, Drop, PartialEq, Serde, starknet::Store)]
     pub struct PairSettings {
         pub pair_id: felt252,
         pub aggregation_mode: AggregationMode,
+        // the minimum number of data publishers used to aggregate the
+        // price value
+        // set on a per-collateral basis for backwards compatiblity of collateral
+        // types with 1 source
+        pub sources: u32,
     }
 }
 

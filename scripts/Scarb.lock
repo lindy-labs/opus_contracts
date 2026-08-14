@@ -46,9 +46,9 @@ dependencies = [
 
 [[package]]
 name = "sncast_std"
-version = "0.41.0"
+version = "0.62.1"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:0884539863cd2b802eec9bcaecdb810fe130969e766f178d1e42220ddf65344d"
+checksum = "sha256:3d9f11a69001c192e16d8439bb5eb1f118c1ba9e508a9a8876b1ec1430311cc1"
 
 [[package]]
 name = "wadray"

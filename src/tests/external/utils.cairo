@@ -35,7 +35,7 @@ pub mod pragma_utils {
     pub const PRAGMA_SCALE: u128 = 10_u128.pow(PRAGMA_DECIMALS.into());
 
     pub const PEPE_PAIR_SETTINGS: PairSettings = PairSettings {
-        pair_id: PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median,
+        pair_id: PEPE_USD_PAIR_ID, aggregation_mode: AggregationMode::Median, sources: SOURCES_THRESHOLD,
     };
 
     //
@@ -58,7 +58,6 @@ pub mod pragma_utils {
             mock_pragma.contract_address.into(),
             mock_pragma.contract_address.into(),
             FRESHNESS_THRESHOLD.into(),
-            SOURCES_THRESHOLD.into(),
         ];
 
         let pragma_class = pragma_class.unwrap_or(*declare("pragma").unwrap().contract_class());
@@ -82,8 +81,12 @@ pub mod pragma_utils {
 
         // Add yangs to Pragma
         let pragma_dispatcher = IPragmaDispatcher { contract_address: pragma };
-        let eth_pair_settings = PairSettings { pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
-        let wbtc_pair_settings = PairSettings { pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median };
+        let eth_pair_settings = PairSettings {
+            pair_id: ETH_USD_PAIR_ID, aggregation_mode: AggregationMode::Median, sources: SOURCES_THRESHOLD,
+        };
+        let wbtc_pair_settings = PairSettings {
+            pair_id: WBTC_USD_PAIR_ID, aggregation_mode: AggregationMode::Median, sources: SOURCES_THRESHOLD,
+        };
         cheat_caller_address(pragma, common::PRAGMA_ADMIN, CheatSpan::TargetCalls(2));
         pragma_dispatcher.set_yang_pair_settings(eth_yang, eth_pair_settings);
         pragma_dispatcher.set_yang_pair_settings(wbtc_yang, wbtc_pair_settings);

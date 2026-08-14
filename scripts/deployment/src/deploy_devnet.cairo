@@ -56,7 +56,7 @@ fn main() {
 
     println!("Deploying oracles");
     let pragma: ContractAddress = core_deployment::deploy_pragma(
-        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD, constants::PRAGMA_SOURCES_THRESHOLD,
+        admin, mock_pragma, mock_pragma, constants::PRAGMA_FRESHNESS_THRESHOLD,
     );
 
     utils::set_oracles_to_seer(seer, array![pragma].span());

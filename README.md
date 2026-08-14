@@ -47,7 +47,7 @@ Once you kill your Devnet instance, the state is lost unless the latest `devnet_
 | Gate[xtBTC]  | `0x0073348c89345735938f1ebc5b237f034bb63874e895311c5db0b29a15e9908a` | `v1.0.0` |
 | Gate[xLBTC]  | `0x0616551ebe73c1ea97ad2d7c7c9575039cc456fea5c8529701a39cc9c0ad4805` | `v1.0.0` |
 | Gate[xsBTC]  | `0x06a5bac0cdaa7126e32dd478c86f84906f4a7ff597cbaa9b0d537312887f5a19` | `v1.0.0` |
-| Pragma      | `0x0532f8b442e90eae93493a4f3e4f6d3bf2579e56a75238b786a5e90cb82fdfe9` | `v1.1.0` as `pragma_v2` |
+| Pragma      | `0x0057d26f86d5c9bc51b6b8322bba9ac92fee7207df1e7e6423a322b22b74e562` | `main` branch |
 | Purger      | `0x02cef5286b554f4122a2070bbd492a95ad810774903c92633979ed54d51b04ca` | `v1.1.0` |
 | Receptor    | `0x059c159d9a87a34f17c4991e81b0d937aaf86a29f682ce0951536265bd6a1678` | `v1.1.0` |
 | Seer        | `0x076baf9a48986ae11b144481aec7699823d7ebc5843f30cf47b053ebfe579824` | `v1.1.0` as `seer_v2` |

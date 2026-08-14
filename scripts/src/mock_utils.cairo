@@ -1,12 +1,12 @@
 use opus::constants::PRAGMA_DECIMALS;
-use scripts::constants::{MAX_FEE, PRAGMA_SOURCES_THRESHOLD};
+use scripts::constants::{DEFAULT_PRAGMA_SOURCES_THRESHOLD, MAX_FEE};
 use sncast_std::{DisplayContractAddress, FeeSettingsTrait, invoke};
 use starknet::ContractAddress;
 
 pub fn set_mock_pragma_prices(mock_pragma: ContractAddress, pair_ids: Span<felt252>, mut prices: Span<(u128, u128)>) {
     let fee_settings = FeeSettingsTrait::max_fee(MAX_FEE);
 
-    let num_sources = PRAGMA_SOURCES_THRESHOLD + 1;
+    let num_sources = DEFAULT_PRAGMA_SOURCES_THRESHOLD + 1;
 
     for pair_id in pair_ids {
         let (spot_price, twap_price) = *prices.pop_front().unwrap();

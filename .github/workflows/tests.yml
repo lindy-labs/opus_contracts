@@ -24,7 +24,7 @@ jobs:
       - name: Build
         run: scarb build
 
-      - uses: foundry-rs/setup-snfoundry@v3
+      - uses: foundry-rs/setup-snfoundry@v4
 
       - name: Run dev tests
         run: scarb --profile dev test

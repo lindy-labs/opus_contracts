@@ -17,7 +17,7 @@ pub mod pragma {
     use opus::external::roles::pragma_roles;
     use opus::interfaces::IOracle::IOracle;
     use opus::interfaces::IPragma::IPragma;
-    use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse, PriceValidityThresholds};
+    use opus::types::pragma::{AggregationMode, DataType, PairSettings, PragmaPricesResponse};
     use opus::utils::math::fixed_point_to_wad;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess,
@@ -46,7 +46,7 @@ pub mod pragma {
     // the range is [lower, upper]
     pub const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
     pub const UPPER_FRESHNESS_BOUND: u64 = 4 * 60 * 60; // 4 hours * 60 minutes * 60 seconds
-    pub const LOWER_SOURCES_BOUND: u32 = 3;
+    pub const LOWER_SOURCES_BOUND: u32 = 1;
     pub const UPPER_SOURCES_BOUND: u32 = 13;
 
     //
@@ -62,14 +62,10 @@ pub mod pragma {
         spot_oracle: IPragmaSpotOracleDispatcher,
         // interface to the twap Pragma oracle contract,
         twap_oracle: IPragmaTwapOracleDispatcher,
-        // values used to determine if we consider a price update from the spot
-        // oracle fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which we consider a
         // price update valid
-        // `sources` is the minimum number of data publishers used to aggregate the
-        // price value
-        price_validity_thresholds: PriceValidityThresholds,
+        freshness: u64,
         // A mapping between a token's address and its pair settings in Pragma
         // (yang address) -> (PairSettings struct)
         yang_pair_settings: Map<ContractAddress, PairSettings>,
@@ -84,7 +80,7 @@ pub mod pragma {
     pub enum Event {
         AccessControlEvent: access_control_component::Event,
         InvalidSpotPriceUpdate: InvalidSpotPriceUpdate,
-        PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
+        FreshnessUpdated: FreshnessUpdated,
         YangPairSettingsUpdated: YangPairSettingsUpdated,
     }
 
@@ -99,9 +95,9 @@ pub mod pragma {
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
-    pub struct PriceValidityThresholdsUpdated {
-        pub old_thresholds: PriceValidityThresholds,
-        pub new_thresholds: PriceValidityThresholds,
+    pub struct FreshnessUpdated {
+        pub old_freshness: u64,
+        pub new_freshness: u64,
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -120,23 +116,16 @@ pub mod pragma {
         admin: ContractAddress,
         spot_oracle: ContractAddress,
         twap_oracle: ContractAddress,
-        freshness_threshold: u64,
-        sources_threshold: u32,
+        freshness: u64,
     ) {
         self.access_control.initializer(admin, Option::Some(pragma_roles::ADMIN));
 
         // init storage
         self.spot_oracle.write(IPragmaSpotOracleDispatcher { contract_address: spot_oracle });
         self.twap_oracle.write(IPragmaTwapOracleDispatcher { contract_address: twap_oracle });
-        let new_thresholds = PriceValidityThresholds { freshness: freshness_threshold, sources: sources_threshold };
-        self.price_validity_thresholds.write(new_thresholds);
+        self.freshness.write(freshness);
 
-        self
-            .emit(
-                PriceValidityThresholdsUpdated {
-                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 }, new_thresholds,
-                },
-            );
+        self.emit(FreshnessUpdated { old_freshness: 0, new_freshness: freshness });
     }
 
     //
@@ -149,6 +138,11 @@ pub mod pragma {
             self.access_control.assert_has_role(pragma_roles::ADD_YANG);
             assert(pair_settings.pair_id != 0, 'PGM: Invalid pair ID');
             assert(yang.is_non_zero(), 'PGM: Invalid yang address');
+
+            assert(
+                LOWER_SOURCES_BOUND <= pair_settings.sources && pair_settings.sources <= UPPER_SOURCES_BOUND,
+                'PGM: Sources out of bounds',
+            );
 
             // doing a sanity check if Pragma actually offers a price feed
             // of the requested asset and if it's suitable for our needs
@@ -179,19 +173,17 @@ pub mod pragma {
             self.emit(YangPairSettingsUpdated { address: yang, pair_settings });
         }
 
-        fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u32) {
-            self.access_control.assert_has_role(pragma_roles::SET_PRICE_VALIDITY_THRESHOLDS);
+        fn set_freshness(ref self: ContractState, freshness: u64) {
+            self.access_control.assert_has_role(pragma_roles::SET_FRESHNESS);
             assert(
                 LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
                 'PGM: Freshness out of bounds',
             );
-            assert(LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND, 'PGM: Sources out of bounds');
 
-            let old_thresholds: PriceValidityThresholds = self.price_validity_thresholds.read();
-            let new_thresholds = PriceValidityThresholds { freshness, sources };
-            self.price_validity_thresholds.write(new_thresholds);
+            let old_freshness: u64 = self.freshness.read();
+            self.freshness.write(freshness);
 
-            self.emit(PriceValidityThresholdsUpdated { old_thresholds, new_thresholds });
+            self.emit(FreshnessUpdated { old_freshness, new_freshness: freshness });
         }
     }
 
@@ -237,7 +229,7 @@ pub mod pragma {
 
             // if we receive what we consider a valid price from the oracle,
             // return it back, otherwise emit an event about the update being invalid
-            if self.is_valid_price_update(response) {
+            if self.is_valid_price_update(response, pair_settings.sources) {
                 Result::Ok(price)
             } else {
                 self
@@ -268,11 +260,11 @@ pub mod pragma {
             fixed_point_to_wad(twap, decimals.try_into().unwrap())
         }
 
-        fn is_valid_price_update(self: @ContractState, update: PragmaPricesResponse) -> bool {
-            let required: PriceValidityThresholds = self.price_validity_thresholds.read();
+        fn is_valid_price_update(self: @ContractState, update: PragmaPricesResponse, sources: u32) -> bool {
+            let freshness: u64 = self.freshness.read();
 
             // check if the update is from enough sources
-            let has_enough_sources = required.sources <= update.num_sources_aggregated;
+            let has_enough_sources = sources <= update.num_sources_aggregated;
 
             // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
             // it is from the future from the chain's perspective), because the update timestamp is coming
@@ -294,7 +286,7 @@ pub mod pragma {
 
             // the result of `block_timestamp - last_updated_timestamp` can
             // never be negative if the code reaches here
-            let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
+            let is_fresh = (block_timestamp - last_updated_timestamp) <= freshness;
 
             has_enough_sources && is_fresh
         }

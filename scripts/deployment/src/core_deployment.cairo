@@ -300,17 +300,11 @@ pub fn deploy_gate(
 }
 
 pub fn deploy_pragma(
-    admin: ContractAddress,
-    spot_oracle: ContractAddress,
-    twap_oracle: ContractAddress,
-    freshness_threshold: u64,
-    sources_threshold: u32,
+    admin: ContractAddress, spot_oracle: ContractAddress, twap_oracle: ContractAddress, freshness: u64,
 ) -> ContractAddress {
     let declare_pragma = declare("pragma", FeeSettingsTrait::max_fee(MAX_FEE), Option::None)
         .expect('failed pragma declare');
-    let calldata: Array<felt252> = array![
-        admin.into(), spot_oracle.into(), twap_oracle.into(), freshness_threshold.into(), sources_threshold.into(),
-    ];
+    let calldata: Array<felt252> = array![admin.into(), spot_oracle.into(), twap_oracle.into(), freshness.into()];
 
     let deploy_pragma = deploy(
         *declare_pragma.class_hash(), calldata, Option::None, true, FeeSettingsTrait::max_fee(MAX_FEE), Option::None,

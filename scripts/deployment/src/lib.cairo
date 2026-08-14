@@ -1,5 +1,6 @@
 pub mod core_deployment;
 mod deploy_devnet;
+mod deploy_pragma_mainnet;
 pub mod mock_deployment;
 pub mod periphery_deployment;
 mod upgrade_fdp_devnet;
