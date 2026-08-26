@@ -1,7 +1,7 @@
 mod test_seer {
     use access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use core::num::traits::Zero;
-    use opus::constants::{PRAGMA_DECIMALS, USDC_DECIMALS, WBTC_DECIMALS};
+    use opus::constants::{PRAGMA_DECIMALS, USDC_DECIMALS};
     use opus::core::roles::seer_roles;
     use opus::core::seer::seer as seer_contract;
     use opus::core::shrine::shrine as shrine_contract;
@@ -161,17 +161,17 @@ mod test_seer {
         let eth_vault = *vaults.at(0);
 
         let price_type = PriceType::Vault;
-        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 1");
+        assert(seer.get_yang_price_type(eth_vault) == price_type, 'wrong price type 1');
 
         let price_type = PriceType::Direct;
         cheat_caller_address(seer.contract_address, common::SEER_ADMIN, CheatSpan::TargetCalls(1));
         seer.set_yang_price_type(eth_vault, price_type);
-        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 2");
+        assert(seer.get_yang_price_type(eth_vault) == price_type, 'wrong price type 2');
 
         let price_type = PriceType::Vault;
         cheat_caller_address(seer.contract_address, common::SEER_ADMIN, CheatSpan::TargetCalls(1));
         seer.set_yang_price_type(eth_vault, price_type);
-        assert_eq!(seer.get_yang_price_type(eth_vault), price_type, "wrong price type 3");
+        assert(seer.get_yang_price_type(eth_vault) == price_type, 'wrong price type 3');
 
         let expected_events = array![
             (
@@ -297,11 +297,11 @@ mod test_seer {
         let (shrine_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
         let (shrine_eth_vault_price, _, _) = shrine.get_current_yang_price(eth_vault_addr);
         let (shrine_wbtc_vault_price, _, _) = shrine.get_current_yang_price(wbtc_vault_addr);
-        assert_eq!(shrine_eth_price, eth_price, "wrong eth price in shrine 1");
-        assert_eq!(shrine_wbtc_price, wbtc_price, "wrong wbtc price in shrine 1");
+        assert(shrine_eth_price == eth_price, 'wrong eth price in shrine 1');
+        assert(shrine_wbtc_price == wbtc_price, 'wrong wbtc price in shrine 1');
         // Vault prices should be identical at 1 : 1 conversion rate
-        assert_eq!(shrine_eth_vault_price, eth_price, "wrong eth(v) price in shrine 1");
-        assert_eq!(shrine_wbtc_vault_price, wbtc_price, "wrong wbtc(v) price in shrine 1");
+        assert(shrine_eth_vault_price == eth_price, 'wrong eth(v) price in shrine 1');
+        assert(shrine_wbtc_vault_price == wbtc_price, 'wrong wbtc(v) price in shrine 1');
 
         let expected_events_seer = array![
             (
@@ -444,7 +444,7 @@ mod test_seer {
         let (eth_price, cumulative_eth_price, eth_price_interval) = shrine.get_current_yang_price(eth_addr);
         assert(eth_price.is_zero(), 'price should be zero #2');
         assert(cumulative_eth_price.is_zero(), 'wrong cumulative price #3');
-        assert_eq!(eth_price_interval, shrine_utils::current_interval(), "wrong delisted price interval");
+        assert(eth_price_interval == shrine_utils::current_interval(), 'wrong delisted price interval');
     }
 
     #[test]

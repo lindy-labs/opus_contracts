@@ -32,13 +32,12 @@ mod test_receptor {
         assert(receptor_ac.get_roles(admin) == receptor_roles::ADMIN, 'wrong role');
 
         let ekubo_oracle_adapter = IEkuboOracleAdapterDispatcher { contract_address: receptor.contract_address };
-        assert_eq!(
-            ekubo_oracle_adapter.get_oracle_extension(),
-            mock_ekubo_oracle_extension.contract_address,
-            "wrong extension addr",
+        assert(
+            ekubo_oracle_adapter.get_oracle_extension() == mock_ekubo_oracle_extension.contract_address,
+            'wrong extension addr',
         );
-        assert_eq!(
-            ekubo_oracle_adapter.get_twap_duration(), receptor_utils::INITIAL_TWAP_DURATION, "wrong twap duration",
+        assert(
+            ekubo_oracle_adapter.get_twap_duration() == receptor_utils::INITIAL_TWAP_DURATION, 'wrong twap duration',
         );
 
         let expected_quote_tokens_info: Span<QuoteTokenInfo> = array![
@@ -47,7 +46,7 @@ mod test_receptor {
             QuoteTokenInfo { address: *quote_tokens[2], decimals: constants::USDT_DECIMALS },
         ]
             .span();
-        assert_eq!(ekubo_oracle_adapter.get_quote_tokens(), expected_quote_tokens_info, "wrong quote tokens");
+        assert(ekubo_oracle_adapter.get_quote_tokens() == expected_quote_tokens_info, 'wrong quote tokens');
     }
 
     // Parameters
@@ -94,7 +93,7 @@ mod test_receptor {
         cheat_caller_address(receptor.contract_address, common::SHRINE_ADMIN, CheatSpan::TargetCalls(1));
         receptor.set_update_frequency(new_frequency);
 
-        assert_eq!(receptor.get_update_frequency(), new_frequency, "wrong update frequency");
+        assert(receptor.get_update_frequency() == new_frequency, 'wrong update frequency');
 
         let expected_events = array![
             (
@@ -180,7 +179,7 @@ mod test_receptor {
         receptor.update_yin_price();
 
         let after_yin_spot_price: Wad = shrine.get_yin_spot_price();
-        assert_eq!(after_yin_spot_price, expected_yin_spot_price, "wrong yin price in shrine #1");
+        assert(after_yin_spot_price == expected_yin_spot_price, 'wrong yin price in shrine #1');
 
         let expected_receptor_events = array![
             (
@@ -219,7 +218,7 @@ mod test_receptor {
         cheat_caller_address(receptor.contract_address, common::SHRINE_ADMIN, CheatSpan::TargetCalls(1));
         receptor.update_yin_price();
 
-        assert_eq!(shrine.get_yin_spot_price(), expected_yin_spot_price, "wrong yin price in shrine #2");
+        assert(shrine.get_yin_spot_price() == expected_yin_spot_price, 'wrong yin price in shrine #2');
 
         let expected_receptor_events = array![
             (
@@ -255,7 +254,7 @@ mod test_receptor {
         let expected_yin_spot_price: Wad = *quotes[2];
 
         let after_yin_spot_price: Wad = shrine.get_yin_spot_price();
-        assert_eq!(after_yin_spot_price, expected_yin_spot_price, "wrong yin price in shrine #1");
+        assert(after_yin_spot_price == expected_yin_spot_price, 'wrong yin price in shrine #1');
     }
 
     #[test]

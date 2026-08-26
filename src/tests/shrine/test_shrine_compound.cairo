@@ -982,7 +982,7 @@ mod test_shrine_compound {
         shrine.melt(trove1_owner, trove_id, Zero::zero());
 
         let after_trove_health: Health = shrine.get_trove_health(trove_id);
-        assert_eq!(after_trove_health.debt, start_debt, "interest accrued");
+        assert(after_trove_health.debt == start_debt, 'interest accrued');
 
         // Ensure iteration limit is not a problem
         shrine_utils::advance_prices_periodically(shrine, yangs, shrine_contract::SUSPENSION_GRACE_PERIOD);

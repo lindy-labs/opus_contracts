@@ -55,12 +55,12 @@ mod test_math {
     #[test]
     fn test_median_of_three() {
         let values: Span<u128> = array![1, 2, 3].span();
-        assert_eq!(median_of_three(values), 2, "wrong median #1");
+        assert(median_of_three(values) == 2, 'wrong median #1');
 
         let values: Span<u128> = array![2, 2, 3].span();
-        assert_eq!(median_of_three(values), 2, "wrong median #1");
+        assert(median_of_three(values) == 2, 'wrong median #2');
 
         let values: Span<u128> = array![2, 2, 2].span();
-        assert_eq!(median_of_three(values), 2, "wrong median #1");
+        assert(median_of_three(values) == 2, 'wrong median #3');
     }
 }

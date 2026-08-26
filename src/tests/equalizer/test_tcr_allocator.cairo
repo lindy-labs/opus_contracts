@@ -37,10 +37,10 @@ mod test_tcr_allocator {
 
         let (recipients, percentages) = allocator.get_allocation();
 
-        assert_eq!(recipients, expected_recipients, "wrong recipients");
-        assert_eq!(recipients.len(), 3, "wrong array length");
+        assert(recipients == expected_recipients, 'wrong recipients');
+        assert(recipients.len() == 3, 'wrong array length');
 
-        assert!(shrine.is_recovery_mode(), "not recovery mode");
+        assert(shrine.is_recovery_mode(), 'not recovery mode');
         let expected_percentages: Span<Ray> = array![
             tcr_allocator_contract::ADMIN_FEE_RECIPIENT_PCT.into(),
             tcr_allocator_contract::MAX_ADJUSTABLE_PCT.into(),
@@ -48,7 +48,7 @@ mod test_tcr_allocator {
         ]
             .span();
 
-        assert_eq!(percentages, expected_percentages, "wrong percentages");
+        assert(percentages == expected_percentages, 'wrong percentages');
 
         equalizer_utils::sums_to_one(percentages);
     }
@@ -66,10 +66,10 @@ mod test_tcr_allocator {
 
         let (recipients, percentages) = allocator.get_allocation();
 
-        assert_eq!(recipients, expected_recipients, "wrong recipients");
-        assert_eq!(recipients.len(), 3, "wrong array length");
+        assert(recipients == expected_recipients, 'wrong recipients');
+        assert(recipients.len() == 3, 'wrong array length');
 
-        assert!(!shrine.is_recovery_mode(), "recovery mode");
+        assert(!shrine.is_recovery_mode(), 'recovery mode');
         let expected_percentages: Span<Ray> = array![
             tcr_allocator_contract::ADMIN_FEE_RECIPIENT_PCT.into(),
             tcr_allocator_contract::MIN_ADJUSTABLE_PCT.into(),
@@ -77,7 +77,7 @@ mod test_tcr_allocator {
         ]
             .span();
 
-        assert_eq!(percentages, expected_percentages, "wrong percentages");
+        assert(percentages == expected_percentages, 'wrong percentages');
 
         equalizer_utils::sums_to_one(percentages);
     }
@@ -139,10 +139,10 @@ mod test_tcr_allocator {
             common::assert_equalish(shrine_health.ltv, target_ltv, error_margin, 'wrong target ltv');
 
             let (recipients, percentages) = allocator.get_allocation();
-            assert_eq!(recipients, expected_recipients, "wrong recipients");
-            assert_eq!(recipients.len(), 3, "wrong array length");
+            assert(recipients == expected_recipients, 'wrong recipients');
+            assert(recipients.len() == 3, 'wrong array length');
 
-            assert!(!shrine.is_recovery_mode(), "recovery mode");
+            assert(!shrine.is_recovery_mode(), 'recovery mode');
             let expected_percentages: Span<Ray> = *expected_percentages_arrs.pop_front().unwrap();
 
             let absorber_pct = *percentages[1];

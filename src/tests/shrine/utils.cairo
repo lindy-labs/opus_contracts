@@ -496,7 +496,7 @@ pub mod shrine_utils {
 
             let derived_yang_amt: Wad = troves_cumulative_amt + initial_amt;
             let actual_yang_amt: Wad = shrine.get_yang_total(*yang);
-            assert_eq!(derived_yang_amt, actual_yang_amt, "yang invariant failed");
+            assert(derived_yang_amt == actual_yang_amt, 'yang invariant failed');
         };
     }
 

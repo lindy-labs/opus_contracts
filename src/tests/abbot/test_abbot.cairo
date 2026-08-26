@@ -452,15 +452,13 @@ mod test_abbot {
         let trove_id: u64 = common::open_trove_helper(abbot, trove_owner, yangs, deposit_amts, gates, forge_amt);
 
         // Sanity check that max assets have been deposited
-        assert_eq!(
-            eth_erc20.balance_of(eth_gate.contract_address).try_into().unwrap(),
-            sentinel.get_yang_asset_max(eth),
-            "yang not at max #1",
+        assert(
+            eth_erc20.balance_of(eth_gate.contract_address).try_into().unwrap() == sentinel.get_yang_asset_max(eth),
+            'yang not at max #1',
         );
-        assert_eq!(
-            wbtc_erc20.balance_of(wbtc_gate.contract_address).try_into().unwrap(),
-            sentinel.get_yang_asset_max(wbtc),
-            "yang not at max #2",
+        assert(
+            wbtc_erc20.balance_of(wbtc_gate.contract_address).try_into().unwrap() == sentinel.get_yang_asset_max(wbtc),
+            'yang not at max #2',
         );
 
         // Withdraw all ETH and WBTC

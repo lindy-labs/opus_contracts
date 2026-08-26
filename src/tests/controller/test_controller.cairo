@@ -468,7 +468,7 @@ mod test_controller {
             controller.update_multiplier();
 
             let (shrine_multiplier, _, _) = shrine.get_current_multiplier();
-            assert_eq!(multiplier, shrine_multiplier, "wrong multiplier in shrine");
+            assert(multiplier == shrine_multiplier, 'wrong multiplier in shrine');
         };
     }
 

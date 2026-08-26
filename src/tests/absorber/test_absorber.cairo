@@ -739,10 +739,9 @@ mod test_absorber {
         cheat_caller_address(shrine.contract_address, donor, CheatSpan::TargetCalls(1));
         yin.transfer(absorber.contract_address, donation_amt.into());
 
-        assert_eq!(
-            yin.balance_of(absorber.contract_address),
-            (donation_amt + initial_shares_amt).into(),
-            "wrong absorber yin bal",
+        assert(
+            yin.balance_of(absorber.contract_address) == (donation_amt + initial_shares_amt).into(),
+            'wrong absorber yin bal',
         );
 
         // Provider provides a small amount

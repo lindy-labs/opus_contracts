@@ -1147,11 +1147,10 @@ mod test_purger {
 
             if is_full_exceptional_redistribution {
                 let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
-                assert_eq!(
-                    after_protocol_owned_troves_debt,
-                    before_protocol_owned_troves_debt + redistributed_amt,
-                    "wrong troves deficit",
-                );
+                assert(
+                    after_protocol_owned_troves_debt == before_protocol_owned_troves_debt + redistributed_amt,
+                    'wrong troves deficit',
+                )
             } else {
                 // Check recipient trove's value and debt
                 let recipient_trove_after_health: Health = shrine.get_trove_health(recipient_trove);
@@ -1566,9 +1565,7 @@ mod test_purger {
                 let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
                 let expected_protocol_owned_troves_debt = before_protocol_owned_troves_debt
                     + expected_redistributed_amt;
-                assert_eq!(
-                    after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong troves deficit",
-                );
+                assert(after_protocol_owned_troves_debt == expected_protocol_owned_troves_debt, 'wrong troves deficit');
             } else {
                 // Check recipient trove's value and debt
                 if absorber_yin_idx == 2 {
@@ -1808,8 +1805,8 @@ mod test_purger {
                     let after_protocol_owned_troves_debt: Wad = shrine.get_protocol_owned_troves_debt();
                     let expected_protocol_owned_troves_debt = before_protocol_owned_troves_debt
                         + target_trove_start_health.debt;
-                    assert_eq!(
-                        after_protocol_owned_troves_debt, expected_protocol_owned_troves_debt, "wrong troves deficit",
+                    assert(
+                        after_protocol_owned_troves_debt == expected_protocol_owned_troves_debt, 'wrong troves deficit',
                     );
                 } else {
                     // Check recipient trove's value and debt
@@ -2100,7 +2097,7 @@ mod test_purger {
                 let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
                 if is_recovery_mode {
                     if expected_penalty.is_zero() {
-                        assert_eq!(penalty, expected_penalty, "wrong rm penalty #1");
+                        assert(penalty == expected_penalty, 'wrong rm penalty #1');
                     } else {
                         assert(penalty < expected_penalty - error_margin, 'wrong rm penalty #2');
                     }

@@ -119,7 +119,7 @@ mod test_caretaker {
 
             let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
             let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
-            assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
+            assert(after_yang_total_amt == expected_after_yang_total_amt, 'wrong yang total after shut');
         }
 
         let mut expected_ringfenced_assets: Array<AssetBalance> = ArrayTrait::new();

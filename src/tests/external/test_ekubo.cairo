@@ -101,7 +101,7 @@ mod test_ekubo {
         let exact_eth_usdc_price: Wad = convert_ekubo_oracle_price_to_wad(
             eth_usdc_x128_price, WAD_DECIMALS, constants::USDC_DECIMALS,
         );
-        assert_eq!(actual_price, exact_eth_usdc_price, "wrong price #1");
+        assert(actual_price == exact_eth_usdc_price, 'wrong price #1');
 
         let expected_price: Wad = 3335573392107353791360_u128.into();
         let error_margin: Wad = 1_u128.into();
@@ -123,7 +123,7 @@ mod test_ekubo {
         let result: Result<Wad, felt252> = oracle.fetch_price(wbtc);
         assert(result.is_ok(), 'fetch price failed #2');
         let actual_price: Wad = result.unwrap();
-        assert_eq!(actual_price, exact_wbtc_usdc_price, "wrong price #2");
+        assert(actual_price == exact_wbtc_usdc_price, 'wrong price #2');
 
         let expected_price: Wad = 93512066988585665215326_u128.into();
         let error_margin: Wad = 1_u128.into();

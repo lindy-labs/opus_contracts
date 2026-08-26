@@ -90,12 +90,12 @@ mod test_sentinel {
         assert(shrine.get_yang_rate(wbtc, expected_era) == wbtc_params.base_rate.into(), 'Wrong yang rate #2');
 
         let expected_initial_eth_yang: Wad = sentinel_utils::get_initial_asset_amt(eth).into();
-        assert_eq!(shrine.get_yang_total(eth), expected_initial_eth_yang, "Wrong yang total #1");
+        assert(shrine.get_yang_total(eth) == expected_initial_eth_yang, 'Wrong yang total #1');
 
         let expected_initial_wbtc_yang: Wad = fixed_point_to_wad(
             sentinel_utils::get_initial_asset_amt(wbtc), wbtc_erc20.decimals(),
         );
-        assert_eq!(shrine.get_yang_total(wbtc), expected_initial_wbtc_yang, "Wrong yang total #2");
+        assert(shrine.get_yang_total(wbtc) == expected_initial_wbtc_yang, 'Wrong yang total #2');
 
         let expected_events = array![
             (

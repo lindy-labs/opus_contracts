@@ -6,33 +6,33 @@ use wadray::Wad;
 fn test_display_and_debug() {
     let h = Health { threshold: 1_u128.into(), ltv: 2_u128.into(), value: 3_u128.into(), debt: 4_u128.into() };
     let expected = "Health { threshold: 1, ltv: 2, value: 3, debt: 4 }";
-    assert_eq!(format!("{}", h), expected, "Health display");
-    assert_eq!(format!("{:?}", h), expected, "Health debug");
+    assert(format!("{}", h) == expected, 'Health display');
+    assert(format!("{:?}", h) == expected, 'Health debug');
 
     let y = YangBalance { yang_id: 123, amount: 456_u128.into() };
     let expected = "YangBalance { yang_id: 123, amount: 456 }";
-    assert_eq!(format!("{}", y), expected, "YangBalance display");
-    assert_eq!(format!("{:?}", y), expected, "YangBalance debug");
+    assert(format!("{}", y) == expected, 'YangBalance display');
+    assert(format!("{:?}", y) == expected, 'YangBalance debug');
 
     let t = Trove { charge_from: 123, last_rate_era: 456, debt: 789_u128.into() };
     let expected = "Trove { charge_from: 123, last_rate_era: 456, debt: 789 }";
-    assert_eq!(format!("{}", t), expected, "Trove display");
-    assert_eq!(format!("{:?}", t), expected, "Trove debug");
+    assert(format!("{}", t) == expected, 'Trove display');
+    assert(format!("{:?}", t) == expected, 'Trove debug');
 
     let d = DistributionInfo { asset_amt_per_share: 123, error: 456 };
     let expected = "DistributionInfo { asset_amt_per_share: 123, error: 456 }";
-    assert_eq!(format!("{}", d), expected, "DistributionInfo display");
-    assert_eq!(format!("{:?}", d), expected, "DistributionInfo debug");
+    assert(format!("{}", d) == expected, 'DistributionInfo display');
+    assert(format!("{:?}", d) == expected, 'DistributionInfo debug');
 
     let p = Provision { epoch: 123, shares: 456_u128.into() };
     let expected = "Provision { epoch: 123, shares: 456 }";
-    assert_eq!(format!("{}", p), expected, "Provision display");
-    assert_eq!(format!("{:?}", p), expected, "Provision debug");
+    assert(format!("{}", p) == expected, 'Provision display');
+    assert(format!("{:?}", p) == expected, 'Provision debug');
 
     let r = Request { timestamp: 123, timelock: 456, is_valid: true };
     let expected = "Request { timestamp: 123, timelock: 456, is_valid: true }";
-    assert_eq!(format!("{}", r), expected, "Provision display");
-    assert_eq!(format!("{:?}", r), expected, "Provision debug");
+    assert(format!("{}", r) == expected, 'Provision display');
+    assert(format!("{:?}", r) == expected, 'Provision debug');
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn test_trove_packing() {
     let debt: Wad = 0xffffffffffffffffffffffff_u128.into();
     let trove = Trove { charge_from, last_rate_era, debt };
     let unpacked: Trove = StorePacking::unpack(StorePacking::pack(trove));
-    assert_eq!(trove, unpacked, "trove packing failed");
+    assert(trove == unpacked, 'trove packing failed');
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn test_distribution_info_packing() {
     let error: u128 = 0x7fffffffffffffffffffffffffffff0;
     let distribution_info = DistributionInfo { asset_amt_per_share, error };
     let unpacked: DistributionInfo = StorePacking::unpack(StorePacking::pack(distribution_info));
-    assert_eq!(distribution_info, unpacked, "distribution_info 1 packing failed");
+    assert(distribution_info == unpacked, 'dist_info 1 packing failed');
 
     // error should be capped to 2**123-1
     let max_error: u128 = 0x7ffffffffffffffffffffffffffffff;
@@ -73,12 +73,8 @@ fn test_distribution_info_packing() {
 
     let distribution_info = DistributionInfo { asset_amt_per_share, error: too_big_error };
     let unpacked: DistributionInfo = StorePacking::unpack(StorePacking::pack(distribution_info));
-    assert_eq!(
-        distribution_info.asset_amt_per_share,
-        unpacked.asset_amt_per_share,
-        "distribution_info 2 asset_amt_per_share packing failed",
-    );
-    assert_eq!(unpacked.error, max_error, "distribution_info 2 error packing failed");
+    assert(distribution_info.asset_amt_per_share == unpacked.asset_amt_per_share, 'dist_info 2 asset_amt failed');
+    assert(unpacked.error == max_error, 'dist_info 2 err packing fail');
 }
 
 #[test]
@@ -87,7 +83,7 @@ fn test_provision_packing() {
     let shares: Wad = 0xffffffffffffffffffffffff_u128.into();
     let provision = Provision { epoch, shares };
     let unpacked: Provision = StorePacking::unpack(StorePacking::pack(provision));
-    assert_eq!(provision, unpacked, "provision epoch packing failed");
+    assert(provision == unpacked, 'provision epoch packing failed');
 }
 
 #[test]
@@ -97,5 +93,5 @@ fn test_request_packing() {
     let is_valid = true;
     let request = Request { timestamp, timelock, is_valid };
     let unpacked: Request = StorePacking::unpack(StorePacking::pack(request));
-    assert_eq!(request, unpacked, "request packing failed");
+    assert(request == unpacked, 'request packing failed');
 }

@@ -638,7 +638,7 @@ pub mod purger_utils {
         error_margin: u128,
         message: felt252,
     ) {
-        assert_eq!(before_asset_bals.len(), after_asset_bals.len(), "balances array sanity check #1");
+        assert(before_asset_bals.len() == after_asset_bals.len(), 'balances array sanity check #1');
         for expected_freed_asset in expected_freed_assets {
             let before_asset_bal: u128 = *before_asset_bals.pop_front().unwrap();
             let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset.amount;

@@ -129,6 +129,6 @@ pub mod equalizer_utils {
         for percentage in percentages {
             sum += *percentage;
         }
-        assert!(sum.is_one(), "percentage sum not 100%");
+        assert(sum.is_one(), 'pct sum not 100%');
     }
 }

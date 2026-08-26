@@ -27,11 +27,10 @@ mod test_ekubo_oracle_adapter {
         let mock_ekubo = common::mock_ekubo_oracle_extension_deploy(Option::None);
         state.ekubo_oracle_adapter.set_oracle_extension(mock_ekubo.contract_address);
 
-        assert_eq!(
-            state.ekubo_oracle_adapter.get_oracle_extension().contract_address,
-            mock_ekubo.contract_address,
-            "wrong extension addr",
-        );
+        assert(
+            state.ekubo_oracle_adapter.get_oracle_extension().contract_address == mock_ekubo.contract_address,
+            'wrong extension addr',
+        )
     }
 
     #[test]
@@ -54,17 +53,17 @@ mod test_ekubo_oracle_adapter {
 
         let events = spy.get_events();
 
-        assert_eq!(events.events.len(), 1, "wrong number of events");
+        assert(events.events.len() == 1, 'wrong number of events');
 
         let (_, event) = events.events.at(0);
-        assert_eq!(event.keys[1], @selector!("QuoteTokensUpdated"), "wrong event name");
-        assert_eq!(*event.data[0], 3, "wrong span length in event");
-        assert_eq!(*event.data[1], (*quote_tokens[0]).into(), "wrong token in event #1");
-        assert_eq!(*event.data[2], constants::DAI_DECIMALS.into(), "wrong decimals in event #1");
-        assert_eq!(*event.data[3], (*quote_tokens[1]).into(), "wrong token in event #2");
-        assert_eq!(*event.data[4], constants::USDC_DECIMALS.into(), "wrong decimals in event #2");
-        assert_eq!(*event.data[5], (*quote_tokens[2]).into(), "wrong token in event #3");
-        assert_eq!(*event.data[6], constants::USDT_DECIMALS.into(), "wrong decimals in event #3");
+        assert(event.keys[1] == @selector!("QuoteTokensUpdated"), 'wrong event name');
+        assert(*event.data[0] == 3, 'wrong span length in event');
+        assert(*event.data[1] == (*quote_tokens[0]).into(), 'wrong token in event #1');
+        assert(*event.data[2] == constants::DAI_DECIMALS.into(), 'wrong decimals in event #1');
+        assert(*event.data[3] == (*quote_tokens[1]).into(), 'wrong token in event #2');
+        assert(*event.data[4] == constants::USDC_DECIMALS.into(), 'wrong decimals in event #2');
+        assert(*event.data[5] == (*quote_tokens[2]).into(), 'wrong token in event #3');
+        assert(*event.data[6] == constants::USDT_DECIMALS.into(), 'wrong decimals in event #3');
     }
 
     #[test]
@@ -116,12 +115,12 @@ mod test_ekubo_oracle_adapter {
 
         let events = spy.get_events();
 
-        assert_eq!(events.events.len(), 1, "wrong number of events");
+        assert(events.events.len() == 1, 'wrong number of events');
 
         let (_, event) = events.events.at(0);
-        assert_eq!(event.keys[1], @selector!("TwapDurationUpdated"), "wrong event name");
-        assert_eq!(*event.data[0], 0, "wrong old duration in event");
-        assert_eq!(*event.data[1], twap_duration.into(), "wrong new duration in event");
+        assert(event.keys[1] == @selector!("TwapDurationUpdated"), 'wrong event name');
+        assert(*event.data[0] == 0, 'wrong old duration in event');
+        assert(*event.data[1] == twap_duration.into(), 'wrong new duration in event');
     }
 
     #[test]
@@ -164,7 +163,7 @@ mod test_ekubo_oracle_adapter {
         );
         let expected_eth_quotes: Span<Wad> = array![exact_eth_dai_price, exact_eth_usdc_price, exact_eth_usdt_price]
             .span();
-        assert_eq!(state.ekubo_oracle_adapter.get_quotes(eth), expected_eth_quotes, "wrong quotes #1");
+        assert(state.ekubo_oracle_adapter.get_quotes(eth) == expected_eth_quotes, 'wrong quotes #1');
 
         let wbtc = common::wbtc_token_deploy(Option::Some(token_class));
 
@@ -187,6 +186,6 @@ mod test_ekubo_oracle_adapter {
         );
         let expected_wbtc_quotes: Span<Wad> = array![exact_wbtc_dai_price, exact_wbtc_usdc_price, exact_wbtc_usdt_price]
             .span();
-        assert_eq!(state.ekubo_oracle_adapter.get_quotes(wbtc), expected_wbtc_quotes, "wrong quotes #2");
+        assert(state.ekubo_oracle_adapter.get_quotes(wbtc) == expected_wbtc_quotes, 'wrong quotes #2');
     }
 }

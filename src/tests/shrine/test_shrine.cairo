@@ -37,15 +37,13 @@ mod test_shrine {
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
         assert(shrine.get_minimum_trove_value().is_zero(), 'wrong min trove value');
-        assert_eq!(
-            shrine.get_recovery_mode_target_factor(),
-            shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
-            "wrong target factor",
+        assert(
+            shrine.get_recovery_mode_target_factor() == shrine_contract::INITIAL_RECOVERY_MODE_TARGET_FACTOR.into(),
+            'wrong target factor',
         );
-        assert_eq!(
-            shrine.get_recovery_mode_buffer_factor(),
-            shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
-            "wrong buffer factor",
+        assert(
+            shrine.get_recovery_mode_buffer_factor() == shrine_contract::INITIAL_RECOVERY_MODE_BUFFER_FACTOR.into(),
+            'wrong buffer factor',
         );
 
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
@@ -171,7 +169,7 @@ mod test_shrine {
         for yang_param in yang_params {
             // `Shrine.add_yang` sets the initial price for `current_interval - 1`
             let (_, start_cumulative_price) = shrine.get_yang_price(*yang_param.address, start_interval - 1);
-            assert_eq!(start_cumulative_price, (*yang_param.start_price).into(), "wrong start cumulative price");
+            assert(start_cumulative_price == (*yang_param.start_price).into(), 'wrong start cumulative price');
         }
 
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
@@ -558,12 +556,12 @@ mod test_shrine {
         let target_factor: Ray = (75 * RAY_PERCENT).into();
         cheat_caller_address(shrine.contract_address, common::SHRINE_ADMIN, CheatSpan::TargetCalls(1));
         shrine.set_recovery_mode_target_factor(target_factor);
-        assert_eq!(shrine.get_recovery_mode_target_factor(), target_factor, "wrong target factor");
+        assert(shrine.get_recovery_mode_target_factor() == target_factor, 'wrong target factor');
 
         let buffer_factor: Ray = (2 * RAY_PERCENT).into();
         cheat_caller_address(shrine.contract_address, common::SHRINE_ADMIN, CheatSpan::TargetCalls(1));
         shrine.set_recovery_mode_buffer_factor(buffer_factor);
-        assert_eq!(shrine.get_recovery_mode_buffer_factor(), buffer_factor, "wrong buffer factor");
+        assert(shrine.get_recovery_mode_buffer_factor() == buffer_factor, 'wrong buffer factor');
 
         let expected_events = array![
             (
@@ -679,7 +677,7 @@ mod test_shrine {
 
             let after_yang_total_amt: Wad = shrine.get_yang_total(*yang);
             let expected_after_yang_total_amt: Wad = *expected_after_yang_total_amts.pop_front().unwrap();
-            assert_eq!(after_yang_total_amt, expected_after_yang_total_amt, "wrong yang total after shut");
+            assert(after_yang_total_amt == expected_after_yang_total_amt, 'wrong yang total after shut');
         }
 
         let expected_events = array![
@@ -1657,7 +1655,7 @@ mod test_shrine {
 
         let (new_price, new_cumulative_price, _) = shrine.get_current_yang_price(yang);
         assert(new_price == zero_price, 'wrong zero price');
-        assert_eq!(new_cumulative_price, prev_cumulative_price, "wrong cumulative price");
+        assert(new_cumulative_price == prev_cumulative_price, 'wrong cumulative price');
 
         // Check effect of zero price on trove
         let trove_health: Health = shrine.get_trove_health(trove_id);
@@ -2152,7 +2150,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         assert(trove_health.value.is_non_zero(), 'trove has no value');
-        assert_eq!(trove_health.threshold, threshold, "wrong trove threshold #1");
+        assert(trove_health.threshold == threshold, 'wrong trove threshold #1');
 
         // the threshold should decrease by 1% in this amount of time
         let one_pct = shrine_contract::SUSPENSION_GRACE_PERIOD / 100;
@@ -2211,7 +2209,7 @@ mod test_shrine {
 
         let after_shrine_health: Health = shrine.get_shrine_health();
         let expected_shrine_value: Wad = start_shrine_health.value - start_trove_health.value;
-        assert_eq!(after_shrine_health.value, expected_shrine_value, "wrong shrine value");
+        assert(after_shrine_health.value == expected_shrine_value, 'wrong shrine value');
     }
 
     #[test]
@@ -2437,7 +2435,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
-        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+        assert(trove_health.threshold == trove_base_threshold, 'rm threshold has been scaled');
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
@@ -2480,7 +2478,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
-        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+        assert(trove_health.threshold == trove_base_threshold, 'rm threshold has been scaled');
     }
 
     // If the Shrine's LTV is within the recovery mode buffer,
@@ -2654,7 +2652,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
-        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+        assert(trove_health.threshold == trove_base_threshold, 'rm threshold has been scaled');
     }
 
     // After the recovery mode buffer is exceeded, if trove is below its target recovery mode LTV,
@@ -2696,7 +2694,7 @@ mod test_shrine {
 
         let trove_health: Health = shrine.get_trove_health(trove_id);
         let trove_base_threshold: Ray = shrine.get_trove_base_threshold(trove_id);
-        assert_eq!(trove_health.threshold, trove_base_threshold, "rm threshold has been scaled");
+        assert(trove_health.threshold == trove_base_threshold, 'rm threshold has been scaled');
     }
 
     // If the Shrine's LTV has exceeded the recovery mode buffer,
